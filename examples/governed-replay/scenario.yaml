@@ -1,0 +1,48 @@
+api_version: v1
+id: governed-replay
+title: Governed Replay Walkthrough
+description: >-
+  Observe the exact prompt and model evidence, select immutable evaluation and
+  execution records, inspect governance evidence, and prepare a replay through
+  Kavach's public REST API.
+presentation:
+  category: evidence
+  world: "1-1"
+  level_title: Capture the Evidence
+assets:
+  prompt:
+    name: walkthrough-support-assistant
+    version: v1
+    source_system: kavach-walkthrough
+    source_reference: governed-replay:v1
+    variables: [question, context]
+    artifact: artifacts/prompts/support-assistant-v1.txt
+  model:
+    provider: mock
+    model_name: walkthrough-general
+    version: "2026.07"
+    source_system: kavach-walkthrough
+    source_reference: governed-replay:v1
+    context_window: 8192
+    parameters:
+      temperature: 0.2
+      max_tokens: 512
+      top_p: 1.0
+  dataset_id: demo-dataset-evaluation
+steps:
+  - id: observe_prompt
+    action: prompt.observe
+  - id: observe_model
+    action: model.observe
+  - id: select_dataset
+    action: dataset.select_existing
+  - id: select_execution
+    action: replay_execution.select
+  - id: inspect_baseline_evaluation
+    action: evaluation.history
+  - id: inspect_decision
+    action: decision.inspect
+  - id: create_replay
+    action: replay.create
+  - id: inspect_lineage
+    action: lineage.get

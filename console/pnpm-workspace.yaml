@@ -1,0 +1,6 @@
+verifyDepsBeforeRun: false
+confirmModulesPurge: false
+
+allowBuilds:
+  sharp: true
+  unrs-resolver: true

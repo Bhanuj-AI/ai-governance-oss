@@ -1,0 +1,87 @@
+name: kavach-oss-keycloak
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - keycloak_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - keycloak_network
+
+  keycloak:
+    env_file:
+      - .env.keycloak
+    build:
+      context: .
+      dockerfile: Dockerfile.keycloak
+    image: kavach/keycloak:26.7.0
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Running in dev mode using http
+      KC_HOSTNAME: http://keycloak.localhost:18080
+      KC_HTTP_ENABLED: "true"
+      KC_HTTPS_ENABLED: "false"
+      KC_HTTP_MANAGEMENT_SCHEME: "http"
+      KC_PROXY_HEADERS: ${KEYCLOAK_PROXY_HEADERS:-xforwarded}
+
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:?POSTGRES_DB is required}
+      KC_DB_USERNAME: ${POSTGRES_USER:?POSTGRES_USER is required}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:?KEYCLOAK_ADMIN_USERNAME is required}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required}
+
+      KAVACH_STUDIO_PASSWORD: ${KAVACH_STUDIO_PASSWORD:?KAVACH_STUDIO_PASSWORD is required}
+      KAVACH_SERVICE_CLIENT_SECRET: ${KAVACH_SERVICE_CLIENT_SECRET:?KAVACH_SERVICE_CLIENT_SECRET is required}
+      KAVACH_MCP_CLIENT_SECRET: ${KAVACH_MCP_CLIENT_SECRET:?KAVACH_MCP_CLIENT_SECRET is required}
+      KAVACH_WALKTHROUGH_CLIENT_SECRET: ${KAVACH_WALKTHROUGH_CLIENT_SECRET:-walkthrough-secret}
+
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+    ports:
+      - "${KEYCLOAK_HTTP_PORT:-8080}:8080"
+      - "${KEYCLOAK_MANAGEMENT_PORT:-9000}:9000"
+    command:
+      - start
+      - --optimized
+      - --import-realm
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "exec 3<>/dev/tcp/127.0.0.1/9000; printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3; grep -q '200 OK' <&3"
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    volumes:
+      - ./keycloak/kavach-realm.json:/opt/keycloak/data/import/kavach-realm.json:ro
+    networks:
+      - keycloak_network
+
+volumes:
+  keycloak_postgres_data:
+
+networks:
+  keycloak_network:
+    driver: bridge

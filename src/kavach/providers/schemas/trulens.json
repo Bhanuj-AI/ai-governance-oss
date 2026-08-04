@@ -1,0 +1,50 @@
+{
+  "documentation_url": "https://trulens.org/getting_started/",
+  "settings": {
+    "properties": {
+      "model": {
+        "type": "string",
+        "title": "Judge model",
+        "description": "OpenAI model used to judge each evaluation.",
+        "default": "gpt-5-mini"
+      },
+      "enabled_metrics": {
+        "type": "array",
+        "title": "Enabled metrics",
+        "description": "Metrics this installation is allowed to run.",
+        "items": {
+          "enum": [
+            "answer_relevance",
+            "context_relevance",
+            "groundedness"
+          ]
+        },
+        "default": [
+          "answer_relevance",
+          "context_relevance",
+          "groundedness"
+        ]
+      },
+      "timeout_seconds": {
+        "type": "integer",
+        "title": "Timeout (seconds)",
+        "default": 30
+      }
+    },
+    "required": [
+      "model"
+    ]
+  },
+  "secret_refs": {
+    "properties": {
+      "openai_api_key": {
+        "title": "OpenAI API key",
+        "description": "Environment reference used only when a run starts.",
+        "default": "env://OPENAI_API_KEY"
+      }
+    },
+    "required": [
+      "openai_api_key"
+    ]
+  }
+}

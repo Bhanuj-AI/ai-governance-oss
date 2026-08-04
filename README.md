@@ -1,0 +1,414 @@
+# Kavach
+
+> **AI Governance Control Plane**
+>
+> Govern prompts, models, agents, evaluations, policies, and decisions with
+> deterministic evidence, replayability and lineage.
+
+**Modern AI frameworks help build agents. Kavach governs them.**
+
+> **Enterprise capabilities are under active development. Commercial offerings
+> will be announced as they mature.**
+
+![Kavach logo](assets/Hero.png)
+
+Kavach is an open-source governance control plane for AI systems. Rather than
+focusing solely on model evaluation, it establishes a semantic governance layer
+that models AI assets, evidence, policies and governance decisions as
+first-class domain objects.
+
+It enables organizations to govern AI systems through deterministic decision-making, versioned assets, explainable reasoning, auditability, replayability, and framework-independent integrations.
+
+- [Website](https://kavach.bhanuj.app)
+- [Documentation](https://kavach.bhanuj.app/docs)
+- [Tutorials](https://kavach.bhanuj.app/tutorials)
+- [Roadmap](docs/roadmap/ROADMAP.md)
+
+---
+
+## See Kavach Studio
+
+<table>
+  <tr>
+    <td width="50%"><img src="assets/Governance%20Decisions.png" alt="Kavach Studio governance decisions" /><br /><strong>Governance Decisions</strong> — inspect deterministic outcomes and their supporting evidence.</td>
+    <td width="50%"><img src="assets/Governance%20Decisions%20-%20BLOCKED%20-%20Decision%20Lineage.png" alt="Kavach Studio decision lineage" /><br /><strong>Decision Lineage</strong> — trace the assets, policies, and executions behind an outcome.</td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/Governance%20Decisions%20-%20BLOCKED%20-%20Evidence%20Graph.png" alt="Kavach Studio evidence graph" /><br /><strong>Evidence Graph</strong> — make the basis of a decision visible and auditable.</td>
+    <td width="50%"><img src="assets/Kavach%20Ontology%20Graph.png" alt="Kavach Studio knowledge graph" /><br /><strong>Knowledge Graph</strong> — explore governed AI assets and their relationships.</td>
+  </tr>
+</table>
+
+## Why Kavach?
+
+AI systems are no longer just about selecting the best model. Teams need to
+answer governance questions such as:
+
+- Why was this decision made?
+- Which prompt, model, dataset, and policies produced this outcome?
+- Can this decision be explained and replayed?
+- What changed between two deployments?
+- Can quality regressions automatically block promotion?
+- Can governance remain independent of orchestration frameworks and model vendors?
+
+Kavach provides the governance control plane that answers these questions.
+
+---
+
+## Core Concepts
+
+Everything in Kavach revolves around five fundamental concepts.
+
+### Governance Asset
+
+A versioned, immutable resource such as a prompt, model, dataset, experiment, evaluation, workflow, or governance decision.
+
+### Governance Ontology
+
+A semantic graph describing relationships between governed assets.
+
+### Evidence
+
+Structured evidence collected from governed resources that supports a governance decision.
+
+### Policy Engine
+
+Deterministic governance rules evaluated against evidence.
+
+### Governance Decision
+
+An explainable, auditable outcome generated from evidence and policy.
+
+---
+
+## Platform Architecture
+
+![Kavach Architecture](assets/Enterprise%20Architecture%20-%20Marketing.png)
+
+Kavach is organized into independent architectural planes.
+
+- Authentication Plane
+- Governance Ontology Plane
+- Governance Decision Plane
+- Registry Plane
+- Experiment Plane
+- Evaluation Plane
+- Job Execution Control Plane
+- Replay Plane
+- Audit Plane
+- Persistence Plane
+- REST Control Plane
+- MCP Server
+- Kavach Studio
+
+Each plane owns a single responsibility and communicates only through explicit contracts.
+
+---
+
+## Core Capabilities
+
+### Semantic Governance
+
+- Governance Ontology
+- Governance Decision Engine
+- Decision Graph
+- Explainability
+- Lineage
+- Evidence Graphs
+
+### AI Asset Governance
+
+- Prompt Registry
+- Model Registry
+- Dataset Registry
+- Immutable Versioning
+- Lifecycle Management
+
+### Quality Governance
+
+- Evaluation Framework
+- Experiment Management
+- Candidate Comparison
+- Drift Analysis
+- Replay-aware Governance
+- Leaderboards
+
+### Execution Governance
+
+- Execution Audit
+- Workflow Replay
+- Job Execution Control Plane
+- Async Governance Jobs
+
+### Platform Interfaces
+
+- Versioned REST APIs
+- MCP Server
+- Next.js Kavach Studio
+
+---
+
+## Current Implementation
+
+Kavach currently includes:
+
+- Registry-centric Assets workspace for versioned prompts, models, datasets,
+  and evaluation providers, with common overview, version, reference, lineage,
+  and audit-history views
+- Versioned prompt, model, and dataset registries; local dataset content stored
+  through SeaweedFS's S3-compatible API and production-ready standard S3 support
+- Vendor-neutral observed prompt/model evidence ingestion with persisted source
+  provenance and optional protected prompt content hashes
+- A guided `kavach walkthrough governed-replay` command that demonstrates the
+  asset, evaluation, governance, replay, lineage, and audit lifecycle through
+  the same public REST APIs used by Studio and external producers
+- Generic in-memory OAuth client-credentials support for local workloads and
+  CI, with no token persistence
+- Experiment lifecycle management, candidates, evaluation runs, rankings, and leaderboards
+- Pluggable evaluation provider contracts with TruLens support
+- Execution audit, workflow replay, evaluation history, comparison, and drift analysis
+- Async governance job submission, status lookup, cancellation, retry, leases, and worker execution
+- Governance ontology contracts, graph query APIs, ontology synchronization, and Neo4j-backed graph exploration
+- Governance decision models, policy evaluation, evidence building, reasoning, persistence, audit records, and ontology projection
+- Decision REST APIs and MCP tools for evaluation, retrieval, listing, evidence, explanation, and lineage
+- Kavach Studio home dashboard, policy engine authoring, ontology graph exploration, decision index browsing, decision lookup, and visual decision detail inspection
+- SQLite and PostgreSQL reference persistence, with optional Snowflake analytics persistence
+
+---
+
+# Run Locally
+
+## Local preflight before committing
+
+Run the local quality gate before creating a commit. It prompts for a
+[Conventional Commit](https://www.conventionalcommits.org/en/v1.0.0/) message
+and release-note bullets, checks the patch, runs Python lint and unit tests,
+and type-checks Studio when `console/` changed. It does not commit, push, or
+start Docker services.
+
+```bash
+./scripts/dev/preflight.sh
+```
+
+It is also scriptable for CI-like local use:
+
+```bash
+./scripts/dev/preflight.sh \
+  --message "fix(jobs): retain local demo records" \
+  --summary "Keep local demo jobs visible within the retention window"
+```
+
+Start the local Studio, API, ontology, worker and storage topology:
+
+```bash
+# Clone Repository
+git clone https://github.com/KavachHQ/kavach-oss.git
+cd kavach-oss
+
+# Optional: installs host-development and test dependencies
+uv sync
+
+# Create the required development-only configuration files (do not commit them)
+cp .env.platform.example .env.platform
+cp keycloak-postgres/.env.keycloak.example keycloak-postgres/.env.keycloak
+cp console/.env.local.example console/.env.studio
+
+# Starts local Keycloak, builds the platform, and starts the Compose stack
+./kavach.sh
+
+```
+
+`./kavach.sh` starts local Keycloak automatically, then starts the containerized
+local stack. You do not need to run the Keycloak launcher separately. The three
+files above configure the platform, Keycloak, and Studio respectively. Their
+example values are development-only; change them on shared machines and never
+use them in production. The launcher generates `.env.build` and the local
+service-account files itself.
+
+Use the same wrapper to inspect or manage the stack:
+
+```bash
+./kavach.sh logs                    # Follow all application and infrastructure logs
+./kavach.sh logs kavach-platform    # Follow only API logs
+./kavach.sh ps                      # Show service status
+./kavach.sh down                    # Stop services and preserve local data
+```
+
+Keycloak runs in its own Compose project, so follow its logs separately when
+investigating sign-in or service-account startup:
+
+```bash
+(cd keycloak-postgres && docker compose --env-file .env.keycloak logs --follow keycloak)
+```
+
+For host-local API or MCP development rather than Docker Compose, also create
+`.env.local` from its template. Uvicorn does not automatically load either
+environment file:
+
+```bash
+cp .env.local.example .env.local
+```
+
+## Your first two minutes in Studio
+
+Open [Kavach Studio](http://localhost:3000) after `./kavach.sh` completes. It
+will redirect you to the local Keycloak sign-in page. Sign in as `studio` with
+the `KAVACH_STUDIO_PASSWORD` value from `keycloak-postgres/.env.keycloak`.
+The local stack starts with representative demo data, so you can follow the
+full governance flow immediately:
+
+1. Open **Assets** to explore versioned prompts, models, datasets, and their history.
+2. Open **Experiments**, choose a seeded draft experiment, and select **Start Experiment** to run a governed evaluation.
+3. Inspect the resulting **Governance Decision** and its policy outcome, explanation, and evidence.
+4. Open **Ontology** to view the lineage and knowledge graph behind the decision.
+5. Open **Replay** to inspect a seeded replay or create and submit a replay from an execution.
+
+- Keycloak IDP on http://localhost:18080 (OSS local stack)
+- REST API on http://localhost:8000
+- Kavach Studio on http://localhost:3000
+- Neo4j on bolt://localhost:7687
+- Kavach MCP Stdio (MCPO) on http://localhost:8001/docs
+- Kavach MCP Streamable HTTP Server on http://localhost:8002/
+- SeaweedFS S3 API on http://localhost:8333 (local dataset content)
+- SeaweedFS Filer UI on http://localhost:8888 (browse local dataset objects)
+- SeaweedFS Master UI on http://localhost:9333 (storage topology)
+
+See [Configuration](docs/reference/CONFIGURATION.md) for environment variables
+used by the API, Studio, graph adapters, demo seeding, and MCP integrations.
+
+Interactive API docs are available at:
+
+```text
+http://localhost:8000/docs
+http://localhost:8000/redoc
+http://localhost:8000/openapi.json
+```
+
+Local development starts with demo ontology data, a release-gate policy,
+governance decisions, varied governance jobs, and representative MCP audit
+records. SQLite-capable repositories share a database stored in the named
+`kavach_sqlite_data` Docker volume, so seeded and locally created records
+survive container recreation and normal `docker compose down` operations.
+
+To stop the stack without deleting local data:
+
+```bash
+./kavach.sh down
+```
+
+To delete the local SQLite, Neo4j, and SeaweedFS data and start with a clean
+seed:
+
+```bash
+docker compose down -v
+./kavach.sh
+```
+
+To reseed the local demo data manually without deleting local state, use the
+same short-lived Keycloak client-credentials flow as the local walkthrough and
+MCP tools. `./kavach.sh` generates `.env.oauth.generated` for the provisioned
+local walkthrough service account; the token stays in the shell only and is not
+printed or written to a file:
+
+```bash
+set -a
+. ./.env.oauth.generated
+set +a
+
+KAVACH_DEMO_TOKEN="$(uv run python -c '
+from kavach.oauth import access_token_from_environment
+token = access_token_from_environment()
+assert token, "KAVACH_OAUTH_* credentials are required"
+print(token)
+')"
+
+curl --fail-with-body -X POST http://localhost:8000/api/v1/ontology/demo/seed \
+  -H "Authorization: Bearer ${KAVACH_DEMO_TOKEN}"
+unset KAVACH_DEMO_TOKEN
+```
+
+Set `KAVACH_AUTO_SEED_DEMO_DATA=false` to disable startup demo seeding.
+The demo seed uses stable identifiers, so normal restarts refresh the demo
+records rather than accumulating duplicates.
+
+The local seeded evaluation dataset is stored in SeaweedFS through the
+standard S3 API; its registry record points to an `s3://` URI. Production uses
+the same adapter with AWS S3: set `KAVACH_DATASET_OBJECT_STORE_BACKEND=s3`,
+`KAVACH_DATASET_S3_BUCKET`, and AWS credentials/region. Leave
+`KAVACH_DATASET_S3_ENDPOINT_URL` unset for AWS S3; set it only for an
+S3-compatible endpoint such as SeaweedFS.
+
+The Dataset Registry also supports direct CSV and JSONL upload from Studio.
+Kavach validates and writes immutable dataset bytes to the configured object
+store, then registers a DRAFT version with its `s3://` URI and SHA-256 checksum.
+
+For a guided first run through Assets, SeaweedFS dataset storage, ontology
+lineage, experiments, and governance decisions, see the
+[end-to-end local tutorial](docs/tutorials/end-to-end-local.md).
+For integrating a runtime or evaluator with the observed prompt/model catalog,
+see the [producer integration guide](docs/tutorials/producer-integration.md).
+For a reproducible terminal walkthrough of the full governed replay lifecycle,
+see the [governed replay walkthrough](docs/tutorials/governed-replay-walkthrough.md).
+The walkthrough includes a public-API-only release smoke script, restart
+checkpoints, and safe local manifest cleanup.
+
+Then open Studio and inspect the home dashboard, policy engine, jobs page,
+graph explorer, or governance decision index.
+
+---
+
+# Reference Docs
+
+- [Architecture](docs/architecture/ARCHITECTURE.md)
+- [Plugin Extensions in Plain English](docs/architecture/PLUGIN_EXTENSION_GUIDE.md)
+- [Plugin Runtime Processes](docs/architecture/PLUGIN_RUNTIME_PROCESSES.md)
+- [Plugin Extension Contracts](docs/plugin-extension-contracts.md)
+- [Configuration](docs/reference/CONFIGURATION.md)
+- [Local Keycloak Authentication Setup](keycloak-postgres/Keycloak%20Authentication%20Setup.md)
+- [Public API](docs/reference/PUBLIC_API.md)
+- [REST API](docs/reference/REST_API.md)
+- [MCP Server](docs/reference/MCP_SERVER.md)
+- [MCP Usage and MCPO](docs/reference/MCP_USAGE.md)
+- [Ontology Foundation](docs/ontology/ontology-foundation.md)
+- [Neo4j Operations Guide](docs/ontology/neo4j-operations-guide.md)
+- [Graph Query APIs](docs/ontology/graph-query-apis.md)
+- [Kavach Studio](docs/ontology/governance-graph-console.md)
+- [End-to-End Local Tutorial](docs/tutorials/end-to-end-local.md)
+- [Producer Integration Guide](docs/tutorials/producer-integration.md)
+- [Governed Replay Walkthrough](docs/tutorials/governed-replay-walkthrough.md)
+- [Roadmap](docs/roadmap/ROADMAP.md)
+- [Ontology Synchronization](docs/ontology/ontology-synchronization.md)
+
+Brand assets and favicon sources live in [`assets/`](assets/).
+
+---
+
+# Design Principles
+
+- Governance First
+- Semantic by Default
+- Explicit Data Contracts
+- Version Everything
+- Replayability
+- Storage Independence
+- Provider Independence
+- Failure Isolation
+- Observability by Default
+- Control Plane Ownership
+
+---
+
+# Vision
+
+Kavach provides the semantic governance layer for AI systems.
+
+By combining ontology, governance decisions, evaluation, experimentation, replay, audit, and operational APIs into a unified governance platform, Kavach enables organizations to build trustworthy, explainable, and continuously improving AI systems independent of models, orchestration frameworks, or infrastructure providers.
+
+> **Enterprise capabilities are under active development. Commercial offerings
+> will be announced as they mature.**
+
+---
+
+# License
+
+Apache License 2.0

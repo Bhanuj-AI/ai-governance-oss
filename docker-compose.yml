@@ -1,0 +1,359 @@
+# Local, self-contained Kavach stack.
+#
+# All services use development-only credentials and named Docker volumes. The
+# platform persists registry metadata in SQLite, Neo4j holds the ontology, and
+# SeaweedFS holds local dataset content through its S3-compatible API.
+name: kavach-oss
+
+services:
+  # ---------------------------------------------------------------------------
+  # Core application
+  # ---------------------------------------------------------------------------
+  kavach-platform:
+    env_file:
+      - .env.platform
+      - .env.build
+      - path: .env.service-accounts.generated
+        required: false
+    build:
+      context: .
+      dockerfile: Dockerfile.platform
+    image: kavach-platform:local
+    ports:
+      - "8000:8000"
+    extra_hosts:
+      - "keycloak.localhost:host-gateway"
+    environment:
+      # Runtime and API
+      KAVACH_ENV: local
+      KAVACH_API_HOST: localhost
+      KAVACH_API_PORT: 8000
+      KAVACH_AUTO_SEED_DEMO_DATA: "false"
+
+      # Evaluation provider for the local platform. This is used by the replay worker and the MCP.
+      KAVACH_DEFAULT_EVALUATION_PROVIDER: trulens
+
+      # Ontology graph
+      KAVACH_GRAPH_URI: bolt://neo4j:7687
+      KAVACH_GRAPH_USER: neo4j
+
+      # MCP and local audit data
+      KAVACH_MCP_AUDIT_DATABASE_PATH: /var/lib/kavach/mcp_execution_audit.db
+      KAVACH_MCP_DRY_RUN_DEFAULT: False
+      KAVACH_MCP_URL: http://kavach-mcp:8001
+
+      # Local Keycloak identity and demo tenant
+      KAVACH_TENANCY_ENABLED: "true"
+      KAVACH_AUTH_MODE: keycloak
+      KAVACH_OIDC_ISSUER: "http://keycloak.localhost:18080/realms/kavach"
+      KAVACH_DEVELOPMENT_ACTOR_ID: local-admin
+      KAVACH_DEVELOPMENT_ACTOR_NAME: Local Administrator
+      KAVACH_OIDC_JWKS_REFRESH_SECONDS: 300
+      KAVACH_BOOTSTRAP_ORGANIZATION_ID: org_default
+      KAVACH_BOOTSTRAP_ORGANIZATION_NAME: Default Organization
+      KAVACH_BOOTSTRAP_ORGANIZATION_SLUG: default
+      KAVACH_BOOTSTRAP_PROJECT_ID: project_default
+      KAVACH_BOOTSTRAP_PROJECT_NAME: Default Project
+      KAVACH_BOOTSTRAP_PROJECT_SLUG: default
+      KAVACH_BOOTSTRAP_ADMIN_SUB: e44566f1-c748-45e1-83db-d2ee5fb424ef
+
+      # Durable registry and operational metadata (shared local SQLite file)
+      KAVACH_TENANCY_REPOSITORY: sqlite
+      KAVACH_TENANCY_SQLITE_PATH: /var/lib/kavach/kavach.db
+      KAVACH_SETTINGS_REPOSITORY: sqlite
+      KAVACH_SETTINGS_SQLITE_PATH: /var/lib/kavach/kavach.db
+      KAVACH_POLICY_REPOSITORY: sqlite
+      KAVACH_POLICY_SQLITE_PATH: /var/lib/kavach/kavach.db
+      KAVACH_EVALUATION_REPOSITORY: sqlite
+      KAVACH_EVALUATION_SQLITE_PATH: /var/lib/kavach/kavach.db
+      KAVACH_EXPERIMENT_REPOSITORY: sqlite
+      KAVACH_EXPERIMENT_SQLITE_PATH: /var/lib/kavach/kavach.db
+      KAVACH_EXPERIMENT_CANDIDATE_REPOSITORY: sqlite
+      KAVACH_EXPERIMENT_CANDIDATE_SQLITE_PATH: /var/lib/kavach/kavach.db
+      KAVACH_EVALUATION_RUN_REPOSITORY: sqlite
+      KAVACH_EVALUATION_RUN_SQLITE_PATH: /var/lib/kavach/kavach.db
+      KAVACH_LEADERBOARD_REPOSITORY: sqlite
+      KAVACH_LEADERBOARD_SQLITE_PATH: /var/lib/kavach/kavach.db
+      KAVACH_PROMPT_REPOSITORY: sqlite
+      KAVACH_PROMPT_SQLITE_PATH: /var/lib/kavach/kavach.db
+      KAVACH_MODEL_REPOSITORY: sqlite
+      KAVACH_MODEL_SQLITE_PATH: /var/lib/kavach/kavach.db
+      KAVACH_DATASET_REPOSITORY: sqlite
+      KAVACH_DATASET_SQLITE_PATH: /var/lib/kavach/kavach.db
+
+      # Dataset content: SeaweedFS locally, AWS S3 in production.
+      # Keep path-style addressing for this S3-compatible local endpoint.
+      KAVACH_DATASET_OBJECT_STORE_BACKEND: s3
+      KAVACH_DATASET_S3_ENDPOINT_URL: http://seaweedfs:8333
+      KAVACH_DATASET_S3_BUCKET: kavach-datasets
+      KAVACH_DATASET_S3_REGION: us-east-1
+      KAVACH_DATASET_S3_ACCESS_KEY_ID: kavach-local
+      KAVACH_DATASET_S3_SECRET_ACCESS_KEY: kavach-local-secret
+      KAVACH_DATASET_S3_FORCE_PATH_STYLE: "true"
+
+      # Remaining operational repositories
+      KAVACH_JOB_REPOSITORY: sqlite
+      KAVACH_JOB_SQLITE_PATH: /var/lib/kavach/kavach.db
+      KAVACH_REPLAY_REPOSITORY: sqlite
+      KAVACH_REPLAY_SQLITE_PATH: /var/lib/kavach/kavach.db
+      KAVACH_GOVERNANCE_DECISION_REPOSITORY: sqlite
+      KAVACH_GOVERNANCE_DECISION_SQLITE_PATH: /var/lib/kavach/kavach.db
+      KAVACH_ONTOLOGY_SYNC_EVENT_REPOSITORY: sqlite
+      KAVACH_ONTOLOGY_SYNC_EVENT_SQLITE_PATH: /var/lib/kavach/kavach.db
+      KAVACH_ONTOLOGY_REPOSITORY: neo4j
+    volumes:
+      - kavach_sqlite_data:/var/lib/kavach
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "/opt/kavach-venv/bin/python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/ready')"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      kavach-neo4j-schema:
+        condition: service_completed_successfully
+      seaweedfs:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Browser console for the local platform.
+  kavach-studio:
+    env_file:
+      - ./console/.env.studio
+    build:
+      context: ./console
+      dockerfile: Dockerfile.studio
+      args:
+        NEXT_PUBLIC_KAVACH_API_BASE_URL: http://localhost:8000
+        NEXT_PUBLIC_KEYCLOAK_URL: http://keycloak.localhost:18080
+        NEXT_PUBLIC_KEYCLOAK_REALM: kavach
+        NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: kavach-studio
+    image: kavach-studio:local
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_KAVACH_API_BASE_URL: http://localhost:8000
+      NEXT_PUBLIC_KEYCLOAK_URL: http://keycloak.localhost:18080
+      NEXT_PUBLIC_KEYCLOAK_REALM: kavach
+      NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: kavach-studio
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      kavach-platform:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Background workers
+  # ---------------------------------------------------------------------------
+  # Executes queued replay jobs against the local durable repositories.
+  kavach-replay-worker:
+    image: kavach-platform:local
+    env_file:
+      - .env.platform
+      - .env.build
+    environment:
+      KAVACH_WORKER_ID: replay-worker-docker
+      KAVACH_REPLAY_EVALUATION_PROVIDER: trulens
+      KAVACH_JOB_REPOSITORY: sqlite
+      KAVACH_JOB_SQLITE_PATH: /var/lib/kavach/kavach.db
+      KAVACH_REPLAY_REPOSITORY: sqlite
+      KAVACH_REPLAY_SQLITE_PATH: /var/lib/kavach/kavach.db
+      KAVACH_REPLAY_EXECUTION_CATALOG_BACKEND: sqlite
+      KAVACH_REPLAY_EXECUTION_CATALOG_SQLITE_PATH: /var/lib/kavach/kavach.db
+      KAVACH_EVALUATION_REPOSITORY: sqlite
+      KAVACH_EVALUATION_SQLITE_PATH: /var/lib/kavach/kavach.db
+    command: ["/opt/kavach-venv/bin/python", "-m", "kavach.workers.replay_worker_runtime"]
+    volumes:
+      - kavach_sqlite_data:/var/lib/kavach
+    depends_on:
+      kavach-platform:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Projects durable records to the Neo4j ontology graph.
+  kavach-ontology-sync-worker:
+    image: kavach-platform:local
+    env_file:
+      - .env.platform
+      - .env.build
+    environment:
+      KAVACH_GRAPH_URI: bolt://neo4j:7687
+      KAVACH_GRAPH_USER: neo4j
+      KAVACH_ONTOLOGY_REPOSITORY: neo4j
+      KAVACH_MCP_AUDIT_DATABASE_PATH: /var/lib/kavach/mcp_execution_audit.db
+    command: ["/opt/kavach-venv/bin/python", "-m", "kavach.workers.ontology_sync_worker_runtime"]
+    volumes:
+      - kavach_sqlite_data:/var/lib/kavach
+    depends_on:
+      kavach-platform:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # MCP transports
+  # ---------------------------------------------------------------------------
+  # MCP API served by the platform image; exposed as local port 8001.
+  kavach-mcp:
+    image: kavach-platform:local
+    extra_hosts:
+      - "keycloak.localhost:host-gateway"
+    env_file:
+      - .env.platform
+      - .env.build
+      - path: .env.service-accounts.generated
+        required: false
+    environment:
+      KAVACH_API_URL: http://kavach-platform:8000
+      KAVACH_MCP_HOST: 0.0.0.0
+      KAVACH_MCP_PORT: 8001
+      KAVACH_MCP_AUDIT_DATABASE_PATH: /var/lib/kavach/mcp_execution_audit.db
+      KAVACH_API_TOKEN: ${KAVACH_API_TOKEN:-}
+      KAVACH_MCP_CLIENT_ID: kavach-mcp
+      KAVACH_MCP_TOKEN_URL: http://keycloak.localhost:18080/realms/kavach/protocol/openid-connect/token
+    command: ["/workspace/scripts/mcp/start-mcp.sh"]
+    ports:
+      - "8001:8001"
+    volumes:
+      - kavach_sqlite_data:/var/lib/kavach
+    depends_on:
+      kavach-platform:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "/opt/kavach-venv/bin/python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/openapi.json')"
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  # Streamable HTTP MCP endpoint; exposed as local port 8002.
+  kavach-mcp-http:
+    image: kavach-platform:local
+    extra_hosts:
+      - "keycloak.localhost:host-gateway"
+    environment:
+      KAVACH_API_URL: http://kavach-platform:8000
+      KAVACH_AUTH_MODE: keycloak
+      KAVACH_OIDC_ISSUER: "http://keycloak.localhost:18080/realms/kavach"
+      KAVACH_MCP_TRANSPORT: streamable-http
+      KAVACH_MCP_HTTP_HOST: 0.0.0.0
+      KAVACH_MCP_HTTP_PORT: 8002
+      KAVACH_MCP_PUBLIC_URL: http://localhost:8002
+      KAVACH_MCP_HTTP_ALLOWED_HOSTS: localhost,127.0.0.1
+      KAVACH_MCP_HTTP_STATELESS: "true"
+      KAVACH_MCP_HTTP_JSON_RESPONSE: "true"
+      KAVACH_MCP_AUDIT_DATABASE_PATH: /var/lib/kavach/mcp_execution_audit.db
+    command: ["uv", "run", "kavach-mcp", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8002"]
+    ports:
+      - "8002:8002"
+    volumes:
+      - kavach_sqlite_data:/var/lib/kavach
+    depends_on:
+      kavach-platform:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "/opt/kavach-venv/bin/python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health')"
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Local infrastructure
+  # ---------------------------------------------------------------------------
+  # Neo4j is the persisted ontology graph used by Graph Explorer and lineage.
+  neo4j:
+    image: neo4j:5.26.27-community
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/kavach-local-password
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q --spider http://localhost:7474 || exit 1"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  # Runs once after Neo4j is healthy to apply graph constraints and indexes.
+  kavach-neo4j-schema:
+    image: kavach-platform:local
+    env_file:
+      - .env.platform
+      - .env.build
+    environment:
+      KAVACH_GRAPH_URI: bolt://neo4j:7687
+      KAVACH_GRAPH_USER: neo4j
+      KAVACH_ONTOLOGY_REPOSITORY: neo4j
+    command: ["/opt/kavach-venv/bin/python", "-m", "kavach.ontology.cli", "initialize-schema"]
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    restart: "no"
+
+  # Local dataset object storage. Exposes the S3 API on 8333, a browserable
+  # Filer UI on 8888, and the SeaweedFS master UI/API on 9333. It intentionally
+  # uses the standard S3 protocol so production can replace it with AWS S3
+  # without changing Kavach application code.
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.29
+    environment:
+      AWS_ACCESS_KEY_ID: kavach-local
+      AWS_SECRET_ACCESS_KEY: kavach-local-secret
+      S3_BUCKET: kavach-datasets
+    ports:
+      - "8333:8333"
+      - "8888:8888"
+      - "9333:9333"
+    volumes:
+      - seaweedfs_data:/data
+    healthcheck:
+      # The S3 root requires credentials and correctly returns 403 without
+      # them, so probe the unauthenticated Filer UI for service liveness.
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8888 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    restart: unless-stopped
+
+volumes:
+  # Shared durable local state. These survive `docker compose down`.
+  kavach_sqlite_data:
+  neo4j_data:
+  neo4j_logs:
+  seaweedfs_data:

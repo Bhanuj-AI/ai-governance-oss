@@ -1,0 +1,72 @@
+FROM node:24-alpine AS dependencies
+
+# ============================================
+# Stage 1: Dependencies Installation Stage
+# ============================================
+# Set working directory
+WORKDIR /app
+# Copy package-related files first to leverage Docker's caching mechanism
+COPY package*.json pnpm-*.yaml ./
+# Install project dependencies with frozen lockfile for reproducible builds
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    corepack enable && \
+    pnpm install --frozen-lockfile
+
+# ============================================
+# Stage 2: Build Next.js application in standalone mode
+# ============================================
+FROM node:24-alpine AS builder
+# Set working directory
+WORKDIR /app
+ARG NEXT_PUBLIC_KAVACH_API_BASE_URL=http://localhost:8000
+ARG NEXT_PUBLIC_KEYCLOAK_URL
+ARG NEXT_PUBLIC_KEYCLOAK_REALM
+ARG NEXT_PUBLIC_KEYCLOAK_CLIENT_ID
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    NEXT_PUBLIC_KAVACH_API_BASE_URL=${NEXT_PUBLIC_KAVACH_API_BASE_URL} \
+    NEXT_PUBLIC_KEYCLOAK_URL=${NEXT_PUBLIC_KEYCLOAK_URL} \
+    NEXT_PUBLIC_KEYCLOAK_REALM=${NEXT_PUBLIC_KEYCLOAK_REALM} \
+    NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=${NEXT_PUBLIC_KEYCLOAK_CLIENT_ID}
+# Copy project dependencies from dependencies stage
+COPY --from=dependencies /app/node_modules ./node_modules
+# Copy application source code
+COPY . .
+
+RUN corepack enable && pnpm build
+
+# ============================================
+# Stage 3: Run Next.js application
+# ============================================
+FROM node:24-alpine AS runner
+
+WORKDIR /app
+
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0
+
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 --ingroup nodejs nextjs && \
+    mkdir -p /app/.next/cache/images && \
+    chown -R nextjs:nodejs /app
+
+# Automatically leverage output traces to reduce image size
+# https://nextjs.org/docs/advanced-features/output-file-tracing
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# If you want to persist the fetch cache generated during the build so that
+# cached responses are available immediately on startup
+COPY --from=builder --chown=nextjs:nodejs /app/.next/cache ./.next/cache
+
+# Set the correct permission for prerender cache
+RUN mkdir -p /app/.next/cache/images && \
+    chown -R nextjs:nodejs /app/.next
+
+# Switch to non-root user for security best practices
+USER nextjs
+# Expose port used by the server to allow HTTP traffic
+EXPOSE 3000
+# Start Next.js standalone server
+CMD ["node", "server.js"]

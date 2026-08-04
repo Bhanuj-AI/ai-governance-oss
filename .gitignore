@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual Environment
+.venv/
+
+# Packaging
+*.egg-info/
+dist/
+build/
+# `build/` ignores generated package output. Keep launcher scripts trackable.
+!scripts/build/
+!scripts/build/*.sh
+.DS_Store
+.pnpm-store/
+
+# Testing
+.pytest_cache/
+.coverage
+
+# IDE
+.vscode/
+
+default.sqlite
+
+# Env
+.env.*
+*.env
+!**/.env.example
+!.env.local.example
+!.env.platform.example
+!keycloak-postgres/.env.keycloak.example
+
+# Database
+*.sqlite
+*.db
+
+# walkthrough
+.kavach/walkthroughs/*

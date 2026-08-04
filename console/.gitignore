@@ -1,0 +1,12 @@
+.next
+node_modules
+out
+dist
+*.log
+*.tsbuildinfo
+.env.local
+next-env.d.ts
+
+!**/.env.example
+!.env.local.example
+!**/.env.keycloak.example

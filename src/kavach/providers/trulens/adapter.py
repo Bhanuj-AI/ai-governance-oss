@@ -1,0 +1,258 @@
+from __future__ import annotations
+
+import time
+from collections.abc import Mapping
+from importlib.metadata import PackageNotFoundError, version
+from typing import Any
+
+from trulens.providers.openai import OpenAI  # type: ignore
+
+from kavach.domain.evaluation_dataset import EvaluationDataset
+from kavach.domain.evaluation_result import EvaluationResult
+from kavach.domain.workflow_execution import WorkflowExecution
+from kavach.evaluation.evaluation_metrics import (
+    ANSWER_RELEVANCE,
+    CONTEXT_RELEVANCE,
+    GROUNDEDNESS,
+)
+from kavach.evaluation.evaluation_request import EvaluationRequest
+from kavach.providers.evaluation_provider import EvaluationProvider
+from kavach.providers.provider_capabilities import ProviderCapabilities
+from kavach.providers.provider_descriptor import ProviderDescriptor
+from kavach.providers.schema_loader import load_provider_configuration_schema
+from kavach.providers.trulens.config import TruLensConfig
+from kavach.providers.trulens.errors import TruLensProviderError
+from kavach.providers.trulens.metric_mapper import TruLensMetricMapper
+from kavach.providers.trulens.result_mapper import TruLensResultMapper
+
+
+class TruLensAdapter(EvaluationProvider):
+    """
+    TruLens evaluation adapter behind Kavach's provider contract.
+    """
+
+    def __init__(
+        self,
+        llm_provider: OpenAI | None = None,
+        judge_model: str | None = None,
+        config: TruLensConfig | None = None,
+        metric_mapper: TruLensMetricMapper | None = None,
+        result_mapper: TruLensResultMapper | None = None,
+    ) -> None:
+        self._explicit_provider = llm_provider
+        self._explicit_config = config
+        self._judge_model = judge_model
+        self._metric_mapper = metric_mapper or TruLensMetricMapper()
+        self._result_mapper = result_mapper or TruLensResultMapper()
+
+    @property
+    def descriptor(self) -> ProviderDescriptor:
+        config = self._explicit_config or TruLensConfig.from_environment()
+        model = self._judge_model or config.model
+
+        return ProviderDescriptor(
+            name="trulens",
+            display_name="TruLens",
+            version=self._provider_version(),
+            adapter_version="1.0.0",
+            capabilities=ProviderCapabilities(
+                supported_metrics=(
+                    ANSWER_RELEVANCE,
+                    CONTEXT_RELEVANCE,
+                    GROUNDEDNESS,
+                ),
+                supported_evaluation_modes=("sync",),
+                supports_batch=False,
+                supports_async=False,
+                supports_artifacts=True,
+                supports_explanations=True,
+                supports_row_level_results=False,
+            ),
+            configuration_schema=load_provider_configuration_schema("trulens"),
+            metadata={
+                "judge_model": model,
+            },
+        )
+
+    def validate_configuration(self, provider_config: Mapping[str, Any]) -> None:
+        """Verify that the resolved configuration can initialize a judge client."""
+        self._provider(self._resolve_config(provider_config))
+
+    @property
+    def provider_metadata(self) -> dict[str, Any]:
+        return self._result_mapper.safe_metadata(
+            {
+                "provider": self.descriptor.name,
+                "provider_version": self.descriptor.version,
+                "adapter_version": self.descriptor.adapter_version,
+                **dict(self.descriptor.metadata),
+            }
+        )
+
+    def evaluate(
+        self,
+        request: EvaluationRequest | EvaluationDataset,
+    ) -> EvaluationResult:
+        normalized_request = self._normalize_request(request)
+        config = self._resolve_config(normalized_request.provider_config)
+        provider = self._provider(config)
+        metric_names = self._metric_mapper.map_specs(
+            normalized_request.metric_specs,
+            config.enabled_metrics,
+        )
+
+        raw_result = self._evaluate_metrics(
+            provider=provider,
+            request=normalized_request,
+            metric_names=metric_names,
+        )
+
+        return self._result_mapper.to_evaluation_result(
+            request=normalized_request,
+            raw_result=raw_result,
+            provider_metadata=self._metadata_for_config(config),
+        )
+
+    def _evaluate_metrics(
+        self,
+        provider: OpenAI,
+        request: EvaluationRequest,
+        metric_names: list[str],
+    ) -> dict[str, Any]:
+        metrics: list[dict[str, Any]] = []
+        timings: dict[str, float] = {}
+        dataset = request.dataset
+
+        for metric_name in metric_names:
+            if metric_name in (CONTEXT_RELEVANCE, GROUNDEDNESS):
+                if not dataset.context_text:
+                    continue
+
+            started_at = time.perf_counter()
+
+            if metric_name == ANSWER_RELEVANCE:
+                value = provider.relevance(
+                    prompt=dataset.input_text,
+                    response=dataset.output_text,
+                )
+                explanation = None
+            elif metric_name == CONTEXT_RELEVANCE:
+                value = provider.context_relevance(
+                    question=dataset.input_text,
+                    context=dataset.context_text,
+                )
+                explanation = None
+            elif metric_name == GROUNDEDNESS:
+                value, explanation = (
+                    provider.groundedness_measure_with_cot_reasons(
+                        source=dataset.context_text,
+                        statement=dataset.output_text,
+                    )
+                )
+            else:
+                raise TruLensProviderError(
+                    f"Metric '{metric_name}' was not mapped to TruLens."
+                )
+
+            timings[metric_name] = time.perf_counter() - started_at
+            metrics.append(
+                {
+                    "name": metric_name,
+                    "value": float(value),
+                    "explanation": str(explanation)
+                    if explanation is not None
+                    else None,
+                }
+            )
+
+        return {
+            "metrics": metrics,
+            "timings": timings,
+        }
+
+    def _resolve_config(
+        self,
+        request_provider_config: Mapping[str, Any],
+    ) -> TruLensConfig:
+        config = TruLensConfig.from_environment()
+        config = config.overlay(request_provider_config)
+
+        if self._explicit_config is not None:
+            config = config.overlay(
+                {
+                    "openai_api_key": self._explicit_config.openai_api_key,
+                    "model": self._explicit_config.model,
+                    "enabled_metrics": self._explicit_config.enabled_metrics,
+                    "timeout_seconds": self._explicit_config.timeout_seconds,
+                    "metadata": self._explicit_config.metadata,
+                }
+            )
+
+        if self._judge_model is not None:
+            config = config.overlay({"model": self._judge_model})
+
+        return config
+
+    def _provider(
+        self,
+        config: TruLensConfig,
+    ) -> OpenAI:
+        if self._explicit_provider is not None:
+            return self._explicit_provider
+
+        if config.model is None:
+            raise TruLensProviderError(
+                "TruLens requires a model via TruLensConfig, "
+                "request.provider_config, or KAVACH_TRULENS_MODEL."
+            )
+
+        return OpenAI(
+            model_engine=config.model,
+            api_key=config.openai_api_key,
+            max_retries=0,
+        )
+
+    def _metadata_for_config(
+        self,
+        config: TruLensConfig,
+    ) -> dict[str, Any]:
+        return self._result_mapper.safe_metadata(
+            {
+                "provider": self.descriptor.name,
+                "provider_version": self.descriptor.version,
+                "adapter_version": self.descriptor.adapter_version,
+                "judge_model": config.model,
+                "enabled_metrics": list(config.enabled_metrics),
+                "timeout_seconds": config.timeout_seconds,
+                **dict(config.metadata),
+            }
+        )
+
+    @staticmethod
+    def _provider_version() -> str:
+        try:
+            return version("trulens")
+        except PackageNotFoundError:
+            return "unknown"
+
+    @staticmethod
+    def _normalize_request(
+        request: EvaluationRequest | EvaluationDataset,
+    ) -> EvaluationRequest:
+        if isinstance(request, EvaluationRequest):
+            return request
+
+        return EvaluationRequest(
+            execution=WorkflowExecution(
+                workflow_id=request.execution_id,
+                execution_id=request.execution_id,
+                workflow_name="unknown",
+                workflow_version="unknown",
+                execution_status="COMPLETED",
+                input={},
+                final_state={},
+                events=[],
+            ),
+            dataset=request,
+            provider_config={},
+        )

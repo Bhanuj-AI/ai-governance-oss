@@ -1,0 +1,11 @@
+{
+  "documentation_url": "/docs/reference/CONFIGURATION.md#evaluation-providers",
+  "settings": {
+    "properties": {},
+    "required": []
+  },
+  "secret_refs": {
+    "properties": {},
+    "required": []
+  }
+}

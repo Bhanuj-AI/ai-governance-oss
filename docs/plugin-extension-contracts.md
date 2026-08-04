@@ -1,0 +1,27 @@
+# Plugin Extension Contracts
+
+Kavach exposes versioned (`v1`) generic plugin contribution contracts. A
+plugin registers them during `register(context)` through
+`context.contributions`. Registration is single-threaded during application
+construction; duplicate identities fail startup. Contributions are optional,
+and an installation without plugins keeps the prior runtime behavior.
+
+- `permissions`, `settings`, and `job_handlers` identify additions by name,
+  setting key and job type respectively.
+- Middleware is installed in ascending priority order after plugin validation.
+- Health contributors run during readiness; non-UP results make readiness fail.
+- Metrics providers receive the application-owned generic metric dictionary.
+- Exporter failures are isolated and logged.
+- Plugin lifecycle remains validate → register → start → stop, with stop in
+  reverse registration order.
+
+Plugins own their contribution implementation. Kavach owns registration,
+ordering, lifecycle, validation, API composition and failure behavior. These
+contracts intentionally contain no product-tier or vendor concepts.
+
+For the process-level lifecycle, including why standalone workers bootstrap
+plugins and receive the generic event publisher, see
+[Plugin Runtime Processes](architecture/PLUGIN_RUNTIME_PROCESSES.md).
+
+For a plain-English introduction with lifecycle and worker sequence diagrams,
+see [Plugin Extensions in Plain English](architecture/PLUGIN_EXTENSION_GUIDE.md).

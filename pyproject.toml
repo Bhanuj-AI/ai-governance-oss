@@ -1,0 +1,59 @@
+[project]
+name = "kavach"
+version = "1.0.0"
+description = "Open-source AI governance control plane for governed AI assets, evaluations, replay, audit, and deterministic governance."
+readme = "README.md"
+requires-python = ">=3.12"
+
+dependencies = [
+    "boto3>=1.43.34",
+    "fastapi>=0.138.1",
+    "psycopg[binary]>=3.3.2",
+    "pydantic>=2.13.4",
+    "packaging>=24.2",
+    "python-multipart>=0.0.20",
+    "python-dotenv>=1.2.2",
+    "PyYAML>=6.0",
+    "rich>=13.9.4",
+    "snowflake-connector-python>=4.6.0",
+    "trulens>=2.8.1",
+    "trulens-connectors-snowflake>=2.8.1",
+    "trulens-core>=2.8.1",
+    "trulens-providers-openai>=2.8.1",
+    "uvicorn>=0.49.0",
+    "PyJWT>=2.10.0",
+    "mcp>=1.26,<2",
+    "neo4j>=5.28,<6",
+]
+
+[project.urls]
+Homepage = "https://kavach.bhanuj.app"
+Documentation = "https://kavach.bhanuj.app/docs"
+Tutorials = "https://kavach.bhanuj.app/tutorials"
+Repository = "https://github.com/KavachHQ/kavach-oss.git"
+
+[project.scripts]
+kavach = "kavach.cli:main"
+kavach-mcp = "kavach.mcp.cli:main"
+kavach-graph = "kavach.ontology.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.15.19",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kavach"]
+
+[tool.pytest.ini_options]
+markers = [
+    "unit: isolated unit tests",
+    "integration: tests that exercise multiple components or external backends",
+    "api: FastAPI REST control-plane tests",
+]
