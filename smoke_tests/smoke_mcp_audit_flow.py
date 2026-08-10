@@ -11,12 +11,12 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from kavach.api.app import create_app
-from kavach.api.dependencies import get_mcp_audit_log
-from kavach.mcp.audit import MCPExecutionAuditLog
-from kavach.mcp.clients import RestClient, RestClientError
-from kavach.mcp.dto import WriteEnvelope
-from kavach.mcp.server import create_server
+from ai_governance.api.app import create_app
+from ai_governance.api.dependencies import get_mcp_audit_log
+from ai_governance.mcp.audit import MCPExecutionAuditLog
+from ai_governance.mcp.clients import RestClient, RestClientError
+from ai_governance.mcp.dto import WriteEnvelope
+from ai_governance.mcp.server import create_server
 
 
 def main() -> None:

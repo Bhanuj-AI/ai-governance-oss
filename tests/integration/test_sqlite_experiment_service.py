@@ -1,18 +1,18 @@
 from datetime import UTC, datetime
 from pathlib import Path
 
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.domain.experiments import ExperimentStatus
-from kavach.repositories.sqlite.sqlite_experiment_repository import (
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.domain.experiments import ExperimentStatus
+from ai_governance.repositories.sqlite.sqlite_experiment_repository import (
     SQLiteExperimentRepository,
 )
-from kavach.services.experiments import ExperimentService
+from ai_governance.services.experiments import ExperimentService
 
 
 def test_sqlite_experiment_service_persists_experiment_lifecycle(
     tmp_path: Path,
 ) -> None:
-    database = SQLiteDatabase(tmp_path / "kavach.db")
+    database = SQLiteDatabase(tmp_path / "ai_governance.db")
     database.initialize()
     repository = SQLiteExperimentRepository(database)
     service = ExperimentService(

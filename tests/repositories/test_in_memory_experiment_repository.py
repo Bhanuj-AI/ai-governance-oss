@@ -1,5 +1,5 @@
-from kavach.repositories.experiment_repository import ExperimentRepository
-from kavach.repositories.in_memory_experiment_repository import (
+from ai_governance.repositories.experiment_repository import ExperimentRepository
+from ai_governance.repositories.in_memory_experiment_repository import (
     InMemoryExperimentRepository,
 )
 from tests.repositories.contract.test_experiment_repository_contract import (

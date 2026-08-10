@@ -1,8 +1,8 @@
 # Plugin Runtime Processes
 
-Kavach plugins are not limited to the REST API. A plugin can contribute generic
+AI Governance Control Plane plugins are not limited to the REST API. A plugin can contribute generic
 providers, hooks, event subscribers, settings, permissions, routes, and job
-handlers to any supported Kavach process.
+handlers to any supported AI Governance Control Plane process.
 
 This document describes the OSS runtime contract. It deliberately does not
 describe a product-specific event platform or external delivery mechanism.
@@ -38,7 +38,7 @@ lifecycle facts as well as facts created by the API.
 
 ## Lifecycle ownership
 
-Kavach owns plugin lifecycle ordering:
+AI Governance Control Plane owns plugin lifecycle ordering:
 
 1. `validate` checks plugin configuration without starting work.
 2. `register` adds generic contributions and event subscriptions.
@@ -60,7 +60,7 @@ Durable persistence, outbox records, retries, delivery leases, dead letters,
 and external sink providers belong to the extension that needs those business
 semantics. A plugin may subscribe to generic lifecycle facts and implement
 those concerns without adding product-specific names or persistence schemas to
-Kavach OSS.
+AI Governance Control Plane OSS.
 
 ## Running a standalone replay worker
 
@@ -68,13 +68,13 @@ Run the worker with the same installed plugin distributions and relevant
 configuration as the API process:
 
 ```sh
-python -m kavach.workers.replay_worker_runtime
+python -m ai_governance.workers.replay_worker_runtime
 ```
 
 For a smoke test that claims at most one job:
 
 ```sh
-python -m kavach.workers.replay_worker_runtime --once
+python -m ai_governance.workers.replay_worker_runtime --once
 ```
 
 The API and worker must also point to the same durable job repository. A

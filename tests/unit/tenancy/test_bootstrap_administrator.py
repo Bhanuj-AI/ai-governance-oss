@@ -3,8 +3,8 @@ Unit tests for bootstrap administrator identity resolution.
 
 Tests cover:
 - Development mode preserves local-admin
-- Development mode honours KAVACH_DEVELOPMENT_ACTOR_ID
-- Keycloak mode uses KAVACH_BOOTSTRAP_ADMIN_SUB
+- Development mode honours AI_GOVERNANCE_DEVELOPMENT_ACTOR_ID
+- Keycloak mode uses AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB
 - Keycloak mode fails when the bootstrap subject is missing
 - Bootstrap remains idempotent
 """
@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from kavach.tenancy.domain import (
+from ai_governance.tenancy.domain import (
     BuiltInRole,
     MembershipStatus,
     Organization,
@@ -25,7 +25,7 @@ from kavach.tenancy.domain import (
     ProjectStatus,
     RoleAssignment,
 )
-from kavach.tenancy.services import (
+from ai_governance.tenancy.services import (
     _resolve_bootstrap_administrator,
     bootstrap_control_plane,
 )
@@ -114,8 +114,8 @@ def _make_bootstrap_repository(
 class TestResolveBootstrapAdminDeveloperMode:
     def test_uses_local_admin_fallback(self, monkeypatch):
         """Development mode should use local-admin when env vars are absent."""
-        monkeypatch.delenv("KAVACH_DEVELOPMENT_ACTOR_ID", raising=False)
-        monkeypatch.delenv("KAVACH_DEVELOPMENT_ACTOR_NAME", raising=False)
+        monkeypatch.delenv("AI_GOVERNANCE_DEVELOPMENT_ACTOR_ID", raising=False)
+        monkeypatch.delenv("AI_GOVERNANCE_DEVELOPMENT_ACTOR_NAME", raising=False)
 
         actor_id, actor_name = _resolve_bootstrap_administrator(
             "development",
@@ -131,9 +131,9 @@ class TestResolveBootstrapAdminDeveloperMode:
         assert actor_name == "Local Administrator"
 
     def test_honours_development_actor_id(self, monkeypatch):
-        """Development mode should honour KAVACH_DEVELOPMENT_ACTOR_ID."""
-        monkeypatch.setenv("KAVACH_DEVELOPMENT_ACTOR_ID", "custom-dev-actor")
-        monkeypatch.delenv("KAVACH_DEVELOPMENT_ACTOR_NAME", raising=False)
+        """Development mode should honour AI_GOVERNANCE_DEVELOPMENT_ACTOR_ID."""
+        monkeypatch.setenv("AI_GOVERNANCE_DEVELOPMENT_ACTOR_ID", "custom-dev-actor")
+        monkeypatch.delenv("AI_GOVERNANCE_DEVELOPMENT_ACTOR_NAME", raising=False)
 
         actor_id, actor_name = _resolve_bootstrap_administrator(
             "development",
@@ -149,10 +149,10 @@ class TestResolveBootstrapAdminDeveloperMode:
         assert actor_name == "Local Administrator"
 
     def test_honours_development_actor_name(self, monkeypatch):
-        """Development mode should honour KAVACH_DEVELOPMENT_ACTOR_NAME."""
-        monkeypatch.delenv("KAVACH_DEVELOPMENT_ACTOR_ID", raising=False)
+        """Development mode should honour AI_GOVERNANCE_DEVELOPMENT_ACTOR_NAME."""
+        monkeypatch.delenv("AI_GOVERNANCE_DEVELOPMENT_ACTOR_ID", raising=False)
         monkeypatch.setenv(
-            "KAVACH_DEVELOPMENT_ACTOR_NAME", "Custom Developer Name"
+            "AI_GOVERNANCE_DEVELOPMENT_ACTOR_NAME", "Custom Developer Name"
         )
 
         actor_id, actor_name = _resolve_bootstrap_administrator(
@@ -175,11 +175,11 @@ class TestResolveBootstrapAdminDeveloperMode:
 
 class TestResolveBootstrapAdminKeycloakMode:
     def test_uses_bootstrap_admin_sub(self, monkeypatch):
-        """Keycloak mode should use KAVACH_BOOTSTRAP_ADMIN_SUB."""
+        """Keycloak mode should use AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB."""
         monkeypatch.setenv(
-            "KAVACH_BOOTSTRAP_ADMIN_SUB", "1d992555-b7a4-407e-a191-b3b779b7663f"
+            "AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB", "1d992555-b7a4-407e-a191-b3b779b7663f"
         )
-        monkeypatch.delenv("KAVACH_BOOTSTRAP_ADMIN_NAME", raising=False)
+        monkeypatch.delenv("AI_GOVERNANCE_BOOTSTRAP_ADMIN_NAME", raising=False)
 
         actor_id, actor_name = _resolve_bootstrap_administrator(
             "keycloak",
@@ -195,12 +195,12 @@ class TestResolveBootstrapAdminKeycloakMode:
         assert actor_name is None
 
     def test_honours_bootstrap_admin_name(self, monkeypatch):
-        """Keycloak mode should honour KAVACH_BOOTSTRAP_ADMIN_NAME."""
+        """Keycloak mode should honour AI_GOVERNANCE_BOOTSTRAP_ADMIN_NAME."""
         monkeypatch.setenv(
-            "KAVACH_BOOTSTRAP_ADMIN_SUB", "1d992555-b7a4-407e-a191-b3b779b7663f"
+            "AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB", "1d992555-b7a4-407e-a191-b3b779b7663f"
         )
         monkeypatch.setenv(
-            "KAVACH_BOOTSTRAP_ADMIN_NAME", "Keycloak Admin User"
+            "AI_GOVERNANCE_BOOTSTRAP_ADMIN_NAME", "Keycloak Admin User"
         )
 
         actor_id, actor_name = _resolve_bootstrap_administrator(
@@ -217,11 +217,11 @@ class TestResolveBootstrapAdminKeycloakMode:
         assert actor_name == "Keycloak Admin User"
 
     def test_fails_when_bootstrap_admin_sub_missing(self, monkeypatch):
-        """Keycloak mode should fail when KAVACH_BOOTSTRAP_ADMIN_SUB is absent."""
-        monkeypatch.delenv("KAVACH_BOOTSTRAP_ADMIN_SUB", raising=False)
-        monkeypatch.delenv("KAVACH_BOOTSTRAP_ADMIN_NAME", raising=False)
+        """Keycloak mode should fail when AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB is absent."""
+        monkeypatch.delenv("AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB", raising=False)
+        monkeypatch.delenv("AI_GOVERNANCE_BOOTSTRAP_ADMIN_NAME", raising=False)
 
-        with pytest.raises(ValueError, match="KAVACH_BOOTSTRAP_ADMIN_SUB is required"):
+        with pytest.raises(ValueError, match="AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB is required"):
             _resolve_bootstrap_administrator(
                 "keycloak",
                 organization_id="test",
@@ -290,18 +290,18 @@ class TestBootstrapControlPlaneIdempotency:
 
     def test_bootstrap_creates_organization_and_project(self, monkeypatch):
         """Bootstrap should create organization and project when they don't exist."""
-        monkeypatch.setenv("KAVACH_AUTH_MODE", "development")
-        monkeypatch.delenv("KAVACH_DEVELOPMENT_ACTOR_ID", raising=False)
-        monkeypatch.delenv("KAVACH_DEVELOPMENT_ACTOR_NAME", raising=False)
+        monkeypatch.setenv("AI_GOVERNANCE_AUTH_MODE", "development")
+        monkeypatch.delenv("AI_GOVERNANCE_DEVELOPMENT_ACTOR_ID", raising=False)
+        monkeypatch.delenv("AI_GOVERNANCE_DEVELOPMENT_ACTOR_NAME", raising=False)
 
         repo = _make_bootstrap_repository(actor_id="local-admin")
 
         # Mock AuthorizationService.authorize to always allow — we're testing
         # bootstrap logic, not authorization logic.
         with patch(
-            "kavach.tenancy.services.AuthorizationService.authorize"
+            "ai_governance.tenancy.services.AuthorizationService.authorize"
         ) as mock_authorize:
-            from kavach.tenancy.authorization import AuthorizationDecision
+            from ai_governance.tenancy.authorization import AuthorizationDecision
 
             mock_authorize.return_value = AuthorizationDecision(
                 allowed=True, permission=None, matched_roles=(), reason_code=None
@@ -337,22 +337,22 @@ class TestBootstrapControlPlaneIdempotency:
 
 class TestBootstrapControlPlaneKeycloakMode:
     def test_uses_bootstrap_admin_sub_in_keycloak_mode(self, monkeypatch):
-        """Bootstrap in keycloak mode should use KAVACH_BOOTSTRAP_ADMIN_SUB."""
-        monkeypatch.setenv("KAVACH_AUTH_MODE", "keycloak")
+        """Bootstrap in keycloak mode should use AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB."""
+        monkeypatch.setenv("AI_GOVERNANCE_AUTH_MODE", "keycloak")
         monkeypatch.setenv(
-            "KAVACH_BOOTSTRAP_ADMIN_SUB", "kc-user-sub-123"
+            "AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB", "kc-user-sub-123"
         )
         monkeypatch.setenv(
-            "KAVACH_BOOTSTRAP_ADMIN_NAME", "KC Admin"
+            "AI_GOVERNANCE_BOOTSTRAP_ADMIN_NAME", "KC Admin"
         )
 
         repo = _make_bootstrap_repository(actor_id="kc-user-sub-123")
 
         # Mock AuthorizationService.authorize to always allow
         with patch(
-            "kavach.tenancy.services.AuthorizationService.authorize"
+            "ai_governance.tenancy.services.AuthorizationService.authorize"
         ) as mock_authorize:
-            from kavach.tenancy.authorization import AuthorizationDecision
+            from ai_governance.tenancy.authorization import AuthorizationDecision
 
             mock_authorize.return_value = AuthorizationDecision(
                 allowed=True, permission=None, matched_roles=(), reason_code=None
@@ -375,13 +375,13 @@ class TestBootstrapControlPlaneKeycloakMode:
             assert membership_call.actor_id == "kc-user-sub-123"
 
     def test_fails_when_bootstrap_admin_sub_missing_in_keycloak_mode(self, monkeypatch):
-        """Bootstrap in keycloak mode should fail when KAVACH_BOOTSTRAP_ADMIN_SUB is missing."""
-        monkeypatch.setenv("KAVACH_AUTH_MODE", "keycloak")
-        monkeypatch.delenv("KAVACH_BOOTSTRAP_ADMIN_SUB", raising=False)
+        """Bootstrap in keycloak mode should fail when AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB is missing."""
+        monkeypatch.setenv("AI_GOVERNANCE_AUTH_MODE", "keycloak")
+        monkeypatch.delenv("AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB", raising=False)
 
         repo = _make_repository()
 
-        with pytest.raises(ValueError, match="KAVACH_BOOTSTRAP_ADMIN_SUB is required"):
+        with pytest.raises(ValueError, match="AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB is required"):
             bootstrap_control_plane(
                 repo,
                 organization_id="org_test",

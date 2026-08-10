@@ -1,10 +1,10 @@
 import pytest
 
-from kavach.domain.evaluation_result import (
+from ai_governance.domain.evaluation_result import (
     EvaluationMetric,
     EvaluationResult,
 )
-from kavach.governance import (
+from ai_governance.governance import (
     DriftAnalyzer,
     DriftSeverity,
 )

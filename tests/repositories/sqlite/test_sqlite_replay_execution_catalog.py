@@ -1,14 +1,14 @@
 from datetime import UTC, datetime
 
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.repositories.sqlite.sqlite_replay_execution_catalog import (
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.repositories.sqlite.sqlite_replay_execution_catalog import (
     SQLiteReplayExecutionCatalog,
 )
-from kavach.services.replay_execution_discovery import (
+from ai_governance.services.replay_execution_discovery import (
     ReplayExecutionProjection,
     ReplayExecutionSearchFilters,
 )
-from kavach.tenancy.domain import TenantContext
+from ai_governance.tenancy.domain import TenantContext
 
 
 def test_catalog_is_durable_and_cursor_paginated(tmp_path) -> None:

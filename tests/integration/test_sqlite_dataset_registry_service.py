@@ -1,18 +1,18 @@
 from datetime import UTC, datetime
 from pathlib import Path
 
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.domain.datasets import DatasetStatus
-from kavach.repositories.sqlite.sqlite_dataset_repository import (
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.domain.datasets import DatasetStatus
+from ai_governance.repositories.sqlite.sqlite_dataset_repository import (
     SQLiteDatasetRepository,
 )
-from kavach.services.datasets import DatasetRegistryService
+from ai_governance.services.datasets import DatasetRegistryService
 
 
 def test_sqlite_dataset_registry_service_persists_dataset_lifecycle(
     tmp_path: Path,
 ) -> None:
-    database = SQLiteDatabase(tmp_path / "kavach.db")
+    database = SQLiteDatabase(tmp_path / "ai_governance.db")
     database.initialize()
     repository = SQLiteDatasetRepository(database)
     service = DatasetRegistryService(

@@ -4,15 +4,15 @@ from abc import ABC, abstractmethod
 
 import pytest
 
-from kavach.domain.evaluation_dataset import EvaluationDataset
-from kavach.domain.evaluation_result import EvaluationResult
-from kavach.domain.workflow_execution import WorkflowExecution
-from kavach.evaluation import EvaluationService
-from kavach.evaluation.evaluation_metrics import EvaluationMetricSpec
-from kavach.evaluation.evaluation_request import EvaluationRequest
-from kavach.providers.evaluation_provider import EvaluationProvider
-from kavach.providers.provider_descriptor import ProviderDescriptor
-from kavach.services.dataset_builder import EvaluationDatasetBuilder
+from ai_governance.domain.evaluation_dataset import EvaluationDataset
+from ai_governance.domain.evaluation_result import EvaluationResult
+from ai_governance.domain.workflow_execution import WorkflowExecution
+from ai_governance.evaluation import EvaluationService
+from ai_governance.evaluation.evaluation_metrics import EvaluationMetricSpec
+from ai_governance.evaluation.evaluation_request import EvaluationRequest
+from ai_governance.providers.evaluation_provider import EvaluationProvider
+from ai_governance.providers.provider_descriptor import ProviderDescriptor
+from ai_governance.services.dataset_builder import EvaluationDatasetBuilder
 
 _SENSITIVE_KEY_PARTS = (
     "api_key",

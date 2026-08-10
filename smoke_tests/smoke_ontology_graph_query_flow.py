@@ -5,11 +5,11 @@ from typing import Any, Mapping
 
 from fastapi.testclient import TestClient
 
-from kavach.api.app import create_app
-from kavach.api.dependencies import get_ontology_graph_query_service
-from kavach.mcp.clients import RestClient
-from kavach.mcp.server import create_server
-from kavach.ontology import (
+from ai_governance.api.app import create_app
+from ai_governance.api.dependencies import get_ontology_graph_query_service
+from ai_governance.mcp.clients import RestClient
+from ai_governance.mcp.server import create_server
+from ai_governance.ontology import (
     EntityType,
     InMemoryOntologyGraphQueryRepository,
     InMemoryOntologyGraphRepository,

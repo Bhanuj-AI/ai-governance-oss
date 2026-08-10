@@ -2,11 +2,11 @@
 
 ## Overview
 
-The ontology foundation makes the accepted `kavach.governance` ontology
-version `1.0.0` executable without synchronizing existing Kavach domain objects
+The ontology foundation makes the accepted `ai_governance.governance` ontology
+version `1.0.0` executable without synchronizing existing AI Governance Control Plane domain objects
 into a graph.
 
-![Kavach Ontology Graph](../../assets/Kavach%20Ontology%20Graph.png)
+![AI Governance Control Plane Ontology Graph](../../assets/AI Governance Control Plane%20Ontology%20Graph.png)
 
 The foundation includes:
 
@@ -28,7 +28,7 @@ The synchronization layer is documented in
 ## Package Layout
 
 ```text
-src/kavach/ontology/
+src/ai_governance/ontology/
   __init__.py
   enums.py
   exceptions.py
@@ -103,16 +103,16 @@ docker compose up -d neo4j
 Configure the repository:
 
 ```bash
-export KAVACH_GRAPH_URI=bolt://localhost:7687
-export KAVACH_GRAPH_USER=neo4j
-export KAVACH_GRAPH_PASSWORD=kavach-local-password
-export KAVACH_GRAPH_DATABASE=neo4j
+export AI_GOVERNANCE_GRAPH_URI=bolt://localhost:7687
+export AI_GOVERNANCE_GRAPH_USER=neo4j
+export AI_GOVERNANCE_GRAPH_PASSWORD=ai-governance-local-password
+export AI_GOVERNANCE_GRAPH_DATABASE=neo4j
 ```
 
 The Neo4j adapter imports the Neo4j Python driver only when the adapter is
-constructed. Unit tests and non-graph Kavach code do not require Neo4j.
+constructed. Unit tests and non-graph AI Governance Control Plane code do not require Neo4j.
 
-The Neo4j driver is a Kavach dependency. Refresh the environment before running
+The Neo4j driver is a AI Governance Control Plane dependency. Refresh the environment before running
 the integration tests if it is unavailable:
 
 ```bash
@@ -157,11 +157,11 @@ uv run pytest tests/unit/ontology
 Run Neo4j integration tests after starting Docker and installing the driver:
 
 ```bash
-export KAVACH_RUN_NEO4J_TESTS=true
+export AI_GOVERNANCE_RUN_NEO4J_TESTS=true
 uv run pytest tests/integration/ontology
 ```
 
-Integration tests are skipped unless `KAVACH_RUN_NEO4J_TESTS=true` and the
+Integration tests are skipped unless `AI_GOVERNANCE_RUN_NEO4J_TESTS=true` and the
 Neo4j Python driver can be imported.
 
 ## Guardrails

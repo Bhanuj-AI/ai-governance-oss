@@ -1,12 +1,12 @@
 from fastapi.testclient import TestClient
 
-from kavach.api.app import create_app
-from kavach.api.dependencies.settings_control import (
+from ai_governance.api.app import create_app
+from ai_governance.api.dependencies.settings_control import (
     get_configuration_service,
     get_settings_repository,
 )
-from kavach.settings_control.repository import InMemorySettingsRepository
-from kavach.settings_control.service import ConfigurationService
+from ai_governance.settings_control.repository import InMemorySettingsRepository
+from ai_governance.settings_control.service import ConfigurationService
 
 
 def _client() -> tuple[TestClient, InMemorySettingsRepository]:
@@ -35,9 +35,9 @@ def test_settings_api_lists_categories_and_effective_metadata() -> None:
 def test_settings_api_validates_updates_and_exposes_audit() -> None:
     client, _ = _client()
     headers = {
-        "X-Kavach-Organization-Id": "org_default",
-        "X-Kavach-Project-Id": "project_default",
-        "X-Kavach-Actor-Id": "local-admin",
+        "X-AI-Governance-Organization-Id": "org_default",
+        "X-AI-Governance-Project-Id": "project_default",
+        "X-AI-Governance-Actor-Id": "local-admin",
     }
     response = client.patch(
         "/api/v1/settings/mcp.dry_run_default",
@@ -85,8 +85,8 @@ def test_settings_api_rejects_static_update() -> None:
         "/api/v1/settings/system.version",
         json={"value": "99.0.0", "reason": "Attempt mutation", "expected_version": 0},
         headers={
-            "X-Kavach-Organization-Id": "org_default",
-            "X-Kavach-Project-Id": "project_default",
+            "X-AI-Governance-Organization-Id": "org_default",
+            "X-AI-Governance-Project-Id": "project_default",
         },
     )
     assert response.status_code == 400

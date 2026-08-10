@@ -8,7 +8,7 @@ from uuid import uuid4
 import pytest
 import snowflake.connector
 
-from kavach.databases.snowflake.database import (
+from ai_governance.databases.snowflake.database import (
     SnowflakeConnectionConfig,
     SnowflakeDatabase,
 )
@@ -18,19 +18,19 @@ def _snowflake_config(
     schema: str,
 ) -> SnowflakeConnectionConfig | None:
     required = {
-        "account": os.getenv("KAVACH_SNOWFLAKE_ACCOUNT"),
-        "user": os.getenv("KAVACH_SNOWFLAKE_USER"),
-        "warehouse": os.getenv("KAVACH_SNOWFLAKE_WAREHOUSE"),
-        "database": os.getenv("KAVACH_SNOWFLAKE_DATABASE"),
+        "account": os.getenv("AI_GOVERNANCE_SNOWFLAKE_ACCOUNT"),
+        "user": os.getenv("AI_GOVERNANCE_SNOWFLAKE_USER"),
+        "warehouse": os.getenv("AI_GOVERNANCE_SNOWFLAKE_WAREHOUSE"),
+        "database": os.getenv("AI_GOVERNANCE_SNOWFLAKE_DATABASE"),
     }
 
     if not all(required.values()):
         return None
 
-    password = os.getenv("KAVACH_SNOWFLAKE_PASSWORD")
-    authenticator = os.getenv("KAVACH_SNOWFLAKE_AUTHENTICATOR")
-    token = os.getenv("KAVACH_SNOWFLAKE_TOKEN")
-    private_key_path = os.getenv("KAVACH_SNOWFLAKE_PRIVATE_KEY_PATH")
+    password = os.getenv("AI_GOVERNANCE_SNOWFLAKE_PASSWORD")
+    authenticator = os.getenv("AI_GOVERNANCE_SNOWFLAKE_AUTHENTICATOR")
+    token = os.getenv("AI_GOVERNANCE_SNOWFLAKE_TOKEN")
+    private_key_path = os.getenv("AI_GOVERNANCE_SNOWFLAKE_PRIVATE_KEY_PATH")
     private_key = (
         Path(private_key_path).read_bytes()
         if private_key_path is not None
@@ -47,7 +47,7 @@ def _snowflake_config(
         warehouse=required["warehouse"] or "",
         database=required["database"] or "",
         schema=schema,
-        role=os.getenv("KAVACH_SNOWFLAKE_ROLE"),
+        role=os.getenv("AI_GOVERNANCE_SNOWFLAKE_ROLE"),
         authenticator=authenticator,
         private_key=private_key,
         token=token,
@@ -56,8 +56,8 @@ def _snowflake_config(
 
 @pytest.fixture
 def snowflake_database() -> Iterator[SnowflakeDatabase]:
-    base_schema = os.getenv("KAVACH_SNOWFLAKE_SCHEMA")
-    schema_name = f"KAVACH_TEST_{uuid4().hex.upper()}"
+    base_schema = os.getenv("AI_GOVERNANCE_SNOWFLAKE_SCHEMA")
+    schema_name = f"AI_GOVERNANCE_TEST_{uuid4().hex.upper()}"
     config = _snowflake_config(base_schema or "PUBLIC")
 
     if config is None:

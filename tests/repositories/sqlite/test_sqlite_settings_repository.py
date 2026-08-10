@@ -1,9 +1,9 @@
 from pathlib import Path
 import sqlite3
 
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.settings_control.repository import SQLiteSettingsRepository
-from kavach.settings_control.domain import SettingScope, SettingVersionConflict
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.settings_control.repository import SQLiteSettingsRepository
+from ai_governance.settings_control.domain import SettingScope, SettingVersionConflict
 import pytest
 
 

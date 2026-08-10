@@ -4,9 +4,9 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from kavach.api.app import create_app
-from kavach.api.dependencies import get_policy_administration_repository
-from kavach.repositories import InMemoryPolicyAdministrationRepository
+from ai_governance.api.app import create_app
+from ai_governance.api.dependencies import get_policy_administration_repository
+from ai_governance.repositories import InMemoryPolicyAdministrationRepository
 
 
 def _client() -> tuple[TestClient, InMemoryPolicyAdministrationRepository]:
@@ -255,7 +255,7 @@ def test_policy_admin_endpoints_are_in_openapi() -> None:
 
 
 def test_policy_router_has_no_storage_imports() -> None:
-    source = Path("src/kavach/api/routers/policies.py").read_text()
+    source = Path("src/ai_governance/api/routers/policies.py").read_text()
 
-    assert "kavach.repositories" not in source
+    assert "ai_governance.repositories" not in source
     assert "Repository" not in source

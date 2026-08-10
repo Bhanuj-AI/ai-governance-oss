@@ -1,15 +1,15 @@
-from kavach.domain.workflow_execution import WorkflowExecution
-from kavach.services.dataset_builder import (
+from ai_governance.domain.workflow_execution import WorkflowExecution
+from ai_governance.services.dataset_builder import (
     EvaluationDatasetBuilder,
 )
-from kavach.evaluation import EvaluationService
-from kavach.workers.evaluation_worker import (
+from ai_governance.evaluation import EvaluationService
+from ai_governance.workers.evaluation_worker import (
     EvaluationWorker,
 )
-from kavach.repositories.in_memory_execution_repository import (
+from ai_governance.repositories.in_memory_execution_repository import (
     InMemoryExecutionRepository,
 )
-from kavach.repositories.in_memory_evaluation_repository import (
+from ai_governance.repositories.in_memory_evaluation_repository import (
     InMemoryEvaluationRepository,
 )
 from tests.providers.FakeProvider import FakeEvaluationProvider

@@ -1,44 +1,44 @@
 from datetime import UTC, datetime
 from pathlib import Path
 
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.domain.evaluation_result import (
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.domain.evaluation_result import (
     EvaluationMetric,
     EvaluationResult,
 )
-from kavach.domain.experiments import (
+from ai_governance.domain.experiments import (
     EvaluationRun,
     EvaluationRunStatus,
     Experiment,
     ExperimentCandidate,
     ExperimentStatus,
 )
-from kavach.domain.models import Model, ModelStatus
-from kavach.repositories.sqlite.sqlite_evaluation_repository import (
+from ai_governance.domain.models import Model, ModelStatus
+from ai_governance.repositories.sqlite.sqlite_evaluation_repository import (
     SQLiteEvaluationRepository,
 )
-from kavach.repositories.sqlite.sqlite_evaluation_run_repository import (
+from ai_governance.repositories.sqlite.sqlite_evaluation_run_repository import (
     SQLiteEvaluationRunRepository,
 )
-from kavach.repositories.sqlite.sqlite_experiment_candidate_repository import (
+from ai_governance.repositories.sqlite.sqlite_experiment_candidate_repository import (
     SQLiteExperimentCandidateRepository,
 )
-from kavach.repositories.sqlite.sqlite_experiment_repository import (
+from ai_governance.repositories.sqlite.sqlite_experiment_repository import (
     SQLiteExperimentRepository,
 )
-from kavach.repositories.sqlite.sqlite_leaderboard_repository import (
+from ai_governance.repositories.sqlite.sqlite_leaderboard_repository import (
     SQLiteLeaderboardRepository,
 )
-from kavach.repositories.sqlite.sqlite_model_repository import (
+from ai_governance.repositories.sqlite.sqlite_model_repository import (
     SQLiteModelRepository,
 )
-from kavach.services.experiments import RankingService
+from ai_governance.services.experiments import RankingService
 
 
 def test_sqlite_ranking_service_generates_and_persists_leaderboard(
     tmp_path: Path,
 ) -> None:
-    database = SQLiteDatabase(tmp_path / "kavach.db")
+    database = SQLiteDatabase(tmp_path / "ai_governance.db")
     database.initialize()
 
     experiment_repository = SQLiteExperimentRepository(database)

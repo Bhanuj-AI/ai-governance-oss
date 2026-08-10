@@ -4,32 +4,32 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kavach.domain.evaluation_result import (
+from ai_governance.domain.evaluation_result import (
     EvaluationMetric,
     EvaluationResult,
 )
-from kavach.domain.experiments import (
+from ai_governance.domain.experiments import (
     EvaluationRun,
     EvaluationRunStatus,
     ExperimentCandidate,
 )
-from kavach.domain.models import Model, ModelStatus
-from kavach.repositories.in_memory_evaluation_repository import (
+from ai_governance.domain.models import Model, ModelStatus
+from ai_governance.repositories.in_memory_evaluation_repository import (
     InMemoryEvaluationRepository,
 )
-from kavach.repositories.in_memory_evaluation_run_repository import (
+from ai_governance.repositories.in_memory_evaluation_run_repository import (
     InMemoryEvaluationRunRepository,
 )
-from kavach.repositories.in_memory_experiment_candidate_repository import (
+from ai_governance.repositories.in_memory_experiment_candidate_repository import (
     InMemoryExperimentCandidateRepository,
 )
-from kavach.repositories.in_memory_leaderboard_repository import (
+from ai_governance.repositories.in_memory_leaderboard_repository import (
     InMemoryLeaderboardRepository,
 )
-from kavach.repositories.in_memory_model_repository import (
+from ai_governance.repositories.in_memory_model_repository import (
     InMemoryModelRepository,
 )
-from kavach.services.experiments import RankingError, RankingService
+from ai_governance.services.experiments import RankingError, RankingService
 
 
 def test_ranking_service_ranks_candidates_and_generates_leaderboard() -> None:

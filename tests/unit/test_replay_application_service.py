@@ -2,15 +2,15 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kavach.domain.replay import ReplayMode, ReplayStatus
-from kavach.domain.jobs import Job, JobStatus, JobType
-from kavach.domain.replay.errors import ReplayIdempotencyConflict
-from kavach.domain.replay.errors import ReplayUnauthorized
-from kavach.authorization.contracts import AuthorizationEnforcementDecision
-from kavach.domain.workflow_execution import WorkflowExecution
-from kavach.repositories.in_memory_replay_repository import InMemoryReplayRepository
-from kavach.services.replay_application_service import ReplayApplicationService
-from kavach.tenancy.domain import TenantContext
+from ai_governance.domain.replay import ReplayMode, ReplayStatus
+from ai_governance.domain.jobs import Job, JobStatus, JobType
+from ai_governance.domain.replay.errors import ReplayIdempotencyConflict
+from ai_governance.domain.replay.errors import ReplayUnauthorized
+from ai_governance.authorization.contracts import AuthorizationEnforcementDecision
+from ai_governance.domain.workflow_execution import WorkflowExecution
+from ai_governance.repositories.in_memory_replay_repository import InMemoryReplayRepository
+from ai_governance.services.replay_application_service import ReplayApplicationService
+from ai_governance.tenancy.domain import TenantContext
 
 
 class _SourceResolver:

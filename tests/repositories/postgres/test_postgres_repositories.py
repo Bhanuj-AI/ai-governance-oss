@@ -1,8 +1,8 @@
 import pytest
 from datetime import UTC, datetime
 
-from kavach.databases.postgres.database import PostgresDatabase
-from kavach.decisions import (
+from ai_governance.databases.postgres.database import PostgresDatabase
+from ai_governance.decisions import (
     DecisionEvidenceReference,
     DecisionPolicyReference,
     DecisionProducerType,
@@ -12,53 +12,53 @@ from kavach.decisions import (
     DecisionTargetType,
     GovernanceDecision,
 )
-from kavach.repositories.dataset_repository import DatasetRepository
-from kavach.repositories.evaluation_repository import EvaluationRepository
-from kavach.repositories.evaluation_run_repository import (
+from ai_governance.repositories.dataset_repository import DatasetRepository
+from ai_governance.repositories.evaluation_repository import EvaluationRepository
+from ai_governance.repositories.evaluation_run_repository import (
     EvaluationRunRepository,
 )
-from kavach.repositories.experiment_candidate_repository import (
+from ai_governance.repositories.experiment_candidate_repository import (
     ExperimentCandidateRepository,
 )
-from kavach.repositories.experiment_repository import ExperimentRepository
-from kavach.repositories.leaderboard_repository import (
+from ai_governance.repositories.experiment_repository import ExperimentRepository
+from ai_governance.repositories.leaderboard_repository import (
     LeaderboardRepository,
 )
-from kavach.repositories.model_repository import ModelRepository
-from kavach.repositories.postgres.postgres_dataset_repository import (
+from ai_governance.repositories.model_repository import ModelRepository
+from ai_governance.repositories.postgres.postgres_dataset_repository import (
     PostgresDatasetRepository,
 )
-from kavach.repositories.postgres.postgres_evaluation_repository import (
+from ai_governance.repositories.postgres.postgres_evaluation_repository import (
     PostgresEvaluationRepository,
 )
-from kavach.repositories.postgres.postgres_evaluation_run_repository import (
+from ai_governance.repositories.postgres.postgres_evaluation_run_repository import (
     PostgresEvaluationRunRepository,
 )
-from kavach.repositories.postgres.postgres_governance_decision_repository import (
+from ai_governance.repositories.postgres.postgres_governance_decision_repository import (
     PostgresGovernanceDecisionRepository,
 )
-from kavach.repositories.postgres.postgres_experiment_candidate_repository import (
+from ai_governance.repositories.postgres.postgres_experiment_candidate_repository import (
     PostgresExperimentCandidateRepository,
 )
-from kavach.repositories.postgres.postgres_experiment_repository import (
+from ai_governance.repositories.postgres.postgres_experiment_repository import (
     PostgresExperimentRepository,
 )
-from kavach.repositories.postgres.postgres_leaderboard_repository import (
+from ai_governance.repositories.postgres.postgres_leaderboard_repository import (
     PostgresLeaderboardRepository,
 )
-from kavach.repositories.postgres.postgres_model_repository import (
+from ai_governance.repositories.postgres.postgres_model_repository import (
     PostgresModelRepository,
 )
-from kavach.repositories.postgres.postgres_policy_administration_repository import (
+from ai_governance.repositories.postgres.postgres_policy_administration_repository import (
     PostgresPolicyAdministrationRepository,
 )
-from kavach.repositories.postgres.postgres_prompt_repository import (
+from ai_governance.repositories.postgres.postgres_prompt_repository import (
     PostgresPromptRepository,
 )
-from kavach.repositories.policy_administration_repository import (
+from ai_governance.repositories.policy_administration_repository import (
     PolicyAdministrationRepository,
 )
-from kavach.repositories.prompt_repository import PromptRepository
+from ai_governance.repositories.prompt_repository import PromptRepository
 from tests.repositories.contract.test_dataset_repository_contract import (
     DatasetRepositoryContract,
 )

@@ -5,17 +5,17 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 
-from kavach.api.app import create_app
-from kavach.api.dependencies import (
+from ai_governance.api.app import create_app
+from ai_governance.api.dependencies import (
     get_job_repository,
     get_mcp_audit_log,
     get_mcp_invocation_audit_log,
 )
-from kavach.domain.jobs import Job, JobStatus, JobType
-from kavach.mcp.audit import MCPExecutionAuditLog
-from kavach.mcp.invocation_audit import MCPInvocationAuditLog
-from kavach.mcp.dto import WriteEnvelope
-from kavach.repositories import InMemoryJobRepository
+from ai_governance.domain.jobs import Job, JobStatus, JobType
+from ai_governance.mcp.audit import MCPExecutionAuditLog
+from ai_governance.mcp.invocation_audit import MCPInvocationAuditLog
+from ai_governance.mcp.dto import WriteEnvelope
+from ai_governance.repositories import InMemoryJobRepository
 
 
 def _client() -> tuple[TestClient, MCPExecutionAuditLog, InMemoryJobRepository]:

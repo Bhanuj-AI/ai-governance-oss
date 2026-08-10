@@ -2,7 +2,7 @@
 
 ## Overview
 
-Kavach workers register themselves in the `worker_heartbeat` table and update
+AI Governance Control Plane workers register themselves in the `worker_heartbeat` table and update
 their liveness timestamp while polling. This allows the dashboard to detect
 idle workers as well as workers processing jobs.
 
@@ -29,7 +29,7 @@ tracks the lease for a specific running job.
 Configure the threshold with:
 
 ```env
-KAVACH_WORKER_HEARTBEAT_STALE_SECONDS=120
+AI_GOVERNANCE_WORKER_HEARTBEAT_STALE_SECONDS=120
 ```
 
 The threshold should be greater than the worker polling interval to avoid false

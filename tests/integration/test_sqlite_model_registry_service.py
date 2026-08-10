@@ -1,18 +1,18 @@
 from datetime import UTC, datetime
 from pathlib import Path
 
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.domain.models import ModelStatus
-from kavach.repositories.sqlite.sqlite_model_repository import (
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.domain.models import ModelStatus
+from ai_governance.repositories.sqlite.sqlite_model_repository import (
     SQLiteModelRepository,
 )
-from kavach.services.models import ModelRegistryService
+from ai_governance.services.models import ModelRegistryService
 
 
 def test_sqlite_model_registry_service_persists_model_lifecycle(
     tmp_path: Path,
 ) -> None:
-    database = SQLiteDatabase(tmp_path / "kavach.db")
+    database = SQLiteDatabase(tmp_path / "ai_governance.db")
     database.initialize()
     repository = SQLiteModelRepository(database)
     service = ModelRegistryService(

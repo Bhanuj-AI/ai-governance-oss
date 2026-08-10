@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from kavach.providers.evaluation_provider import EvaluationProvider
-from kavach.providers.trulens import TruLensAdapter
+from ai_governance.providers.evaluation_provider import EvaluationProvider
+from ai_governance.providers.trulens import TruLensAdapter
 from tests.providers.contracts.provider_contract import ProviderContract
 
 

@@ -6,8 +6,8 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from kavach.api.app import create_app
-from kavach.api.dependencies import (
+from ai_governance.api.app import create_app
+from ai_governance.api.dependencies import (
     get_evaluation_repository,
     get_evaluation_run_repository,
     get_experiment_candidate_repository,
@@ -16,8 +16,8 @@ from kavach.api.dependencies import (
     get_leaderboard_repository,
     get_mcp_audit_log,
 )
-from kavach.domain.evaluation_result import EvaluationMetric, EvaluationResult
-from kavach.domain.experiments import (
+from ai_governance.domain.evaluation_result import EvaluationMetric, EvaluationResult
+from ai_governance.domain.experiments import (
     EvaluationRun,
     EvaluationRunStatus,
     Experiment,
@@ -26,28 +26,28 @@ from kavach.domain.experiments import (
     Leaderboard,
     LeaderboardEntry,
 )
-from kavach.domain.jobs import JobSubmission, JobType
-from kavach.mcp.audit import MCPExecutionAuditLog
-from kavach.mcp.clients import RestClient, RestClientError
-from kavach.mcp.dto import WriteEnvelope
-from kavach.mcp.server import create_server
-from kavach.repositories.in_memory import InMemoryJobRepository
-from kavach.repositories.in_memory_evaluation_repository import (
+from ai_governance.domain.jobs import JobSubmission, JobType
+from ai_governance.mcp.audit import MCPExecutionAuditLog
+from ai_governance.mcp.clients import RestClient, RestClientError
+from ai_governance.mcp.dto import WriteEnvelope
+from ai_governance.mcp.server import create_server
+from ai_governance.repositories.in_memory import InMemoryJobRepository
+from ai_governance.repositories.in_memory_evaluation_repository import (
     InMemoryEvaluationRepository,
 )
-from kavach.repositories.in_memory_evaluation_run_repository import (
+from ai_governance.repositories.in_memory_evaluation_run_repository import (
     InMemoryEvaluationRunRepository,
 )
-from kavach.repositories.in_memory_experiment_candidate_repository import (
+from ai_governance.repositories.in_memory_experiment_candidate_repository import (
     InMemoryExperimentCandidateRepository,
 )
-from kavach.repositories.in_memory_experiment_repository import (
+from ai_governance.repositories.in_memory_experiment_repository import (
     InMemoryExperimentRepository,
 )
-from kavach.repositories.in_memory_leaderboard_repository import (
+from ai_governance.repositories.in_memory_leaderboard_repository import (
     InMemoryLeaderboardRepository,
 )
-from kavach.services.job_submission_service import JobSubmissionService
+from ai_governance.services.job_submission_service import JobSubmissionService
 
 
 def main() -> None:

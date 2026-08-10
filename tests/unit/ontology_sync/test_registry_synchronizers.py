@@ -1,29 +1,29 @@
 from datetime import UTC, datetime
 
-from kavach.domain.datasets import Dataset, DatasetStatus
-from kavach.domain.models import Model, ModelStatus
-from kavach.domain.prompts import Prompt, PromptStatus
-from kavach.ontology import (
+from ai_governance.domain.datasets import Dataset, DatasetStatus
+from ai_governance.domain.models import Model, ModelStatus
+from ai_governance.domain.prompts import Prompt, PromptStatus
+from ai_governance.ontology import (
     EntityType,
     InMemoryOntologyGraphRepository,
     OntologyService,
     RelationshipType,
 )
-from kavach.ontology.synchronization import (
+from ai_governance.ontology.synchronization import (
     DatasetOntologySynchronizer,
     ModelOntologySynchronizer,
     PromptOntologySynchronizer,
 )
-from kavach.ontology.synchronization.synchronizer import (
+from ai_governance.ontology.synchronization.synchronizer import (
     logical_prompt_id,
 )
-from kavach.repositories.in_memory_dataset_repository import (
+from ai_governance.repositories.in_memory_dataset_repository import (
     InMemoryDatasetRepository,
 )
-from kavach.repositories.in_memory_model_repository import (
+from ai_governance.repositories.in_memory_model_repository import (
     InMemoryModelRepository,
 )
-from kavach.repositories.in_memory_prompt_repository import (
+from ai_governance.repositories.in_memory_prompt_repository import (
     InMemoryPromptRepository,
 )
 

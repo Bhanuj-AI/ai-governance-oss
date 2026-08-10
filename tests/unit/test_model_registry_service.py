@@ -2,12 +2,12 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kavach.domain.models import ModelStatus
-from kavach.domain.assets import AssetProvenance
-from kavach.repositories.in_memory_model_repository import (
+from ai_governance.domain.models import ModelStatus
+from ai_governance.domain.assets import AssetProvenance
+from ai_governance.repositories.in_memory_model_repository import (
     InMemoryModelRepository,
 )
-from kavach.services.models import (
+from ai_governance.services.models import (
     ModelLifecycleError,
     ModelRegistryService,
     ModelVersionConflictError,

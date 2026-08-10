@@ -1,7 +1,7 @@
 # Configuration
 
 This page summarizes the environment variables used by local development,
-Kavach Studio, the REST API, ontology graph adapters, and MCP integrations.
+AI Governance Control Plane Studio, the REST API, ontology graph adapters, and MCP integrations.
 
 For the default local stack, start Keycloak before starting the platform Compose
 stack. Override these
@@ -11,14 +11,14 @@ data, or connecting external storage and graph services.
 ## Local Quick Start
 
 ```bash
-./kavach.sh
+./ai_governance.sh
 ```
 
-`./kavach.sh` validates the Compose definition and runs `docker compose up
+`./ai_governance.sh` validates the Compose definition and runs `docker compose up
 --build -d`. The platform Compose stack starts:
 
 - REST API on `http://localhost:8000`
-- Kavach Studio on `http://localhost:3000`
+- AI Governance Control Plane Studio on `http://localhost:3000`
 - Neo4j on `bolt://localhost:7687`
 - SeaweedFS S3 API on `http://localhost:8333`
 - SeaweedFS Filer UI on `http://localhost:8888`
@@ -26,11 +26,11 @@ data, or connecting external storage and graph services.
 
 The local API starts with demo ontology data, the `policy-release-gate` Policy
 Engine record, governance decisions, representative jobs, and MCP audit data.
-Set `KAVACH_AUTO_SEED_DEMO_DATA=false` to disable startup demo seeding.
+Set `AI_GOVERNANCE_AUTO_SEED_DEMO_DATA=false` to disable startup demo seeding.
 
 Compose selects SQLite for every repository that supports it and points those
-repositories at `/var/lib/kavach/kavach.db`. The `kavach_sqlite_data` named
-volume mounts that directory into `kavach-platform`, so application records
+repositories at `/var/lib/ai-governance/governance.db`. The `ai-governance_sqlite_data` named
+volume mounts that directory into `ai-governance-platform`, so application records
 survive container restarts and recreation. Neo4j data is retained separately
 in the `neo4j_data` and `neo4j_logs` volumes. SeaweedFS dataset objects are
 retained in the `seaweedfs_data` volume.
@@ -41,7 +41,7 @@ docker compose down
 
 # Remove all local persistent data; the next startup creates a clean demo seed.
 docker compose down -v
-./kavach.sh
+./ai_governance.sh
 ```
 
 Startup seeding uses stable identifiers and SQLite upserts, making repeated
@@ -64,21 +64,21 @@ the same required platform settings adapted for host execution:
 docker compose up -d neo4j
 
 # Start the API with host-local SQLite and localhost service addresses.
-uvicorn kavach.api.app:app --reload --env-file .env.local
+uvicorn ai_governance.api.app:app --reload --env-file .env.local
 ```
 
-The host-local file uses `KAVACH_AUTH_MODE=keycloak`, SQLite at
-`./kavach.local.db`, Neo4j at `bolt://localhost:7687`, and Keycloak at
-`http://keycloak.localhost:8080/realms/kavach`. Start Studio separately from `console/`;
+The host-local file uses `AI_GOVERNANCE_AUTH_MODE=keycloak`, SQLite at
+`./governance.local.db`, Neo4j at `bolt://localhost:7687`, and Keycloak at
+`http://keycloak.localhost:8080/realms/ai-governance`. Start Studio separately from `console/`;
 its ignored `console/.env.local` provides the browser-facing Keycloak settings.
 
 To run the API without Keycloak for a lightweight development session, set
-`KAVACH_AUTH_MODE=development` in `.env.local`. In that mode requests use the
+`AI_GOVERNANCE_AUTH_MODE=development` in `.env.local`. In that mode requests use the
 development actor headers and no JWT is validated. Do not use this mode for
 production or shared environments.
 
 `.env.platform` is intended for the Docker Compose platform container. It uses
-container DNS names such as `neo4j`, and its `/var/lib/kavach/kavach.db` path is
+container DNS names such as `neo4j`, and its `/var/lib/ai-governance/governance.db` path is
 inside the container volume. Do not use those values unchanged for a host-local
 Uvicorn process.
 
@@ -88,7 +88,7 @@ The default Compose stack starts Keycloak at
 `http://keycloak.localhost:8080`. Start the local Keycloak and PostgreSQL stack:
 
 ```bash
-./kavach.sh
+./ai_governance.sh
 ```
 
 The Keycloak realm import is only applied when its PostgreSQL data volume is
@@ -104,38 +104,38 @@ see the [end-to-end local tutorial](../tutorials/end-to-end-local.md).
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `KAVACH_API_HOST` | `127.0.0.1` | Host used by local API settings and dev/local detection. |
-| `KAVACH_API_PORT` | `8000` | API port used by local API settings. |
-| `KAVACH_API_LOG_LEVEL` | `INFO` | REST API logger level. |
-| `KAVACH_CORS_ALLOW_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | Comma-separated browser origins allowed to call the API. |
-| `KAVACH_ENV` | `local` | Runtime environment label. `local`, `dev`, and `development` are treated as development environments for demo seeding. |
-| `KAVACH_AUTO_SEED_DEMO_DATA` | auto | Enables or disables startup demo data seeding. Use `true` or `false` to override auto-detection. |
+| `AI_GOVERNANCE_API_HOST` | `127.0.0.1` | Host used by local API settings and dev/local detection. |
+| `AI_GOVERNANCE_API_PORT` | `8000` | API port used by local API settings. |
+| `AI_GOVERNANCE_API_LOG_LEVEL` | `INFO` | REST API logger level. |
+| `AI_GOVERNANCE_CORS_ALLOW_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | Comma-separated browser origins allowed to call the API. |
+| `AI_GOVERNANCE_ENV` | `local` | Runtime environment label. `local`, `dev`, and `development` are treated as development environments for demo seeding. |
+| `AI_GOVERNANCE_AUTO_SEED_DEMO_DATA` | auto | Enables or disables startup demo data seeding. Use `true` or `false` to override auto-detection. |
 
 ## Authentication
 
-Kavach supports two authentication modes controlled by `KAVACH_AUTH_MODE`.
+AI Governance Control Plane supports two authentication modes controlled by `AI_GOVERNANCE_AUTH_MODE`.
 Development mode preserves the existing header-based identity for local
 development. Keycloak mode requires JWT authentication against a running
 Keycloak instance.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `KAVACH_AUTH_MODE` | `development` | Authentication mode: `development` or `keycloak`. |
-| `KAVACH_OIDC_ISSUER` | - | Keycloak realm URL (for local development, `http://keycloak.localhost:8080/realms/kavach`). Required when `KAVACH_AUTH_MODE=keycloak`. |
-| `KAVACH_OIDC_JWKS_REFRESH_SECONDS` | `300` | JWKS signing key cache TTL in seconds. Controls how often the platform fetches new signing keys from Keycloak. |
+| `AI_GOVERNANCE_AUTH_MODE` | `development` | Authentication mode: `development` or `keycloak`. |
+| `AI_GOVERNANCE_OIDC_ISSUER` | - | Keycloak realm URL (for local development, `http://keycloak.localhost:8080/realms/ai-governance`). Required when `AI_GOVERNANCE_AUTH_MODE=keycloak`. |
+| `AI_GOVERNANCE_OIDC_JWKS_REFRESH_SECONDS` | `300` | JWKS signing key cache TTL in seconds. Controls how often the platform fetches new signing keys from Keycloak. |
 
-Development mode (`KAVACH_AUTH_MODE=development`):
+Development mode (`AI_GOVERNANCE_AUTH_MODE=development`):
 
-- Actor identity comes from `X-Kavach-Actor-Id` header or
-  `KAVACH_DEVELOPMENT_ACTOR_ID` environment variable.
+- Actor identity comes from `X-AI-Governance-Actor-Id` header or
+  `AI_GOVERNANCE_DEVELOPMENT_ACTOR_ID` environment variable.
 - No JWT validation occurs.
 - Existing header-based behaviour is preserved.
 
-Keycloak mode (`KAVACH_AUTH_MODE=keycloak`):
+Keycloak mode (`AI_GOVERNANCE_AUTH_MODE=keycloak`):
 
 - Requires `Authorization: Bearer <token>` header on every request.
 - Validates JWT signature against Keycloak JWKS endpoint.
-- Validates issuer matches `KAVACH_OIDC_ISSUER`.
+- Validates issuer matches `AI_GOVERNANCE_OIDC_ISSUER`.
 - Validates token expiry (rejects expired tokens).
 - Builds `AuthenticatedPrincipal` from validated claims:
   - `sub` → actor identity (immutable)
@@ -150,45 +150,45 @@ through the existing `AuthorizationService` and RBAC model.
 
 ### Bootstrap administrator identity
 
-The initial Kavach administrator is provisioned during control-plane bootstrap
-(idempotent). The identity used depends on `KAVACH_AUTH_MODE`:
+The initial AI Governance Control Plane administrator is provisioned during control-plane bootstrap
+(idempotent). The identity used depends on `AI_GOVERNANCE_AUTH_MODE`:
 
-- **Development mode** — uses `KAVACH_DEVELOPMENT_ACTOR_ID` (fallback:
-  `local-admin`) and `KAVACH_DEVELOPMENT_ACTOR_NAME` (fallback:
+- **Development mode** — uses `AI_GOVERNANCE_DEVELOPMENT_ACTOR_ID` (fallback:
+  `local-admin`) and `AI_GOVERNANCE_DEVELOPMENT_ACTOR_NAME` (fallback:
   `Local Administrator`).
-- **Keycloak mode** — requires `KAVACH_BOOTSTRAP_ADMIN_SUB` (the immutable
+- **Keycloak mode** — requires `AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB` (the immutable
   Keycloak user `sub`). Fails startup if absent. Optionally uses
-  `KAVACH_BOOTSTRAP_ADMIN_NAME` for display purposes.
+  `AI_GOVERNANCE_BOOTSTRAP_ADMIN_NAME` for display purposes.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `KAVACH_BOOTSTRAP_ADMIN_SUB` | - | Keycloak user `sub` for the initial administrator. Required when `KAVACH_AUTH_MODE=keycloak`. Must match the JWT `sub` claim. |
-| `KAVACH_BOOTSTRAP_ADMIN_NAME` | - | Display name for the initial administrator. Optional in keycloak mode. |
+| `AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB` | - | Keycloak user `sub` for the initial administrator. Required when `AI_GOVERNANCE_AUTH_MODE=keycloak`. Must match the JWT `sub` claim. |
+| `AI_GOVERNANCE_BOOTSTRAP_ADMIN_NAME` | - | Display name for the initial administrator. Optional in keycloak mode. |
 
 Demo seeding auto-detection is enabled only for local/dev environments on
 `127.0.0.1`, `localhost`, or `0.0.0.0`, and is disabled during pytest runs
 unless explicitly overridden.
 
-## Kavach Studio
+## AI Governance Control Plane Studio
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `NEXT_PUBLIC_KAVACH_API_BASE_URL` | `http://localhost:8000` | REST API base URL used by the Next.js Studio. |
+| `NEXT_PUBLIC_AI_GOVERNANCE_API_BASE_URL` | `http://localhost:8000` | REST API base URL used by the Next.js Studio. |
 | `NEXT_PUBLIC_KEYCLOAK_URL` | - | Keycloak server URL used by the browser client, for example `http://keycloak.localhost:8080`. |
-| `NEXT_PUBLIC_KEYCLOAK_REALM` | - | Keycloak realm used by Studio, for example `kavach`. |
-| `NEXT_PUBLIC_KEYCLOAK_CLIENT_ID` | - | Public Keycloak client ID used by Studio, for example `kavach-studio`. |
+| `NEXT_PUBLIC_KEYCLOAK_REALM` | - | Keycloak realm used by Studio, for example `ai-governance`. |
+| `NEXT_PUBLIC_KEYCLOAK_CLIENT_ID` | - | Public Keycloak client ID used by Studio, for example `ai-governance-studio`. |
 | `NEXT_PUBLIC_GRAPH_*` | see `console/.env.example` | Optional graph palette colors for ontology visualization. Restart Studio after changing these values. |
 
 The `NEXT_PUBLIC_*` variables above are browser-facing Next.js variables and are
 compiled into the Studio bundle. For Docker builds, pass them as
-`kavach-studio` build argument in `docker-compose.yml`; changing only the
+`ai-governance-studio` build argument in `docker-compose.yml`; changing only the
 container runtime environment does not update an existing browser bundle. The
 Studio does not use a client secret: it authenticates with Authorization Code
 Flow and PKCE.
 Rebuild Studio after changing it:
 
 ```bash
-docker compose up --build -d kavach-studio
+docker compose up --build -d ai-governance-studio
 ```
 
 When running Studio outside Docker:
@@ -205,7 +205,7 @@ changing them. `.env.studio` is used by Docker Compose and is not loaded
 automatically by Next.js.
 
 If the REST API is not on `http://localhost:8000`, set
-`NEXT_PUBLIC_KAVACH_API_BASE_URL` before starting Studio.
+`NEXT_PUBLIC_AI_GOVERNANCE_API_BASE_URL` before starting Studio.
 
 See [Keycloak integration design](../architecture/KEYCLOAK_INTEGRATION.md) for
 the token lifecycle, required realm configuration, and tenant authorization
@@ -213,16 +213,16 @@ flow.
 
 ## Settings Control Plane
 
-Kavach exposes typed platform configuration through `GET /api/v1/settings`
+AI Governance Control Plane exposes typed platform configuration through `GET /api/v1/settings`
 and the Studio `/settings` page. Resolution is deterministic: an environment
 variable wins over a persisted runtime value, which wins over the registry
 default. Environment-controlled and deployment settings remain read-only.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `KAVACH_SETTINGS_REPOSITORY` | `inmemory` | Runtime settings backend: `inmemory`, `sqlite`, or `postgres`. |
-| `KAVACH_SETTINGS_SQLITE_PATH` | - | SQLite database path when the settings backend is `sqlite`. |
-| `KAVACH_SETTINGS_POSTGRES_DSN` | - | PostgreSQL DSN when the settings backend is `postgres`. |
+| `AI_GOVERNANCE_SETTINGS_REPOSITORY` | `inmemory` | Runtime settings backend: `inmemory`, `sqlite`, or `postgres`. |
+| `AI_GOVERNANCE_SETTINGS_SQLITE_PATH` | - | SQLite database path when the settings backend is `sqlite`. |
+| `AI_GOVERNANCE_SETTINGS_POSTGRES_DSN` | - | PostgreSQL DSN when the settings backend is `postgres`. |
 
 The local Compose stack uses the shared durable SQLite database. Runtime
 updates are validated, versioned, and recorded in `setting_audit` with actor,
@@ -235,9 +235,9 @@ defaults; doing so would intentionally make those controls read-only.
 Operational environment overrides should only be set when Infrastructure-as-
 Code must pin a value. The corresponding variables are documented by each
 setting returned from the API. Examples include
-`KAVACH_JOB_WORKER_CONCURRENCY`, `KAVACH_JOB_RETRY_ATTEMPTS`,
-`KAVACH_EVALUATION_PASS_THRESHOLD`, and
-`KAVACH_ONTOLOGY_RECONCILIATION_INTERVAL`.
+`AI_GOVERNANCE_JOB_WORKER_CONCURRENCY`, `AI_GOVERNANCE_JOB_RETRY_ATTEMPTS`,
+`AI_GOVERNANCE_EVALUATION_PASS_THRESHOLD`, and
+`AI_GOVERNANCE_ONTOLOGY_RECONCILIATION_INTERVAL`.
 
 For plain-English, end-to-end behavior and persistence details for every
 registered setting, see
@@ -247,11 +247,11 @@ registered setting, see
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `KAVACH_GRAPH_URI` | `bolt://localhost:7687` | Neo4j Bolt URI for graph-backed ontology adapters. |
-| `KAVACH_GRAPH_USER` | `neo4j` | Neo4j username. |
-| `KAVACH_GRAPH_PASSWORD` | `kavach-local-password` | Neo4j password. |
-| `KAVACH_GRAPH_DATABASE` | `neo4j` | Neo4j database name. |
-| `KAVACH_RUN_NEO4J_TESTS` | `false` | Set to `true` to run Neo4j integration tests. |
+| `AI_GOVERNANCE_GRAPH_URI` | `bolt://localhost:7687` | Neo4j Bolt URI for graph-backed ontology adapters. |
+| `AI_GOVERNANCE_GRAPH_USER` | `neo4j` | Neo4j username. |
+| `AI_GOVERNANCE_GRAPH_PASSWORD` | `ai-governance-local-password` | Neo4j password. |
+| `AI_GOVERNANCE_GRAPH_DATABASE` | `neo4j` | Neo4j database name. |
+| `AI_GOVERNANCE_RUN_NEO4J_TESTS` | `false` | Set to `true` to run Neo4j integration tests. |
 
 The REST API currently uses in-memory repositories by default. These graph
 variables are needed for Neo4j-backed graph adapters and integration tests.
@@ -262,38 +262,38 @@ troubleshooting, see the [Neo4j Operations Guide](../ontology/neo4j-operations-g
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `KAVACH_API_URL` | `http://127.0.0.1:8000` | REST API URL used by MCP tool calls. |
-| `KAVACH_API_TIMEOUT` | `10` | REST request timeout in seconds for MCP clients. |
-| `KAVACH_API_RETRIES` | `0` | REST retry count for MCP clients. |
+| `AI_GOVERNANCE_API_URL` | `http://127.0.0.1:8000` | REST API URL used by MCP tool calls. |
+| `AI_GOVERNANCE_API_TIMEOUT` | `10` | REST request timeout in seconds for MCP clients. |
+| `AI_GOVERNANCE_API_RETRIES` | `0` | REST retry count for MCP clients. |
 | `LOG_LEVEL` | `INFO` | MCP server log level. |
-| `KAVACH_MCP_AUDIT_REPOSITORY` | `sqlite` | MCP audit backend: `sqlite` or `postgres`. |
-| `KAVACH_MCP_AUDIT_DATABASE_PATH` | `.kavach/mcp_execution_audit.db` | SQLite audit database path (required by the `sqlite` backend). |
-| `KAVACH_MCP_AUDIT_POSTGRES_DSN` | - | PostgreSQL DSN (required by the `postgres` backend). |
-| `KAVACH_MCP_HOST` | `127.0.0.1` | Host for the optional MCP-over-HTTP adapter. |
-| `KAVACH_MCP_PORT` | `8001` | Port for the optional MCP-over-HTTP adapter. |
-| `KAVACH_MCP_URL` | - | API health-check URL for the MCP-over-HTTP adapter. |
-| `KAVACH_API_TOKEN` | - | Optional bearer token used by MCP when calling a Keycloak-protected API. Never commit this value. |
-| `KAVACH_MCP_CLIENT_ID` | `kavach-mcp` | Keycloak confidential client used by MCP. |
-| `KAVACH_MCP_CLIENT_SECRET` | - | MCP client secret. Never commit this value. |
-| `KAVACH_MCP_TOKEN_URL` | - | Keycloak client-credentials token endpoint. |
-| `KAVACH_MCP_ACTOR_ID` | generated | MCP service-account subject used for startup membership provisioning. Generated into `.env.service-accounts.generated`; do not hardcode it for fresh environments. |
-| `KAVACH_WALKTHROUGH_ACTOR_ID` | generated | Walkthrough service-account subject provisioned with its own membership and role. Generated into `.env.service-accounts.generated`. |
-| `KAVACH_MCP_TRANSPORT` | `stdio` | MCP runtime transport: `stdio` or `streamable-http`. MCPO remains a separate stdio wrapper. |
-| `KAVACH_MCP_HTTP_HOST` | `127.0.0.1` | Native Streamable HTTP bind host. Set `0.0.0.0` explicitly for a container or ingress deployment. |
-| `KAVACH_MCP_HTTP_PORT` | `8002` | Native Streamable HTTP port. |
-| `KAVACH_MCP_HTTP_PATH` | `/mcp` | Native MCP protocol endpoint path. |
-| `KAVACH_MCP_PUBLIC_URL` | `http://localhost:8002` | Public origin used to publish OAuth protected-resource metadata and validate the MCP token audience. It must match the externally reachable MCP origin and the Keycloak audience mapper. |
-| `KAVACH_MCP_HTTP_ALLOWED_HOSTS` | `localhost,127.0.0.1` | Comma-separated Host values allowed by MCP DNS-rebinding protection. Configure production values explicitly. |
-| `KAVACH_MCP_HTTP_ALLOWED_ORIGINS` | empty | Optional comma-separated browser origins allowed by MCP origin validation and CORS preflight. Local Inspector defaults use `http://localhost:6274,http://127.0.0.1:6274`; configure production browser origins explicitly. |
-| `KAVACH_MCP_HTTP_STATELESS` | `true` | Creates a fresh SDK transport per HTTP request; no affinity or server-side session store is required. |
-| `KAVACH_MCP_HTTP_JSON_RESPONSE` | `true` | Uses JSON for ordinary Streamable HTTP replies while retaining SDK SSE support where needed. |
+| `AI_GOVERNANCE_MCP_AUDIT_REPOSITORY` | `sqlite` | MCP audit backend: `sqlite` or `postgres`. |
+| `AI_GOVERNANCE_MCP_AUDIT_DATABASE_PATH` | `.ai-governance/mcp_execution_audit.db` | SQLite audit database path (required by the `sqlite` backend). |
+| `AI_GOVERNANCE_MCP_AUDIT_POSTGRES_DSN` | - | PostgreSQL DSN (required by the `postgres` backend). |
+| `AI_GOVERNANCE_MCP_HOST` | `127.0.0.1` | Host for the optional MCP-over-HTTP adapter. |
+| `AI_GOVERNANCE_MCP_PORT` | `8001` | Port for the optional MCP-over-HTTP adapter. |
+| `AI_GOVERNANCE_MCP_URL` | - | API health-check URL for the MCP-over-HTTP adapter. |
+| `AI_GOVERNANCE_API_TOKEN` | - | Optional bearer token used by MCP when calling a Keycloak-protected API. Never commit this value. |
+| `AI_GOVERNANCE_MCP_CLIENT_ID` | `ai-governance-mcp` | Keycloak confidential client used by MCP. |
+| `AI_GOVERNANCE_MCP_CLIENT_SECRET` | - | MCP client secret. Never commit this value. |
+| `AI_GOVERNANCE_MCP_TOKEN_URL` | - | Keycloak client-credentials token endpoint. |
+| `AI_GOVERNANCE_MCP_ACTOR_ID` | generated | MCP service-account subject used for startup membership provisioning. Generated into `.env.service-accounts.generated`; do not hardcode it for fresh environments. |
+| `AI_GOVERNANCE_WALKTHROUGH_ACTOR_ID` | generated | Walkthrough service-account subject provisioned with its own membership and role. Generated into `.env.service-accounts.generated`. |
+| `AI_GOVERNANCE_MCP_TRANSPORT` | `stdio` | MCP runtime transport: `stdio` or `streamable-http`. MCPO remains a separate stdio wrapper. |
+| `AI_GOVERNANCE_MCP_HTTP_HOST` | `127.0.0.1` | Native Streamable HTTP bind host. Set `0.0.0.0` explicitly for a container or ingress deployment. |
+| `AI_GOVERNANCE_MCP_HTTP_PORT` | `8002` | Native Streamable HTTP port. |
+| `AI_GOVERNANCE_MCP_HTTP_PATH` | `/mcp` | Native MCP protocol endpoint path. |
+| `AI_GOVERNANCE_MCP_PUBLIC_URL` | `http://localhost:8002` | Public origin used to publish OAuth protected-resource metadata and validate the MCP token audience. It must match the externally reachable MCP origin and the Keycloak audience mapper. |
+| `AI_GOVERNANCE_MCP_HTTP_ALLOWED_HOSTS` | `localhost,127.0.0.1` | Comma-separated Host values allowed by MCP DNS-rebinding protection. Configure production values explicitly. |
+| `AI_GOVERNANCE_MCP_HTTP_ALLOWED_ORIGINS` | empty | Optional comma-separated browser origins allowed by MCP origin validation and CORS preflight. Local Inspector defaults use `http://localhost:6274,http://127.0.0.1:6274`; configure production browser origins explicitly. |
+| `AI_GOVERNANCE_MCP_HTTP_STATELESS` | `true` | Creates a fresh SDK transport per HTTP request; no affinity or server-side session store is required. |
+| `AI_GOVERNANCE_MCP_HTTP_JSON_RESPONSE` | `true` | Uses JSON for ordinary Streamable HTTP replies while retaining SDK SSE support where needed. |
 
 The repository includes `scripts/mcp/start-mcp.sh`, which wraps the existing stdio
 MCP server with `mcpo` and exposes it as an HTTP/OpenAPI service on port 8001.
 See [MCP Usage and MCPO](./MCP_USAGE.md) for the architecture, startup
 commands, and Keycloak token requirements.
-In Docker, the `kavach-mcp` service starts alongside the platform and uses
-`http://kavach-platform:8000` for REST calls:
+In Docker, the `ai-governance-mcp` service starts alongside the platform and uses
+`http://ai-governance-platform:8000` for REST calls:
 
 ```bash
 docker compose up --build -d
@@ -306,9 +306,9 @@ For host-local development, start the API first and then run:
 ./scripts/mcp/start-mcp.sh
 ```
 
-When `KAVACH_AUTH_MODE=keycloak`, MCP REST calls require a valid bearer token.
-The `kavach-mcp` client-credentials token is refreshed automatically. The MCP
-adapter does not invent an actor or bypass Kavach tenant authorization. In
+When `AI_GOVERNANCE_AUTH_MODE=keycloak`, MCP REST calls require a valid bearer token.
+The `ai-governance-mcp` client-credentials token is refreshed automatically. The MCP
+adapter does not invent an actor or bypass AI Governance Control Plane tenant authorization. In
 development mode, the existing header-based REST behavior remains available.
 
 The native endpoint is `http://localhost:8002/mcp`; it is MCP protocol traffic,
@@ -319,34 +319,34 @@ the token subject, tenant membership, and RBAC are enforced.
 
 ## OAuth client credentials
 
-`KAVACH_OAUTH_*` is Kavach's workload-neutral client-credentials interface.
-The guided `kavach walkthrough` CLI automatically exchanges these credentials
+`AI_GOVERNANCE_OAUTH_*` is AI Governance Control Plane's workload-neutral client-credentials interface.
+The guided `ai-governance walkthrough` CLI automatically exchanges these credentials
 for a short-lived service-account token in memory; do not export or manage a
 bearer token for the normal local or CI flow:
 
 | Variable | Purpose |
 | --- | --- |
-| `KAVACH_OAUTH_TOKEN_URL` | OAuth/OIDC token endpoint for the confidential client. |
-| `KAVACH_OAUTH_CLIENT_ID` | Dedicated workload identity, such as `kavach-walkthrough`. |
-| `KAVACH_OAUTH_CLIENT_SECRET` | Client secret from a secrets manager or protected CI environment. Never commit it. |
+| `AI_GOVERNANCE_OAUTH_TOKEN_URL` | OAuth/OIDC token endpoint for the confidential client. |
+| `AI_GOVERNANCE_OAUTH_CLIENT_ID` | Dedicated workload identity, such as `ai-governance-walkthrough`. |
+| `AI_GOVERNANCE_OAUTH_CLIENT_SECRET` | Client secret from a secrets manager or protected CI environment. Never commit it. |
 
 Use `scripts/oauth/fetch-access-token.py --clipboard` when a generic local
 tool needs a bearer token pasted into another client. It never prints or saves
 the token. The walkthrough itself does not need this utility.
 
-For local compatibility only, the existing complete `KAVACH_MCP_CLIENT_ID`,
-`KAVACH_MCP_CLIENT_SECRET`, and `KAVACH_MCP_TOKEN_URL` set is used when generic
+For local compatibility only, the existing complete `AI_GOVERNANCE_MCP_CLIENT_ID`,
+`AI_GOVERNANCE_MCP_CLIENT_SECRET`, and `AI_GOVERNANCE_MCP_TOKEN_URL` set is used when generic
 OAuth variables are absent. Do not reuse that MCP identity for production
-walkthroughs; provision a least-privilege service account with Kavach
+walkthroughs; provision a least-privilege service account with AI Governance Control Plane
 membership and roles for the intended organization/project. The local
-`kavach-walkthrough` client receives `GOVERNANCE_ADMIN`, the narrowest current
+`ai-governance-walkthrough` client receives `GOVERNANCE_ADMIN`, the narrowest current
 built-in role that can observe prompt/model evidence and prepare or submit the
 complete governed-replay scenario; it is not an organization administrator.
 Existing local walkthrough identities created before this role was introduced
 are upgraded automatically when the platform starts.
 
 The local Keycloak bootstrap declares that dedicated client as
-`kavach-walkthrough`. `scripts/keycloak/get-service-account-actorids.sh`
+`ai-governance-walkthrough`. `scripts/keycloak/get-service-account-actorids.sh`
 discovers its immutable subject, writes the tenant-provisioning file, and also
 creates `.env.oauth.generated` for host-local OAuth configuration. The file is
 loaded by the walkthrough CLI and generic OAuth helper, but remains ignored by
@@ -354,7 +354,7 @@ Git because it contains a local client secret.
 
 `--token` is available as an explicit walkthrough CLI override for callers
 that already manage a bearer token. The CLI deliberately does not read
-`KAVACH_TOKEN` from the shell, preventing a stale export from overriding the
+`AI_GOVERNANCE_TOKEN` from the shell, preventing a stale export from overriding the
 configured OAuth workload identity.
 
 ## Optional Provider Settings
@@ -363,11 +363,11 @@ configured OAuth workload identity.
 | --- | --- | --- |
 | `OPENAI_API_KEY` | TruLens / OpenAI-backed evaluation or judge flows | OpenAI API key. |
 | `OPENAI_DEFAULT_JUDGE_MODEL` | TruLens / OpenAI-backed judge flows | Default judge model identifier. |
-| `KAVACH_TRULENS_MODEL` | TruLens evaluation | Optional explicit judge-model override; otherwise `OPENAI_DEFAULT_JUDGE_MODEL` is used. |
+| `AI_GOVERNANCE_TRULENS_MODEL` | TruLens evaluation | Optional explicit judge-model override; otherwise `OPENAI_DEFAULT_JUDGE_MODEL` is used. |
 
 The REST API always registers the deterministic `mock` provider. It also
 registers `trulens` when both an OpenAI API key and judge model are configured.
-Use `KAVACH_TRULENS_MODEL` to override `OPENAI_DEFAULT_JUDGE_MODEL` for
+Use `AI_GOVERNANCE_TRULENS_MODEL` to override `OPENAI_DEFAULT_JUDGE_MODEL` for
 TruLens. Mock remains the default for a fully offline local stack.
 
 ## Test Backends
@@ -375,16 +375,16 @@ TruLens. Mock remains the default for a fully offline local stack.
 Some repository integration tests require additional backend-specific
 configuration:
 
-- PostgreSQL tests require `KAVACH_POSTGRES_DSN`.
-- Snowflake tests require the `KAVACH_SNOWFLAKE_*` variables documented in
+- PostgreSQL tests require `AI_GOVERNANCE_POSTGRES_DSN`.
+- Snowflake tests require the `AI_GOVERNANCE_SNOWFLAKE_*` variables documented in
   [Snowflake Schema](./SNOWFLAKE_SCHEMA.md).
-- Neo4j tests require `KAVACH_RUN_NEO4J_TESTS=true` and the graph variables
+- Neo4j tests require `AI_GOVERNANCE_RUN_NEO4J_TESTS=true` and the graph variables
   above.
 
 
 ## Repository Backends
 
-Kavach uses a factory-based repository construction model. Each repository type
+AI Governance Control Plane uses a factory-based repository construction model. Each repository type
 is configured independently via environment variables. The default for every
 repository is ``inmemory``. Durable backends require their respective connection
 parameters; factories fail fast if they are missing.
@@ -392,62 +392,62 @@ parameters; factories fail fast if they are missing.
 These defaults describe a process started directly from the Python package.
 The checked-in Docker Compose configuration overrides every SQLite-capable
 repository to `sqlite` and uses the shared path
-`/var/lib/kavach/kavach.db`. Ontology graph storage remains separately
-configured because `KAVACH_ONTOLOGY_REPOSITORY=sqlite` is not implemented.
+`/var/lib/ai-governance/governance.db`. Ontology graph storage remains separately
+configured because `AI_GOVERNANCE_ONTOLOGY_REPOSITORY=sqlite` is not implemented.
 
 ### Configuration Variables
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `KAVACH_POLICY_REPOSITORY` | `inmemory` | Policy administration backend. Options: `inmemory`, `sqlite`, `postgres`. |
-| `KAVACH_POLICY_SQLITE_PATH` | - | SQLite path for policy repository (required when `sqlite`). |
-| `KAVACH_POLICY_POSTGRES_DSN` | - | PostgreSQL DSN for policy repository (required when `postgres`). |
-| `KAVACH_EVALUATION_REPOSITORY` | `inmemory` | Evaluation result backend. Options: `inmemory`, `sqlite`, `postgres`. |
-| `KAVACH_EVALUATION_SQLITE_PATH` | - | SQLite path for evaluation repository (required when `sqlite`). |
-| `KAVACH_EVALUATION_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
-| `KAVACH_EXPERIMENT_REPOSITORY` | `inmemory` | Experiment metadata backend. Options: `inmemory`, `sqlite`, `postgres`. |
-| `KAVACH_EXPERIMENT_SQLITE_PATH` | - | SQLite path for experiment repository (required when `sqlite`). |
-| `KAVACH_EXPERIMENT_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
-| `KAVACH_EXPERIMENT_CANDIDATE_REPOSITORY` | `inmemory` | Experiment candidate backend. Options: `inmemory`, `sqlite`, `postgres`. |
-| `KAVACH_EXPERIMENT_CANDIDATE_SQLITE_PATH` | - | SQLite path (required when `sqlite`). |
-| `KAVACH_EXPERIMENT_CANDIDATE_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
-| `KAVACH_EVALUATION_RUN_REPOSITORY` | `inmemory` | Evaluation run backend. Options: `inmemory`, `sqlite`, `postgres`. |
-| `KAVACH_EVALUATION_RUN_SQLITE_PATH` | - | SQLite path (required when `sqlite`). |
-| `KAVACH_EVALUATION_RUN_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
-| `KAVACH_LEADERBOARD_REPOSITORY` | `inmemory` | Leaderboard backend. Options: `inmemory`, `sqlite`, `postgres`. |
-| `KAVACH_LEADERBOARD_SQLITE_PATH` | - | SQLite path (required when `sqlite`). |
-| `KAVACH_LEADERBOARD_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
-| `KAVACH_PROMPT_REPOSITORY` | `inmemory` | Prompt artifact backend. Options: `inmemory`, `sqlite`, `postgres`. |
-| `KAVACH_PROMPT_SQLITE_PATH` | - | SQLite path (required when `sqlite`). |
-| `KAVACH_PROMPT_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
-| `KAVACH_MODEL_REPOSITORY` | `inmemory` | Model artifact backend. Options: `inmemory`, `sqlite`, `postgres`. |
-| `KAVACH_MODEL_SQLITE_PATH` | - | SQLite path (required when `sqlite`). |
-| `KAVACH_MODEL_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
-| `KAVACH_DATASET_REPOSITORY` | `inmemory` | Dataset artifact backend. Options: `inmemory`, `sqlite`, `postgres`. |
-| `KAVACH_DATASET_SQLITE_PATH` | - | SQLite path (required when `sqlite`). |
-| `KAVACH_DATASET_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
-| `KAVACH_DATASET_OBJECT_STORE_BACKEND` | `none` | Dataset content store. Options: `none`, `s3`. The registry metadata remains in the dataset repository. |
-| `KAVACH_DATASET_S3_BUCKET` | `kavach-datasets` | Bucket for dataset content when the object-store backend is `s3`. |
-| `KAVACH_DATASET_S3_ENDPOINT_URL` | - | Optional S3-compatible endpoint. Leave unset for AWS S3; set for SeaweedFS or another compatible service. |
-| `KAVACH_DATASET_S3_REGION` | `us-east-1` | S3 region. |
-| `KAVACH_DATASET_S3_ACCESS_KEY_ID` | - | Optional static S3 access key. When unset, the standard AWS credential chain is used. |
-| `KAVACH_DATASET_S3_SECRET_ACCESS_KEY` | - | Optional static S3 secret key. |
-| `KAVACH_DATASET_S3_FORCE_PATH_STYLE` | endpoint-dependent | Use path-style S3 addressing; required by the checked-in SeaweedFS development service. |
-| `KAVACH_DATASET_MAX_UPLOAD_BYTES` | `10485760` | Maximum multipart dataset upload size (10 MiB). Uploads support UTF-8 CSV, JSONL, and NDJSON. |
-| `KAVACH_DATASET_MAX_RECORD_BYTES` | `1048576` | Maximum encoded size of one CSV row or JSONL record (1 MiB). |
-| `KAVACH_DATASET_MAX_FIELDS` | `256` | Maximum fields in one CSV row or JSONL object. |
-| `KAVACH_JOB_REPOSITORY` | `inmemory` | Job execution backend. Options: `inmemory`, `sqlite`, `postgres`. |
-| `KAVACH_JOB_SQLITE_PATH` | - | SQLite path (required when `sqlite`). |
-| `KAVACH_JOB_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
-| `KAVACH_GOVERNANCE_DECISION_REPOSITORY` | `inmemory` | Governance decision backend. Options: `inmemory`, `sqlite`, `postgres`. |
-| `KAVACH_GOVERNANCE_DECISION_SQLITE_PATH` | - | SQLite path (required when `sqlite`). |
-| `KAVACH_GOVERNANCE_DECISION_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
-| `KAVACH_ONTOLOGY_SYNC_EVENT_REPOSITORY` | `inmemory` | Ontology sync event backend. Options: `inmemory`, `sqlite`, `postgres`. |
-| `KAVACH_ONTOLOGY_SYNC_EVENT_SQLITE_PATH` | - | SQLite path (required when `sqlite`). |
-| `KAVACH_ONTOLOGY_SYNC_EVENT_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
-| `KAVACH_ONTOLOGY_REPOSITORY` | `inmemory` | Ontology graph backend. Options: `inmemory`, `neo4j`. |
-| `KAVACH_ONTOLOGY_SQLITE_PATH` | - | SQLite path (not yet implemented). |
-| `KAVACH_ONTOLOGY_POSTGRES_DSN` | - | PostgreSQL DSN (not yet implemented). |
+| `AI_GOVERNANCE_POLICY_REPOSITORY` | `inmemory` | Policy administration backend. Options: `inmemory`, `sqlite`, `postgres`. |
+| `AI_GOVERNANCE_POLICY_SQLITE_PATH` | - | SQLite path for policy repository (required when `sqlite`). |
+| `AI_GOVERNANCE_POLICY_POSTGRES_DSN` | - | PostgreSQL DSN for policy repository (required when `postgres`). |
+| `AI_GOVERNANCE_EVALUATION_REPOSITORY` | `inmemory` | Evaluation result backend. Options: `inmemory`, `sqlite`, `postgres`. |
+| `AI_GOVERNANCE_EVALUATION_SQLITE_PATH` | - | SQLite path for evaluation repository (required when `sqlite`). |
+| `AI_GOVERNANCE_EVALUATION_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
+| `AI_GOVERNANCE_EXPERIMENT_REPOSITORY` | `inmemory` | Experiment metadata backend. Options: `inmemory`, `sqlite`, `postgres`. |
+| `AI_GOVERNANCE_EXPERIMENT_SQLITE_PATH` | - | SQLite path for experiment repository (required when `sqlite`). |
+| `AI_GOVERNANCE_EXPERIMENT_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
+| `AI_GOVERNANCE_EXPERIMENT_CANDIDATE_REPOSITORY` | `inmemory` | Experiment candidate backend. Options: `inmemory`, `sqlite`, `postgres`. |
+| `AI_GOVERNANCE_EXPERIMENT_CANDIDATE_SQLITE_PATH` | - | SQLite path (required when `sqlite`). |
+| `AI_GOVERNANCE_EXPERIMENT_CANDIDATE_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
+| `AI_GOVERNANCE_EVALUATION_RUN_REPOSITORY` | `inmemory` | Evaluation run backend. Options: `inmemory`, `sqlite`, `postgres`. |
+| `AI_GOVERNANCE_EVALUATION_RUN_SQLITE_PATH` | - | SQLite path (required when `sqlite`). |
+| `AI_GOVERNANCE_EVALUATION_RUN_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
+| `AI_GOVERNANCE_LEADERBOARD_REPOSITORY` | `inmemory` | Leaderboard backend. Options: `inmemory`, `sqlite`, `postgres`. |
+| `AI_GOVERNANCE_LEADERBOARD_SQLITE_PATH` | - | SQLite path (required when `sqlite`). |
+| `AI_GOVERNANCE_LEADERBOARD_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
+| `AI_GOVERNANCE_PROMPT_REPOSITORY` | `inmemory` | Prompt artifact backend. Options: `inmemory`, `sqlite`, `postgres`. |
+| `AI_GOVERNANCE_PROMPT_SQLITE_PATH` | - | SQLite path (required when `sqlite`). |
+| `AI_GOVERNANCE_PROMPT_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
+| `AI_GOVERNANCE_MODEL_REPOSITORY` | `inmemory` | Model artifact backend. Options: `inmemory`, `sqlite`, `postgres`. |
+| `AI_GOVERNANCE_MODEL_SQLITE_PATH` | - | SQLite path (required when `sqlite`). |
+| `AI_GOVERNANCE_MODEL_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
+| `AI_GOVERNANCE_DATASET_REPOSITORY` | `inmemory` | Dataset artifact backend. Options: `inmemory`, `sqlite`, `postgres`. |
+| `AI_GOVERNANCE_DATASET_SQLITE_PATH` | - | SQLite path (required when `sqlite`). |
+| `AI_GOVERNANCE_DATASET_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
+| `AI_GOVERNANCE_DATASET_OBJECT_STORE_BACKEND` | `none` | Dataset content store. Options: `none`, `s3`. The registry metadata remains in the dataset repository. |
+| `AI_GOVERNANCE_DATASET_S3_BUCKET` | `ai-governance-datasets` | Bucket for dataset content when the object-store backend is `s3`. |
+| `AI_GOVERNANCE_DATASET_S3_ENDPOINT_URL` | - | Optional S3-compatible endpoint. Leave unset for AWS S3; set for SeaweedFS or another compatible service. |
+| `AI_GOVERNANCE_DATASET_S3_REGION` | `us-east-1` | S3 region. |
+| `AI_GOVERNANCE_DATASET_S3_ACCESS_KEY_ID` | - | Optional static S3 access key. When unset, the standard AWS credential chain is used. |
+| `AI_GOVERNANCE_DATASET_S3_SECRET_ACCESS_KEY` | - | Optional static S3 secret key. |
+| `AI_GOVERNANCE_DATASET_S3_FORCE_PATH_STYLE` | endpoint-dependent | Use path-style S3 addressing; required by the checked-in SeaweedFS development service. |
+| `AI_GOVERNANCE_DATASET_MAX_UPLOAD_BYTES` | `10485760` | Maximum multipart dataset upload size (10 MiB). Uploads support UTF-8 CSV, JSONL, and NDJSON. |
+| `AI_GOVERNANCE_DATASET_MAX_RECORD_BYTES` | `1048576` | Maximum encoded size of one CSV row or JSONL record (1 MiB). |
+| `AI_GOVERNANCE_DATASET_MAX_FIELDS` | `256` | Maximum fields in one CSV row or JSONL object. |
+| `AI_GOVERNANCE_JOB_REPOSITORY` | `inmemory` | Job execution backend. Options: `inmemory`, `sqlite`, `postgres`. |
+| `AI_GOVERNANCE_JOB_SQLITE_PATH` | - | SQLite path (required when `sqlite`). |
+| `AI_GOVERNANCE_JOB_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
+| `AI_GOVERNANCE_GOVERNANCE_DECISION_REPOSITORY` | `inmemory` | Governance decision backend. Options: `inmemory`, `sqlite`, `postgres`. |
+| `AI_GOVERNANCE_GOVERNANCE_DECISION_SQLITE_PATH` | - | SQLite path (required when `sqlite`). |
+| `AI_GOVERNANCE_GOVERNANCE_DECISION_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
+| `AI_GOVERNANCE_ONTOLOGY_SYNC_EVENT_REPOSITORY` | `inmemory` | Ontology sync event backend. Options: `inmemory`, `sqlite`, `postgres`. |
+| `AI_GOVERNANCE_ONTOLOGY_SYNC_EVENT_SQLITE_PATH` | - | SQLite path (required when `sqlite`). |
+| `AI_GOVERNANCE_ONTOLOGY_SYNC_EVENT_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
+| `AI_GOVERNANCE_ONTOLOGY_REPOSITORY` | `inmemory` | Ontology graph backend. Options: `inmemory`, `neo4j`. |
+| `AI_GOVERNANCE_ONTOLOGY_SQLITE_PATH` | - | SQLite path (not yet implemented). |
+| `AI_GOVERNANCE_ONTOLOGY_POSTGRES_DSN` | - | PostgreSQL DSN (not yet implemented). |
 
 ### Backend Support Matrix
 
@@ -471,10 +471,10 @@ configured because `KAVACH_ONTOLOGY_REPOSITORY=sqlite` is not implemented.
 
 ```bash
 # Use SQLite for evaluation and job repositories
-KAVACH_EVALUATION_REPOSITORY=sqlite
-KAVACH_EVALUATION_SQLITE_PATH=.kavach/evaluations.db
-KAVACH_JOB_REPOSITORY=sqlite
-KAVACH_JOB_SQLITE_PATH=.kavach/jobs.db
+AI_GOVERNANCE_EVALUATION_REPOSITORY=sqlite
+AI_GOVERNANCE_EVALUATION_SQLITE_PATH=.ai-governance/evaluations.db
+AI_GOVERNANCE_JOB_REPOSITORY=sqlite
+AI_GOVERNANCE_JOB_SQLITE_PATH=.ai-governance/jobs.db
 
 # Keep everything else in-memory (default)
 ```
@@ -484,7 +484,7 @@ KAVACH_JOB_SQLITE_PATH=.kavach/jobs.db
 - **No silent fallback** — unsupported or misconfigured backends raise
   ``ValueError`` with a clear message.
 - **Factory-based construction** — repository backends are selected by factory
-  classes in ``src/kavach/repositories/factories/``.
+  classes in ``src/ai_governance/repositories/factories/``.
 - **Dependency providers delegate to factories** — REST dependency functions
   call ``load_settings()`` and pass it to the appropriate factory.
 - **Runtime collaborators are explicit** — repositories like
@@ -496,8 +496,8 @@ KAVACH_JOB_SQLITE_PATH=.kavach/jobs.db
 
 1. Define the repository contract (``ABC`` or ``Protocol``).
 2. Implement one or more concrete repositories.
-3. Create a factory class in ``src/kavach/repositories/factories/``.
-4. Add configuration fields to ``Settings`` in ``src/kavach/settings.py``.
+3. Create a factory class in ``src/ai_governance/repositories/factories/``.
+4. Add configuration fields to ``Settings`` in ``src/ai_governance/settings.py``.
 5. Update the REST dependency provider to use the factory.
 6. Add unit tests for the factory.
 7. Update this configuration reference. |

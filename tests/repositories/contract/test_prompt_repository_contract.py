@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
 
-from kavach.domain.prompts import (
+from ai_governance.domain.prompts import (
     Prompt,
     PromptStatus,
 )
-from kavach.repositories.prompt_repository import PromptRepository
+from ai_governance.repositories.prompt_repository import PromptRepository
 
 
 class PromptRepositoryContract(ABC):

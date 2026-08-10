@@ -1,10 +1,10 @@
-from kavach.api.routers.tenancy import actor_permissions, current_context
-from kavach.tenancy import permissions
-from kavach.tenancy.authorization import AuthorizationService
-from kavach.tenancy.domain import TenantContext
-from kavach.tenancy.permissions import Permission
-from kavach.tenancy.repository import InMemoryControlPlaneRepository
-from kavach.tenancy.services import ControlPlaneService, bootstrap_control_plane
+from ai_governance.api.routers.tenancy import actor_permissions, current_context
+from ai_governance.tenancy import permissions
+from ai_governance.tenancy.authorization import AuthorizationService
+from ai_governance.tenancy.domain import TenantContext
+from ai_governance.tenancy.permissions import Permission
+from ai_governance.tenancy.repository import InMemoryControlPlaneRepository
+from ai_governance.tenancy.services import ControlPlaneService, bootstrap_control_plane
 
 
 def test_context_and_actor_permissions_serialize_extension_permissions(monkeypatch) -> None:

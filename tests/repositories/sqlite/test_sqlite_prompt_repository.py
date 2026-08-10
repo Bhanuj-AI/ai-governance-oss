@@ -3,11 +3,11 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.domain.assets import AssetProvenance
-from kavach.domain.prompts import Prompt, PromptStatus
-from kavach.repositories.prompt_repository import PromptRepository
-from kavach.repositories.sqlite.sqlite_prompt_repository import (
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.domain.assets import AssetProvenance
+from ai_governance.domain.prompts import Prompt, PromptStatus
+from ai_governance.repositories.prompt_repository import PromptRepository
+from ai_governance.repositories.sqlite.sqlite_prompt_repository import (
     SQLitePromptRepository,
 )
 from tests.repositories.contract.test_prompt_repository_contract import (
@@ -21,7 +21,7 @@ class TestSQLitePromptRepository(PromptRepositoryContract):
         self,
         tmp_path: Path,
     ) -> None:
-        database = SQLiteDatabase(tmp_path / "kavach.db")
+        database = SQLiteDatabase(tmp_path / "ai_governance.db")
         database.initialize()
 
         self._repository = SQLitePromptRepository(database)

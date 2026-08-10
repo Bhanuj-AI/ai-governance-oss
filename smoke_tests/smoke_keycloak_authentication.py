@@ -14,14 +14,14 @@ Usage
     python smoke_tests/smoke_keycloak_authentication.py
 
     # Keycloak mode against a running Keycloak instance
-    KAVACH_AUTH_MODE=keycloak \\
-    KAVACH_OIDC_ISSUER=http://localhost:8080/realms/kavach \\
+    AI_GOVERNANCE_AUTH_MODE=keycloak \\
+    AI_GOVERNANCE_OIDC_ISSUER=http://localhost:8080/realms/ai-governance \\
     python smoke_tests/smoke_keycloak_authentication.py
 
 Requirements
 ------------
-- Keycloak running at http://localhost:8080 with realm "kavach"
-- Client "kavach-service" configured with client_credentials grant
+- Keycloak running at http://localhost:8080 with realm "ai-governance"
+- Client "ai-governance-service" configured with client_credentials grant
 """
 
 from __future__ import annotations
@@ -33,12 +33,12 @@ import sys
 import time
 import urllib.request
 
-from kavach.tenancy.authentication import (
+from ai_governance.tenancy.authentication import (
     AuthenticationError,
     AuthenticationService,
 )
-from kavach.tenancy.context_factory import TenantContextFactory
-from kavach.tenancy.domain import AuthenticatedPrincipal
+from ai_governance.tenancy.context_factory import TenantContextFactory
+from ai_governance.tenancy.domain import AuthenticatedPrincipal
 
 
 # ---------------------------------------------------------------------------
@@ -50,11 +50,11 @@ def _b64url_encode(data: bytes) -> str:
 
 
 def _get_keycloak_token(
-    client_id: str = "kavach-service",
+    client_id: str = "ai-governance-service",
     client_secret: str = "secret",
 ) -> dict:
     """Fetch an access token from Keycloak."""
-    issuer = os.getenv("KAVACH_OIDC_ISSUER")
+    issuer = os.getenv("AI_GOVERNANCE_OIDC_ISSUER")
     token_url = f"{issuer}/protocol/openid-connect/token"
 
     req = urllib.request.Request(
@@ -69,9 +69,9 @@ def _get_keycloak_token(
 
 def _make_fake_jwt(
     sub: str = "user-1",
-    iss: str = "http://localhost:8080/realms/kavach",
+    iss: str = "http://localhost:8080/realms/ai-governance",
     exp: int | None = None,
-    azp: str = "kavach-service",
+    azp: str = "ai-governance-service",
     principal_type: str = "USER",
     organization_id: str | None = None,
     kid: str = "test-key",
@@ -107,17 +107,17 @@ def test_development_mode() -> None:
     """Development mode should work without JWT — actor from env."""
     print("[test_development_mode]")
 
-    _orig_auth_mode = os.environ.get("KAVACH_AUTH_MODE")
-    _orig_oidc_issuer = os.environ.get("KAVACH_OIDC_ISSUER")
+    _orig_auth_mode = os.environ.get("AI_GOVERNANCE_AUTH_MODE")
+    _orig_oidc_issuer = os.environ.get("AI_GOVERNANCE_OIDC_ISSUER")
     try:
-        os.environ["KAVACH_AUTH_MODE"] = "development"
-        os.environ.pop("KAVACH_OIDC_ISSUER", None)
+        os.environ["AI_GOVERNANCE_AUTH_MODE"] = "development"
+        os.environ.pop("AI_GOVERNANCE_OIDC_ISSUER", None)
 
         # Clear cached dependencies
-        import kavach.api.dependencies.authentication as auth_mod
+        import ai_governance.api.dependencies.authentication as auth_mod
         auth_mod.get_authentication_service.cache_clear()
 
-        from kavach.api.dependencies.authentication import get_authenticated_principal
+        from ai_governance.api.dependencies.authentication import get_authenticated_principal
 
         class FakeRequest:
             pass
@@ -125,35 +125,35 @@ def test_development_mode() -> None:
         principal = get_authenticated_principal(authorization=None, request=FakeRequest())
 
         assert isinstance(principal, AuthenticatedPrincipal)
-        assert principal.subject == os.getenv("KAVACH_DEVELOPMENT_ACTOR_ID")
+        assert principal.subject == os.getenv("AI_GOVERNANCE_DEVELOPMENT_ACTOR_ID")
         assert principal.principal_type.value == "SYSTEM"
         print(f"  subject={principal.subject}")
         print(f"  principal_type={principal.principal_type.value}")
         print("  PASSED")
     finally:
         if _orig_auth_mode is not None:
-            os.environ["KAVACH_AUTH_MODE"] = _orig_auth_mode
-        elif "KAVACH_AUTH_MODE" in os.environ:
-            del os.environ["KAVACH_AUTH_MODE"]
+            os.environ["AI_GOVERNANCE_AUTH_MODE"] = _orig_auth_mode
+        elif "AI_GOVERNANCE_AUTH_MODE" in os.environ:
+            del os.environ["AI_GOVERNANCE_AUTH_MODE"]
         if _orig_oidc_issuer is not None:
-            os.environ["KAVACH_OIDC_ISSUER"] = _orig_oidc_issuer
-        elif "KAVACH_OIDC_ISSUER" in os.environ:
-            del os.environ["KAVACH_OIDC_ISSUER"]
+            os.environ["AI_GOVERNANCE_OIDC_ISSUER"] = _orig_oidc_issuer
+        elif "AI_GOVERNANCE_OIDC_ISSUER" in os.environ:
+            del os.environ["AI_GOVERNANCE_OIDC_ISSUER"]
 
 
 def test_keycloak_service_token() -> None:
     """Keycloak mode should validate a real service account token."""
     print("[test_keycloak_service_token]")
 
-    auth_mode = os.getenv("KAVACH_AUTH_MODE")
+    auth_mode = os.getenv("AI_GOVERNANCE_AUTH_MODE")
     if auth_mode != "keycloak":
-        print("  SKIPPED (KAVACH_AUTH_MODE != keycloak)")
+        print("  SKIPPED (AI_GOVERNANCE_AUTH_MODE != keycloak)")
         return
 
-    issuer = os.getenv("KAVACH_OIDC_ISSUER")
+    issuer = os.getenv("AI_GOVERNANCE_OIDC_ISSUER")
 
     # Clear cached dependencies
-    import kavach.api.dependencies.authentication as auth_mod
+    import ai_governance.api.dependencies.authentication as auth_mod
     auth_mod.get_authentication_service.cache_clear()
 
     # Fetch a real token from Keycloak
@@ -165,7 +165,7 @@ def test_keycloak_service_token() -> None:
 
     assert isinstance(principal, AuthenticatedPrincipal)
     assert principal.principal_type.value == "SERVICE"
-    assert principal.client_id == "kavach-service"
+    assert principal.client_id == "ai-governance-service"
     assert principal.issuer == issuer
     print(f"  subject={principal.subject}")
     print(f"  principal_type={principal.principal_type.value}")
@@ -178,14 +178,14 @@ def test_keycloak_full_pipeline() -> None:
     """Full pipeline: JWT → AuthenticatedPrincipal → TenantContext."""
     print("[test_keycloak_full_pipeline]")
 
-    auth_mode = os.getenv("KAVACH_AUTH_MODE")
+    auth_mode = os.getenv("AI_GOVERNANCE_AUTH_MODE")
     if auth_mode != "keycloak":
-        print("  SKIPPED (KAVACH_AUTH_MODE != keycloak)")
+        print("  SKIPPED (AI_GOVERNANCE_AUTH_MODE != keycloak)")
         return
 
-    issuer = os.getenv("KAVACH_OIDC_ISSUER")
+    issuer = os.getenv("AI_GOVERNANCE_OIDC_ISSUER")
 
-    import kavach.api.dependencies.authentication as auth_mod
+    import ai_governance.api.dependencies.authentication as auth_mod
     auth_mod.get_authentication_service.cache_clear()
 
     token_data = _get_keycloak_token()
@@ -210,15 +210,15 @@ def test_keycloak_fastapi_dependency() -> None:
     """FastAPI dependency should return principal from Bearer token."""
     print("[test_keycloak_fastapi_dependency]")
 
-    auth_mode = os.getenv("KAVACH_AUTH_MODE")
+    auth_mode = os.getenv("AI_GOVERNANCE_AUTH_MODE")
     if auth_mode != "keycloak":
-        print("  SKIPPED (KAVACH_AUTH_MODE != keycloak)")
+        print("  SKIPPED (AI_GOVERNANCE_AUTH_MODE != keycloak)")
         return
 
-    import kavach.api.dependencies.authentication as auth_mod
+    import ai_governance.api.dependencies.authentication as auth_mod
     auth_mod.get_authentication_service.cache_clear()
 
-    from kavach.api.dependencies.authentication import get_authenticated_principal
+    from ai_governance.api.dependencies.authentication import get_authenticated_principal
 
     token_data = _get_keycloak_token()
     access_token = token_data["access_token"]
@@ -240,16 +240,16 @@ def test_missing_authorization_header() -> None:
     """Missing Authorization header should return 401."""
     print("[test_missing_authorization_header]")
 
-    auth_mode = os.getenv("KAVACH_AUTH_MODE")
+    auth_mode = os.getenv("AI_GOVERNANCE_AUTH_MODE")
     if auth_mode != "keycloak":
-        print("  SKIPPED (KAVACH_AUTH_MODE != keycloak)")
+        print("  SKIPPED (AI_GOVERNANCE_AUTH_MODE != keycloak)")
         return
 
-    import kavach.api.dependencies.authentication as auth_mod
+    import ai_governance.api.dependencies.authentication as auth_mod
     auth_mod.get_authentication_service.cache_clear()
 
     from fastapi import HTTPException
-    from kavach.api.dependencies.authentication import get_authenticated_principal
+    from ai_governance.api.dependencies.authentication import get_authenticated_principal
 
     class FakeRequest:
         pass
@@ -269,16 +269,16 @@ def test_invalid_bearer_scheme() -> None:
     """Non-Bearer Authorization scheme should return 401."""
     print("[test_invalid_bearer_scheme]")
 
-    auth_mode = os.getenv("KAVACH_AUTH_MODE")
+    auth_mode = os.getenv("AI_GOVERNANCE_AUTH_MODE")
     if auth_mode != "keycloak":
-        print("  SKIPPED (KAVACH_AUTH_MODE != keycloak)")
+        print("  SKIPPED (AI_GOVERNANCE_AUTH_MODE != keycloak)")
         return
 
-    import kavach.api.dependencies.authentication as auth_mod
+    import ai_governance.api.dependencies.authentication as auth_mod
     auth_mod.get_authentication_service.cache_clear()
 
     from fastapi import HTTPException
-    from kavach.api.dependencies.authentication import get_authenticated_principal
+    from ai_governance.api.dependencies.authentication import get_authenticated_principal
 
     class FakeRequest:
         pass
@@ -300,16 +300,16 @@ def test_expired_token() -> None:
     """Expired JWT should return 401 with token_expired code."""
     print("[test_expired_token]")
 
-    auth_mode = os.getenv("KAVACH_AUTH_MODE")
+    auth_mode = os.getenv("AI_GOVERNANCE_AUTH_MODE")
     if auth_mode != "keycloak":
-        print("  SKIPPED (KAVACH_AUTH_MODE != keycloak)")
+        print("  SKIPPED (AI_GOVERNANCE_AUTH_MODE != keycloak)")
         return
 
-    import kavach.api.dependencies.authentication as auth_mod
+    import ai_governance.api.dependencies.authentication as auth_mod
     auth_mod.get_authentication_service.cache_clear()
 
     from fastapi import HTTPException
-    from kavach.api.dependencies.authentication import get_authenticated_principal
+    from ai_governance.api.dependencies.authentication import get_authenticated_principal
 
     class FakeRequest:
         pass
@@ -333,21 +333,21 @@ def test_invalid_issuer() -> None:
     """JWT with wrong issuer should return 401 with invalid_issuer code."""
     print("[test_invalid_issuer]")
 
-    auth_mode = os.getenv("KAVACH_AUTH_MODE")
+    auth_mode = os.getenv("AI_GOVERNANCE_AUTH_MODE")
     if auth_mode != "keycloak":
-        print("  SKIPPED (KAVACH_AUTH_MODE != keycloak)")
+        print("  SKIPPED (AI_GOVERNANCE_AUTH_MODE != keycloak)")
         return
 
-    import kavach.api.dependencies.authentication as auth_mod
+    import ai_governance.api.dependencies.authentication as auth_mod
     auth_mod.get_authentication_service.cache_clear()
 
     from fastapi import HTTPException
-    from kavach.api.dependencies.authentication import get_authenticated_principal
+    from ai_governance.api.dependencies.authentication import get_authenticated_principal
 
     class FakeRequest:
         pass
 
-    wrong_issuer_token = _make_fake_jwt(iss="http://evil.com/realms/kavach")
+    wrong_issuer_token = _make_fake_jwt(iss="http://evil.com/realms/ai-governance")
 
     try:
         get_authenticated_principal(
@@ -366,16 +366,16 @@ def test_malformed_token() -> None:
     """Malformed JWT should return 401 with malformed_token code."""
     print("[test_malformed_token]")
 
-    auth_mode = os.getenv("KAVACH_AUTH_MODE")
+    auth_mode = os.getenv("AI_GOVERNANCE_AUTH_MODE")
     if auth_mode != "keycloak":
-        print("  SKIPPED (KAVACH_AUTH_MODE != keycloak)")
+        print("  SKIPPED (AI_GOVERNANCE_AUTH_MODE != keycloak)")
         return
 
-    import kavach.api.dependencies.authentication as auth_mod
+    import ai_governance.api.dependencies.authentication as auth_mod
     auth_mod.get_authentication_service.cache_clear()
 
     from fastapi import HTTPException
-    from kavach.api.dependencies.authentication import get_authenticated_principal
+    from ai_governance.api.dependencies.authentication import get_authenticated_principal
 
     class FakeRequest:
         pass
@@ -397,16 +397,16 @@ def test_unsupported_algorithm() -> None:
     """JWT with unsupported algorithm should return 401."""
     print("[test_unsupported_algorithm]")
 
-    auth_mode = os.getenv("KAVACH_AUTH_MODE")
+    auth_mode = os.getenv("AI_GOVERNANCE_AUTH_MODE")
     if auth_mode != "keycloak":
-        print("  SKIPPED (KAVACH_AUTH_MODE != keycloak)")
+        print("  SKIPPED (AI_GOVERNANCE_AUTH_MODE != keycloak)")
         return
 
-    import kavach.api.dependencies.authentication as auth_mod
+    import ai_governance.api.dependencies.authentication as auth_mod
     auth_mod.get_authentication_service.cache_clear()
 
     from fastapi import HTTPException
-    from kavach.api.dependencies.authentication import get_authenticated_principal
+    from ai_governance.api.dependencies.authentication import get_authenticated_principal
 
     class FakeRequest:
         pass
@@ -431,10 +431,10 @@ def test_unsupported_algorithm() -> None:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    auth_mode = os.getenv("KAVACH_AUTH_MODE")
+    auth_mode = os.getenv("AI_GOVERNANCE_AUTH_MODE")
     print(f"Auth mode: {auth_mode}")
     if auth_mode == "keycloak":
-        print(f"OIDC issuer: {os.getenv('KAVACH_OIDC_ISSUER')}")
+        print(f"OIDC issuer: {os.getenv('AI_GOVERNANCE_OIDC_ISSUER')}")
     print()
 
     passed = 0

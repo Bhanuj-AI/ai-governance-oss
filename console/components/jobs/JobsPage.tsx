@@ -20,6 +20,7 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CopyButton } from "@/components/ui/copy-button";
 import { Input } from "@/components/ui/input";
 import {
   cancelJob,
@@ -29,7 +30,7 @@ import {
   retryJob,
   submitJob,
 } from "@/lib/api/jobs";
-import { KavachApiError } from "@/lib/api/client";
+import { AIGovernanceApiError } from "@/lib/api/client";
 import { cn } from "@/lib/utils/cn";
 import type { Job, JobStatus, JobType, JsonObject } from "@/types/job";
 
@@ -37,8 +38,18 @@ const JOB_TYPES: JobType[] = [
   "EVALUATION",
   "EXPERIMENT",
   "REPLAY",
+  "REPLAY_EXECUTION",
+  "REPLAY_EVALUATION",
   "DRIFT_ANALYSIS",
 ];
+const JOB_TYPE_LABELS: Record<JobType, string> = {
+  EVALUATION: "Evaluation",
+  EXPERIMENT: "Experiment",
+  REPLAY: "Replay",
+  REPLAY_EXECUTION: "Replay execution",
+  REPLAY_EVALUATION: "Replay evaluation",
+  DRIFT_ANALYSIS: "Drift analysis",
+};
 const JOB_STATUSES: JobStatus[] = [
   "QUEUED",
   "RUNNING",
@@ -357,7 +368,7 @@ export function JobsPage() {
                   <>
                     <div className="divide-y rounded-md border">
                       <div className="hidden gap-3 bg-muted/30 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid lg:grid-cols-[1.1fr_130px_110px_110px_150px_36px]">
-                        <span>Run</span>
+                        <span>Run ID</span>
                         <span>Type</span>
                         <span>Attempts</span>
                         <span>Submitter</span>
@@ -550,16 +561,25 @@ function JobRow({
     >
       <div className="min-w-0">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <span className="truncate font-mono text-sm font-semibold">
-            {job.jobId}
+          <span
+            className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs font-semibold tracking-tight"
+            title={job.jobId}
+          >
+            {shortIdentifier(job.jobId)}
           </span>
           <StatusBadge status={job.status} />
         </div>
-        <div className="mt-1 truncate text-sm text-muted-foreground">
-          {job.idempotencyKey}
+        <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="shrink-0 font-medium uppercase tracking-wide">Key</span>
+          <span className="truncate" title={job.idempotencyKey}>{job.idempotencyKey}</span>
         </div>
       </div>
-      <FieldBlock compact label="Type" value={job.jobType} />
+      <div className="min-w-0">
+        <div className="text-xs font-semibold uppercase text-muted-foreground lg:hidden">
+          Type
+        </div>
+        <JobTypeBadge type={job.jobType} />
+      </div>
       <FieldBlock compact label="Attempts" value={`${job.attemptCount}/${job.maxAttempts}`} />
       <FieldBlock compact label="Submitter" value={job.submittedBy} />
       <FieldBlock compact label="Updated" value={formatDate(job.updatedAt)} />
@@ -608,11 +628,24 @@ function JobDetailPanel({
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
-                <div className="truncate font-mono text-sm font-semibold">
-                  {job.jobId}
+                <div>
+                  <LabelText>Run ID</LabelText>
+                  <div className="mt-1 flex min-w-0 items-start gap-1.5">
+                    <code className="min-w-0 break-all rounded bg-muted px-1.5 py-0.5 font-mono text-xs font-semibold text-foreground">
+                      {job.jobId}
+                    </code>
+                    <CopyButton
+                      value={job.jobId}
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 shrink-0 px-1.5 text-muted-foreground hover:text-foreground"
+                      copyTitle="Copy run ID"
+                      iconClassName="h-3.5 w-3.5"
+                    />
+                  </div>
                 </div>
-                <div className="mt-1 text-sm text-muted-foreground">
-                  {job.jobType}
+                <div className="mt-2">
+                  <JobTypeBadge type={job.jobType} />
                 </div>
               </div>
               <StatusBadge status={job.status} />
@@ -623,7 +656,7 @@ function JobDetailPanel({
               <FieldBlock label="Started" value={job.startedAt ? formatDate(job.startedAt) : "None"} />
               <FieldBlock label="Completed" value={job.completedAt ? formatDate(job.completedAt) : "None"} />
               <FieldBlock label="Attempts" value={`${job.attemptCount}/${job.maxAttempts}`} />
-              <FieldBlock label="Submitted by" value={job.submittedBy} />
+              <FieldBlock label="Submitted by" value={job.submittedBy} mono />
             </div>
             <FieldBlock label="Input Hash" value={job.inputHash} mono />
             <FieldBlock
@@ -712,7 +745,7 @@ function SelectBox({
         {includeAny ? <option value="">Any</option> : null}
         {options.map((option) => (
           <option key={option} value={option}>
-            {option}
+            {formatJobType(option as JobType)}
           </option>
         ))}
       </select>
@@ -741,7 +774,7 @@ function CompactSelect({
       className="h-9 min-w-0 rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <option value="">{placeholder}</option>
-      {options.map((option) => <option key={option} value={option}>{option}</option>)}
+      {options.map((option) => <option key={option} value={option}>{formatJobType(option as JobType)}</option>)}
     </select>
   );
 }
@@ -785,8 +818,8 @@ function FieldBlock({
       </div>
       <div
         className={cn(
-          "mt-1 truncate text-sm font-medium",
-          mono && "font-mono text-xs",
+          "mt-1 text-sm font-medium",
+          mono ? "break-all font-mono text-xs" : "truncate",
         )}
         title={value}
       >
@@ -803,6 +836,18 @@ function StatusBadge({ status }: { status: JobStatus }) {
       className={cn("border-transparent font-semibold", statusBadgeClassName(status))}
     >
       {status}
+    </Badge>
+  );
+}
+
+function JobTypeBadge({ type }: { type: JobType }) {
+  return (
+    <Badge
+      variant="outline"
+      className="mt-1 w-fit border-primary/20 bg-primary/5 px-2 py-0.5 text-xs font-semibold normal-case text-foreground"
+      title={type}
+    >
+      {formatJobType(type)}
     </Badge>
   );
 }
@@ -915,8 +960,16 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+function formatJobType(value: JobType) {
+  return JOB_TYPE_LABELS[value] ?? value.replaceAll("_", " ").toLowerCase();
+}
+
+function shortIdentifier(value: string) {
+  return value.length > 16 ? `${value.slice(0, 8)}…${value.slice(-4)}` : value;
+}
+
 function formatError(error: unknown) {
-  if (error instanceof KavachApiError) {
+  if (error instanceof AIGovernanceApiError) {
     return `${error.code}: ${error.message}`;
   }
   if (error instanceof Error) {

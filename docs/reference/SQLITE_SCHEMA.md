@@ -2,7 +2,7 @@
 
 ## Overview
 
-SQLite is the local and lightweight reference persistence backend for Kavach.
+SQLite is the local and lightweight reference persistence backend for AI Governance Control Plane.
 It is used for local development, tests, and as a concrete implementation of
 the repository contracts. It is not the platform boundary.
 
@@ -11,7 +11,7 @@ such as Snowflake may be added through the same repository contracts.
 
 ## Control-plane tenancy and RBAC
 
-The following tables persist Kavach's tenant membership and authorization
+The following tables persist AI Governance Control Plane's tenant membership and authorization
 model. Identity-provider tokens authenticate the caller, but they do not
 replace these records: the `actor_id` stored here is the verified JWT `sub`.
 
@@ -47,7 +47,7 @@ within that organization.
 
 Responsibility:
 Persist which authenticated actors belong to each organization. This is the
-authoritative Kavach membership record used by authorization; it is not derived
+authoritative AI Governance Control Plane membership record used by authorization; it is not derived
 automatically from Keycloak roles or tenant claims.
 
 Current schema summary:

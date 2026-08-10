@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from kavach.mcp.invocation_audit import MCPInvocationAuditLog
+from ai_governance.mcp.invocation_audit import MCPInvocationAuditLog
 
 
 def test_sqlite_invocation_audit_records_redacted_terminal_evidence(tmp_path) -> None:

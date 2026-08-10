@@ -1,6 +1,6 @@
 ---
 name: tenant-isolation
-description: Implement, review, or test Kavach authentication, authorization, tenant context propagation, and tenant data isolation. Use for protected reads or writes, repositories, workers, audit records, cache and ontology access, external-provider calls, and any change that could expose one tenant's data to another.
+description: Implement, review, or test AI Governance Control Plane authentication, authorization, tenant context propagation, and tenant data isolation. Use for protected reads or writes, repositories, workers, audit records, cache and ontology access, external-provider calls, and any change that could expose one tenant's data to another.
 ---
 
 # Tenant Isolation
@@ -10,7 +10,7 @@ operation.
 
 ## Workflow
 
-1. Read root `AGENTS.md` and `src/kavach/tenancy/AGENTS.md`, then read the scoped
+1. Read root `AGENTS.md` and `src/ai_governance/tenancy/AGENTS.md`, then read the scoped
    instructions for each changed transport, service, repository, worker, or
    provider layer.
 2. Trace the context from authenticated principal through the approved context
@@ -65,7 +65,7 @@ Run the integration test first, followed by the closest protected API, service,
 or worker test:
 
 ```bash
-uv run ruff check src/kavach/tenancy
+uv run ruff check src/ai_governance/tenancy
 uv run pytest tests/integration/test_tenant_isolation.py
 ```
 

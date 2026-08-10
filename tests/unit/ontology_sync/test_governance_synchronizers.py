@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from kavach.decisions import (
+from ai_governance.decisions import (
     DecisionEvidenceReference,
     DecisionPolicyReference,
     DecisionProducerType,
@@ -10,18 +10,18 @@ from kavach.decisions import (
     DecisionTargetType,
     GovernanceDecision,
 )
-from kavach.ontology import (
+from ai_governance.ontology import (
     EntityType,
     InMemoryOntologyGraphRepository,
     OntologyService,
     RelationshipType,
 )
-from kavach.ontology.synchronization import (
+from ai_governance.ontology.synchronization import (
     GovernanceDecisionOntologySynchronizer,
     GovernanceDecisionProjection,
     GovernanceInsightOntologySynchronizer,
 )
-from kavach.services.governance_insights import GovernanceInsight
+from ai_governance.services.governance_insights import GovernanceInsight
 
 
 def test_governance_decision_synchronization_links_target_and_approval() -> None:

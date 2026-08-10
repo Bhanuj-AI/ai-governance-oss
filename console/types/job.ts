@@ -9,6 +9,8 @@ export type JobType =
   | "EVALUATION"
   | "EXPERIMENT"
   | "REPLAY"
+  | "REPLAY_EXECUTION"
+  | "REPLAY_EVALUATION"
   | "DRIFT_ANALYSIS";
 
 export type JsonValue =

@@ -1,10 +1,10 @@
 from datetime import UTC, datetime
 
-from kavach.domain.datasets import (
+from ai_governance.domain.datasets import (
     Dataset,
     DatasetStatus,
 )
-from kavach.repositories.mappers.dataset_persistence_mapper import (
+from ai_governance.repositories.mappers.dataset_persistence_mapper import (
     DatasetPersistenceMapper,
 )
 

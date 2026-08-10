@@ -2,11 +2,11 @@ from pathlib import Path
 
 import pytest
 
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.repositories.experiment_candidate_repository import (
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.repositories.experiment_candidate_repository import (
     ExperimentCandidateRepository,
 )
-from kavach.repositories.sqlite.sqlite_experiment_candidate_repository import (
+from ai_governance.repositories.sqlite.sqlite_experiment_candidate_repository import (
     SQLiteExperimentCandidateRepository,
 )
 from tests.repositories.contract.test_experiment_candidate_repository_contract import (
@@ -22,7 +22,7 @@ class TestSQLiteExperimentCandidateRepository(
         self,
         tmp_path: Path,
     ) -> None:
-        database = SQLiteDatabase(tmp_path / "kavach.db")
+        database = SQLiteDatabase(tmp_path / "ai_governance.db")
         database.initialize()
 
         self._repository = SQLiteExperimentCandidateRepository(database)

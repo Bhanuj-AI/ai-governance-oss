@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 def test_provider_sdk_imports_are_isolated_to_trulens_adapter_folder() -> None:
-    src_root = Path(__file__).parents[2] / "src" / "kavach"
+    src_root = Path(__file__).parents[2] / "src" / "ai-governance"
     violations: list[str] = []
 
     for path in src_root.rglob("*.py"):

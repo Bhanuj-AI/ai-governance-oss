@@ -6,7 +6,7 @@ from dataclasses import replace
 
 import pytest
 
-from kavach.settings import Settings
+from ai_governance.settings import Settings
 
 
 def _minimal_settings(
@@ -111,10 +111,10 @@ def _minimal_settings(
 
 class TestPolicyRepositoryFactory:
     def test_sqlite_is_initialized_and_writable(self, tmp_path):
-        from kavach.ontology.demo_seed import seed_demo_policy_administration
-        from kavach.repositories.factories import PolicyRepositoryFactory
+        from ai_governance.ontology.demo_seed import seed_demo_policy_administration
+        from ai_governance.repositories.factories import PolicyRepositoryFactory
 
-        path = str(tmp_path / "kavach.db")
+        path = str(tmp_path / "ai_governance.db")
         repository = PolicyRepositoryFactory(
             _minimal_settings(
                 policy_repository="sqlite",
@@ -129,8 +129,8 @@ class TestPolicyRepositoryFactory:
 
 class TestEvaluationRepositoryFactory:
     def test_inmemory(self):
-        from kavach.repositories.factories import EvaluationRepositoryFactory
-        from kavach.repositories.in_memory_evaluation_repository import (
+        from ai_governance.repositories.factories import EvaluationRepositoryFactory
+        from ai_governance.repositories.in_memory_evaluation_repository import (
             InMemoryEvaluationRepository,
         )
 
@@ -138,8 +138,8 @@ class TestEvaluationRepositoryFactory:
         assert isinstance(repo, InMemoryEvaluationRepository)
 
     def test_sqlite(self, tmp_path):
-        from kavach.repositories.factories import EvaluationRepositoryFactory
-        from kavach.repositories.sqlite.sqlite_evaluation_repository import SQLiteEvaluationRepository
+        from ai_governance.repositories.factories import EvaluationRepositoryFactory
+        from ai_governance.repositories.sqlite.sqlite_evaluation_repository import SQLiteEvaluationRepository
 
         path = str(tmp_path / "eval.db")
         repo = EvaluationRepositoryFactory(
@@ -148,25 +148,25 @@ class TestEvaluationRepositoryFactory:
         assert isinstance(repo, SQLiteEvaluationRepository)
 
     def test_sqlite_missing_path_raises(self):
-        from kavach.repositories.factories import EvaluationRepositoryFactory
+        from ai_governance.repositories.factories import EvaluationRepositoryFactory
 
-        with pytest.raises(ValueError, match="KAVACH_EVALUATION_SQLITE_PATH"):
+        with pytest.raises(ValueError, match="AI_GOVERNANCE_EVALUATION_SQLITE_PATH"):
             EvaluationRepositoryFactory(
                 _minimal_settings(evaluation_repository="sqlite")
             ).create()
 
     def test_postgres_requires_dsn(self):
-        from kavach.repositories.factories import EvaluationRepositoryFactory
+        from ai_governance.repositories.factories import EvaluationRepositoryFactory
 
         with pytest.raises(
-            ValueError, match="KAVACH_EVALUATION_POSTGRES_DSN"
+            ValueError, match="AI_GOVERNANCE_EVALUATION_POSTGRES_DSN"
         ):
             EvaluationRepositoryFactory(
                 _minimal_settings(evaluation_repository="postgres")
             ).create()
 
     def test_invalid_backend_raises(self):
-        from kavach.repositories.factories import EvaluationRepositoryFactory
+        from ai_governance.repositories.factories import EvaluationRepositoryFactory
 
         with pytest.raises(ValueError, match="Unsupported evaluation repository backend"):
             EvaluationRepositoryFactory(
@@ -176,8 +176,8 @@ class TestEvaluationRepositoryFactory:
 
 class TestExperimentRepositoryFactory:
     def test_inmemory(self):
-        from kavach.repositories.factories import ExperimentRepositoryFactory
-        from kavach.repositories.in_memory_experiment_repository import (
+        from ai_governance.repositories.factories import ExperimentRepositoryFactory
+        from ai_governance.repositories.in_memory_experiment_repository import (
             InMemoryExperimentRepository,
         )
 
@@ -185,8 +185,8 @@ class TestExperimentRepositoryFactory:
         assert isinstance(repo, InMemoryExperimentRepository)
 
     def test_sqlite(self, tmp_path):
-        from kavach.repositories.factories import ExperimentRepositoryFactory
-        from kavach.repositories.sqlite.sqlite_experiment_repository import SQLiteExperimentRepository
+        from ai_governance.repositories.factories import ExperimentRepositoryFactory
+        from ai_governance.repositories.sqlite.sqlite_experiment_repository import SQLiteExperimentRepository
 
         path = str(tmp_path / "exp.db")
         repo = ExperimentRepositoryFactory(
@@ -197,15 +197,15 @@ class TestExperimentRepositoryFactory:
 
 class TestJobRepositoryFactory:
     def test_inmemory(self):
-        from kavach.repositories.factories import JobRepositoryFactory
-        from kavach.repositories import InMemoryJobRepository
+        from ai_governance.repositories.factories import JobRepositoryFactory
+        from ai_governance.repositories import InMemoryJobRepository
 
         repo = JobRepositoryFactory(_minimal_settings()).create()
         assert isinstance(repo, InMemoryJobRepository)
 
     def test_sqlite(self, tmp_path):
-        from kavach.repositories.factories import JobRepositoryFactory
-        from kavach.repositories.sqlite.sqlite_job_repository import SQLiteJobRepository
+        from ai_governance.repositories.factories import JobRepositoryFactory
+        from ai_governance.repositories.sqlite.sqlite_job_repository import SQLiteJobRepository
 
         path = str(tmp_path / "jobs.db")
         repo = JobRepositoryFactory(
@@ -214,15 +214,15 @@ class TestJobRepositoryFactory:
         assert isinstance(repo, SQLiteJobRepository)
 
     def test_postgres(self, monkeypatch):
-        from kavach.databases.postgres.database import PostgresDatabase
-        from kavach.repositories.factories import JobRepositoryFactory
-        from kavach.repositories.postgres import PostgresJobRepository
+        from ai_governance.databases.postgres.database import PostgresDatabase
+        from ai_governance.repositories.factories import JobRepositoryFactory
+        from ai_governance.repositories.postgres import PostgresJobRepository
 
         monkeypatch.setattr(PostgresDatabase, "initialize", lambda _database: None)
         repo = JobRepositoryFactory(
             _minimal_settings(
                 job_repository="postgres",
-                postgres_dsn="postgresql://user:pass@db.example/kavach",
+                postgres_dsn="postgresql://user:pass@db.example/ai-governance",
             )
         ).create()
 
@@ -231,16 +231,16 @@ class TestJobRepositoryFactory:
 
 class TestReplayExecutionStoreFactory:
     def test_inmemory(self):
-        from kavach.repositories.factories import ReplayExecutionStoreFactory
-        from kavach.services.replay_execution_discovery import InMemoryReplaySourceResolver
+        from ai_governance.repositories.factories import ReplayExecutionStoreFactory
+        from ai_governance.services.replay_execution_discovery import InMemoryReplaySourceResolver
 
         store = ReplayExecutionStoreFactory(_minimal_settings()).create()
 
         assert isinstance(store, InMemoryReplaySourceResolver)
 
     def test_sqlite(self, tmp_path):
-        from kavach.repositories.factories import ReplayExecutionStoreFactory
-        from kavach.repositories.sqlite.sqlite_replay_execution_store import (
+        from ai_governance.repositories.factories import ReplayExecutionStoreFactory
+        from ai_governance.repositories.sqlite.sqlite_replay_execution_store import (
             SQLiteReplayExecutionStore,
         )
 
@@ -255,31 +255,31 @@ class TestReplayExecutionStoreFactory:
         assert isinstance(store, SQLiteReplayExecutionStore)
 
     def test_postgres(self, monkeypatch):
-        from kavach.databases.postgres.database import PostgresDatabase
-        from kavach.repositories.factories import ReplayExecutionStoreFactory
-        from kavach.repositories.postgres.postgres_replay_execution_store import (
+        from ai_governance.databases.postgres.database import PostgresDatabase
+        from ai_governance.repositories.factories import ReplayExecutionStoreFactory
+        from ai_governance.repositories.postgres.postgres_replay_execution_store import (
             PostgresReplayExecutionStore,
         )
 
         monkeypatch.setattr(PostgresDatabase, "initialize", lambda _database: None)
         store = ReplayExecutionStoreFactory(
             replace(
-                _minimal_settings(postgres_dsn="postgresql://user:pass@db.example/kavach"),
+                _minimal_settings(postgres_dsn="postgresql://user:pass@db.example/ai-governance"),
                 replay_execution_catalog_backend="postgres",
-                replay_postgres_dsn="postgresql://user:pass@db.example/kavach",
+                replay_postgres_dsn="postgresql://user:pass@db.example/ai-governance",
             )
         ).create()
 
         assert isinstance(store, PostgresReplayExecutionStore)
 
     def test_durable_backends_require_their_configuration(self):
-        from kavach.repositories.factories import ReplayExecutionStoreFactory
+        from ai_governance.repositories.factories import ReplayExecutionStoreFactory
 
-        with pytest.raises(ValueError, match="KAVACH_REPLAY_EXECUTION_CATALOG_SQLITE_PATH"):
+        with pytest.raises(ValueError, match="AI_GOVERNANCE_REPLAY_EXECUTION_CATALOG_SQLITE_PATH"):
             ReplayExecutionStoreFactory(
                 replace(_minimal_settings(), replay_execution_catalog_backend="sqlite")
             ).create()
-        with pytest.raises(ValueError, match="KAVACH_REPLAY_POSTGRES_DSN"):
+        with pytest.raises(ValueError, match="AI_GOVERNANCE_REPLAY_POSTGRES_DSN"):
             ReplayExecutionStoreFactory(
                 replace(_minimal_settings(), replay_execution_catalog_backend="postgres")
             ).create()
@@ -287,7 +287,7 @@ class TestReplayExecutionStoreFactory:
 
 class TestGovernanceDecisionRepositoryFactory:
     def test_inmemory(self):
-        from kavach.repositories.factories import GovernanceDecisionRepositoryFactory
+        from ai_governance.repositories.factories import GovernanceDecisionRepositoryFactory
 
         repo = GovernanceDecisionRepositoryFactory(
             _minimal_settings()
@@ -295,7 +295,7 @@ class TestGovernanceDecisionRepositoryFactory:
         assert repo is not None
 
     def test_inmemory_with_publisher(self):
-        from kavach.repositories.factories import GovernanceDecisionRepositoryFactory
+        from ai_governance.repositories.factories import GovernanceDecisionRepositoryFactory
 
         class FakePublisher:
             pass
@@ -308,15 +308,15 @@ class TestGovernanceDecisionRepositoryFactory:
 
 class TestOntologySyncEventRepositoryFactory:
     def test_inmemory(self):
-        from kavach.repositories.factories import OntologySyncEventRepositoryFactory
-        from kavach.repositories import InMemoryOntologySyncEventRepository
+        from ai_governance.repositories.factories import OntologySyncEventRepositoryFactory
+        from ai_governance.repositories import InMemoryOntologySyncEventRepository
 
         repo = OntologySyncEventRepositoryFactory(_minimal_settings()).create()
         assert isinstance(repo, InMemoryOntologySyncEventRepository)
 
     def test_sqlite(self, tmp_path):
-        from kavach.repositories.factories import OntologySyncEventRepositoryFactory
-        from kavach.repositories.sqlite.sqlite_ontology_sync_event_repository import SQLiteOntologySyncEventRepository
+        from ai_governance.repositories.factories import OntologySyncEventRepositoryFactory
+        from ai_governance.repositories.sqlite.sqlite_ontology_sync_event_repository import SQLiteOntologySyncEventRepository
 
         path = str(tmp_path / "sync.db")
         repo = OntologySyncEventRepositoryFactory(
@@ -328,15 +328,15 @@ class TestOntologySyncEventRepositoryFactory:
         assert isinstance(repo, SQLiteOntologySyncEventRepository)
 
     def test_postgres(self, monkeypatch):
-        from kavach.databases.postgres.database import PostgresDatabase
-        from kavach.repositories.factories import OntologySyncEventRepositoryFactory
-        from kavach.repositories.postgres import PostgresOntologySyncEventRepository
+        from ai_governance.databases.postgres.database import PostgresDatabase
+        from ai_governance.repositories.factories import OntologySyncEventRepositoryFactory
+        from ai_governance.repositories.postgres import PostgresOntologySyncEventRepository
 
         monkeypatch.setattr(PostgresDatabase, "initialize", lambda _database: None)
         repo = OntologySyncEventRepositoryFactory(
             _minimal_settings(
                 ontology_sync_event_repository="postgres",
-                postgres_dsn="postgresql://user:pass@db.example/kavach",
+                postgres_dsn="postgresql://user:pass@db.example/ai-governance",
             )
         ).create()
 
@@ -345,17 +345,17 @@ class TestOntologySyncEventRepositoryFactory:
 
 class TestOntologyGraphRepositoryFactory:
     def test_inmemory(self):
-        from kavach.repositories.factories import OntologyGraphRepositoryFactory
-        from kavach.ontology import InMemoryOntologyGraphRepository
+        from ai_governance.repositories.factories import OntologyGraphRepositoryFactory
+        from ai_governance.ontology import InMemoryOntologyGraphRepository
 
         repo = OntologyGraphRepositoryFactory(_minimal_settings()).create()
         assert isinstance(repo, InMemoryOntologyGraphRepository)
 
     def test_sqlite_not_implemented(self):
-        from kavach.repositories.factories import OntologyGraphRepositoryFactory
+        from ai_governance.repositories.factories import OntologyGraphRepositoryFactory
 
         with pytest.raises(
-            ValueError, match="KAVACH_ONTOLOGY_REPOSITORY=sqlite"
+            ValueError, match="AI_GOVERNANCE_ONTOLOGY_REPOSITORY=sqlite"
         ):
             OntologyGraphRepositoryFactory(
                 _minimal_settings(ontology_repository="sqlite")
@@ -364,8 +364,8 @@ class TestOntologyGraphRepositoryFactory:
 
 class TestPromptRepositoryFactory:
     def test_inmemory(self):
-        from kavach.repositories.factories import PromptRepositoryFactory
-        from kavach.repositories.in_memory_prompt_repository import (
+        from ai_governance.repositories.factories import PromptRepositoryFactory
+        from ai_governance.repositories.in_memory_prompt_repository import (
             InMemoryPromptRepository,
         )
 
@@ -373,8 +373,8 @@ class TestPromptRepositoryFactory:
         assert isinstance(repo, InMemoryPromptRepository)
 
     def test_sqlite(self, tmp_path):
-        from kavach.repositories.factories import PromptRepositoryFactory
-        from kavach.repositories.sqlite.sqlite_prompt_repository import SQLitePromptRepository
+        from ai_governance.repositories.factories import PromptRepositoryFactory
+        from ai_governance.repositories.sqlite.sqlite_prompt_repository import SQLitePromptRepository
 
         path = str(tmp_path / "prompts.db")
         repo = PromptRepositoryFactory(
@@ -385,8 +385,8 @@ class TestPromptRepositoryFactory:
 
 class TestModelRepositoryFactory:
     def test_inmemory(self):
-        from kavach.repositories.factories import ModelRepositoryFactory
-        from kavach.repositories.in_memory_model_repository import (
+        from ai_governance.repositories.factories import ModelRepositoryFactory
+        from ai_governance.repositories.in_memory_model_repository import (
             InMemoryModelRepository,
         )
 
@@ -394,8 +394,8 @@ class TestModelRepositoryFactory:
         assert isinstance(repo, InMemoryModelRepository)
 
     def test_sqlite(self, tmp_path):
-        from kavach.repositories.factories import ModelRepositoryFactory
-        from kavach.repositories.sqlite.sqlite_model_repository import SQLiteModelRepository
+        from ai_governance.repositories.factories import ModelRepositoryFactory
+        from ai_governance.repositories.sqlite.sqlite_model_repository import SQLiteModelRepository
 
         path = str(tmp_path / "models.db")
         repo = ModelRepositoryFactory(
@@ -406,8 +406,8 @@ class TestModelRepositoryFactory:
 
 class TestDatasetRepositoryFactory:
     def test_inmemory(self):
-        from kavach.repositories.factories import DatasetRepositoryFactory
-        from kavach.repositories.in_memory_dataset_repository import (
+        from ai_governance.repositories.factories import DatasetRepositoryFactory
+        from ai_governance.repositories.in_memory_dataset_repository import (
             InMemoryDatasetRepository,
         )
 
@@ -415,8 +415,8 @@ class TestDatasetRepositoryFactory:
         assert isinstance(repo, InMemoryDatasetRepository)
 
     def test_sqlite(self, tmp_path):
-        from kavach.repositories.factories import DatasetRepositoryFactory
-        from kavach.repositories.sqlite.sqlite_dataset_repository import SQLiteDatasetRepository
+        from ai_governance.repositories.factories import DatasetRepositoryFactory
+        from ai_governance.repositories.sqlite.sqlite_dataset_repository import SQLiteDatasetRepository
 
         path = str(tmp_path / "datasets.db")
         repo = DatasetRepositoryFactory(
@@ -427,8 +427,8 @@ class TestDatasetRepositoryFactory:
 
 class TestLeaderboardRepositoryFactory:
     def test_inmemory(self):
-        from kavach.repositories.factories import LeaderboardRepositoryFactory
-        from kavach.repositories.in_memory_leaderboard_repository import (
+        from ai_governance.repositories.factories import LeaderboardRepositoryFactory
+        from ai_governance.repositories.in_memory_leaderboard_repository import (
             InMemoryLeaderboardRepository,
         )
 
@@ -436,8 +436,8 @@ class TestLeaderboardRepositoryFactory:
         assert isinstance(repo, InMemoryLeaderboardRepository)
 
     def test_sqlite(self, tmp_path):
-        from kavach.repositories.factories import LeaderboardRepositoryFactory
-        from kavach.repositories.sqlite.sqlite_leaderboard_repository import SQLiteLeaderboardRepository
+        from ai_governance.repositories.factories import LeaderboardRepositoryFactory
+        from ai_governance.repositories.sqlite.sqlite_leaderboard_repository import SQLiteLeaderboardRepository
 
         path = str(tmp_path / "leaderboard.db")
         repo = LeaderboardRepositoryFactory(
@@ -450,10 +450,10 @@ class TestLeaderboardRepositoryFactory:
 
 class TestExperimentCandidateRepositoryFactory:
     def test_inmemory(self):
-        from kavach.repositories.factories import (
+        from ai_governance.repositories.factories import (
             ExperimentCandidateRepositoryFactory,
         )
-        from kavach.repositories.in_memory_experiment_candidate_repository import (
+        from ai_governance.repositories.in_memory_experiment_candidate_repository import (
             InMemoryExperimentCandidateRepository,
         )
 
@@ -461,10 +461,10 @@ class TestExperimentCandidateRepositoryFactory:
         assert isinstance(repo, InMemoryExperimentCandidateRepository)
 
     def test_sqlite(self, tmp_path):
-        from kavach.repositories.factories import (
+        from ai_governance.repositories.factories import (
             ExperimentCandidateRepositoryFactory,
         )
-        from kavach.repositories.sqlite.sqlite_experiment_candidate_repository import SQLiteExperimentCandidateRepository
+        from ai_governance.repositories.sqlite.sqlite_experiment_candidate_repository import SQLiteExperimentCandidateRepository
 
         path = str(tmp_path / "candidates.db")
         repo = ExperimentCandidateRepositoryFactory(
@@ -478,8 +478,8 @@ class TestExperimentCandidateRepositoryFactory:
 
 class TestEvaluationRunRepositoryFactory:
     def test_inmemory(self):
-        from kavach.repositories.factories import EvaluationRunRepositoryFactory
-        from kavach.repositories.in_memory_evaluation_run_repository import (
+        from ai_governance.repositories.factories import EvaluationRunRepositoryFactory
+        from ai_governance.repositories.in_memory_evaluation_run_repository import (
             InMemoryEvaluationRunRepository,
         )
 
@@ -487,8 +487,8 @@ class TestEvaluationRunRepositoryFactory:
         assert isinstance(repo, InMemoryEvaluationRunRepository)
 
     def test_sqlite(self, tmp_path):
-        from kavach.repositories.factories import EvaluationRunRepositoryFactory
-        from kavach.repositories.sqlite.sqlite_evaluation_run_repository import SQLiteEvaluationRunRepository
+        from ai_governance.repositories.factories import EvaluationRunRepositoryFactory
+        from ai_governance.repositories.sqlite.sqlite_evaluation_run_repository import SQLiteEvaluationRunRepository
 
         path = str(tmp_path / "runs.db")
         repo = EvaluationRunRepositoryFactory(
@@ -505,7 +505,7 @@ class TestConfigDrivenBehavior:
 
     def test_default_backend_is_inmemory(self):
         """All repositories default to in-memory when no env vars are set."""
-        from kavach.settings import load_settings
+        from ai_governance.settings import load_settings
 
         settings = load_settings()
         assert settings.evaluation_repository == "inmemory"
@@ -514,15 +514,15 @@ class TestConfigDrivenBehavior:
 
     def test_sqlite_backend_requires_path(self):
         """SQLite backends fail fast when path is not configured."""
-        from kavach.repositories.factories import EvaluationRepositoryFactory
+        from ai_governance.repositories.factories import EvaluationRepositoryFactory
 
         settings = _minimal_settings(evaluation_repository="sqlite")
-        with pytest.raises(ValueError, match="KAVACH_EVALUATION_SQLITE_PATH"):
+        with pytest.raises(ValueError, match="AI_GOVERNANCE_EVALUATION_SQLITE_PATH"):
             EvaluationRepositoryFactory(settings).create()
 
     def test_unsupported_backend_raises_clearly(self):
         """Unknown backends produce a clear error message."""
-        from kavach.repositories.factories import JobRepositoryFactory
+        from ai_governance.repositories.factories import JobRepositoryFactory
 
         settings = _minimal_settings(job_repository="redis")
         with pytest.raises(ValueError, match="Unsupported job repository backend"):
@@ -549,11 +549,11 @@ def test_postgres_factories_select_existing_repository_implementations(
     repository_name: str,
 ) -> None:
     """PostgreSQL selection must be available without a live database connection."""
-    from kavach.repositories import factories
-    from kavach.repositories import postgres
+    from ai_governance.repositories import factories
+    from ai_governance.repositories import postgres
 
     settings = replace(
-        _minimal_settings(postgres_dsn="postgresql://user:pass@db.example/kavach"),
+        _minimal_settings(postgres_dsn="postgresql://user:pass@db.example/ai-governance"),
         **{repository_field: "postgres"},
     )
 

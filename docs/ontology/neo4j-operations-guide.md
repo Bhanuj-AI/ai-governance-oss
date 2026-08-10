@@ -1,6 +1,6 @@
 # Neo4j Operations Guide
 
-This guide explains how to run, observe, test, and troubleshoot Kavach's
+This guide explains how to run, observe, test, and troubleshoot AI Governance Control Plane's
 Neo4j-backed ontology projection. It is intended for local operators and
 platform engineers. For the ontology contract, see
 [Governance Ontology](../architecture/GOVERNANCE_ONTOLOGY.md); for the
@@ -9,7 +9,7 @@ synchronizer design, see [Ontology Synchronization](./ontology-synchronization.m
 ## What Neo4j Stores
 
 Neo4j is a read-optimised semantic projection, not the system of record.
-Kavach's domain repositories remain authoritative for policies, evaluations,
+AI Governance Control Plane's domain repositories remain authoritative for policies, evaluations,
 jobs, governance decisions, replay data, and MCP audit records.
 
 ```text
@@ -27,22 +27,22 @@ Deletion is non-destructive. Graph entities and relationships are retained with
 ## Start the Local Stack
 
 Start Keycloak first if you use the default authenticated local stack, then
-start Kavach:
+start AI Governance Control Plane:
 
 ```bash
 ./scripts/keycloak/start-keycloak.sh
-./kavach.sh
+./ai_governance.sh
 ```
 
-`./kavach.sh` uses Docker Compose. Compose waits for Neo4j, runs the one-shot
-`kavach-neo4j-schema` initializer, starts the Platform, then starts Studio and
+`./ai_governance.sh` uses Docker Compose. Compose waits for Neo4j, runs the one-shot
+`ai-governance-neo4j-schema` initializer, starts the Platform, then starts Studio and
 the ontology synchronization worker.
 
 For a focused graph startup:
 
 ```bash
 docker compose up -d neo4j
-uv run python -m kavach.ontology.cli initialize-schema
+uv run python -m ai_governance.ontology.cli initialize-schema
 ```
 
 The default local endpoints are:
@@ -60,18 +60,18 @@ Configure the Platform and synchronization worker with the same graph
 connection settings:
 
 ```text
-KAVACH_ONTOLOGY_REPOSITORY=neo4j
-KAVACH_GRAPH_URI=bolt://neo4j:7687
-KAVACH_GRAPH_USER=neo4j
-KAVACH_GRAPH_PASSWORD=<secure-password>
-KAVACH_GRAPH_DATABASE=neo4j
+AI_GOVERNANCE_ONTOLOGY_REPOSITORY=neo4j
+AI_GOVERNANCE_GRAPH_URI=bolt://neo4j:7687
+AI_GOVERNANCE_GRAPH_USER=neo4j
+AI_GOVERNANCE_GRAPH_PASSWORD=<secure-password>
+AI_GOVERNANCE_GRAPH_DATABASE=neo4j
 ```
 
 In Docker Compose, Platform, the synchronization worker, MCP, and MCP-over-HTTP
 also share the durable audit store:
 
 ```text
-KAVACH_MCP_AUDIT_DATABASE_PATH=/var/lib/kavach/mcp_execution_audit.db
+AI_GOVERNANCE_MCP_AUDIT_DATABASE_PATH=/var/lib/ai-governance/mcp_execution_audit.db
 ```
 
 This shared path is important: MCP writes audit records there, the Platform
@@ -87,7 +87,7 @@ constraint plus indexes used by live reads. Run it whenever a new Neo4j
 database is provisioned:
 
 ```bash
-uv run python -m kavach.ontology.cli initialize-schema
+uv run python -m ai_governance.ontology.cli initialize-schema
 ```
 
 The command is safe to run repeatedly. It does not seed business data and does
@@ -107,7 +107,7 @@ Expected names include `ontology_entity_unique`, `ontology_entity_type`,
 ## Demo Seed and First Verification
 
 Local startup automatically seeds stable demo data unless
-`KAVACH_AUTO_SEED_DEMO_DATA=false`. The seed is upsert-safe: restarting the
+`AI_GOVERNANCE_AUTO_SEED_DEMO_DATA=false`. The seed is upsert-safe: restarting the
 stack refreshes the same records rather than adding duplicates.
 
 To request the seed manually:
@@ -167,8 +167,8 @@ repositories and repairs only actual drift.
 Useful commands:
 
 ```bash
-docker compose logs -f kavach-ontology-sync-worker
-docker compose ps kavach-neo4j-graph kavach-neo4j-schema kavach-ontology-sync-worker
+docker compose logs -f ai-governance-ontology-sync-worker
+docker compose ps ai-governance-neo4j-graph ai-governance-neo4j-schema ai-governance-ontology-sync-worker
 ```
 
 ## Persistence, Reset and Backup
@@ -203,7 +203,7 @@ uv run pytest tests/unit/ontology tests/unit/ontology_sync
 Run Neo4j integration coverage against a running graph:
 
 ```bash
-export KAVACH_RUN_NEO4J_TESTS=true
+export AI_GOVERNANCE_RUN_NEO4J_TESTS=true
 uv run pytest tests/integration/ontology tests/integration/ontology_sync
 ```
 
@@ -223,10 +223,10 @@ projection.
 | Symptom | Likely cause | Action |
 | --- | --- | --- |
 | `MissingNeo4jDriverError` | Driver dependency is unavailable in a host environment. | Run `uv sync`; ensure the `neo4j` dependency is installed. |
-| Schema container fails | Neo4j is not healthy or credentials/database are incorrect. | Check `docker compose logs kavach-neo4j-graph kavach-neo4j-schema`; verify graph variables. |
-| Events remain pending | Worker is unavailable or cannot lease events. | Check worker logs and confirm `KAVACH_ONTOLOGY_SYNC_EVENT_*` uses the shared SQLite volume. |
+| Schema container fails | Neo4j is not healthy or credentials/database are incorrect. | Check `docker compose logs ai-governance-neo4j-graph ai-governance-neo4j-schema`; verify graph variables. |
+| Events remain pending | Worker is unavailable or cannot lease events. | Check worker logs and confirm `AI_GOVERNANCE_ONTOLOGY_SYNC_EVENT_*` uses the shared SQLite volume. |
 | Dead-letter event | Contract or source data cannot be reconciled. | Inspect the Sync Events detail, repair the source/contract, then retry explicitly. |
-| Audit rows are absent in Studio | MCP and Platform use different audit database paths. | Set every Docker service to `/var/lib/kavach/mcp_execution_audit.db`. |
+| Audit rows are absent in Studio | MCP and Platform use different audit database paths. | Set every Docker service to `/var/lib/ai-governance/mcp_execution_audit.db`. |
 | Graph query omits a node | The entity or relationship may be soft deleted. | Inspect `is_deleted` and archival metadata; live paths intentionally exclude tombstones. |
 
 ## Operating Guardrails

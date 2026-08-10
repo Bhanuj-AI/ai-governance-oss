@@ -4,10 +4,10 @@
 
 ### Authentication mode
 
-Kavach supports two authentication modes controlled by `KAVACH_AUTH_MODE`:
+AI Governance Control Plane supports two authentication modes controlled by `AI_GOVERNANCE_AUTH_MODE`:
 
 - **Development mode** (`development`) — actor identity comes from the
-  `X-Kavach-Actor-Id` header or `KAVACH_DEVELOPMENT_ACTOR_ID` environment
+  `X-AI-Governance-Actor-Id` header or `AI_GOVERNANCE_DEVELOPMENT_ACTOR_ID` environment
   variable. No token validation occurs.
 - **Keycloak mode** (`keycloak`) — requires `Authorization: Bearer <token>`
   on every request. The platform validates the JWT against Keycloak and rejects
@@ -17,9 +17,9 @@ See [Configuration](./CONFIGURATION.md#authentication) for full details.
 
 ### Tenant context
 
-Tenant-scoped requests send `X-Kavach-Organization-Id`,
-`X-Kavach-Project-Id`, `X-Request-Id`, and optionally `X-Correlation-Id`.
-`X-Kavach-Actor-Id` is accepted only with the development identity provider.
+Tenant-scoped requests send `X-AI-Governance-Organization-Id`,
+`X-AI-Governance-Project-Id`, `X-Request-Id`, and optionally `X-Correlation-Id`.
+`X-AI-Governance-Actor-Id` is accepted only with the development identity provider.
 In keycloak mode, the actor identity is derived from the JWT `sub` claim and
 the header is ignored. Organization administration is available under
 `/api/v1/organizations`; the resolved scope, roles, and permissions are
@@ -32,7 +32,7 @@ does not accept an actor identity in tool input.
 
 ## Overview
 
-Kavach exposes a versioned FastAPI REST control plane for operational
+AI Governance Control Plane exposes a versioned FastAPI REST control plane for operational
 integrations. The REST layer is transport-only: routers use request/response
 DTOs, mapper classes, and API service facades while business behavior remains
 inside services and registries.
@@ -61,7 +61,7 @@ Local browser clients are allowed from `http://localhost:3000` and
 `http://127.0.0.1:3000` by default. Override allowed browser origins with:
 
 ```text
-KAVACH_CORS_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+AI_GOVERNANCE_CORS_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 ```
 
 ## Health and Metadata
@@ -151,7 +151,7 @@ are read from the ontology query APIs for the selected version.
 
 `POST /api/v1/datasets/upload` accepts multipart form fields `name`, `version`,
 `description`, optional `schema_version` (default `1.0`), and `file`. The file
-must be UTF-8 `.csv`, `.jsonl`, or `.ndjson`. Kavach validates its structure,
+must be UTF-8 `.csv`, `.jsonl`, or `.ndjson`. AI Governance Control Plane validates its structure,
 counts records, computes a SHA-256 checksum, stores immutable bytes in the
 configured S3-compatible object store, and registers a DRAFT dataset version.
 The response is the normal `DatasetResponse`; dataset file content is never
@@ -176,7 +176,7 @@ evaluation evidence. Requests may include
 `metric_specs` and provider-specific `provider_config`; provider configuration
 is request-only and is never returned in responses.
 
-When `metric_specs` is provided, Kavach validates requested metrics against the
+When `metric_specs` is provided, AI Governance Control Plane validates requested metrics against the
 provider descriptor/capabilities before invoking the provider.
 
 ## Experiment APIs
@@ -523,7 +523,7 @@ authorization values are scrubbed from REST metadata responses.
 The REST API uses a structured dependency package split by platform plane:
 
 ```
-src/kavach/api/dependencies/
+src/ai_governance/api/dependencies/
     __init__.py              ← backward-compatible re-exports
     settings.py              ← ApiSettings, get_api_settings
     providers.py             ← get_provider_registry
@@ -541,20 +541,20 @@ src/kavach/api/dependencies/
 ```
 
 All public providers are re-exported through ``__init__.py`` so that existing
-imports such as ``from kavach.api.dependencies import get_evaluation_api_service``
+imports such as ``from ai_governance.api.dependencies import get_evaluation_api_service``
 continue to work without changes to route or test code.
 
 ### Repository Factories
 
 Repository construction is config-driven. Each repository provider delegates to
-a factory class in ``src/kavach/repositories/factories/`` that selects the
-concrete implementation based on ``KAVACH_*_REPOSITORY`` environment variables.
+a factory class in ``src/ai_governance/repositories/factories/`` that selects the
+concrete implementation based on ``AI_GOVERNANCE_*_REPOSITORY`` environment variables.
 
 ```python
 @lru_cache(maxsize=1)
 def get_evaluation_repository() -> Any:
-    from kavach.settings import load_settings
-    from kavach.repositories.factories import EvaluationRepositoryFactory
+    from ai_governance.settings import load_settings
+    from ai_governance.repositories.factories import EvaluationRepositoryFactory
 
     return EvaluationRepositoryFactory(load_settings()).create()
 ```

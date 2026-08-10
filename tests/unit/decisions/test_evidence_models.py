@@ -1,6 +1,6 @@
 import pytest
 
-from kavach.decisions import (
+from ai_governance.decisions import (
     DecisionEvidenceGraph,
     DecisionEvidenceSummary,
     DecisionTargetType,
@@ -8,7 +8,7 @@ from kavach.decisions import (
     EvidenceNode,
     MissingEvidence,
 )
-from kavach.decisions.exceptions import DecisionValidationError
+from ai_governance.decisions.exceptions import DecisionValidationError
 
 
 def test_evidence_graph_sorts_nodes_edges_and_missing_entries() -> None:

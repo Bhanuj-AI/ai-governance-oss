@@ -12,7 +12,7 @@ audit ownership.
 
 ## Overview
 
-Kavach exposes a Model Context Protocol server as a stateless transport
+AI Governance Control Plane exposes a Model Context Protocol server as a stateless transport
 adapter over the existing REST control plane.
 
 The MCP server does not own governance rules, persistence, provider behavior,
@@ -22,22 +22,22 @@ endpoint, maps the REST response, and translates REST errors into tool errors.
 ## Authentication and token lifecycle
 
 In Keycloak mode, the preferred configuration is the confidential
-`kavach-mcp` client using OAuth2 client credentials:
+`ai-governance-mcp` client using OAuth2 client credentials:
 
 ```text
-KAVACH_MCP_CLIENT_ID=kavach-mcp
-KAVACH_MCP_CLIENT_SECRET=<secret>
-KAVACH_MCP_TOKEN_URL=http://keycloak.localhost:8080/realms/kavach/protocol/openid-connect/token
+AI_GOVERNANCE_MCP_CLIENT_ID=ai-governance-mcp
+AI_GOVERNANCE_MCP_CLIENT_SECRET=<secret>
+AI_GOVERNANCE_MCP_TOKEN_URL=http://keycloak.localhost:8080/realms/ai-governance/protocol/openid-connect/token
 ```
 
 The MCP REST client obtains and caches a token, refreshing it before expiry.
-`KAVACH_API_TOKEN` is an explicit bearer-token override for testing. The
+`AI_GOVERNANCE_API_TOKEN` is an explicit bearer-token override for testing. The
 Keycloak admin token is used only during startup discovery and is never used
 for normal MCP REST calls.
 
 The token `sub` is the runtime actor. Backend startup provisions that subject
 in `organization_memberships` and `role_assignments`; a Keycloak client or
-role alone does not grant Kavach tenant access.
+role alone does not grant AI Governance Control Plane tenant access.
 
 For native Streamable HTTP, this service-account model does not apply. The
 incoming `Authorization: Bearer` credential is validated at the HTTP boundary
@@ -58,29 +58,29 @@ remote clients should use their own user or workload identity as described in
 The MCP server reads these environment variables:
 
 ```text
-KAVACH_API_URL
-KAVACH_API_TIMEOUT
-KAVACH_API_RETRIES
+AI_GOVERNANCE_API_URL
+AI_GOVERNANCE_API_TIMEOUT
+AI_GOVERNANCE_API_RETRIES
 LOG_LEVEL
-KAVACH_MCP_AUDIT_DATABASE_PATH
-KAVACH_MCP_CLIENT_ID
-KAVACH_MCP_CLIENT_SECRET
-KAVACH_MCP_TOKEN_URL
-KAVACH_API_TOKEN
+AI_GOVERNANCE_MCP_AUDIT_DATABASE_PATH
+AI_GOVERNANCE_MCP_CLIENT_ID
+AI_GOVERNANCE_MCP_CLIENT_SECRET
+AI_GOVERNANCE_MCP_TOKEN_URL
+AI_GOVERNANCE_API_TOKEN
 ```
 
-Native Streamable HTTP additionally uses `KAVACH_MCP_TRANSPORT`,
-`KAVACH_MCP_HTTP_HOST`, `KAVACH_MCP_HTTP_PORT`, `KAVACH_MCP_HTTP_PATH`,
-`KAVACH_MCP_PUBLIC_URL`,
-`KAVACH_MCP_HTTP_ALLOWED_HOSTS`, `KAVACH_MCP_HTTP_ALLOWED_ORIGINS`,
-`KAVACH_MCP_HTTP_STATELESS`, and `KAVACH_MCP_HTTP_JSON_RESPONSE`.
+Native Streamable HTTP additionally uses `AI_GOVERNANCE_MCP_TRANSPORT`,
+`AI_GOVERNANCE_MCP_HTTP_HOST`, `AI_GOVERNANCE_MCP_HTTP_PORT`, `AI_GOVERNANCE_MCP_HTTP_PATH`,
+`AI_GOVERNANCE_MCP_PUBLIC_URL`,
+`AI_GOVERNANCE_MCP_HTTP_ALLOWED_HOSTS`, `AI_GOVERNANCE_MCP_HTTP_ALLOWED_ORIGINS`,
+`AI_GOVERNANCE_MCP_HTTP_STATELESS`, and `AI_GOVERNANCE_MCP_HTTP_JSON_RESPONSE`.
 
 ## Native Streamable HTTP
 
 Start the remote MCP service separately from stdio and MCPO:
 
 ```bash
-uv run kavach-mcp --transport streamable-http --host 0.0.0.0 --port 8002
+uv run ai-governance-mcp --transport streamable-http --host 0.0.0.0 --port 8002
 ```
 
 It exposes `POST`, `GET`, and `DELETE` at `/mcp` through the official MCP
@@ -93,20 +93,20 @@ headers.
 In Keycloak mode, an unauthenticated request receives an RFC 9728 challenge
 pointing to `/.well-known/oauth-protected-resource/mcp`. That metadata
 advertises the Keycloak issuer and the canonical resource
-`KAVACH_MCP_PUBLIC_URL/mcp`. The server accepts a token only when its verified
+`AI_GOVERNANCE_MCP_PUBLIC_URL/mcp`. The server accepts a token only when its verified
 `aud` claim includes that exact resource. The local realm contains the public
-PKCE client `kavach-mcp-vscode` and maps `http://localhost:8002/mcp` into its
-access-token audience; change the mapper together with `KAVACH_MCP_PUBLIC_URL`
+PKCE client `ai-governance-mcp-vscode` and maps `http://localhost:8002/mcp` into its
+access-token audience; change the mapper together with `AI_GOVERNANCE_MCP_PUBLIC_URL`
 when using another public origin.
 
 Defaults:
 
 ```text
-KAVACH_API_URL=http://127.0.0.1:8000
-KAVACH_API_TIMEOUT=10
-KAVACH_API_RETRIES=0
+AI_GOVERNANCE_API_URL=http://127.0.0.1:8000
+AI_GOVERNANCE_API_TIMEOUT=10
+AI_GOVERNANCE_API_RETRIES=0
 LOG_LEVEL=INFO
-KAVACH_MCP_AUDIT_DATABASE_PATH=.kavach/mcp_execution_audit.db
+AI_GOVERNANCE_MCP_AUDIT_DATABASE_PATH=.ai-governance/mcp_execution_audit.db
 ```
 
 See [Configuration](./CONFIGURATION.md) for the full project environment
@@ -280,7 +280,7 @@ canonical request hash, safe request summary, dry-run status, job ID, result
 reference, error details, and duration.
 
 By default, MCP stores audit rows in the SQLite database at
-`.kavach/mcp_execution_audit.db`. Set `KAVACH_MCP_AUDIT_DATABASE_PATH` to use a
+`.ai-governance/mcp_execution_audit.db`. Set `AI_GOVERNANCE_MCP_AUDIT_DATABASE_PATH` to use a
 different SQLite database path.
 
 Full request payloads are not blindly stored. Sensitive fields such as
@@ -320,7 +320,7 @@ MCP Tool
 REST Client
       |
       v
-Kavach REST Control Plane
+AI Governance Control Plane REST Control Plane
       |
       v
 Application Services

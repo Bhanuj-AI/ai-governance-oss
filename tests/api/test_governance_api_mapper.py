@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from kavach.api.mappers import GovernanceApiMapper
-from kavach.domain.history import (
+from ai_governance.api.mappers import GovernanceApiMapper
+from ai_governance.domain.history import (
     EvaluationComparison,
     EvaluationMetricComparison,
 )
-from kavach.governance import DriftSeverity, EvaluationDrift
+from ai_governance.governance import DriftSeverity, EvaluationDrift
 
 
 def test_governance_comparison_mapper_includes_score_difference() -> None:

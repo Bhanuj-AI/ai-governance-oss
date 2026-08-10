@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from kavach.domain.jobs import Job, JobStatus, JobType
-from kavach.repositories.mappers.job_persistence_mapper import (
+from ai_governance.domain.jobs import Job, JobStatus, JobType
+from ai_governance.repositories.mappers.job_persistence_mapper import (
     JobPersistenceMapper,
 )
 

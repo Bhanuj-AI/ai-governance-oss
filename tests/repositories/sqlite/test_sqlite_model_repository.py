@@ -3,10 +3,10 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.domain.models import Model, ModelStatus
-from kavach.repositories.model_repository import ModelRepository
-from kavach.repositories.sqlite.sqlite_model_repository import (
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.domain.models import Model, ModelStatus
+from ai_governance.repositories.model_repository import ModelRepository
+from ai_governance.repositories.sqlite.sqlite_model_repository import (
     SQLiteModelRepository,
 )
 from tests.repositories.contract.test_model_repository_contract import (
@@ -20,7 +20,7 @@ class TestSQLiteModelRepository(ModelRepositoryContract):
         self,
         tmp_path: Path,
     ) -> None:
-        database = SQLiteDatabase(tmp_path / "kavach.db")
+        database = SQLiteDatabase(tmp_path / "ai_governance.db")
         database.initialize()
 
         self._repository = SQLiteModelRepository(database)

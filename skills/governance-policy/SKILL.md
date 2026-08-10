@@ -1,6 +1,6 @@
 ---
 name: governance-policy
-description: Add or modify Kavach governance policies, policy rules, evidence, decision reasoning, explanations, audit records, policy lifecycle behaviour, or decision APIs. Use when a change affects deterministic evaluation, explainability, evidence lineage, decision persistence, or replayable governance outcomes.
+description: Add or modify AI Governance Control Plane governance policies, policy rules, evidence, decision reasoning, explanations, audit records, policy lifecycle behaviour, or decision APIs. Use when a change affects deterministic evaluation, explainability, evidence lineage, decision persistence, or replayable governance outcomes.
 ---
 
 # Governance Policy
@@ -9,8 +9,8 @@ Build a deterministic decision from versioned policy and inspectable evidence.
 
 ## Workflow
 
-1. Read root `AGENTS.md`, `src/kavach/domain/AGENTS.md`, and
-   `src/kavach/services/AGENTS.md`. Read API, repository, tenancy, and MCP
+1. Read root `AGENTS.md`, `src/ai_governance/domain/AGENTS.md`, and
+   `src/ai_governance/services/AGENTS.md`. Read API, repository, tenancy, and MCP
    instructions if the change reaches those boundaries.
 2. Define the target type, evidence fields, condition operators, rule priority,
    effect, and human-readable reason before changing the evaluator.
@@ -68,7 +68,7 @@ These commands cover the current policy lifecycle, evaluation, explanation,
 audit, idempotency, and API contract paths:
 
 ```bash
-uv run ruff check src/kavach/decisions src/kavach/services
+uv run ruff check src/ai_governance/decisions src/ai_governance/services
 uv run pytest tests/unit/test_policy_administration_service.py
 uv run pytest tests/api/test_policy_administration_api.py tests/api/test_decision_api.py
 ```

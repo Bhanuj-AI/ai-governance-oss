@@ -1,14 +1,14 @@
 import pytest
 
-from kavach.api import GovernanceAPI
-from kavach.domain.evaluation_result import (
+from ai_governance.api import GovernanceAPI
+from ai_governance.domain.evaluation_result import (
     EvaluationMetric,
     EvaluationResult,
 )
-from kavach.repositories.in_memory_evaluation_repository import (
+from ai_governance.repositories.in_memory_evaluation_repository import (
     InMemoryEvaluationRepository,
 )
-from kavach.services.history import EvaluationHistoryService
+from ai_governance.services.history import EvaluationHistoryService
 
 
 def test_governance_api_exposes_phase_5_get_routes() -> None:

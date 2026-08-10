@@ -80,7 +80,7 @@ completed replay and immutable result references.
 
 ## Studio
 
-Kavach Studio exposes Replay as a first-class capability at `/replays`,
+AI Governance Control Plane Studio exposes Replay as a first-class capability at `/replays`,
 `/replays/new`, and `/replays/{replayId}`. The console only consumes the
 tenant-scoped Replay APIs: it never reconstructs executions, chooses baselines,
 calculates drift, or writes ontology data.
@@ -114,8 +114,8 @@ validation, and create journey work locally.
 
 Replay source discovery is a lightweight, eventually consistent projection;
 it is never the authority for Replay creation. Configure
-`KAVACH_REPLAY_EXECUTION_CATALOG_BACKEND=postgres` together with the existing
-`KAVACH_REPLAY_POSTGRES_DSN` to persist tenant-scoped execution projections in
+`AI_GOVERNANCE_REPLAY_EXECUTION_CATALOG_BACKEND=postgres` together with the existing
+`AI_GOVERNANCE_REPLAY_POSTGRES_DSN` to persist tenant-scoped execution projections in
 PostgreSQL. The projection stores identity, workflow summary, execution status,
 timestamps, replayability, and evaluation-availability indicators only. Search
 uses `executed_at DESC, execution_id DESC` opaque keyset cursors. Validation
@@ -139,11 +139,11 @@ execution ID and evaluation job idempotency key; it never creates a second
 Replay or produced execution.
 
 For local and Docker use, the source resolver is a durable SQLite execution
-store whenever `KAVACH_REPLAY_EXECUTION_CATALOG_BACKEND=sqlite`. It is separate
+store whenever `AI_GOVERNANCE_REPLAY_EXECUTION_CATALOG_BACKEND=sqlite`. It is separate
 from the search catalog because it retains the full source/produced execution
 payload required by handlers. API and worker processes therefore share the
 same Replay, Job, evaluation, experiment, and execution data when the corresponding
-`KAVACH_*_SQLITE_PATH` settings point at one database.
+`AI_GOVERNANCE_*_SQLITE_PATH` settings point at one database.
 
 Evaluation and Experiment handlers consume the immutable async submission
 payloads produced by their respective APIs (`evaluation.submit_async` and
@@ -154,12 +154,12 @@ unsupported work into a failed job.
 Run a dedicated worker process with:
 
 ```sh
-uv run python -m kavach.workers.replay_worker_runtime
+uv run python -m ai_governance.workers.replay_worker_runtime
 ```
 
-Set `KAVACH_RUN_REPLAY_WORKER=true` to run the same runtime alongside the API
-process in local development. Docker Compose starts `kavach-replay-worker` as a
-separate process sharing the `kavach_sqlite_data` volume. `SIGTERM` and
+Set `AI_GOVERNANCE_RUN_REPLAY_WORKER=true` to run the same runtime alongside the API
+process in local development. Docker Compose starts `ai-governance-replay-worker` as a
+separate process sharing the `ai-governance_sqlite_data` volume. `SIGTERM` and
 `SIGINT` stop polling after the current safe handler boundary; unacknowledged
 work is recovered after its lease expires. Cancelling a queued or running
 Replay records cancellation on both Replay and Job, and the handlers check the

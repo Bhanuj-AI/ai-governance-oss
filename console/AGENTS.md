@@ -1,6 +1,6 @@
 # Scope
 
-This directory owns the Next.js Kavach Studio frontend.
+This directory owns the Next.js AI Governance Control Plane Studio frontend.
 
 ## Architectural Facts
 

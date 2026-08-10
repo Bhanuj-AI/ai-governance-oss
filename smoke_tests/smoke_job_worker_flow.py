@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from kavach.domain.jobs import Job, JobResult, JobStatus, JobSubmission, JobType
-from kavach.repositories.in_memory import InMemoryJobRepository
-from kavach.services.job_executor import JobExecutor
-from kavach.services.job_submission_service import JobSubmissionService
-from kavach.workers import JobWorker
+from ai_governance.domain.jobs import Job, JobResult, JobStatus, JobSubmission, JobType
+from ai_governance.repositories.in_memory import InMemoryJobRepository
+from ai_governance.services.job_executor import JobExecutor
+from ai_governance.services.job_submission_service import JobSubmissionService
+from ai_governance.workers import JobWorker
 
 
 class SuccessfulEvaluationHandler:

@@ -1,45 +1,45 @@
-# Kavach
+# AI Governance Control Plane
 
 > **AI Governance Control Plane**
 >
 > Govern prompts, models, agents, evaluations, policies, and decisions with
 > deterministic evidence, replayability and lineage.
 
-**Modern AI frameworks help build agents. Kavach governs them.**
+**Modern AI frameworks help build agents. AI Governance Control Plane governs them.**
 
 > **Enterprise capabilities are under active development. Commercial offerings
 > will be announced as they mature.**
 
-![Kavach logo](assets/Hero.png)
+![AI Governance Control Plane logo](assets/Hero.png)
 
-Kavach is an open-source governance control plane for AI systems. Rather than
+AI Governance Control Plane is an open-source governance control plane for AI systems. Rather than
 focusing solely on model evaluation, it establishes a semantic governance layer
 that models AI assets, evidence, policies and governance decisions as
 first-class domain objects.
 
 It enables organizations to govern AI systems through deterministic decision-making, versioned assets, explainable reasoning, auditability, replayability, and framework-independent integrations.
 
-- [Website](https://kavach.bhanuj.app)
-- [Documentation](https://kavach.bhanuj.app/docs)
-- [Tutorials](https://kavach.bhanuj.app/tutorials)
+- [Website](https://ai_governance.bhanuj.app)
+- [Documentation](https://ai_governance.bhanuj.app/docs)
+- [Tutorials](https://ai_governance.bhanuj.app/tutorials)
 - [Roadmap](docs/roadmap/ROADMAP.md)
 
 ---
 
-## See Kavach Studio
+## See AI Governance Control Plane Studio
 
 <table>
   <tr>
-    <td width="50%"><img src="assets/Governance%20Decisions.png" alt="Kavach Studio governance decisions" /><br /><strong>Governance Decisions</strong> — inspect deterministic outcomes and their supporting evidence.</td>
-    <td width="50%"><img src="assets/Governance%20Decisions%20-%20BLOCKED%20-%20Decision%20Lineage.png" alt="Kavach Studio decision lineage" /><br /><strong>Decision Lineage</strong> — trace the assets, policies, and executions behind an outcome.</td>
+    <td width="50%"><img src="assets/Governance%20Decisions.png" alt="AI Governance Control Plane Studio governance decisions" /><br /><strong>Governance Decisions</strong> — inspect deterministic outcomes and their supporting evidence.</td>
+    <td width="50%"><img src="assets/Governance%20Decisions%20-%20BLOCKED%20-%20Decision%20Lineage.png" alt="AI Governance Control Plane Studio decision lineage" /><br /><strong>Decision Lineage</strong> — trace the assets, policies, and executions behind an outcome.</td>
   </tr>
   <tr>
-    <td width="50%"><img src="assets/Governance%20Decisions%20-%20BLOCKED%20-%20Evidence%20Graph.png" alt="Kavach Studio evidence graph" /><br /><strong>Evidence Graph</strong> — make the basis of a decision visible and auditable.</td>
-    <td width="50%"><img src="assets/Kavach%20Ontology%20Graph.png" alt="Kavach Studio knowledge graph" /><br /><strong>Knowledge Graph</strong> — explore governed AI assets and their relationships.</td>
+    <td width="50%"><img src="assets/Governance%20Decisions%20-%20BLOCKED%20-%20Evidence%20Graph.png" alt="AI Governance Control Plane Studio evidence graph" /><br /><strong>Evidence Graph</strong> — make the basis of a decision visible and auditable.</td>
+    <td width="50%"><img src="assets/AI Governance Control Plane%20Ontology%20Graph.png" alt="AI Governance Control Plane Studio knowledge graph" /><br /><strong>Knowledge Graph</strong> — explore governed AI assets and their relationships.</td>
   </tr>
 </table>
 
-## Why Kavach?
+## Why AI Governance Control Plane?
 
 AI systems are no longer just about selecting the best model. Teams need to
 answer governance questions such as:
@@ -51,13 +51,13 @@ answer governance questions such as:
 - Can quality regressions automatically block promotion?
 - Can governance remain independent of orchestration frameworks and model vendors?
 
-Kavach provides the governance control plane that answers these questions.
+AI Governance Control Plane provides the governance control plane that answers these questions.
 
 ---
 
 ## Core Concepts
 
-Everything in Kavach revolves around five fundamental concepts.
+Everything in AI Governance Control Plane revolves around five fundamental concepts.
 
 ### Governance Asset
 
@@ -83,9 +83,9 @@ An explainable, auditable outcome generated from evidence and policy.
 
 ## Platform Architecture
 
-![Kavach Architecture](assets/Enterprise%20Architecture%20-%20Marketing.png)
+![AI Governance Control Plane Architecture](assets/Enterprise%20Architecture%20-%20Marketing.png)
 
-Kavach is organized into independent architectural planes.
+AI Governance Control Plane is organized into independent architectural planes.
 
 - Authentication Plane
 - Governance Ontology Plane
@@ -99,7 +99,7 @@ Kavach is organized into independent architectural planes.
 - Persistence Plane
 - REST Control Plane
 - MCP Server
-- Kavach Studio
+- AI Governance Control Plane Studio
 
 Each plane owns a single responsibility and communicates only through explicit contracts.
 
@@ -144,13 +144,13 @@ Each plane owns a single responsibility and communicates only through explicit c
 
 - Versioned REST APIs
 - MCP Server
-- Next.js Kavach Studio
+- Next.js AI Governance Control Plane Studio
 
 ---
 
 ## Current Implementation
 
-Kavach currently includes:
+AI Governance Control Plane currently includes:
 
 - Registry-centric Assets workspace for versioned prompts, models, datasets,
   and evaluation providers, with common overview, version, reference, lineage,
@@ -159,7 +159,7 @@ Kavach currently includes:
   through SeaweedFS's S3-compatible API and production-ready standard S3 support
 - Vendor-neutral observed prompt/model evidence ingestion with persisted source
   provenance and optional protected prompt content hashes
-- A guided `kavach walkthrough governed-replay` command that demonstrates the
+- A guided `ai-governance walkthrough governed-replay` command that demonstrates the
   asset, evaluation, governance, replay, lineage, and audit lifecycle through
   the same public REST APIs used by Studio and external producers
 - Generic in-memory OAuth client-credentials support for local workloads and
@@ -171,7 +171,7 @@ Kavach currently includes:
 - Governance ontology contracts, graph query APIs, ontology synchronization, and Neo4j-backed graph exploration
 - Governance decision models, policy evaluation, evidence building, reasoning, persistence, audit records, and ontology projection
 - Decision REST APIs and MCP tools for evaluation, retrieval, listing, evidence, explanation, and lineage
-- Kavach Studio home dashboard, policy engine authoring, ontology graph exploration, decision index browsing, decision lookup, and visual decision detail inspection
+- AI Governance Control Plane Studio home dashboard, policy engine authoring, ontology graph exploration, decision index browsing, decision lookup, and visual decision detail inspection
 - SQLite and PostgreSQL reference persistence, with optional Snowflake analytics persistence
 
 ---
@@ -202,8 +202,8 @@ Start the local Studio, API, ontology, worker and storage topology:
 
 ```bash
 # Clone Repository
-git clone https://github.com/KavachHQ/kavach-oss.git
-cd kavach-oss
+git clone https://github.com/Bhanuj-AI/ai-governance-oss.git
+cd ai-governance-oss
 
 # Optional: installs host-development and test dependencies
 uv sync
@@ -214,11 +214,11 @@ cp keycloak-postgres/.env.keycloak.example keycloak-postgres/.env.keycloak
 cp console/.env.local.example console/.env.studio
 
 # Starts local Keycloak, builds the platform, and starts the Compose stack
-./kavach.sh
+./ai_governance.sh
 
 ```
 
-`./kavach.sh` starts local Keycloak automatically, then starts the containerized
+`./ai_governance.sh` starts local Keycloak automatically, then starts the containerized
 local stack. You do not need to run the Keycloak launcher separately. The three
 files above configure the platform, Keycloak, and Studio respectively. Their
 example values are development-only; change them on shared machines and never
@@ -228,10 +228,10 @@ service-account files itself.
 Use the same wrapper to inspect or manage the stack:
 
 ```bash
-./kavach.sh logs                    # Follow all application and infrastructure logs
-./kavach.sh logs kavach-platform    # Follow only API logs
-./kavach.sh ps                      # Show service status
-./kavach.sh down                    # Stop services and preserve local data
+./ai_governance.sh logs                    # Follow all application and infrastructure logs
+./ai_governance.sh logs ai-governance-platform    # Follow only API logs
+./ai_governance.sh ps                      # Show service status
+./ai_governance.sh down                    # Stop services and preserve local data
 ```
 
 Keycloak runs in its own Compose project, so follow its logs separately when
@@ -251,9 +251,9 @@ cp .env.local.example .env.local
 
 ## Your first two minutes in Studio
 
-Open [Kavach Studio](http://localhost:3000) after `./kavach.sh` completes. It
+Open [AI Governance Control Plane Studio](http://localhost:3000) after `./ai_governance.sh` completes. It
 will redirect you to the local Keycloak sign-in page. Sign in as `studio` with
-the `KAVACH_STUDIO_PASSWORD` value from `keycloak-postgres/.env.keycloak`.
+the `AI_GOVERNANCE_STUDIO_PASSWORD` value from `keycloak-postgres/.env.keycloak`.
 The local stack starts with representative demo data, so you can follow the
 full governance flow immediately:
 
@@ -265,10 +265,10 @@ full governance flow immediately:
 
 - Keycloak IDP on http://localhost:18080 (OSS local stack)
 - REST API on http://localhost:8000
-- Kavach Studio on http://localhost:3000
+- AI Governance Control Plane Studio on http://localhost:3000
 - Neo4j on bolt://localhost:7687
-- Kavach MCP Stdio (MCPO) on http://localhost:8001/docs
-- Kavach MCP Streamable HTTP Server on http://localhost:8002/
+- AI Governance Control Plane MCP Stdio (MCPO) on http://localhost:8001/docs
+- AI Governance Control Plane MCP Streamable HTTP Server on http://localhost:8002/
 - SeaweedFS S3 API on http://localhost:8333 (local dataset content)
 - SeaweedFS Filer UI on http://localhost:8888 (browse local dataset objects)
 - SeaweedFS Master UI on http://localhost:9333 (storage topology)
@@ -287,13 +287,13 @@ http://localhost:8000/openapi.json
 Local development starts with demo ontology data, a release-gate policy,
 governance decisions, varied governance jobs, and representative MCP audit
 records. SQLite-capable repositories share a database stored in the named
-`kavach_sqlite_data` Docker volume, so seeded and locally created records
+`ai-governance_sqlite_data` Docker volume, so seeded and locally created records
 survive container recreation and normal `docker compose down` operations.
 
 To stop the stack without deleting local data:
 
 ```bash
-./kavach.sh down
+./ai_governance.sh down
 ```
 
 To delete the local SQLite, Neo4j, and SeaweedFS data and start with a clean
@@ -301,12 +301,12 @@ seed:
 
 ```bash
 docker compose down -v
-./kavach.sh
+./ai_governance.sh
 ```
 
 To reseed the local demo data manually without deleting local state, use the
 same short-lived Keycloak client-credentials flow as the local walkthrough and
-MCP tools. `./kavach.sh` generates `.env.oauth.generated` for the provisioned
+MCP tools. `./ai_governance.sh` generates `.env.oauth.generated` for the provisioned
 local walkthrough service account; the token stays in the shell only and is not
 printed or written to a file:
 
@@ -315,31 +315,31 @@ set -a
 . ./.env.oauth.generated
 set +a
 
-KAVACH_DEMO_TOKEN="$(uv run python -c '
-from kavach.oauth import access_token_from_environment
+AI_GOVERNANCE_DEMO_TOKEN="$(uv run python -c '
+from ai_governance.oauth import access_token_from_environment
 token = access_token_from_environment()
-assert token, "KAVACH_OAUTH_* credentials are required"
+assert token, "AI_GOVERNANCE_OAUTH_* credentials are required"
 print(token)
 ')"
 
 curl --fail-with-body -X POST http://localhost:8000/api/v1/ontology/demo/seed \
-  -H "Authorization: Bearer ${KAVACH_DEMO_TOKEN}"
-unset KAVACH_DEMO_TOKEN
+  -H "Authorization: Bearer ${AI_GOVERNANCE_DEMO_TOKEN}"
+unset AI_GOVERNANCE_DEMO_TOKEN
 ```
 
-Set `KAVACH_AUTO_SEED_DEMO_DATA=false` to disable startup demo seeding.
+Set `AI_GOVERNANCE_AUTO_SEED_DEMO_DATA=false` to disable startup demo seeding.
 The demo seed uses stable identifiers, so normal restarts refresh the demo
 records rather than accumulating duplicates.
 
 The local seeded evaluation dataset is stored in SeaweedFS through the
 standard S3 API; its registry record points to an `s3://` URI. Production uses
-the same adapter with AWS S3: set `KAVACH_DATASET_OBJECT_STORE_BACKEND=s3`,
-`KAVACH_DATASET_S3_BUCKET`, and AWS credentials/region. Leave
-`KAVACH_DATASET_S3_ENDPOINT_URL` unset for AWS S3; set it only for an
+the same adapter with AWS S3: set `AI_GOVERNANCE_DATASET_OBJECT_STORE_BACKEND=s3`,
+`AI_GOVERNANCE_DATASET_S3_BUCKET`, and AWS credentials/region. Leave
+`AI_GOVERNANCE_DATASET_S3_ENDPOINT_URL` unset for AWS S3; set it only for an
 S3-compatible endpoint such as SeaweedFS.
 
 The Dataset Registry also supports direct CSV and JSONL upload from Studio.
-Kavach validates and writes immutable dataset bytes to the configured object
+AI Governance Control Plane validates and writes immutable dataset bytes to the configured object
 store, then registers a DRAFT version with its `s3://` URI and SHA-256 checksum.
 
 For a guided first run through Assets, SeaweedFS dataset storage, ontology
@@ -372,7 +372,7 @@ graph explorer, or governance decision index.
 - [Ontology Foundation](docs/ontology/ontology-foundation.md)
 - [Neo4j Operations Guide](docs/ontology/neo4j-operations-guide.md)
 - [Graph Query APIs](docs/ontology/graph-query-apis.md)
-- [Kavach Studio](docs/ontology/governance-graph-console.md)
+- [AI Governance Control Plane Studio](docs/ontology/governance-graph-console.md)
 - [End-to-End Local Tutorial](docs/tutorials/end-to-end-local.md)
 - [Producer Integration Guide](docs/tutorials/producer-integration.md)
 - [Governed Replay Walkthrough](docs/tutorials/governed-replay-walkthrough.md)
@@ -400,9 +400,9 @@ Brand assets and favicon sources live in [`assets/`](assets/).
 
 # Vision
 
-Kavach provides the semantic governance layer for AI systems.
+AI Governance Control Plane provides the semantic governance layer for AI systems.
 
-By combining ontology, governance decisions, evaluation, experimentation, replay, audit, and operational APIs into a unified governance platform, Kavach enables organizations to build trustworthy, explainable, and continuously improving AI systems independent of models, orchestration frameworks, or infrastructure providers.
+By combining ontology, governance decisions, evaluation, experimentation, replay, audit, and operational APIs into a unified governance platform, AI Governance Control Plane enables organizations to build trustworthy, explainable, and continuously improving AI systems independent of models, orchestration frameworks, or infrastructure providers.
 
 > **Enterprise capabilities are under active development. Commercial offerings
 > will be announced as they mature.**

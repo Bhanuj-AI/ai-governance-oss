@@ -6,7 +6,7 @@ pytestmark = pytest.mark.integration
 
 
 def _neo4j_available() -> bool:
-    if os.getenv("KAVACH_RUN_NEO4J_TESTS") != "true":
+    if os.getenv("AI_GOVERNANCE_RUN_NEO4J_TESTS") != "true":
         return False
     try:
         import neo4j  # type: ignore # noqa: F401
@@ -20,14 +20,14 @@ pytestmark = [
     pytest.mark.skipif(
         not _neo4j_available(),
         reason=(
-            "Set KAVACH_RUN_NEO4J_TESTS=true and install/start Neo4j to run."
+            "Set AI_GOVERNANCE_RUN_NEO4J_TESTS=true and install/start Neo4j to run."
         ),
     ),
 ]
 
 
 def test_neo4j_schema_initialization_creates_indexes_and_constraints():
-    from kavach.ontology.neo4j_repository import Neo4jOntologyGraphRepository
+    from ai_governance.ontology.neo4j_repository import Neo4jOntologyGraphRepository
 
     repository = Neo4jOntologyGraphRepository.from_environment()
     try:

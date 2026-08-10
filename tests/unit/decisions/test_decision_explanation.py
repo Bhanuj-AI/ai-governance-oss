@@ -1,4 +1,4 @@
-from kavach.decisions import (
+from ai_governance.decisions import (
     DecisionEvidenceReference,
     DecisionExplanation,
     DecisionPolicyReference,

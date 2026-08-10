@@ -1,9 +1,9 @@
 # End-to-End Local Tutorial
 
-This tutorial follows one governed asset through the local Kavach stack:
+This tutorial follows one governed asset through the local AI Governance Control Plane stack:
 
 1. start the complete local environment;
-2. sign in to Kavach Studio;
+2. sign in to AI Governance Control Plane Studio;
 3. inspect versioned prompt, model, dataset, and evaluation-provider records;
 4. inspect the dataset bytes in local S3-compatible storage;
 5. follow the exact asset version into ontology lineage; and
@@ -24,13 +24,13 @@ them in a shared or production environment.
 
 ## 1. Start the local stack
 
-From the repository root, provision Keycloak and start Kavach:
+From the repository root, provision Keycloak and start AI Governance Control Plane:
 
 ```bash
-./kavach.sh
+./ai_governance.sh
 ```
 
-`./kavach.sh` validates the Compose configuration and starts the Keycloak, platform,
+`./ai_governance.sh` validates the Compose configuration and starts the Keycloak, platform,
 Studio, Neo4j, SeaweedFS, workers and MCP services. The first build can take
 a few minutes.
 
@@ -44,7 +44,7 @@ The important endpoints are:
 
 | Service | URL | Purpose |
 | --- | --- | --- |
-| Kavach Studio | http://localhost:3000 | Operator UI |
+| AI Governance Control Plane Studio | http://localhost:3000 | Operator UI |
 | REST API | http://localhost:8000/docs | OpenAPI and API inspection |
 | SeaweedFS Filer | http://localhost:8888 | Browse local dataset objects |
 | SeaweedFS Master | http://localhost:9333 | Local storage topology |
@@ -55,7 +55,7 @@ volumes and start again:
 
 ```bash
 docker compose down -v
-./kavach.sh
+./ai_governance.sh
 ```
 
 This also removes the local SQLite, Neo4j, and SeaweedFS data.
@@ -63,7 +63,7 @@ This also removes the local SQLite, Neo4j, and SeaweedFS data.
 ## 2. Sign in to Studio
 
 Open http://localhost:3000. Sign in as `studio` with the password
-configured as `KAVACH_STUDIO_PASSWORD` for the local Keycloak environment.
+configured as `AI_GOVERNANCE_STUDIO_PASSWORD` for the local Keycloak environment.
 
 The local realm assigns this user to the default organization and project.
 Studio then reads the same tenant-scoped REST APIs that an external client
@@ -104,19 +104,19 @@ Open **Assets → Datasets → Demo Evaluation Set**.
 The overview shows two intentionally separate concerns:
 
 - Registry metadata: version, status, owner, schema version, record count, and
-  checksum live in the Kavach registry database.
+  checksum live in the AI Governance Control Plane registry database.
 - Dataset content: the seeded JSONL object lives in SeaweedFS and the registry
   stores its `s3://` URI.
 
 Open http://localhost:8888 and browse to:
 
 ```text
-/buckets/kavach-datasets/demo/evaluation/v1.0/dataset.jsonl
+/buckets/ai-governance-datasets/demo/evaluation/v1.0/dataset.jsonl
 ```
 
-SeaweedFS is only the local development implementation. Kavach talks to it
+SeaweedFS is only the local development implementation. AI Governance Control Plane talks to it
 through the standard S3 API, so production can use AWS S3 by leaving
-`KAVACH_DATASET_S3_ENDPOINT_URL` unset and configuring the normal S3 bucket,
+`AI_GOVERNANCE_DATASET_S3_ENDPOINT_URL` unset and configuring the normal S3 bucket,
 region, and credentials. See [Configuration](../reference/CONFIGURATION.md#repository-backends).
 
 ## 5. Register your own dataset
@@ -125,22 +125,22 @@ From **Assets → Datasets**, select **Register Dataset**. Provide a logical
 name, immutable version, description, schema version, and one UTF-8 CSV or
 JSONL/NDJSON file.
 
-Kavach validates the file, counts records, computes a SHA-256 checksum, writes
+AI Governance Control Plane validates the file, counts records, computes a SHA-256 checksum, writes
 the bytes to the configured object store, and creates a **DRAFT** dataset
 version. The registry stores the resulting `s3://` URI, checksum, record count,
 and owner; it does not store the file body in SQLite.
 
 The local default upload limit is 10 MiB. Parsing is streamed from the spooled
 upload file and also enforces record-size and field-count limits. Adjust
-`KAVACH_DATASET_MAX_UPLOAD_BYTES`, `KAVACH_DATASET_MAX_RECORD_BYTES`, and
-`KAVACH_DATASET_MAX_FIELDS` when needed. A repeated checksum for the same
+`AI_GOVERNANCE_DATASET_MAX_UPLOAD_BYTES`, `AI_GOVERNANCE_DATASET_MAX_RECORD_BYTES`, and
+`AI_GOVERNANCE_DATASET_MAX_FIELDS` when needed. A repeated checksum for the same
 logical dataset is rejected even under a new version; use a new version only
 when the content changes.
 
 ## 6. Submit observed runtime evidence (optional)
 
-Kavach is not a prompt-authoring or model-serving tool. A producer can instead
-report exactly what it used and let Kavach catalog the immutable identity. This
+AI Governance Control Plane is not a prompt-authoring or model-serving tool. A producer can instead
+report exactly what it used and let AI Governance Control Plane catalog the immutable identity. This
 example deliberately withholds prompt content while retaining a hash:
 
 ```bash
@@ -228,7 +228,7 @@ flow or a development-mode API when exercising them manually.
 
 ## Where to go next
 
-- [Kavach Studio and Graph Explorer](../ontology/governance-graph-console.md)
+- [AI Governance Control Plane Studio and Graph Explorer](../ontology/governance-graph-console.md)
 - [REST API reference](../reference/REST_API.md)
 - [Producer integration guide](producer-integration.md)
 - [Configuration reference](../reference/CONFIGURATION.md)

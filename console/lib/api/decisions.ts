@@ -1,4 +1,4 @@
-import { kavachRequest } from "@/lib/api/client";
+import { aiGovernanceRequest } from "@/lib/api/client";
 import { mapSubgraph } from "@/lib/api/graph";
 import type {
   DecisionAuditRecord,
@@ -30,35 +30,35 @@ import type {
 } from "@/types/decision";
 
 export async function getDecisions(limit = 50) {
-  const dto = await kavachRequest<DecisionListDto>("/api/v1/decisions", {
+  const dto = await aiGovernanceRequest<DecisionListDto>("/api/v1/decisions", {
     limit,
   });
   return mapDecisionList(dto);
 }
 
 export async function getDecisionDetail(decisionId: string) {
-  const dto = await kavachRequest<DecisionDetailDto>(
+  const dto = await aiGovernanceRequest<DecisionDetailDto>(
     `/api/v1/decisions/${encodeURIComponent(decisionId)}/detail`,
   );
   return mapDecisionDetail(dto);
 }
 
 export async function getDecisionEvidence(decisionId: string) {
-  const dto = await kavachRequest<DecisionEvidenceDto>(
+  const dto = await aiGovernanceRequest<DecisionEvidenceDto>(
     `/api/v1/decisions/${encodeURIComponent(decisionId)}/evidence`,
   );
   return mapDecisionEvidence(dto);
 }
 
 export async function getDecisionExplanation(decisionId: string) {
-  const dto = await kavachRequest<DecisionExplanationDto>(
+  const dto = await aiGovernanceRequest<DecisionExplanationDto>(
     `/api/v1/decisions/${encodeURIComponent(decisionId)}/explanation`,
   );
   return mapDecisionExplanation(dto);
 }
 
 export async function getDecisionLineage(decisionId: string, depth = 2) {
-  const dto = await kavachRequest<DecisionLineageDto>(
+  const dto = await aiGovernanceRequest<DecisionLineageDto>(
     `/api/v1/decisions/${encodeURIComponent(decisionId)}/lineage`,
     { depth },
   );

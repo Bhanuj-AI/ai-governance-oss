@@ -25,9 +25,9 @@ import { listReplays } from "@/lib/api/replays";
 import { listDatasetAssets, listModelAssets, listPromptAssets } from "@/lib/api/registries";
 import { listProjects } from "@/lib/api/tenancy";
 
-const JOURNEY_PROGRESS_KEY = "kavach.onboarding.journey-baselines";
-const JOURNEY_MANUAL_STEPS_KEY = "kavach.onboarding.manually-reviewed-steps";
-const ACTIVE_JOURNEY_KEY = "kavach.onboarding.active-journey";
+const JOURNEY_PROGRESS_KEY = "ai_governance.onboarding.journey-baselines";
+const JOURNEY_MANUAL_STEPS_KEY = "ai_governance.onboarding.manually-reviewed-steps";
+const ACTIVE_JOURNEY_KEY = "ai_governance.onboarding.active-journey";
 
 type Snapshot = {
   projects: number;
@@ -64,7 +64,7 @@ type Journey = {
   steps: JourneyStep[];
 };
 
-const docs = "https://kavach.bhanuj.app/docs";
+const docs = "https://ai_governance.bhanuj.app/docs";
 
 const JOURNEYS: Journey[] = [
   {
@@ -74,14 +74,14 @@ const JOURNEYS: Journey[] = [
     description: "Build one new governed workflow in your selected project.",
     unlocks: ["Asset Registry", "Runtime Observation", "Evaluation", "Governance", "Replay"],
     steps: [
-      { id: "api", title: "API Running", explanation: "Studio can reach the Kavach control-plane API.", why: ["Studio uses the API to read and record governance state.", "A healthy API confirms your local control plane is ready."], href: "/", action: "View platform health", docsHref: `${docs}/rest-apis`, isSystem: true, complete: current => current.apiReady },
+      { id: "api", title: "API Running", explanation: "Studio can reach the AI Governance Control Plane control-plane API.", why: ["Studio uses the API to read and record governance state.", "A healthy API confirms your local control plane is ready."], href: "/", action: "View platform health", docsHref: `${docs}/rest-apis`, isSystem: true, complete: current => current.apiReady },
       { id: "database", title: "Postgres Connected", explanation: "The control-plane persistence surface is responding.", why: ["Governance records must persist beyond a browser session.", "The database keeps evidence, decisions, and audit history durable."], href: "/", action: "View platform health", docsHref: `${docs}/persistence`, isSystem: true, complete: current => current.databaseReady },
-      { id: "neo4j", title: "Neo4j Connected", explanation: "The graph store is ready to project and explore lineage.", why: ["Kavach connects evidence instead of leaving it in isolated records.", "The graph makes source, evaluation, decision, and replay lineage explorable."], href: "/graph", action: "Open Ontology", docsHref: `${docs}/ontology-synchronization`, isSystem: true, complete: current => current.neo4jReady },
+      { id: "neo4j", title: "Neo4j Connected", explanation: "The graph store is ready to project and explore lineage.", why: ["AI Governance Control Plane connects evidence instead of leaving it in isolated records.", "The graph makes source, evaluation, decision, and replay lineage explorable."], href: "/graph", action: "Open Ontology", docsHref: `${docs}/ontology-synchronization`, isSystem: true, complete: current => current.neo4jReady },
       { id: "project", title: "Create Project", explanation: "Projects keep governed work scoped to the right team and workload.", why: ["Projects isolate governance, assets, and replay by workload.", "Without projects, everything mixes together."], href: "/organization/projects?onboarding=create", action: "Create Project", docsHref: `${docs}/rbac`, complete: (current, baseline) => current.projects > baseline.projects },
       { id: "asset", title: "Register Asset", explanation: "Register an evaluation dataset—a versioned asset your experiment can use as durable evidence.", why: ["An evaluation needs a stable input set to be repeatable.", "Versioned datasets make later comparisons defensible."], href: "/assets/datasets?onboarding=register", action: "Register Dataset", docsHref: `${docs}/assets`, complete: (current, baseline) => current.assets > baseline.assets },
-      { id: "observe", title: "Observe Runtime", explanation: "Run an instrumented request from your application so Kavach can capture prompt and model evidence without taking over authoring or serving.", why: ["Runtime evidence captures what actually served a result.", "That evidence links a later evaluation or replay to the exact prompt and model."], href: "/assets?onboarding=observe", action: "Open Observation Setup", docsHref: `${docs}/tutorials/observed-assets`, complete: (current, baseline) => current.observedAssets > baseline.observedAssets },
+      { id: "observe", title: "Observe Runtime", explanation: "Run an instrumented request from your application so AI Governance Control Plane can capture prompt and model evidence without taking over authoring or serving.", why: ["Runtime evidence captures what actually served a result.", "That evidence links a later evaluation or replay to the exact prompt and model."], href: "/assets?onboarding=observe", action: "Open Observation Setup", docsHref: `${docs}/tutorials/observed-assets`, complete: (current, baseline) => current.observedAssets > baseline.observedAssets },
       { id: "experiment", title: "Create Experiment", explanation: "Experiments hold candidate configurations and their evaluation runs. Create one, add a candidate, then produce evidence to compare and review.", why: ["Experiments compare candidate configurations under the same conditions.", "Without a shared experiment, scores cannot be compared fairly."], href: "/experiments?onboarding=create", action: "Create Experiment", docsHref: `${docs}/evaluation-engine`, complete: (current, baseline) => current.experiments > baseline.experiments && current.evaluations > baseline.evaluations },
-      { id: "decision", title: "Review Decision", explanation: "After governance produces a new outcome, open the decision index to inspect its policy result and evidence.", why: ["A decision turns policy checks into a reviewable outcome.", "Its evidence explains why Kavach approved, blocked, or flagged the work."], href: "/decisions", action: "Open Decision Index", docsHref: `${docs}/tutorials/reviewing-governance-decisions`, complete: (current, baseline) => current.decisions > baseline.decisions },
+      { id: "decision", title: "Review Decision", explanation: "After governance produces a new outcome, open the decision index to inspect its policy result and evidence.", why: ["A decision turns policy checks into a reviewable outcome.", "Its evidence explains why AI Governance Control Plane approved, blocked, or flagged the work."], href: "/decisions", action: "Open Decision Index", docsHref: `${docs}/tutorials/reviewing-governance-decisions`, complete: (current, baseline) => current.decisions > baseline.decisions },
       { id: "replay", title: "Create Replay", explanation: "Replays reproduce a governed execution from frozen historical evidence.", why: ["Replays test a past execution without changing the original record.", "They reveal whether a change introduces measurable drift."], href: "/replays/new", action: "Create Replay", docsHref: `${docs}/replay-management`, complete: (current, baseline) => current.replays > baseline.replays },
     ],
   },
@@ -247,8 +247,8 @@ export function OnboardingJourney({ onOpenDashboard }: { onOpenDashboard?: () =>
             <p className="mt-5 text-sm font-semibold text-primary">Local Studio setup</p>
             <h1 className="mt-2 text-2xl font-semibold">Seed demo data before starting a journey.</h1>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">The mentor uses a representative end-to-end workflow—assets, evaluations, decisions, replays, and ontology lineage. Your running stack does not have that seed yet.</p>
-            <div className="mt-6 border bg-muted/40 p-4 text-left"><p className="font-mono text-xs text-muted-foreground">Run from your Kavach checkout</p><code className="mt-2 block font-mono text-sm">./kavach.sh</code></div>
-            <p className="mt-4 text-xs leading-5 text-muted-foreground">For a clean local stack, keep <code>KAVACH_AUTO_SEED_DEMO_DATA</code> enabled. The normal launcher performs the complete, idempotent demo seed.</p>
+            <div className="mt-6 border bg-muted/40 p-4 text-left"><p className="font-mono text-xs text-muted-foreground">Run from your AI Governance Control Plane checkout</p><code className="mt-2 block font-mono text-sm">./ai_governance.sh</code></div>
+            <p className="mt-4 text-xs leading-5 text-muted-foreground">For a clean local stack, keep <code>AI_GOVERNANCE_AUTO_SEED_DEMO_DATA</code> enabled. The normal launcher performs the complete, idempotent demo seed.</p>
             {seedDemoData.isError ? <p role="alert" className="mt-4 text-sm text-destructive">{seedDemoData.error instanceof Error ? seedDemoData.error.message : "The demo data could not be seeded. Check the local API and try again."}</p> : null}
             <div className="mt-6 flex flex-wrap justify-center gap-3"><Button onClick={() => seedDemoData.mutate()} disabled={seedDemoData.isPending}>{seedDemoData.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}{seedDemoData.isPending ? "Seeding demo data…" : "Seed demo data"}</Button><Button variant="outline" onClick={refreshSeedStatus} disabled={seedDemoData.isPending}>Refresh status</Button><a href={`${docs}/getting-started`} target="_blank" rel="noreferrer"><Button variant="outline">Open setup guide <ExternalLink className="h-4 w-4" /></Button></a></div>
           </CardContent>
@@ -262,7 +262,7 @@ export function OnboardingJourney({ onOpenDashboard }: { onOpenDashboard?: () =>
       <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-6 px-6 py-8">
         <header className="journey-chrome flex flex-col justify-between gap-5 border-b pb-7 sm:flex-row sm:items-end">
           <div className="max-w-2xl">
-            <div className="flex items-center gap-2 text-primary"><Sparkles className="h-5 w-5" /><span className="text-sm font-semibold">Kavach Mentor</span></div>
+            <div className="flex items-center gap-2 text-primary"><Sparkles className="h-5 w-5" /><span className="text-sm font-semibold">AI Governance Control Plane Mentor</span></div>
             <h1 className="mt-3 text-3xl font-semibold tracking-normal">Build governed workflows!</h1>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">Studio records a baseline when you begin, then validates only the work created after that point. Existing demo data never completes a journey for you.</p>
           </div>

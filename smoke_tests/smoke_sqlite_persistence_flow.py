@@ -6,12 +6,12 @@ from contextlib import contextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.domain.jobs import JobSubmission, JobType
-from kavach.mcp.audit import MCPExecutionAuditLog
-from kavach.mcp.dto import WriteEnvelope
-from kavach.repositories.sqlite.sqlite_job_repository import SQLiteJobRepository
-from kavach.services.job_submission_service import JobSubmissionService
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.domain.jobs import JobSubmission, JobType
+from ai_governance.mcp.audit import MCPExecutionAuditLog
+from ai_governance.mcp.dto import WriteEnvelope
+from ai_governance.repositories.sqlite.sqlite_job_repository import SQLiteJobRepository
+from ai_governance.services.job_submission_service import JobSubmissionService
 
 
 def main() -> None:
@@ -113,7 +113,7 @@ def _database_path(
         return
 
     with TemporaryDirectory() as tmpdir:
-        yield Path(tmpdir) / "kavach-sqlite-smoke.db"
+        yield Path(tmpdir) / "ai-governance-sqlite-smoke.db"
 
 
 if __name__ == "__main__":

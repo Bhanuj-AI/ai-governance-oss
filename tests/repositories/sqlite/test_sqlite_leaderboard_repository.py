@@ -2,11 +2,11 @@ from pathlib import Path
 
 import pytest
 
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.repositories.leaderboard_repository import (
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.repositories.leaderboard_repository import (
     LeaderboardRepository,
 )
-from kavach.repositories.sqlite.sqlite_leaderboard_repository import (
+from ai_governance.repositories.sqlite.sqlite_leaderboard_repository import (
     SQLiteLeaderboardRepository,
 )
 from tests.repositories.contract.test_leaderboard_repository_contract import (
@@ -22,7 +22,7 @@ class TestSQLiteLeaderboardRepository(
         self,
         tmp_path: Path,
     ) -> None:
-        database = SQLiteDatabase(tmp_path / "kavach.db")
+        database = SQLiteDatabase(tmp_path / "ai_governance.db")
         database.initialize()
 
         self._repository = SQLiteLeaderboardRepository(database)

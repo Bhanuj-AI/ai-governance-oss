@@ -4,17 +4,17 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kavach.providers import EvaluationProviderRegistry, MockEvaluationProvider
-from kavach.repositories.settings_provider_installation_repository import (
+from ai_governance.providers import EvaluationProviderRegistry, MockEvaluationProvider
+from ai_governance.repositories.settings_provider_installation_repository import (
     SettingsProviderInstallationRepository,
 )
-from kavach.services.provider_installation_service import (
+from ai_governance.services.provider_installation_service import (
     ProviderInstallationNotFoundError,
     ProviderInstallationService,
 )
-from kavach.settings_control.domain import SettingScope
-from kavach.settings_control.repository import InMemorySettingsRepository
-from kavach.tenancy.domain import TenantContext
+from ai_governance.settings_control.domain import SettingScope
+from ai_governance.settings_control.repository import InMemorySettingsRepository
+from ai_governance.tenancy.domain import TenantContext
 
 
 def _context(org: str = "org-a", project: str = "project-a") -> TenantContext:

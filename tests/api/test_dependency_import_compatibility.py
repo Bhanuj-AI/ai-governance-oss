@@ -2,7 +2,7 @@
 Backward-compatibility tests for the split dependency package.
 
 These tests ensure that every public provider that was previously importable
-from ``kavach.api.dependencies`` remains importable after the refactor.
+from ``ai_governance.api.dependencies`` remains importable after the refactor.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from __future__ import annotations
 def test_backward_compatible_imports() -> None:
     """Old-style imports from the package root must still work."""
 
-    from kavach.api.dependencies import (
+    from ai_governance.api.dependencies import (
         ApiSettings,
         get_api_settings,
         get_evaluation_repository,
@@ -114,29 +114,29 @@ def test_backward_compatible_imports() -> None:
 def test_plane_specific_imports() -> None:
     """Each plane module must be importable directly."""
 
-    from kavach.api.dependencies.settings import get_api_settings
-    from kavach.api.dependencies.evaluation import get_evaluation_api_service
-    from kavach.api.dependencies.experiments import get_experiment_api_service
-    from kavach.api.dependencies.decisions import (
+    from ai_governance.api.dependencies.settings import get_api_settings
+    from ai_governance.api.dependencies.evaluation import get_evaluation_api_service
+    from ai_governance.api.dependencies.experiments import get_experiment_api_service
+    from ai_governance.api.dependencies.decisions import (
         get_governance_decision_application_service,
     )
-    from kavach.api.dependencies.dashboard import get_dashboard_read_service
-    from kavach.api.dependencies.governance_insights import (
+    from ai_governance.api.dependencies.dashboard import get_dashboard_read_service
+    from ai_governance.api.dependencies.governance_insights import (
         get_governance_report_service,
     )
-    from kavach.api.dependencies.repositories import get_job_repository
-    from kavach.api.dependencies.ontology import get_ontology_sync_event_publisher
-    from kavach.api.dependencies.mcp import get_mcp_audit_log
-    from kavach.api.dependencies.providers import get_provider_registry
-    from kavach.api.dependencies.registries import (
+    from ai_governance.api.dependencies.repositories import get_job_repository
+    from ai_governance.api.dependencies.ontology import get_ontology_sync_event_publisher
+    from ai_governance.api.dependencies.mcp import get_mcp_audit_log
+    from ai_governance.api.dependencies.providers import get_provider_registry
+    from ai_governance.api.dependencies.registries import (
         get_prompt_registry_service,
         get_model_registry_service,
         get_dataset_registry_service,
         get_provider_registry_service,
     )
-    from kavach.api.dependencies.jobs import get_job_api_service
-    from kavach.api.dependencies.audit import get_audit_read_service
-    from kavach.api.dependencies.policies import get_policy_administration_service
+    from ai_governance.api.dependencies.jobs import get_job_api_service
+    from ai_governance.api.dependencies.audit import get_audit_read_service
+    from ai_governance.api.dependencies.policies import get_policy_administration_service
 
     imported = (
         get_api_settings,

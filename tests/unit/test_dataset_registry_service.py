@@ -2,11 +2,11 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kavach.domain.datasets import DatasetStatus
-from kavach.repositories.in_memory_dataset_repository import (
+from ai_governance.domain.datasets import DatasetStatus
+from ai_governance.repositories.in_memory_dataset_repository import (
     InMemoryDatasetRepository,
 )
-from kavach.services.datasets import (
+from ai_governance.services.datasets import (
     DatasetLifecycleError,
     DatasetRegistryService,
     DatasetVersionConflictError,

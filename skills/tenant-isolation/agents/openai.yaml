@@ -1,4 +1,4 @@
 interface:
   display_name: "Tenant Isolation"
-  short_description: "Protect tenant boundaries in Kavach changes."
-  default_prompt: "Use $tenant-isolation to implement and test tenant-safe access in Kavach."
+  short_description: "Protect tenant boundaries in AI Governance Control Plane changes."
+  default_prompt: "Use $tenant-isolation to implement and test tenant-safe access in AI Governance Control Plane."

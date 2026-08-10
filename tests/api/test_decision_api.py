@@ -4,9 +4,9 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from kavach.api.app import create_app
-from kavach.api.dependencies import get_governance_decision_repository
-from kavach.repositories.in_memory import InMemoryGovernanceDecisionRepository
+from ai_governance.api.app import create_app
+from ai_governance.api.dependencies import get_governance_decision_repository
+from ai_governance.repositories.in_memory import InMemoryGovernanceDecisionRepository
 
 
 def _client() -> tuple[TestClient, InMemoryGovernanceDecisionRepository]:
@@ -149,10 +149,10 @@ def test_decision_endpoints_are_in_openapi() -> None:
 
 
 def test_decision_router_has_no_repository_or_provider_adapter_imports() -> None:
-    source = Path("src/kavach/api/routers/decisions.py").read_text()
+    source = Path("src/ai_governance/api/routers/decisions.py").read_text()
 
-    assert "kavach.repositories" not in source
+    assert "ai_governance.repositories" not in source
     assert "Repository" not in source
-    assert "kavach.providers.trulens" not in source
+    assert "ai_governance.providers.trulens" not in source
     assert "import trulens" not in source
     assert "import openai" not in source

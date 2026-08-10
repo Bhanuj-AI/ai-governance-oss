@@ -85,7 +85,7 @@ export function GovernedEventFlow({
       <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/25 px-4 py-3 font-mono text-[0.65rem] uppercase tracking-[0.16em] text-muted-foreground sm:px-5">
         <span className="flex items-center gap-2">
           <span className={`size-1.5 rounded-full ${TONE_CLASSES[outcomeTone].dot}`} />
-          Kavach / governed event stream
+          AI Governance Control Plane / governed event stream
         </span>
         <span className="hidden text-emerald-700 dark:text-emerald-300 sm:block">
           ordered · durable · explainable

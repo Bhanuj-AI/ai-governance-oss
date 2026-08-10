@@ -1,6 +1,6 @@
 ---
 name: api-change
-description: Implement or modify a Kavach REST API endpoint, request or response model, router, mapper, dependency, or HTTP error mapping. Use for backwards-compatible API additions, contract changes, pagination, authorization, idempotent write endpoints, and API-focused tests.
+description: Implement or modify a AI Governance Control Plane REST API endpoint, request or response model, router, mapper, dependency, or HTTP error mapping. Use for backwards-compatible API additions, contract changes, pagination, authorization, idempotent write endpoints, and API-focused tests.
 ---
 
 # API Change
@@ -9,7 +9,7 @@ Implement a REST change as a transport adapter over an application service.
 
 ## Workflow
 
-1. Read root `AGENTS.md` and `src/kavach/api/AGENTS.md`. Read the service,
+1. Read root `AGENTS.md` and `src/ai_governance/api/AGENTS.md`. Read the service,
    tenancy, repository, or domain instructions for every layer changed.
 2. Inspect the existing router, request/response models, mapper, dependency
    provider, and closest API test before choosing the public contract.
@@ -64,7 +64,7 @@ Choose the closest existing API test module and run it. These commands are
 known to exercise the current decision and policy API contracts:
 
 ```bash
-uv run ruff check src/kavach/api
+uv run ruff check src/ai_governance/api
 uv run pytest tests/api/test_decision_api.py
 uv run pytest tests/api/test_policy_administration_api.py
 ```

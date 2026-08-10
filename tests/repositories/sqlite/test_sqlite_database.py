@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from kavach.databases.sqlite.database import SQLiteDatabase
+from ai_governance.databases.sqlite.database import SQLiteDatabase
 
 
 class TestSQLiteDatabase:
@@ -9,7 +9,7 @@ class TestSQLiteDatabase:
         tmp_path: Path,
     ) -> None:
 
-        database = SQLiteDatabase(tmp_path / "kavach.db")
+        database = SQLiteDatabase(tmp_path / "ai_governance.db")
 
         database.initialize()
 

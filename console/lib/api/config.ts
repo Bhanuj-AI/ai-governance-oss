@@ -1,6 +1,6 @@
 import { runtimeConfigValue } from "@/lib/runtime-config";
 
-const DEFAULT_KAVACH_API_BASE_URL = "http://localhost:8000";
+const DEFAULT_AI_GOVERNANCE_API_BASE_URL = "http://localhost:8000";
 
 /**
  * Browser-safe API base URL.
@@ -9,7 +9,7 @@ const DEFAULT_KAVACH_API_BASE_URL = "http://localhost:8000";
  * also uses `.env.studio`, so retain the documented local API address when the
  * public variable was not injected into the client bundle.
  */
-export const KAVACH_API_BASE_URL = (
+export const AI_GOVERNANCE_API_BASE_URL = (
   runtimeConfigValue("apiBaseUrl") ||
-  DEFAULT_KAVACH_API_BASE_URL
+  DEFAULT_AI_GOVERNANCE_API_BASE_URL
 ).replace(/\/+$/, "");

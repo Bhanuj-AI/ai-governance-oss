@@ -1,6 +1,6 @@
 # Plugin Extension Contracts
 
-Kavach exposes versioned (`v1`) generic plugin contribution contracts. A
+AI Governance Control Plane exposes versioned (`v1`) generic plugin contribution contracts. A
 plugin registers them during `register(context)` through
 `context.contributions`. Registration is single-threaded during application
 construction; duplicate identities fail startup. Contributions are optional,
@@ -15,7 +15,7 @@ and an installation without plugins keeps the prior runtime behavior.
 - Plugin lifecycle remains validate → register → start → stop, with stop in
   reverse registration order.
 
-Plugins own their contribution implementation. Kavach owns registration,
+Plugins own their contribution implementation. AI Governance Control Plane owns registration,
 ordering, lifecycle, validation, API composition and failure behavior. These
 contracts intentionally contain no product-tier or vendor concepts.
 

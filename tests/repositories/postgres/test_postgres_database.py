@@ -1,7 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 
-from kavach.databases.postgres.database import PostgresDatabase
+from ai_governance.databases.postgres.database import PostgresDatabase
 
 
 class TestPostgresDatabase:

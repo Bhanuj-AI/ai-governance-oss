@@ -7,7 +7,7 @@ discover and call tools exposed by an application. An MCP server publishes
 tool names, descriptions, and input schemas. The AI client sends a structured
 tool request, and the server returns structured content or an error.
 
-In Kavach, MCP is an adapter over the REST control plane. It does not contain a
+In AI Governance Control Plane, MCP is an adapter over the REST control plane. It does not contain a
 second copy of policy, tenancy or governance logic:
 
 ```text
@@ -17,10 +17,10 @@ AI client
 MCPO (optional HTTP/OpenAPI adapter)
    │ stdio JSON-RPC
    ▼
-Kavach MCP server
+AI Governance Control Plane MCP server
    │ REST request with tenant context and bearer token
    ▼
-Kavach REST API
+AI Governance Control Plane REST API
    │ authorization, persistence, governance rules
    ▼
 SQLite / PostgreSQL / other configured backends
@@ -37,11 +37,11 @@ scope, memberships, roles, permissions, audit records, and persistence.
 | Local MCP-aware AI client | MCP over stdio |
 | Remote MCP-aware AI client | Native Streamable HTTP at `http://localhost:8002/mcp` |
 | HTTP/OpenAPI-only client | MCPO at `http://localhost:8001` |
-| Traditional application integration | Kavach REST API |
+| Traditional application integration | AI Governance Control Plane REST API |
 
 Native Streamable HTTP is MCP, not a conventional REST endpoint; use an MCP
 client library for `initialize`, `tools/list`, and `tools/call`. In Keycloak
-mode supply the caller's bearer token to the MCP client. Kavach forwards that
+mode supply the caller's bearer token to the MCP client. AI Governance Control Plane forwards that
 same token to REST, so tenant membership and roles are evaluated for the user
 rather than the MCPO service account.
 
@@ -61,7 +61,7 @@ async with streamablehttp_client("http://localhost:8002/mcp", headers=headers) a
 
 ### Brief
 
-With `KAVACH_AUTH_MODE=keycloak`, a remote client needs an access token before
+With `AI_GOVERNANCE_AUTH_MODE=keycloak`, a remote client needs an access token before
 it can use the native MCP endpoint. It sends that token on every connection or
 request as:
 
@@ -69,7 +69,7 @@ request as:
 Authorization: Bearer <access-token>
 ```
 
-Kavach does **not** replace that token with a shared MCP service-account token.
+AI Governance Control Plane does **not** replace that token with a shared MCP service-account token.
 It validates the incoming credential at `/mcp` and forwards the same credential
 to the REST control plane. The token's `sub` claim is the runtime actor used
 for authorization and audit attribution.
@@ -79,10 +79,10 @@ Client obtains an access token from Keycloak
         │
         │ Authorization: Bearer <access-token>
         ▼
-Kavach MCP HTTP service (/mcp)
+AI Governance Control Plane MCP HTTP service (/mcp)
         │ validates token and preserves it
         ▼
-Kavach REST control plane
+AI Governance Control Plane REST control plane
         │ derives actor from JWT sub
         ▼
 Tenant membership, role, permission, and audit decisions
@@ -95,9 +95,9 @@ and permission for that scope.
 
 ### Client Token Flow
 
-| Situation | Who obtains the token? | Appropriate Keycloak flow | Identity recorded by Kavach |
+| Situation | Who obtains the token? | Appropriate Keycloak flow | Identity recorded by AI Governance Control Plane |
 | --- | --- | --- | --- |
-| Local developer smoke test | The test script | Client credentials for `kavach-mcp` | MCP service account |
+| Local developer smoke test | The test script | Client credentials for `ai-governance-mcp` | MCP service account |
 | Human using an AI desktop/web client | The user signs in | Authorization Code with PKCE / the organization's normal OIDC login | The signed-in user |
 | Automated backend, agent, or scheduled job | The workload | Client credentials for that workload's own confidential client | That workload's service account |
 
@@ -106,10 +106,10 @@ prompt. A user-facing client should receive an access token through its normal
 login flow. A backend workload may hold its own secret in a secrets manager and
 use it only to obtain short-lived tokens.
 
-### 1. Local developer smoke test: `kavach-mcp` service account
+### 1. Local developer smoke test: `ai-governance-mcp` service account
 
 For a local Keycloak smoke test, load `.env.local`, obtain a short-lived token
-for the existing `kavach-mcp` confidential client, and use it for the native
+for the existing `ai-governance-mcp` confidential client, and use it for the native
 MCP connection. This represents the MCP service account; production remote
 clients should instead send the individual caller's access token.
 
@@ -125,7 +125,7 @@ Paste it into a client as `Bearer <token>`. Clear the clipboard when finished.
 
 This is the right option when validating a local installation. It is not a
 user-login implementation: every call made with this token is attributed to
-the `kavach-mcp` service account. The service account must have an active
+the `ai-governance-mcp` service account. The service account must have an active
 membership and an assigned role in the selected organization/project.
 
 ### 2. User-facing AI Client: Signed-in User's Token
@@ -156,11 +156,11 @@ async with streamablehttp_client(
         )
 ```
 
-Kavach records the user's Keycloak subject as the actor. If that user lacks a
+AI Governance Control Plane records the user's Keycloak subject as the actor. If that user lacks a
 membership, role, or permission, the tool returns an authorization error even
 if the token itself is valid. The client should renew expired access tokens
 through its OIDC library and reconnect/retry with the new token; never send a
-refresh token to Kavach.
+refresh token to AI Governance Control Plane.
 
 ### 3. Automated Client: Dedicated Workload Identity
 
@@ -168,10 +168,10 @@ For a CI job, backend service, or unattended agent, create a dedicated
 confidential Keycloak client for that workload. Store its client secret in the
 workload's secret manager, exchange it for a short-lived token using client
 credentials, and supply the token to the MCP client exactly as in the local
-example. Provision that service-account subject into Kavach with only the
+example. Provision that service-account subject into AI Governance Control Plane with only the
 organization/project roles it needs.
 
-Do not reuse the local `kavach-mcp` client for unrelated production workloads.
+Do not reuse the local `ai-governance-mcp` client for unrelated production workloads.
 Dedicated client identities make audit records understandable and make it
 possible to revoke one integration without affecting another.
 
@@ -180,10 +180,10 @@ possible to revoke one integration without affecting another.
 | Result | Meaning | What to check |
 | --- | --- | --- |
 | HTTP `401` from `/mcp` | No valid bearer token reached the MCP boundary. | Token present, not expired, correct issuer/signature, and MCP process configured for Keycloak mode. |
-| MCP tool error containing REST `401` | The MCP process did not forward a valid token to REST, or REST rejected it. | Restart `kavach-mcp` after loading `.env.local`; ensure the client supplies `Authorization`. |
-| MCP tool error derived from REST `403` | The token is valid, but the actor cannot use the requested tenant or operation. | Kavach membership, project scope, role assignment, and required permission. |
+| MCP tool error containing REST `401` | The MCP process did not forward a valid token to REST, or REST rejected it. | Restart `ai-governance-mcp` after loading `.env.local`; ensure the client supplies `Authorization`. |
+| MCP tool error derived from REST `403` | The token is valid, but the actor cannot use the requested tenant or operation. | AI Governance Control Plane membership, project scope, role assignment, and required permission. |
 
-Development mode (`KAVACH_AUTH_MODE=development`) is intentionally different:
+Development mode (`AI_GOVERNANCE_AUTH_MODE=development`) is intentionally different:
 it does not validate JWTs and resolves the local development actor through the
 existing development identity mechanism. Use it only for isolated local work,
 not for a shared or internet-accessible MCP endpoint.
@@ -194,14 +194,14 @@ The native endpoint deliberately does not expose Swagger/OpenAPI because MCP
 is not an OpenAPI service. Use the official MCP Inspector when a visual tool
 browser is useful during development.
 
-Start the Kavach local stack and native HTTP service in separate terminals:
+Start the AI Governance Control Plane local stack and native HTTP service in separate terminals:
 
 ```bash
-./kavach-local.sh
+./ai-governance-local.sh
 ```
 
 ```bash
-uv run kavach-mcp --transport streamable-http --host 127.0.0.1 --port 8002
+uv run ai-governance-mcp --transport streamable-http --host 127.0.0.1 --port 8002
 ```
 
 Then start the Inspector from the repository root:
@@ -239,15 +239,15 @@ Authorization: Bearer <access-token>
 }
 ```
 
-Paste the access token only; never paste `KAVACH_MCP_CLIENT_SECRET` into a
+Paste the access token only; never paste `AI_GOVERNANCE_MCP_CLIENT_SECRET` into a
 browser UI. The Inspector can then initialize the connection, browse the
 tools, inspect schemas, and invoke the selected tool.
 
 The local `.env.local` permits the Inspector browser origins on port `6274`.
-Restart `kavach-mcp` after changing `KAVACH_MCP_HTTP_ALLOWED_ORIGINS`. For a
+Restart `ai-governance-mcp` after changing `AI_GOVERNANCE_MCP_HTTP_ALLOWED_ORIGINS`. For a
 shared deployment, replace those local origins with the explicit origin of the
 approved browser client; do not use a wildcard origin. Browser MCP clients
-also send MCP-specific headers after initialization; Kavach explicitly permits
+also send MCP-specific headers after initialization; AI Governance Control Plane explicitly permits
 the required protocol, session, and event-ID headers in the local CORS policy.
 
 ### Reading the native MCP server log
@@ -256,7 +256,7 @@ the required protocol, session, and event-ID headers in the local CORS policy.
 | --- | --- |
 | `OPTIONS /mcp ... 200` | The browser's CORS preflight was accepted. |
 | `jwt_authenticated` and `POST /mcp ... 200` | The bearer token was accepted and an MCP request completed. |
-| `Terminating session: None` | Expected in Kavach's stateless HTTP mode; the next request may use any replica. |
+| `Terminating session: None` | Expected in AI Governance Control Plane's stateless HTTP mode; the next request may use any replica. |
 | `POST /mcp ... 401` | The request did not include a valid bearer token. |
 | Tool result with REST-derived `403` | The token is valid, but the tenant membership, role, or permission is insufficient. |
 
@@ -268,7 +268,7 @@ OpenAPI-compatible endpoints.
 
 This distinction is important:
 
-- **MCP server**: Kavach's tool implementation and JSON-RPC behavior.
+- **MCP server**: AI Governance Control Plane's tool implementation and JSON-RPC behavior.
 - **stdio**: The process transport where JSON-RPC messages are exchanged over
   standard input/output. This is useful when an AI desktop client launches the
   server directly.
@@ -276,17 +276,17 @@ This distinction is important:
   port `8001`, discovers the MCP tools, and makes them available to HTTP-based
   clients.
 
-MCPO does not replace Kavach authentication or authorization. In Keycloak mode,
+MCPO does not replace AI Governance Control Plane authentication or authorization. In Keycloak mode,
 MCP must forward a valid bearer token to the REST API. It normally obtains a
-client-credentials token from Keycloak; `KAVACH_API_TOKEN` is an explicit
+client-credentials token from Keycloak; `AI_GOVERNANCE_API_TOKEN` is an explicit
 override for testing. The token's `sub` remains the runtime actor, and tenant
-authorization still requires an active Kavach membership and role.
+authorization still requires an active AI Governance Control Plane membership and role.
 
-The local realm defines a separate confidential client named `kavach-mcp`. It
+The local realm defines a separate confidential client named `ai-governance-mcp`. It
 uses the client-credentials grant and is independent from the public
-`kavach-studio` browser client and the general `kavach-service` client. Its
+`ai-governance-studio` browser client and the general `ai-governance-service` client. Its
 secret belongs only to the MCPO process. The MCP service account must also have
-an active Kavach membership and the required role assignment for the target
+an active AI Governance Control Plane membership and the required role assignment for the target
 organization/project; a Keycloak client role alone is not sufficient.
 
 ## Recommended local developer flow
@@ -294,7 +294,7 @@ organization/project; a Keycloak client role alone is not sufficient.
 Use the one-command local launcher:
 
 ```bash
-./kavach-local.sh
+./ai-governance-local.sh
 ```
 
 It starts Keycloak, discovers the MCP and walkthrough service-account subjects,
@@ -309,7 +309,7 @@ Uvicorn. Run `./scripts/mcp/start-mcp.sh` in the second
 terminal.
 
 The generated actor ID is the Keycloak service-account user's stable `sub`,
-not an access token. Backend startup uses it to provision Kavach membership
+not an access token. Backend startup uses it to provision AI Governance Control Plane membership
 and roles. Access tokens are short-lived and refreshed automatically by the
 MCP REST client.
 
@@ -320,7 +320,7 @@ Start Keycloak and the REST API first:
 ```bash
 ./scripts/keycloak/start-keycloak.sh
 cd ..
-uvicorn kavach.api.app:app --reload --env-file .env.local
+uvicorn ai_governance.api.app:app --reload --env-file .env.local
 ```
 
 In a second terminal, start the HTTP adapter. When the MCP client secret is
@@ -328,8 +328,8 @@ configured, the launcher obtains a short-lived service-account token
 automatically:
 
 ```bash
-export KAVACH_MCP_CLIENT_ID=kavach-mcp
-export KAVACH_MCP_CLIENT_SECRET=mcp-secret
+export AI_GOVERNANCE_MCP_CLIENT_ID=ai-governance-mcp
+export AI_GOVERNANCE_MCP_CLIENT_SECRET=mcp-secret
 ./scripts/mcp/start-mcp.sh
 ```
 
@@ -337,7 +337,7 @@ When run from the repository root, `scripts/mcp/start-mcp.sh` automatically load
 ignored `.env.local` file. Docker does not need that file because Compose
 injects the MCP settings into the container.
 
-You can alternatively provide `KAVACH_API_TOKEN` directly for a user token; it
+You can alternatively provide `AI_GOVERNANCE_API_TOKEN` directly for a user token; it
 takes precedence over client-credentials token generation.
 
 MCPO listens on:
@@ -350,24 +350,24 @@ The launcher uses `uvx` to obtain MCPO and runs:
 
 ```text
 uv run python -c \
-  'from kavach import create_mcp_server; create_mcp_server().run_stdio()'
+  'from ai_governance import create_mcp_server; create_mcp_server().run_stdio()'
 ```
 
 The child command must use the public `create_mcp_server` export. Importing the
-internal `create_server` symbol from `kavach` will fail.
+internal `create_server` symbol from `ai-governance` will fail.
 
 ## Start MCPO with Docker
 
-The root Compose file starts `kavach-mcp` alongside `kavach-platform` and
+The root Compose file starts `ai-governance-mcp` alongside `ai-governance-platform` and
 Studio:
 
 ```bash
-export KAVACH_API_TOKEN="<keycloak-access-token>"
+export AI_GOVERNANCE_API_TOKEN="<keycloak-access-token>"
 docker compose up --build -d
 ```
 
 Inside Docker, MCPO calls the REST API at
-`http://kavach-platform:8000` and is exposed to the host at port `8001`.
+`http://ai-governance-platform:8000` and is exposed to the host at port `8001`.
 Verify the generated API is available:
 
 ```bash
@@ -382,7 +382,7 @@ platform still need to be started according to the local setup documentation.
 
 The browser Studio token is not automatically available to an independently
 started MCPO process. For user-based testing, pass a current access token
-through `KAVACH_API_TOKEN` before launching MCPO. Do not commit tokens or
+through `AI_GOVERNANCE_API_TOKEN` before launching MCPO. Do not commit tokens or
 client secrets.
 
 Client-credentials tokens are short-lived and are refreshed automatically by
@@ -390,7 +390,7 @@ the MCP REST client. A missing, expired, or unauthorized token produces REST
 `401`/`403` responses even though the MCPO HTTP process itself may be healthy.
 
 The realm JSON is imported only when the Keycloak PostgreSQL volume is new. If
-the realm already exists, create the `kavach-mcp` client and its secret through
+the realm already exists, create the `ai-governance-mcp` client and its secret through
 the Keycloak Admin Console, or recreate the disposable local realm with:
 
 ```bash
@@ -407,14 +407,14 @@ cd ..
 Check that the API issuer and token endpoint use the same hostname:
 
 ```env
-KAVACH_OIDC_ISSUER=http://keycloak.localhost:8080/realms/kavach
-KAVACH_MCP_TOKEN_URL=http://keycloak.localhost:8080/realms/kavach/protocol/openid-connect/token
+AI_GOVERNANCE_OIDC_ISSUER=http://keycloak.localhost:8080/realms/ai-governance
+AI_GOVERNANCE_MCP_TOKEN_URL=http://keycloak.localhost:8080/realms/ai-governance/protocol/openid-connect/token
 ```
 
 Rebuild after configuration changes:
 
 ```bash
-docker compose up --build -d kavach-platform kavach-mcp
+docker compose up --build -d ai-governance-platform ai-governance-mcp
 ```
 
 ### `ACTOR_NOT_MEMBER` or `TENANT_SCOPE_MISMATCH`
@@ -443,7 +443,7 @@ MCPO's generated examples contain placeholders. Replace them with real values:
 Inspect the application logs:
 
 ```bash
-docker logs kavach-platform --tail=200
+docker logs ai-governance-platform --tail=200
 lsof -nP -iTCP:3000 -sTCP:LISTEN
 lsof -nP -iTCP:8001 -sTCP:LISTEN
 ```
@@ -452,7 +452,7 @@ For a disposable local reset:
 
 ```bash
 docker compose down -v
-./kavach.sh
+./ai_governance.sh
 ```
 
 MCPO may wrap REST `401`/`403` responses as HTTP `500`; inspect the nested
@@ -473,7 +473,7 @@ uv run pytest tests/mcp
 This uses the MCP server object directly with its configured REST client.
 
 ```python
-from kavach import create_mcp_server
+from ai_governance import create_mcp_server
 
 server = create_mcp_server()
 
@@ -483,7 +483,7 @@ result = server.call_tool("provider.list")
 print(result.model_dump())
 ```
 
-This expects `KAVACH_API_URL` to point to a running Kavach REST API. Default:
+This expects `AI_GOVERNANCE_API_URL` to point to a running AI Governance Control Plane REST API. Default:
 
 ```text
 http://127.0.0.1:8000
@@ -494,14 +494,14 @@ http://127.0.0.1:8000
 Start REST:
 
 ```bash
-uvicorn kavach.api.app:app --reload
+uvicorn ai_governance.api.app:app --reload
 ```
 
 Then in another shell:
 
 ```bash
 python - <<'PY'
-from kavach import create_mcp_server
+from ai_governance import create_mcp_server
 
 server = create_mcp_server()
 
@@ -561,7 +561,7 @@ server.handle_json_rpc({
 printf '%s\n' \
 '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
 '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
-| uv run python -c 'from kavach import create_mcp_server; create_mcp_server().run_stdio()'
+| uv run python -c 'from ai_governance import create_mcp_server; create_mcp_server().run_stdio()'
 ```
 
 **Call a tool through stdio:**
@@ -569,7 +569,7 @@ printf '%s\n' \
 First start REST:
 
 ```bash
-uvicorn kavach.api.app:app --reload
+uvicorn ai_governance.api.app:app --reload
 ```
 
 Then in another terminal:
@@ -577,7 +577,7 @@ Then in another terminal:
 ```bash
 printf '%s\n' \
 '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"provider.list","arguments":{}}}' \
-| KAVACH_API_URL=http://127.0.0.1:8000 uv run python -c 'from kavach import create_mcp_server; create_mcp_server().run_stdio()'
+| AI_GOVERNANCE_API_URL=http://127.0.0.1:8000 uv run python -c 'from ai_governance import create_mcp_server; create_mcp_server().run_stdio()'
 ```
 
 Example with arguments:
@@ -585,7 +585,7 @@ Example with arguments:
 ```bash
 printf '%s\n' \
 '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"job.list","arguments":{"limit":10}}}' \
-| KAVACH_API_URL=http://127.0.0.1:8000 uv run python -c 'from kavach import create_mcp_server; create_mcp_server().run_stdio()'
+| AI_GOVERNANCE_API_URL=http://127.0.0.1:8000 uv run python -c 'from ai_governance import create_mcp_server; create_mcp_server().run_stdio()'
 ```
 
 It expects one JSON-RPC message per line and writes one JSON-RPC response per line. `notifications/initialized` intentionally returns no output.

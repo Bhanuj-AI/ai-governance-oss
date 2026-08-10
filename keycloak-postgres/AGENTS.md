@@ -6,7 +6,7 @@ and identity-development configuration.
 ## Architectural Facts
 
 - `docker-compose.yml` defines the local `postgres` and `keycloak` services.
-- `keycloak/kavach-realm.json` is the imported realm contract used by local
+- `keycloak/ai-governance-realm.json` is the imported realm contract used by local
   Keycloak development.
 - The API validates Keycloak credentials through its authentication and tenant
   context dependencies; this topology must remain compatible with that flow.
@@ -20,7 +20,7 @@ and identity-development configuration.
   intentional reset is documented. Local identity changes can invalidate
   existing developer sessions and client credentials.
 - Keep least-privilege role assignments and the expected login or
-  client-credentials flow aligned with `src/kavach/tenancy`.
+  client-credentials flow aligned with `src/ai_governance/tenancy`.
 
 ## Validation
 

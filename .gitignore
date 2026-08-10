@@ -37,4 +37,4 @@ default.sqlite
 *.db
 
 # walkthrough
-.kavach/walkthroughs/*
+.ai-governance/walkthroughs/*

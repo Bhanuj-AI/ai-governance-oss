@@ -1,6 +1,6 @@
 import pytest
 
-from kavach.ontology import (
+from ai_governance.ontology import (
     DuplicateOntologyRelationshipError,
     EntityType,
     InMemoryOntologyGraphRepository,
@@ -9,7 +9,7 @@ from kavach.ontology import (
     OntologyService,
     RelationshipType,
 )
-from kavach.ontology.synchronization.synchronizer import sync_relationship
+from ai_governance.ontology.synchronization.synchronizer import sync_relationship
 
 
 def _service() -> OntologyService:

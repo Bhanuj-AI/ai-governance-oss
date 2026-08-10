@@ -18,14 +18,14 @@ Those changes require a governance control plane, not only an evaluator.
 
 ## Governance Control Plane
 
-Kavach exists to provide that control plane. It records governed assets,
+AI Governance Control Plane exists to provide that control plane. It records governed assets,
 collects evaluation evidence, reconstructs historical behavior, analyzes
 quality change, ranks experiment candidates, and produces recommendations that
 other systems can consume.
 
-## What Kavach Owns
+## What AI Governance Control Plane Owns
 
-Kavach owns:
+AI Governance Control Plane owns:
 
 - AI asset governance for prompts, models, and datasets
 - experiment management and candidate tracking
@@ -34,9 +34,9 @@ Kavach owns:
 - ranking and leaderboard generation
 - framework-neutral governance and leaderboard APIs
 
-## What Kavach Does Not Own
+## What AI Governance Control Plane Does Not Own
 
-Kavach intentionally does not own:
+AI Governance Control Plane intentionally does not own:
 
 - prompt deployment
 - model deployment
@@ -49,7 +49,7 @@ of them.
 
 ## Long-Term Positioning
 
-Kavach is aimed at a durable governance layer for AI systems, with emphasis on:
+AI Governance Control Plane is aimed at a durable governance layer for AI systems, with emphasis on:
 
 - AI asset governance
 - experiment management
@@ -63,7 +63,7 @@ frameworks.
 
 ## Recommendation Boundary
 
-Kavach recommends and governs; downstream systems deploy.
+AI Governance Control Plane recommends and governs; downstream systems deploy.
 
 That boundary is deliberate. Governance evidence should be portable across CLI
 tools, the REST control plane, release systems, and human review flows without

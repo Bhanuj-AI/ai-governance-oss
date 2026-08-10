@@ -8,8 +8,8 @@ preventing cross-tenant reads through the catalog API.
 ## Migration and Backfill
 
 SQLite initialization adds missing ownership columns for legacy registries and
-backfills them to `KAVACH_BOOTSTRAP_ORGANIZATION_ID` and
-`KAVACH_BOOTSTRAP_PROJECT_ID` (or `org_default` / `project_default`).
+backfills them to `AI_GOVERNANCE_BOOTSTRAP_ORGANIZATION_ID` and
+`AI_GOVERNANCE_BOOTSTRAP_PROJECT_ID` (or `org_default` / `project_default`).
 PostgreSQL initialization uses idempotent `ALTER TABLE ... ADD COLUMN IF NOT
 EXISTS` statements and assigns legacy `tenant_id` values from the persisted
 organization. Both stores add a tenant-scope index.

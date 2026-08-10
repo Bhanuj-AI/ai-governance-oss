@@ -1,18 +1,18 @@
-# Kavach Local Development: Keycloak Authentication Setup
+# AI Governance Control Plane Local Development: Keycloak Authentication Setup
 
 ## Purpose
 
-Kavach Studio uses Keycloak for browser authentication. The Studio sends Keycloak access tokens to the Kavach API, while Kavach remains responsible for tenant membership, roles, and permissions.
+AI Governance Control Plane Studio uses Keycloak for browser authentication. The Studio sends Keycloak access tokens to the AI Governance Control Plane API, while AI Governance Control Plane remains responsible for tenant membership, roles, and permissions.
 
 Local services:
 
 | Service | URL |
 |---|---|
-| Kavach Studio | `http://localhost:3000` |
-| Kavach API | `http://localhost:8000` |
+| AI Governance Control Plane Studio | `http://localhost:3000` |
+| AI Governance Control Plane API | `http://localhost:8000` |
 | Keycloak | `http://keycloak.localhost:8080` |
-| Keycloak realm | `kavach` |
-| Studio client | `kavach-studio` |
+| Keycloak realm | `ai-governance` |
+| Studio client | `ai-governance-studio` |
 
 ## Architecture
 
@@ -21,39 +21,39 @@ Browser
   → Keycloak login (Authorization Code + PKCE)
   → Studio receives access token
   → Studio API client adds Authorization: Bearer <token>
-  → Kavach API validates JWT via Keycloak JWKS
-  → Kavach evaluates tenant membership and role permissions
+  → AI Governance Control Plane API validates JWT via Keycloak JWKS
+  → AI Governance Control Plane evaluates tenant membership and role permissions
 ```
 
-Keycloak owns identity. Kavach owns organization membership, role assignments, and governance authorization.
+Keycloak owns identity. AI Governance Control Plane owns organization membership, role assignments, and governance authorization.
 
 ## Local configuration
 
 Studio uses these public environment variables:
 
 ```env
-NEXT_PUBLIC_KAVACH_API_BASE_URL=http://localhost:8000
+NEXT_PUBLIC_AI_GOVERNANCE_API_BASE_URL=http://localhost:8000
 NEXT_PUBLIC_KEYCLOAK_URL=http://keycloak.localhost:8080
-NEXT_PUBLIC_KEYCLOAK_REALM=kavach
-NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=kavach-studio
+NEXT_PUBLIC_KEYCLOAK_REALM=ai-governance
+NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=ai-governance-studio
 ```
 
 The API uses:
 
 ```env
-KAVACH_AUTH_MODE=keycloak
-KAVACH_OIDC_ISSUER=http://keycloak.localhost:8080/realms/kavach
-KAVACH_BOOTSTRAP_ADMIN_SUB=e44566f1-c748-45e1-83db-d2ee5fb424ef
+AI_GOVERNANCE_AUTH_MODE=keycloak
+AI_GOVERNANCE_OIDC_ISSUER=http://keycloak.localhost:8080/realms/ai-governance
+AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB=e44566f1-c748-45e1-83db-d2ee5fb424ef
 ```
 
-`KAVACH_BOOTSTRAP_ADMIN_SUB` is startup/bootstrap-only. It must never be used as a runtime caller identity.
+`AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB` is startup/bootstrap-only. It must never be used as a runtime caller identity.
 
 ## Start the platform
 
 From the repository root:
 
 ```bash
-./kavach.sh
+./ai_governance.sh
 ```
 
 This builds and starts Studio, API, and Neo4j.
@@ -81,14 +81,14 @@ keycloak-postgres/.env.keycloak
 
 ```text
 Username: studio
-Password: value of KAVACH_STUDIO_PASSWORD
+Password: value of AI_GOVERNANCE_STUDIO_PASSWORD
 ```
 
 After login, Studio should load tenant-scoped pages without `401` or `403` responses.
 
 ## Keycloak realm requirements
 
-The `kavach-studio` client must be configured as:
+The `ai-governance-studio` client must be configured as:
 
 ```text
 Client authentication: Off
@@ -106,7 +106,7 @@ Access token claim: enabled
 ID token claim: enabled
 ```
 
-This is essential because Kavach uses JWT `sub` as the immutable runtime actor ID.
+This is essential because AI Governance Control Plane uses JWT `sub` as the immutable runtime actor ID.
 
 The realm user must have tenant attributes:
 
@@ -125,9 +125,9 @@ Keycloak user profile configuration must permit these custom attributes:
 }
 ```
 
-## Kavach tenant bootstrap
+## AI Governance Control Plane tenant bootstrap
 
-The local administrator’s Keycloak subject must be provisioned in Kavach’s control plane with:
+The local administrator’s Keycloak subject must be provisioned in AI Governance Control Plane’s control plane with:
 
 ```text
 Organization: org_default
@@ -142,7 +142,7 @@ The Keycloak subject currently used by local bootstrap is:
 e44566f1-c748-45e1-83db-d2ee5fb424ef
 ```
 
-For new environments, this stable ID is defined in the realm import and referenced by `KAVACH_BOOTSTRAP_ADMIN_SUB`.
+For new environments, this stable ID is defined in the realm import and referenced by `AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB`.
 
 ### Changing the local bootstrap administrator
 
@@ -150,15 +150,15 @@ The local bootstrap administrator is an explicit, paired configuration. Do not
 change only one side:
 
 1. Update the initial user's `id` in
-   [`keycloak/kavach-realm.json`](keycloak/kavach-realm.json).
-2. Update `KAVACH_BOOTSTRAP_ADMIN_SUB` in the root `docker-compose.yml` to the
+   [`keycloak/ai-governance-realm.json`](keycloak/ai-governance-realm.json).
+2. Update `AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB` in the root `docker-compose.yml` to the
    identical value.
 
-Kavach creates the initial membership and organization-admin role for that
+AI Governance Control Plane creates the initial membership and organization-admin role for that
 subject during control-plane bootstrap, before the user signs in. For an
-existing local installation, reset both the local Keycloak and Kavach data
+existing local installation, reset both the local Keycloak and AI Governance Control Plane data
 volumes (or migrate the existing membership and role assignment) before using
-the new subject. Changing only the Keycloak user ID leaves the persisted Kavach
+the new subject. Changing only the Keycloak user ID leaves the persisted AI Governance Control Plane
 authorization records associated with the previous subject.
 
 ## Common issues
@@ -168,7 +168,7 @@ authorization records associated with the previous subject.
 Check that the Studio Docker image was rebuilt after changes:
 
 ```bash
-./kavach.sh
+./ai_governance.sh
 ```
 
 Check browser console and confirm all `NEXT_PUBLIC_KEYCLOAK_*` variables were supplied as Docker build arguments.
@@ -180,12 +180,12 @@ The Studio request started before the token provider was available, or the brows
 Hard refresh the page. If needed:
 
 ```bash
-./kavach.sh
+./ai_governance.sh
 ```
 
 ### `401 missing_claims: JWT missing subject claim`
 
-The `kavach-studio` Keycloak client is missing the `oidc-sub-mapper`.
+The `ai-governance-studio` Keycloak client is missing the `oidc-sub-mapper`.
 
 Ensure the client emits `sub` in access tokens. Do not fall back to username or email for runtime identity.
 
@@ -198,7 +198,7 @@ For local development, confirm:
 ```text
 JWT organization_id = org_default
 Studio organization = org_default
-Kavach membership organization = org_default
+AI Governance Control Plane membership organization = org_default
 ```
 
 Log out and back in after changing Keycloak attributes so a new token is issued.
@@ -222,10 +222,10 @@ Warning: this deletes local Keycloak data.
 
 - [ ] Keycloak is running and healthy.
 - [ ] Studio is built with `NEXT_PUBLIC_KEYCLOAK_URL`, realm, and client ID.
-- [ ] API runs with `KAVACH_AUTH_MODE=keycloak`.
-- [ ] JWT issuer matches `KAVACH_OIDC_ISSUER`.
+- [ ] API runs with `AI_GOVERNANCE_AUTH_MODE=keycloak`.
+- [ ] JWT issuer matches `AI_GOVERNANCE_OIDC_ISSUER`.
 - [ ] Studio token includes `sub`.
 - [ ] JWT tenant claim matches Studio tenant selection.
-- [ ] Keycloak subject has an active Kavach membership.
-- [ ] Keycloak subject has required Kavach role assignments.
+- [ ] Keycloak subject has an active AI Governance Control Plane membership.
+- [ ] Keycloak subject has required AI Governance Control Plane role assignments.
 - [ ] No client secret is placed in Studio configuration.

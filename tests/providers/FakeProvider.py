@@ -1,12 +1,12 @@
-from kavach.domain.evaluation_dataset import EvaluationDataset
-from kavach.domain.evaluation_result import (
+from ai_governance.domain.evaluation_dataset import EvaluationDataset
+from ai_governance.domain.evaluation_result import (
     EvaluationMetric,
     EvaluationResult,
 )
-from kavach.evaluation.evaluation_metrics import ANSWER_RELEVANCE
-from kavach.providers.evaluation_provider import EvaluationProvider
-from kavach.providers.provider_capabilities import ProviderCapabilities
-from kavach.providers.provider_descriptor import ProviderDescriptor
+from ai_governance.evaluation.evaluation_metrics import ANSWER_RELEVANCE
+from ai_governance.providers.evaluation_provider import EvaluationProvider
+from ai_governance.providers.provider_capabilities import ProviderCapabilities
+from ai_governance.providers.provider_descriptor import ProviderDescriptor
 
 
 class FakeEvaluationProvider(EvaluationProvider):

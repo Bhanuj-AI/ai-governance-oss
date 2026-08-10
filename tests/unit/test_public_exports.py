@@ -1,5 +1,5 @@
-import kavach
-from kavach import (
+import ai_governance
+from ai_governance import (
     AnswerRelevanceRanking,
     CandidateComparison,
     CandidateRanking,
@@ -77,7 +77,7 @@ from kavach import (
     JobSubmissionService,
     JobType,
     JobWorker,
-    KavachMCPServer,
+    AIGovernanceMCPServer,
     Leaderboard,
     LeaderboardAPI,
     LeaderboardEntry,
@@ -115,53 +115,53 @@ from kavach import (
     WinnerSelectionStrategy,
     create_mcp_server,
 )
-from kavach.api import GovernanceAPI as ApiGovernanceAPI
-from kavach.api import LeaderboardAPI as ApiLeaderboardAPI
-from kavach.domain import Dataset as DomainDataset
-from kavach.domain import DecisionAuditAction as DomainDecisionAuditAction
-from kavach.domain import DecisionEvidenceBuilder as DomainDecisionEvidenceBuilder
-from kavach.domain import GovernanceDecision as DomainGovernanceDecision
-from kavach.domain import GovernancePolicy as DomainGovernancePolicy
-from kavach.domain import GovernanceReasoningEngine as DomainReasoningEngine
-from kavach.domain import EvaluationHistory as DomainEvaluationHistory
-from kavach.domain import EvaluationMetric as DomainEvaluationMetric
-from kavach.domain import EvaluationRun as DomainEvaluationRun
-from kavach.domain import Experiment as DomainExperiment
-from kavach.domain import ExperimentCandidate as DomainExperimentCandidate
-from kavach.domain import Job as DomainJob
-from kavach.domain import Leaderboard as DomainLeaderboard
-from kavach.domain import Model as DomainModel
-from kavach.domain import Prompt as DomainPrompt
-from kavach.domain import ReplayRequest as DomainReplayRequest
-from kavach.governance import DriftAnalyzer as GovernanceDriftAnalyzer
-from kavach.services import (
+from ai_governance.api import GovernanceAPI as ApiGovernanceAPI
+from ai_governance.api import LeaderboardAPI as ApiLeaderboardAPI
+from ai_governance.domain import Dataset as DomainDataset
+from ai_governance.domain import DecisionAuditAction as DomainDecisionAuditAction
+from ai_governance.domain import DecisionEvidenceBuilder as DomainDecisionEvidenceBuilder
+from ai_governance.domain import GovernanceDecision as DomainGovernanceDecision
+from ai_governance.domain import GovernancePolicy as DomainGovernancePolicy
+from ai_governance.domain import GovernanceReasoningEngine as DomainReasoningEngine
+from ai_governance.domain import EvaluationHistory as DomainEvaluationHistory
+from ai_governance.domain import EvaluationMetric as DomainEvaluationMetric
+from ai_governance.domain import EvaluationRun as DomainEvaluationRun
+from ai_governance.domain import Experiment as DomainExperiment
+from ai_governance.domain import ExperimentCandidate as DomainExperimentCandidate
+from ai_governance.domain import Job as DomainJob
+from ai_governance.domain import Leaderboard as DomainLeaderboard
+from ai_governance.domain import Model as DomainModel
+from ai_governance.domain import Prompt as DomainPrompt
+from ai_governance.domain import ReplayRequest as DomainReplayRequest
+from ai_governance.governance import DriftAnalyzer as GovernanceDriftAnalyzer
+from ai_governance.services import (
     AnswerRelevanceRanking as ServicesAnswerRelevanceRanking,
 )
-from kavach.services import (
+from ai_governance.services import (
     GovernanceDecisionApplicationService as ServicesDecisionApplicationService,
 )
-from kavach.services import DatasetRegistryService as ServicesDatasetRegistryService
-from kavach.services import EvaluationHistoryService as ServicesHistoryService
-from kavach.services import (
+from ai_governance.services import DatasetRegistryService as ServicesDatasetRegistryService
+from ai_governance.services import EvaluationHistoryService as ServicesHistoryService
+from ai_governance.services import (
     ExperimentCandidateService as ServicesExperimentCandidateService,
 )
-from kavach.services import (
+from ai_governance.services import (
     ExperimentEvaluationService as ServicesExperimentEvaluationService,
 )
-from kavach.services import ExperimentService as ServicesExperimentService
-from kavach.services import GroundednessRanking as ServicesGroundednessRanking
-from kavach.services import HallucinationRanking as ServicesHallucinationRanking
-from kavach.services import LowestCostRanking as ServicesLowestCostRanking
-from kavach.services import LowestLatencyRanking as ServicesLowestLatencyRanking
-from kavach.services import ModelRegistryService as ServicesModelRegistryService
-from kavach.services import OverallScoreRanking as ServicesOverallScoreRanking
-from kavach.services import PromptRegistryService as ServicesPromptRegistryService
-from kavach.services import RankingService as ServicesRankingService
-from kavach.services import JobExecutor as ServicesJobExecutor
-from kavach.services import JobApiService as ServicesJobApiService
-from kavach.services import JobSubmissionService as ServicesJobSubmissionService
-from kavach.mcp import KavachMCPServer as MCPServer
-from kavach.mcp import create_server as create_mcp_server_impl
+from ai_governance.services import ExperimentService as ServicesExperimentService
+from ai_governance.services import GroundednessRanking as ServicesGroundednessRanking
+from ai_governance.services import HallucinationRanking as ServicesHallucinationRanking
+from ai_governance.services import LowestCostRanking as ServicesLowestCostRanking
+from ai_governance.services import LowestLatencyRanking as ServicesLowestLatencyRanking
+from ai_governance.services import ModelRegistryService as ServicesModelRegistryService
+from ai_governance.services import OverallScoreRanking as ServicesOverallScoreRanking
+from ai_governance.services import PromptRegistryService as ServicesPromptRegistryService
+from ai_governance.services import RankingService as ServicesRankingService
+from ai_governance.services import JobExecutor as ServicesJobExecutor
+from ai_governance.services import JobApiService as ServicesJobApiService
+from ai_governance.services import JobSubmissionService as ServicesJobSubmissionService
+from ai_governance.mcp import AIGovernanceMCPServer as MCPServer
+from ai_governance.mcp import create_server as create_mcp_server_impl
 
 
 def test_history_api_is_exported_from_public_modules() -> None:
@@ -224,9 +224,9 @@ def test_history_api_is_exported_from_public_modules() -> None:
         InMemoryGovernanceDecisionRepository.__name__
         == "InMemoryGovernanceDecisionRepository"
     )
-    assert kavach.EvaluationHistory is EvaluationHistory
-    assert kavach.GovernanceAPI is ApiGovernanceAPI
-    assert kavach.LeaderboardAPI is ApiLeaderboardAPI
+    assert ai_governance.EvaluationHistory is EvaluationHistory
+    assert ai_governance.GovernanceAPI is ApiGovernanceAPI
+    assert ai_governance.LeaderboardAPI is ApiLeaderboardAPI
     assert EvaluationHistory is DomainEvaluationHistory
     assert EvaluationMetric is DomainEvaluationMetric
     assert Leaderboard is DomainLeaderboard
@@ -280,7 +280,7 @@ def test_history_api_is_exported_from_public_modules() -> None:
     assert JobSubmission.__name__ == "JobSubmission"
     assert JobType.EVALUATION == "EVALUATION"
     assert JobWorker.__name__ == "JobWorker"
-    assert KavachMCPServer is MCPServer
+    assert AIGovernanceMCPServer is MCPServer
     assert LeaderboardAPI.__name__ == "LeaderboardAPI"
     assert LeaderboardEntry.__name__ == "LeaderboardEntry"
     assert LeaderboardRoute.__name__ == "LeaderboardRoute"

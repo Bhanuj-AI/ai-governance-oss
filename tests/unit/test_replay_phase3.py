@@ -1,15 +1,15 @@
 from datetime import UTC, datetime
 
-from kavach.domain.jobs import Job, JobStatus
-from kavach.domain.replay import ReplayStatus
-from kavach.domain.workflow_execution import WorkflowExecution
-from kavach.repositories.in_memory_replay_repository import InMemoryReplayRepository
-from kavach.repositories.in_memory_replay_result_repository import (
+from ai_governance.domain.jobs import Job, JobStatus
+from ai_governance.domain.replay import ReplayStatus
+from ai_governance.domain.workflow_execution import WorkflowExecution
+from ai_governance.repositories.in_memory_replay_repository import InMemoryReplayRepository
+from ai_governance.repositories.in_memory_replay_result_repository import (
     InMemoryReplayResultRepository,
 )
-from kavach.services.replay_application_service import ReplayApplicationService
-from kavach.services.replay_evaluation import ReplayEvaluationJobHandler
-from kavach.tenancy.domain import TenantContext
+from ai_governance.services.replay_application_service import ReplayApplicationService
+from ai_governance.services.replay_evaluation import ReplayEvaluationJobHandler
+from ai_governance.tenancy.domain import TenantContext
 
 
 class _Source:
@@ -31,7 +31,7 @@ class _Evaluations:
         self.replay = None
 
     def submit_evaluation(self, execution, _provider, context=None):
-        from kavach.domain.evaluation_result import EvaluationMetric, EvaluationResult
+        from ai_governance.domain.evaluation_result import EvaluationMetric, EvaluationResult
 
         self.replay = EvaluationResult(
             "replay-evaluation-1", execution.execution_id, "provider", "1",
@@ -48,7 +48,7 @@ class _Evaluations:
 
 
 def test_replay_evaluation_job_completes_and_persists_immutable_result() -> None:
-    from kavach.domain.evaluation_result import EvaluationMetric, EvaluationResult
+    from ai_governance.domain.evaluation_result import EvaluationMetric, EvaluationResult
 
     now = datetime(2026, 1, 1, tzinfo=UTC)
     context = TenantContext("organization-1", "project-1", "actor-1", "request-1")
@@ -85,6 +85,6 @@ def _execution(execution_id: str) -> WorkflowExecution:
 
 
 def _job(now: datetime) -> Job:
-    from kavach.domain.jobs import JobExecutionContext, JobType
+    from ai_governance.domain.jobs import JobExecutionContext, JobType
 
     return Job("evaluation-job-1", JobType.REPLAY_EVALUATION, JobStatus.RUNNING, {"replay_id": "replay-1", "evaluation_provider": "provider", "baseline_strategy": "LATEST_COMPATIBLE"}, "hash", "key", "actor-1", 1, 3, None, None, None, None, None, now, now, now, None, JobExecutionContext("organization-1", "project-1", "actor-1", "request-1"))

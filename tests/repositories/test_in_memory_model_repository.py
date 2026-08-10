@@ -1,7 +1,7 @@
-from kavach.repositories.in_memory_model_repository import (
+from ai_governance.repositories.in_memory_model_repository import (
     InMemoryModelRepository,
 )
-from kavach.repositories.model_repository import ModelRepository
+from ai_governance.repositories.model_repository import ModelRepository
 from tests.repositories.contract.test_model_repository_contract import (
     ModelRepositoryContract,
 )

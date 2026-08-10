@@ -1,6 +1,6 @@
-from kavach.domain.jobs import JobStatus
-from kavach.ontology.demo_seed import seed_demo_jobs
-from kavach.repositories.in_memory import InMemoryJobRepository
+from ai_governance.domain.jobs import JobStatus
+from ai_governance.ontology.demo_seed import seed_demo_jobs
+from ai_governance.repositories.in_memory import InMemoryJobRepository
 
 
 def test_demo_job_seed_does_not_leave_legacy_fixture_jobs_active() -> None:

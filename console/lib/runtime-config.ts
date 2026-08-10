@@ -1,4 +1,4 @@
-export type KavachRuntimeConfig = {
+export type AIGovernanceRuntimeConfig = {
   apiBaseUrl?: string;
   keycloakUrl?: string;
   keycloakRealm?: string;
@@ -7,12 +7,12 @@ export type KavachRuntimeConfig = {
 
 declare global {
   interface Window {
-    __KAVACH_RUNTIME_CONFIG__?: KavachRuntimeConfig;
+    __AI_GOVERNANCE_RUNTIME_CONFIG__?: AIGovernanceRuntimeConfig;
   }
 }
 
-const buildTimeConfig: KavachRuntimeConfig = {
-  apiBaseUrl: process.env.NEXT_PUBLIC_KAVACH_API_BASE_URL,
+const buildTimeConfig: AIGovernanceRuntimeConfig = {
+  apiBaseUrl: process.env.NEXT_PUBLIC_AI_GOVERNANCE_API_BASE_URL,
   keycloakUrl: process.env.NEXT_PUBLIC_KEYCLOAK_URL,
   keycloakRealm: process.env.NEXT_PUBLIC_KEYCLOAK_REALM,
   keycloakClientId: process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID,
@@ -23,19 +23,19 @@ const buildTimeConfig: KavachRuntimeConfig = {
  * startup. Build-time values remain a fallback for `pnpm dev` and for static
  * hosting, where no container entrypoint is involved.
  */
-export function getKavachRuntimeConfig(): KavachRuntimeConfig {
+export function getAIGovernanceRuntimeConfig(): AIGovernanceRuntimeConfig {
   if (typeof window === "undefined") {
     return buildTimeConfig;
   }
 
   return {
     ...buildTimeConfig,
-    ...window.__KAVACH_RUNTIME_CONFIG__,
+    ...window.__AI_GOVERNANCE_RUNTIME_CONFIG__,
   };
 }
 
 export function runtimeConfigValue(
-  key: keyof KavachRuntimeConfig,
+  key: keyof AIGovernanceRuntimeConfig,
 ): string | undefined {
-  return getKavachRuntimeConfig()[key]?.trim() || undefined;
+  return getAIGovernanceRuntimeConfig()[key]?.trim() || undefined;
 }

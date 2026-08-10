@@ -5,28 +5,28 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from kavach.mcp.audit import MCPExecutionAuditLog
-from kavach.mcp.authentication import InboundRequestAuthenticationContext
-from kavach.mcp.clients import RestClient
-from kavach.mcp.runtime_context import (
+from ai_governance.mcp.audit import MCPExecutionAuditLog
+from ai_governance.mcp.authentication import InboundRequestAuthenticationContext
+from ai_governance.mcp.clients import RestClient
+from ai_governance.mcp.runtime_context import (
     McpRuntimeContext,
     reset_runtime_context,
     set_runtime_context,
 )
-from kavach.mcp.server import create_server, get_mcp_settings
-from kavach.mcp.transports.streamable_http import create_mcp_http_app
-from kavach.tenancy.domain import ActorType, AuthenticatedPrincipal
+from ai_governance.mcp.server import create_server, get_mcp_settings
+from ai_governance.mcp.transports.streamable_http import create_mcp_http_app
+from ai_governance.tenancy.domain import ActorType, AuthenticatedPrincipal
 
 
 def test_streamable_http_settings_defaults(monkeypatch) -> None:
     for name in (
-        "KAVACH_MCP_TRANSPORT",
-        "KAVACH_MCP_HTTP_HOST",
-        "KAVACH_MCP_HTTP_PORT",
-        "KAVACH_MCP_HTTP_PATH",
-        "KAVACH_MCP_PUBLIC_URL",
-        "KAVACH_MCP_HTTP_STATELESS",
-        "KAVACH_MCP_HTTP_JSON_RESPONSE",
+        "AI_GOVERNANCE_MCP_TRANSPORT",
+        "AI_GOVERNANCE_MCP_HTTP_HOST",
+        "AI_GOVERNANCE_MCP_HTTP_PORT",
+        "AI_GOVERNANCE_MCP_HTTP_PATH",
+        "AI_GOVERNANCE_MCP_PUBLIC_URL",
+        "AI_GOVERNANCE_MCP_HTTP_STATELESS",
+        "AI_GOVERNANCE_MCP_HTTP_JSON_RESPONSE",
     ):
         monkeypatch.delenv(name, raising=False)
 
@@ -42,19 +42,19 @@ def test_streamable_http_settings_defaults(monkeypatch) -> None:
 
 
 def test_streamable_http_rejects_invalid_transport_configuration(monkeypatch) -> None:
-    monkeypatch.setenv("KAVACH_MCP_TRANSPORT", "both")
+    monkeypatch.setenv("AI_GOVERNANCE_MCP_TRANSPORT", "both")
 
     try:
         get_mcp_settings()
     except ValueError as exc:
-        assert "KAVACH_MCP_TRANSPORT" in str(exc)
+        assert "AI_GOVERNANCE_MCP_TRANSPORT" in str(exc)
     else:  # pragma: no cover - makes the configuration guarantee explicit.
         raise AssertionError("invalid MCP transport configuration was accepted")
 
 
 def test_streamable_http_uses_canonical_tools_and_health(monkeypatch) -> None:
-    monkeypatch.setenv("KAVACH_AUTH_MODE", "development")
-    monkeypatch.setenv("KAVACH_MCP_HTTP_ALLOWED_HOSTS", "testserver")
+    monkeypatch.setenv("AI_GOVERNANCE_AUTH_MODE", "development")
+    monkeypatch.setenv("AI_GOVERNANCE_MCP_HTTP_ALLOWED_HOSTS", "testserver")
     client = RestClient("http://control-plane", transport=lambda *_: {"ok": True})
     server = create_server(client, audit_log=MCPExecutionAuditLog.in_memory())
     headers = {
@@ -106,11 +106,11 @@ def test_streamable_http_uses_canonical_tools_and_health(monkeypatch) -> None:
 
 
 def test_streamable_http_requires_bearer_token_in_keycloak_mode(monkeypatch) -> None:
-    monkeypatch.setenv("KAVACH_AUTH_MODE", "keycloak")
+    monkeypatch.setenv("AI_GOVERNANCE_AUTH_MODE", "keycloak")
     monkeypatch.setenv(
-        "KAVACH_OIDC_ISSUER", "http://keycloak.localhost:8080/realms/kavach"
+        "AI_GOVERNANCE_OIDC_ISSUER", "http://keycloak.localhost:8080/realms/ai-governance"
     )
-    monkeypatch.setenv("KAVACH_MCP_HTTP_ALLOWED_HOSTS", "testserver")
+    monkeypatch.setenv("AI_GOVERNANCE_MCP_HTTP_ALLOWED_HOSTS", "testserver")
 
     with TestClient(create_mcp_http_app()) as http:
         response = http.post(
@@ -128,10 +128,10 @@ def test_streamable_http_requires_bearer_token_in_keycloak_mode(monkeypatch) -> 
 
 
 def test_streamable_http_exposes_protected_resource_metadata(monkeypatch) -> None:
-    monkeypatch.setenv("KAVACH_AUTH_MODE", "keycloak")
-    monkeypatch.setenv("KAVACH_MCP_HTTP_ALLOWED_HOSTS", "testserver")
+    monkeypatch.setenv("AI_GOVERNANCE_AUTH_MODE", "keycloak")
+    monkeypatch.setenv("AI_GOVERNANCE_MCP_HTTP_ALLOWED_HOSTS", "testserver")
     monkeypatch.setenv(
-        "KAVACH_OIDC_ISSUER", "http://keycloak.localhost:8080/realms/kavach"
+        "AI_GOVERNANCE_OIDC_ISSUER", "http://keycloak.localhost:8080/realms/ai-governance"
     )
 
     with TestClient(create_mcp_http_app()) as http:
@@ -142,18 +142,18 @@ def test_streamable_http_exposes_protected_resource_metadata(monkeypatch) -> Non
     assert response.json() == {
         "resource": "http://localhost:8002/mcp",
         "authorization_servers": [
-            "http://keycloak.localhost:8080/realms/kavach"
+            "http://keycloak.localhost:8080/realms/ai-governance"
         ],
         "scopes_supported": ["openid", "profile", "email"],
         "bearer_methods_supported": ["header"],
-        "resource_name": "Kavach MCP",
+        "resource_name": "AI Governance Control Plane MCP",
     }
 
 
 def test_streamable_http_allows_configured_browser_preflight(monkeypatch) -> None:
-    monkeypatch.setenv("KAVACH_AUTH_MODE", "keycloak")
-    monkeypatch.setenv("KAVACH_MCP_HTTP_ALLOWED_HOSTS", "testserver")
-    monkeypatch.setenv("KAVACH_MCP_HTTP_ALLOWED_ORIGINS", "http://localhost:6274")
+    monkeypatch.setenv("AI_GOVERNANCE_AUTH_MODE", "keycloak")
+    monkeypatch.setenv("AI_GOVERNANCE_MCP_HTTP_ALLOWED_HOSTS", "testserver")
+    monkeypatch.setenv("AI_GOVERNANCE_MCP_HTTP_ALLOWED_ORIGINS", "http://localhost:6274")
 
     with TestClient(create_mcp_http_app()) as http:
         response = http.options(
@@ -175,11 +175,11 @@ def test_streamable_http_allows_configured_browser_preflight(monkeypatch) -> Non
 
 
 def test_streamable_http_forwards_authenticated_tenant_request_context(monkeypatch) -> None:
-    import kavach.mcp.clients.rest_client as rest_client_module
-    import kavach.mcp.transports.streamable_http as http_transport
+    import ai_governance.mcp.clients.rest_client as rest_client_module
+    import ai_governance.mcp.transports.streamable_http as http_transport
 
-    monkeypatch.setenv("KAVACH_AUTH_MODE", "keycloak")
-    monkeypatch.setenv("KAVACH_MCP_HTTP_ALLOWED_HOSTS", "testserver")
+    monkeypatch.setenv("AI_GOVERNANCE_AUTH_MODE", "keycloak")
+    monkeypatch.setenv("AI_GOVERNANCE_MCP_HTTP_ALLOWED_HOSTS", "testserver")
     observed: list[dict[str, str]] = []
 
     class Response:
@@ -252,14 +252,14 @@ def test_streamable_http_forwards_authenticated_tenant_request_context(monkeypat
     assert len(observed) == 1
     assert {
         "Authorization": observed[0]["Authorization"],
-        "X-kavach-organization-id": observed[0]["X-kavach-organization-id"],
-        "X-kavach-project-id": observed[0]["X-kavach-project-id"],
+        "X-ai-governance-organization-id": observed[0]["X-ai-governance-organization-id"],
+        "X-ai-governance-project-id": observed[0]["X-ai-governance-project-id"],
         "X-request-id": observed[0]["X-request-id"],
         "X-correlation-id": observed[0]["X-correlation-id"],
     } == {
         "Authorization": "Bearer caller-token",
-        "X-kavach-organization-id": "org-a",
-        "X-kavach-project-id": "project-a",
+        "X-ai-governance-organization-id": "org-a",
+        "X-ai-governance-project-id": "project-a",
         "X-request-id": "request-a",
         "X-correlation-id": "correlation-a",
     }
@@ -268,7 +268,7 @@ def test_streamable_http_forwards_authenticated_tenant_request_context(monkeypat
 def test_request_scoped_bearer_context_isolated_across_concurrent_calls(
     monkeypatch,
 ) -> None:
-    import kavach.mcp.clients.rest_client as rest_client_module
+    import ai_governance.mcp.clients.rest_client as rest_client_module
 
     observed: list[dict[str, str]] = []
 
@@ -309,7 +309,7 @@ def test_request_scoped_bearer_context_isolated_across_concurrent_calls(
         "Bearer token-user-a",
         "Bearer token-user-b",
     }
-    assert {headers["X-kavach-organization-id"] for headers in observed} == {
+    assert {headers["X-ai-governance-organization-id"] for headers in observed} == {
         "org-a",
         "org-b",
     }

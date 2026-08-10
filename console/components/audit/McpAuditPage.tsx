@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAuditDetail, getAuditPage } from "@/lib/api/audit";
-import { KavachApiError } from "@/lib/api/client";
+import { AIGovernanceApiError } from "@/lib/api/client";
 import { cn } from "@/lib/utils/cn";
 import type {
   AuditDetail,
@@ -955,7 +955,7 @@ function auditSummary(metrics: AuditMetric[]) {
 }
 
 function formatError(error: unknown) {
-  if (error instanceof KavachApiError) {
+  if (error instanceof AIGovernanceApiError) {
     return error.message;
   }
   if (error instanceof Error) {

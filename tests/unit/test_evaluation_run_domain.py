@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kavach.domain.experiments import (
+from ai_governance.domain.experiments import (
     CandidateRanking,
     EvaluationRun,
     EvaluationRunStatus,

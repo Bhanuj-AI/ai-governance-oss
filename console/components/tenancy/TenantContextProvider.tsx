@@ -8,7 +8,7 @@ type TenantSelection = {
   selectOrganization: (id: string) => void; selectProject: (id: string) => void;
 };
 const Context = createContext<TenantSelection | null>(null);
-const ORG = "kavach.organization_id", PROJECT = "kavach.project_id";
+const ORG = "ai_governance.organization_id", PROJECT = "ai_governance.project_id";
 
 export function TenantContextProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
@@ -19,11 +19,11 @@ export function TenantContextProvider({ children }: { children: React.ReactNode 
   const value = useMemo(() => ({ organizationId, projectId, actorId: "local-admin",
     selectOrganization(id: string) {
       setOrganizationId(id); setProjectId(""); localStorage.setItem(ORG, id); localStorage.removeItem(PROJECT);
-      window.dispatchEvent(new Event("kavach-context-change")); void queryClient.invalidateQueries();
+      window.dispatchEvent(new Event("ai-governance-context-change")); void queryClient.invalidateQueries();
     },
     selectProject(id: string) {
       setProjectId(id); localStorage.setItem(PROJECT, id);
-      window.dispatchEvent(new Event("kavach-context-change")); void queryClient.invalidateQueries();
+      window.dispatchEvent(new Event("ai-governance-context-change")); void queryClient.invalidateQueries();
     },
   }), [organizationId, projectId, queryClient]);
   return <Context.Provider value={value}>{children}</Context.Provider>;

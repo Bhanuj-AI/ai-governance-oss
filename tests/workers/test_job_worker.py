@@ -5,11 +5,11 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kavach.domain.jobs import Job, JobResult, JobStatus, JobType
-from kavach.plugins.contracts import JobHandlerDefinition
-from kavach.repositories.in_memory import InMemoryJobRepository
-from kavach.services.job_executor import JobExecutor, register_extension_handlers
-from kavach.workers import JobWorker
+from ai_governance.domain.jobs import Job, JobResult, JobStatus, JobType
+from ai_governance.plugins.contracts import JobHandlerDefinition
+from ai_governance.repositories.in_memory import InMemoryJobRepository
+from ai_governance.services.job_executor import JobExecutor, register_extension_handlers
+from ai_governance.workers import JobWorker
 
 
 class SuccessfulHandler:
@@ -46,7 +46,7 @@ def test_executor_dispatches_a_namespaced_extension_operation() -> None:
     job = replace(
         _job(),
         job_type=JobType.EXTENSION,
-        input_refs={"_kavach_extension": {"operation": "tests.slo-evaluation"}},
+        input_refs={"_ai_governance_extension": {"operation": "tests.slo-evaluation"}},
     )
 
     result = JobExecutor().execute(job)

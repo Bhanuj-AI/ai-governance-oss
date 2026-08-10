@@ -4,14 +4,14 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kavach.domain.jobs import (
+from ai_governance.domain.jobs import (
     IdempotencyConflictError,
     JobStatus,
     JobSubmission,
     JobType,
 )
-from kavach.repositories.in_memory import InMemoryJobRepository
-from kavach.services.job_submission_service import (
+from ai_governance.repositories.in_memory import InMemoryJobRepository
+from ai_governance.services.job_submission_service import (
     JobSubmissionService,
     JobSubmissionValidationError,
     stable_input_hash,

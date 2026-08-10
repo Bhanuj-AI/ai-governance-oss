@@ -10,7 +10,7 @@ if [ -f .env.local ]; then
   set +a
 fi
 
-MCP_URL="${KAVACH_MCP_INSPECTOR_URL:-http://127.0.0.1:8002/mcp}"
+MCP_URL="${AI_GOVERNANCE_MCP_INSPECTOR_URL:-http://127.0.0.1:8002/mcp}"
 
 cat <<EOF
 Starting the official MCP Inspector UI.
@@ -22,7 +22,7 @@ When the Inspector opens:
   4. Connect, initialize, list tools, and call a tool.
 
 For local Keycloak testing, obtain a short-lived access token for the
-kavach-mcp client using the documented MCP_USAGE.md example. Do not enter a
+ai-governance-mcp client using the documented MCP_USAGE.md example. Do not enter a
 client secret into the Inspector.
 EOF
 

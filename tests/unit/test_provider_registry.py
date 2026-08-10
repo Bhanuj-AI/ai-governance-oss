@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from kavach.providers import (
+from ai_governance.providers import (
     EvaluationProviderRegistry,
     MockEvaluationProvider,
     ProviderAlreadyRegisteredError,

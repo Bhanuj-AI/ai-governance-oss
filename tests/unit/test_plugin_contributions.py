@@ -1,6 +1,6 @@
-from kavach.plugins import MiddlewareDefinition, PluginRegistry
-from kavach.plugins.contracts import PermissionDefinition
-from kavach.settings_control.domain import SettingCategory, SettingDefinition, SettingValueType
+from ai_governance.plugins import MiddlewareDefinition, PluginRegistry
+from ai_governance.plugins.contracts import PermissionDefinition
+from ai_governance.settings_control.domain import SettingCategory, SettingDefinition, SettingValueType
 
 
 class FirstMiddleware:
@@ -32,5 +32,5 @@ def test_extension_settings_are_available_to_existing_settings_registry():
     context.contributions.settings((SettingDefinition("plugin.example.enabled", SettingCategory.SYSTEM, "Enabled", "Example", SettingValueType.BOOLEAN, False, True),))
     registry.contributions.install(type("App", (), {"state": type("State", (), {"plugin_metrics": {}})(), "add_middleware": lambda *_: None})())
 
-    from kavach.settings_control.registry import SETTINGS_REGISTRY
+    from ai_governance.settings_control.registry import SETTINGS_REGISTRY
     assert SETTINGS_REGISTRY["plugin.example.enabled"].default_value is False

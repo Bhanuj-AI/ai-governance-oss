@@ -1,38 +1,38 @@
 # Multi-organization tenancy and RBAC
 
-Kavach resolves authorization from an explicit `TenantContext`; resources are
+AI Governance Control Plane resolves authorization from an explicit `TenantContext`; resources are
 never authorized from client-provided roles or permission claims. The REST
 transport accepts organization and project selectors through
-`X-Kavach-Organization-Id` and `X-Kavach-Project-Id`. The actor identity comes
+`X-AI-Governance-Organization-Id` and `X-AI-Governance-Project-Id`. The actor identity comes
 from the authentication layer:
 
-- **Development mode** — `X-Kavach-Actor-Id` header or
-  `KAVACH_DEVELOPMENT_ACTOR_ID` environment variable.
+- **Development mode** — `X-AI-Governance-Actor-Id` header or
+  `AI_GOVERNANCE_DEVELOPMENT_ACTOR_ID` environment variable.
 - **Keycloak mode** — JWT `sub` claim from a validated Bearer token.
 
 Request IDs are generated when absent and correlation IDs are preserved.
 
 The permission model is version `1`. Built-in roles and their immutable mapping
-live in `kavach.tenancy.permissions`. Authorization denies by default, checks
+live in `ai_governance.tenancy.permissions`. Authorization denies by default, checks
 active membership, resolves organization-wide plus selected-project role
 assignments, and returns a stable reason code.
 
 Local development bootstraps `org_default`, `project_default`, the
 `local-admin` membership, and an organization-administrator assignment. All
-values can be set with the `KAVACH_BOOTSTRAP_*` and
-`KAVACH_DEVELOPMENT_ACTOR_*` environment variables.
+values can be set with the `AI_GOVERNANCE_BOOTSTRAP_*` and
+`AI_GOVERNANCE_DEVELOPMENT_ACTOR_*` environment variables.
 
 In keycloak mode, the initial administrator is provisioned using
-`KAVACH_BOOTSTRAP_ADMIN_SUB` (the Keycloak user `sub`) instead of
-`KAVACH_DEVELOPMENT_ACTOR_ID`. The bootstrap operation is idempotent in both
+`AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB` (the Keycloak user `sub`) instead of
+`AI_GOVERNANCE_DEVELOPMENT_ACTOR_ID`. The bootstrap operation is idempotent in both
 modes — repeated startup does not create duplicate organizations or memberships.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `KAVACH_DEVELOPMENT_ACTOR_ID` | `local-admin` | Actor ID for the initial administrator in development mode. |
-| `KAVACH_DEVELOPMENT_ACTOR_NAME` | `Local Administrator` | Display name for the initial administrator in development mode. |
-| `KAVACH_BOOTSTRAP_ADMIN_SUB` | - | Keycloak user `sub` for the initial administrator in keycloak mode. Required when `KAVACH_AUTH_MODE=keycloak`. |
-| `KAVACH_BOOTSTRAP_ADMIN_NAME` | - | Display name for the initial administrator in keycloak mode. Optional. |
+| `AI_GOVERNANCE_DEVELOPMENT_ACTOR_ID` | `local-admin` | Actor ID for the initial administrator in development mode. |
+| `AI_GOVERNANCE_DEVELOPMENT_ACTOR_NAME` | `Local Administrator` | Display name for the initial administrator in development mode. |
+| `AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB` | - | Keycloak user `sub` for the initial administrator in keycloak mode. Required when `AI_GOVERNANCE_AUTH_MODE=keycloak`. |
+| `AI_GOVERNANCE_BOOTSTRAP_ADMIN_NAME` | - | Display name for the initial administrator in keycloak mode. Optional. |
 
 ## Authentication and authorization separation
 
@@ -46,13 +46,13 @@ two planes are strictly separated:
 - JWT claims such as `organization_id` or `principal_type` are informational only;
   they do not bypass the RBAC model.
 
-This separation ensures that Keycloak is never the source of truth for Kavach
+This separation ensures that Keycloak is never the source of truth for AI Governance Control Plane
 authorization. Removing or modifying realm roles in Keycloak has no effect on
-Kavach permissions.
+AI Governance Control Plane permissions.
 
-When a JWT includes `organization_id`, Kavach treats it as a tenant constraint:
+When a JWT includes `organization_id`, AI Governance Control Plane treats it as a tenant constraint:
 the requested organization must match it. The claim does not grant access;
-active Kavach membership and a role assignment are still required. See the
+active AI Governance Control Plane membership and a role assignment are still required. See the
 [Keycloak integration design](./KEYCLOAK_INTEGRATION.md) for the complete
 identity-to-tenant flow.
 
@@ -79,9 +79,9 @@ consistent and the last active organization administrator is protected.
 
 ## Persistence and migration
 
-Set `KAVACH_TENANCY_REPOSITORY` to `inmemory`, `sqlite`, or `postgres`. SQLite
-requires `KAVACH_TENANCY_SQLITE_PATH`; PostgreSQL requires
-`KAVACH_TENANCY_POSTGRES_DSN`. Both relational schemas contain organization,
+Set `AI_GOVERNANCE_TENANCY_REPOSITORY` to `inmemory`, `sqlite`, or `postgres`. SQLite
+requires `AI_GOVERNANCE_TENANCY_SQLITE_PATH`; PostgreSQL requires
+`AI_GOVERNANCE_TENANCY_POSTGRES_DSN`. Both relational schemas contain organization,
 project, membership, and assignment constraints plus tenant-aware indexes.
 
 SQLite initialization performs an idempotent compatibility migration. Existing
@@ -102,6 +102,6 @@ both values, preventing identifiers and paths from crossing tenant boundaries.
 
 ## Production identity guardrail
 
-`KAVACH_AUTH_MODE=development` logs a critical warning. A production
+`AI_GOVERNANCE_AUTH_MODE=development` logs a critical warning. A production
 environment rejects it unless
-`KAVACH_ALLOW_DEVELOPMENT_IDENTITY_IN_PRODUCTION=true` is explicitly set.
+`AI_GOVERNANCE_ALLOW_DEVELOPMENT_IDENTITY_IN_PRODUCTION=true` is explicitly set.

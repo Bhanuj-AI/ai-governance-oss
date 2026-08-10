@@ -8,10 +8,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from kavach.domain.evaluation_result import EvaluationMetric, EvaluationResult
-from kavach.ontology import EntityType, OntologyService
-from kavach.ontology.neo4j_repository import Neo4jOntologyGraphRepository
-from kavach.ontology.synchronization import (
+from ai_governance.domain.evaluation_result import EvaluationMetric, EvaluationResult
+from ai_governance.ontology import EntityType, OntologyService
+from ai_governance.ontology.neo4j_repository import Neo4jOntologyGraphRepository
+from ai_governance.ontology.synchronization import (
     DiffBasedOntologyReconciler,
     DiffRepositorySynchronizer,
     EvaluationResultOntologySynchronizer,
@@ -19,8 +19,8 @@ from kavach.ontology.synchronization import (
     OntologySyncEventStatus,
     OntologySynchronizationWorker,
 )
-from kavach.repositories import InMemoryOntologySyncEventRepository
-from kavach.repositories.in_memory_evaluation_repository import (
+from ai_governance.repositories import InMemoryOntologySyncEventRepository
+from ai_governance.repositories.in_memory_evaluation_repository import (
     InMemoryEvaluationRepository,
 )
 

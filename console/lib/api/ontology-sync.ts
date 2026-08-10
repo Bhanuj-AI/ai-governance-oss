@@ -1,6 +1,6 @@
 import {
-  kavachJsonRequest,
-  kavachRequest,
+  aiGovernanceJsonRequest,
+  aiGovernanceRequest,
 } from "@/lib/api/client";
 import type {
   OntologySyncEvent,
@@ -20,7 +20,7 @@ export async function listOntologySyncEvents(
     entityId?: string;
   } = {},
 ) {
-  const dto = await kavachRequest<OntologySyncEventListDto>(EVENTS_PATH, {
+  const dto = await aiGovernanceRequest<OntologySyncEventListDto>(EVENTS_PATH, {
     status: filters.status,
     entity_type: filters.entityType,
     entity_id: filters.entityId,
@@ -30,21 +30,21 @@ export async function listOntologySyncEvents(
 }
 
 export async function getOntologySyncEvent(eventId: string) {
-  const dto = await kavachRequest<OntologySyncEventDto>(
+  const dto = await aiGovernanceRequest<OntologySyncEventDto>(
     `${EVENTS_PATH}/${encodeURIComponent(eventId)}`,
   );
   return mapEvent(dto);
 }
 
 export async function getOntologySyncMetrics() {
-  const dto = await kavachRequest<OntologySyncMetricsDto>(
+  const dto = await aiGovernanceRequest<OntologySyncMetricsDto>(
     `${EVENTS_PATH}/metrics`,
   );
   return mapMetrics(dto);
 }
 
 export async function retryOntologySyncEvent(eventId: string) {
-  const dto = await kavachJsonRequest<OntologySyncEventDto, undefined>(
+  const dto = await aiGovernanceJsonRequest<OntologySyncEventDto, undefined>(
     `${EVENTS_PATH}/${encodeURIComponent(eventId)}/retry`,
     { method: "POST" },
   );

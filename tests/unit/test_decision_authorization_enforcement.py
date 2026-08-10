@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import pytest
 
-from kavach.authorization.contracts import AuthorizationEnforcementDecision
-from kavach.decisions import DecisionTargetType, DecisionType
-from kavach.repositories.in_memory import InMemoryGovernanceDecisionRepository
-from kavach.services.decision_application_service import (
+from ai_governance.authorization.contracts import AuthorizationEnforcementDecision
+from ai_governance.decisions import DecisionTargetType, DecisionType
+from ai_governance.repositories.in_memory import InMemoryGovernanceDecisionRepository
+from ai_governance.services.decision_application_service import (
     DecisionEvaluateCommand,
     GovernanceDecisionApplicationService,
 )
-from kavach.tenancy.domain import TenantContext
-from kavach.tenancy.errors import AuthorizationDenied
+from ai_governance.tenancy.domain import TenantContext
+from ai_governance.tenancy.errors import AuthorizationDenied
 
 
 def test_plugin_enforcer_blocks_governance_approval_before_evaluation() -> None:

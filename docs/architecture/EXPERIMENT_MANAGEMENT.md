@@ -196,7 +196,7 @@ Recommendation
 
 ## Recommendation Is Not Deployment
 
-A recommended candidate is not a deployed candidate. Kavach identifies the
+A recommended candidate is not a deployed candidate. AI Governance Control Plane identifies the
 highest-ranked candidate and records the reason. Another system may choose to
 consume that recommendation as one input into promotion or release logic.
 

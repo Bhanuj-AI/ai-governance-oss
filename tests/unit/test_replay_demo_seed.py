@@ -1,25 +1,25 @@
-from kavach.api.demo_seed import (
+from ai_governance.api.demo_seed import (
     seed_demo_replay_source_executions,
     seed_demo_replays,
     seed_demo_runnable_jobs,
 )
 from dataclasses import replace
-from kavach.domain.evaluation_result import EvaluationMetric, EvaluationResult
-from kavach.domain.jobs import JobStatus, JobType
-from kavach.services.replay_execution_discovery import (
+from ai_governance.domain.evaluation_result import EvaluationMetric, EvaluationResult
+from ai_governance.domain.jobs import JobStatus, JobType
+from ai_governance.services.replay_execution_discovery import (
     InMemoryReplayExecutionCatalog,
     InMemoryReplaySourceResolver,
     ReplayExecutionSearchFilters,
 )
-from kavach.services.replay_governance import BaselineStrategy, ReplayBaselineResolver
-from kavach.tenancy.domain import TenantContext
-from kavach.domain.replay import ReplayStatus
-from kavach.repositories.in_memory_replay_repository import InMemoryReplayRepository
-from kavach.repositories.in_memory import InMemoryJobRepository
-from kavach.repositories.in_memory_replay_result_repository import (
+from ai_governance.services.replay_governance import BaselineStrategy, ReplayBaselineResolver
+from ai_governance.tenancy.domain import TenantContext
+from ai_governance.domain.replay import ReplayStatus
+from ai_governance.repositories.in_memory_replay_repository import InMemoryReplayRepository
+from ai_governance.repositories.in_memory import InMemoryJobRepository
+from ai_governance.repositories.in_memory_replay_result_repository import (
     InMemoryReplayResultRepository,
 )
-from kavach.repositories.in_memory_evaluation_repository import (
+from ai_governance.repositories.in_memory_evaluation_repository import (
     InMemoryEvaluationRepository,
 )
 

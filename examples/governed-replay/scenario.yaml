@@ -4,7 +4,7 @@ title: Governed Replay Walkthrough
 description: >-
   Observe the exact prompt and model evidence, select immutable evaluation and
   execution records, inspect governance evidence, and prepare a replay through
-  Kavach's public REST API.
+  AI Governance Control Plane's public REST API.
 presentation:
   category: evidence
   world: "1-1"
@@ -13,7 +13,7 @@ assets:
   prompt:
     name: walkthrough-support-assistant
     version: v1
-    source_system: kavach-walkthrough
+    source_system: ai-governance-walkthrough
     source_reference: governed-replay:v1
     variables: [question, context]
     artifact: artifacts/prompts/support-assistant-v1.txt
@@ -21,7 +21,7 @@ assets:
     provider: mock
     model_name: walkthrough-general
     version: "2026.07"
-    source_system: kavach-walkthrough
+    source_system: ai-governance-walkthrough
     source_reference: governed-replay:v1
     context_window: 8192
     parameters:

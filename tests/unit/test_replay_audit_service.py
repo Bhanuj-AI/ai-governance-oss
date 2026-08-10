@@ -3,11 +3,11 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
-from kavach.domain.jobs import Job, JobExecutionContext, JobStatus, JobType
-from kavach.domain.replay import Replay, ReplayConfiguration, ReplayMode
-from kavach.repositories import InMemoryJobRepository
-from kavach.services.replay_audit_service import ReplayAuditService
-from kavach.tenancy.domain import TenantContext
+from ai_governance.domain.jobs import Job, JobExecutionContext, JobStatus, JobType
+from ai_governance.domain.replay import Replay, ReplayConfiguration, ReplayMode
+from ai_governance.repositories import InMemoryJobRepository
+from ai_governance.services.replay_audit_service import ReplayAuditService
+from ai_governance.tenancy.domain import TenantContext
 
 
 class _ReplayReader:

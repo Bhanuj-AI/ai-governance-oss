@@ -1,6 +1,6 @@
 # Producer Integration Guide
 
-Kavach catalogs prompt and model identities reported by your runtime or
+AI Governance Control Plane catalogs prompt and model identities reported by your runtime or
 evaluation code. It does not author prompt text, choose model settings, or
 serve inference. This guide shows how a producer reports the exact evidence it
 used so operators can trace it through the asset catalog and ontology.
@@ -10,8 +10,8 @@ used so operators can trace it through the asset catalog and ontology.
 Set the API base URL and an access token for your environment:
 
 ```bash
-export KAVACH_API_URL=http://localhost:8000
-export KAVACH_TOKEN=replace-with-a-bearer-token
+export AI_GOVERNANCE_API_URL=http://localhost:8000
+export AI_GOVERNANCE_TOKEN=replace-with-a-bearer-token
 ```
 
 The default Docker stack requires a Keycloak bearer token. For local
@@ -27,18 +27,18 @@ Each observation needs:
   evaluation run, or deployment evidence.
 - A logical identity and version supplied by your runtime.
 
-Kavach treats the same logical name/version with the same evidence as
+AI Governance Control Plane treats the same logical name/version with the same evidence as
 idempotent. Different evidence under that identity returns `409 Conflict`; use
 a new version rather than overwriting recorded history.
 
 ## Observe a prompt
 
-If the producer can submit prompt content, send it directly. Kavach derives
+If the producer can submit prompt content, send it directly. AI Governance Control Plane derives
 and stores the SHA-256 content hash.
 
 ```bash
-curl -X POST "$KAVACH_API_URL/api/v1/prompts/observations" \
-  -H "Authorization: Bearer $KAVACH_TOKEN" \
+curl -X POST "$AI_GOVERNANCE_API_URL/api/v1/prompts/observations" \
+  -H "Authorization: Bearer $AI_GOVERNANCE_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{
     "name": "support-assistant",
@@ -69,11 +69,11 @@ still showing its provenance, hash, references, and lineage.
 
 Report the provider-native model identity and the configuration observed at
 execution time. The `parameters` object can include provider-specific fields;
-Kavach records it without interpreting or changing it.
+AI Governance Control Plane records it without interpreting or changing it.
 
 ```bash
-curl -X POST "$KAVACH_API_URL/api/v1/models/observations" \
-  -H "Authorization: Bearer $KAVACH_TOKEN" \
+curl -X POST "$AI_GOVERNANCE_API_URL/api/v1/models/observations" \
+  -H "Authorization: Bearer $AI_GOVERNANCE_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{
     "provider": "OpenAI",
@@ -101,8 +101,8 @@ import os
 
 import httpx
 
-base_url = os.environ["KAVACH_API_URL"]
-token = os.environ["KAVACH_TOKEN"]
+base_url = os.environ["AI_GOVERNANCE_API_URL"]
+token = os.environ["AI_GOVERNANCE_TOKEN"]
 template = "Answer using only the supplied context.\nQuestion: {{question}}"
 
 prompt_payload = {
@@ -139,10 +139,10 @@ import { createHash } from "node:crypto";
 const template = "Answer using only the supplied context.\nQuestion: {{question}}";
 const contentHash = `sha256:${createHash("sha256").update(template).digest("hex")}`;
 
-const response = await fetch(`${process.env.KAVACH_API_URL}/api/v1/prompts/observations`, {
+const response = await fetch(`${process.env.AI_GOVERNANCE_API_URL}/api/v1/prompts/observations`, {
   method: "POST",
   headers: {
-    Authorization: `Bearer ${process.env.KAVACH_TOKEN}`,
+    Authorization: `Bearer ${process.env.AI_GOVERNANCE_TOKEN}`,
     "Content-Type": "application/json",
   },
   body: JSON.stringify({

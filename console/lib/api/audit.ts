@@ -1,4 +1,4 @@
-import { kavachRequest, type QueryParams } from "@/lib/api/client";
+import { aiGovernanceRequest, type QueryParams } from "@/lib/api/client";
 import type {
   AuditDetail,
   AuditDetailDto,
@@ -15,12 +15,12 @@ import type {
 } from "@/types/audit";
 
 export async function getAuditPage(params?: QueryParams) {
-  const dto = await kavachRequest<AuditPageDto>("/api/v1/audit", params);
+  const dto = await aiGovernanceRequest<AuditPageDto>("/api/v1/audit", params);
   return mapAuditPage(dto);
 }
 
 export async function getAuditDetail(auditId: string, params?: QueryParams) {
-  const dto = await kavachRequest<AuditDetailDto>(
+  const dto = await aiGovernanceRequest<AuditDetailDto>(
     `/api/v1/audit/${encodeURIComponent(auditId)}`,
     params,
   );

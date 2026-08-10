@@ -2,8 +2,8 @@
 
 ## Overview
 
-Ontology synchronization projects existing Kavach governance domain objects
-into the `kavach.governance` ontology graph. Domain repositories and services
+Ontology synchronization projects existing AI Governance Control Plane governance domain objects
+into the `ai_governance.governance` ontology graph. Domain repositories and services
 remain the systems of record; the graph is a deterministic semantic projection
 used for lineage, provenance, and future traversal workflows.
 
@@ -19,7 +19,7 @@ Synchronizers never talk directly to Neo4j. All graph writes go through
 ## Package Layout
 
 ```text
-src/kavach/ontology/synchronization/
+src/ai_governance/ontology/synchronization/
   __init__.py
   audit_sync.py
   dataset_sync.py
@@ -110,8 +110,8 @@ Governance synchronizers:
 - `GovernanceReportOntologySynchronizer`
 - `DriftOntologySynchronizer`
 
-Kavach has a first-class governance decision domain model in
-`kavach.decisions`. The current synchronizer still accepts
+AI Governance Control Plane has a first-class governance decision domain model in
+`ai_governance.decisions`. The current synchronizer still accepts
 `GovernanceDecisionProjection`, which remains the ontology-facing projection
 shape until durable decision repositories and service workflows are introduced.
 Projection code should preserve the domain contract: decisions are
@@ -285,11 +285,11 @@ uv run pytest tests/unit/ontology_sync tests/unit/ontology
 Run opt-in Neo4j synchronization integration tests:
 
 ```bash
-export KAVACH_RUN_NEO4J_TESTS=true
+export AI_GOVERNANCE_RUN_NEO4J_TESTS=true
 uv run pytest tests/integration/ontology_sync
 ```
 
-Neo4j integration tests are skipped unless `KAVACH_RUN_NEO4J_TESTS=true` and
+Neo4j integration tests are skipped unless `AI_GOVERNANCE_RUN_NEO4J_TESTS=true` and
 the Neo4j Python driver/server are available.
 
 ## Guardrails

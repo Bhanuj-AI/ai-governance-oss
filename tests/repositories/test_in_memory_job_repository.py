@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
-from kavach.domain.jobs import Job, JobStatus, JobType
-from kavach.repositories.in_memory import InMemoryJobRepository
+from ai_governance.domain.jobs import Job, JobStatus, JobType
+from ai_governance.repositories.in_memory import InMemoryJobRepository
 
 
 def test_saves_and_retrieves_job() -> None:

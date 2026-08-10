@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from kavach import __version__
-from kavach.databases.postgres.database import PostgresDatabase
-from kavach.mcp.audit import (
+from ai_governance import __version__
+from ai_governance.databases.postgres.database import PostgresDatabase
+from ai_governance.mcp.audit import (
     MCPExecutionAuditLog,
     PostgresMCPExecutionAuditStore,
     request_hash,
 )
-from kavach.mcp.dto import WriteEnvelope
+from ai_governance.mcp.dto import WriteEnvelope
 
 
 def test_sqlite_audit_log_persists_completed_record(
@@ -88,7 +88,7 @@ def test_postgres_audit_log_constructs_postgres_store(monkeypatch) -> None:
     monkeypatch.setattr(PostgresDatabase, "initialize", lambda _database: None)
 
     audit_log = MCPExecutionAuditLog.postgres(
-        "postgresql://audit:secret@db.example/kavach"
+        "postgresql://audit:secret@db.example/ai-governance"
     )
 
     assert isinstance(audit_log._store, PostgresMCPExecutionAuditStore)

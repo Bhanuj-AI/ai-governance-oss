@@ -1,8 +1,8 @@
-from kavach.api.dependencies.tenancy import (
+from ai_governance.api.dependencies.tenancy import (
     get_compatible_tenant_context,
     get_tenant_context,
 )
-from kavach.tenancy.domain import ActorType, AuthenticatedPrincipal
+from ai_governance.tenancy.domain import ActorType, AuthenticatedPrincipal
 
 
 def _principal() -> AuthenticatedPrincipal:
@@ -16,7 +16,7 @@ def _principal() -> AuthenticatedPrincipal:
 
 
 def test_keycloak_tenant_context_accepts_header_scope(monkeypatch) -> None:
-    monkeypatch.setenv("KAVACH_AUTH_MODE", "keycloak")
+    monkeypatch.setenv("AI_GOVERNANCE_AUTH_MODE", "keycloak")
 
     context = get_tenant_context(
         x_organization_id="header-org",
@@ -36,7 +36,7 @@ def test_keycloak_tenant_context_accepts_header_scope(monkeypatch) -> None:
 def test_compatible_keycloak_context_uses_principal_scope_when_headers_absent(
     monkeypatch,
 ) -> None:
-    monkeypatch.setenv("KAVACH_AUTH_MODE", "keycloak")
+    monkeypatch.setenv("AI_GOVERNANCE_AUTH_MODE", "keycloak")
 
     context = get_compatible_tenant_context(
         x_organization_id=None,

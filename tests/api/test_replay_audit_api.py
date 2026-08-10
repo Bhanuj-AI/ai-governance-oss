@@ -4,9 +4,9 @@ from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
 
-from kavach.api.app import create_app
-from kavach.api.dependencies import get_replay_audit_service
-from kavach.services.replay_audit_service import ReplayAuditRecord
+from ai_governance.api.app import create_app
+from ai_governance.api.dependencies import get_replay_audit_service
+from ai_governance.services.replay_audit_service import ReplayAuditRecord
 
 
 class _ReplayAuditService:

@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
-from kavach.domain.experiments import ExperimentCandidate
-from kavach.repositories.mappers.experiment_candidate_persistence_mapper import (
+from ai_governance.domain.experiments import ExperimentCandidate
+from ai_governance.repositories.mappers.experiment_candidate_persistence_mapper import (
     ExperimentCandidatePersistenceMapper,
 )
 

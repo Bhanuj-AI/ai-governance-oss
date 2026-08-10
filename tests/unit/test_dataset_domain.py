@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kavach.domain.datasets import (
+from ai_governance.domain.datasets import (
     Dataset,
     DatasetDiff,
     DatasetStatus,

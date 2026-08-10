@@ -2,7 +2,7 @@
 
 ## Control Plane Ownership
 
-Kavach owns governance state and governance decisions. It tracks assets,
+AI Governance Control Plane owns governance state and governance decisions. It tracks assets,
 results, comparisons, rankings, and recommendations. It does not own the live
 AI runtime or the deployment system.
 
@@ -80,7 +80,7 @@ Bad:
 
 ## Governance over Deployment
 
-Kavach recommends and records; downstream systems deploy. The boundary matters
+AI Governance Control Plane recommends and records; downstream systems deploy. The boundary matters
 because governance evidence must remain transportable across runtime and release
 platforms.
 

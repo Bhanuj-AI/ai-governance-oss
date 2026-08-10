@@ -6,22 +6,22 @@ from typing import Any
 
 import pytest
 
-import kavach.oauth.client_credentials as oauth
-from kavach.cli.main import _resolve_walkthrough_token
+import ai_governance.oauth.client_credentials as oauth
+from ai_governance.cli.main import _resolve_walkthrough_token
 
 
-cli_main_module = import_module("kavach.cli.main")
+cli_main_module = import_module("ai_governance.cli.main")
 
 
 def test_generic_oauth_environment_takes_precedence_over_legacy_names() -> None:
     credentials = oauth.client_credentials_from_environment(
         {
-            "KAVACH_OAUTH_TOKEN_URL": "https://issuer.example/token",
-            "KAVACH_OAUTH_CLIENT_ID": "walkthrough",
-            "KAVACH_OAUTH_CLIENT_SECRET": "walkthrough-secret",
-            "KAVACH_MCP_CLIENT_ID": "mcp",
-            "KAVACH_MCP_CLIENT_SECRET": "mcp-secret",
-            "KAVACH_MCP_TOKEN_URL": "https://issuer.example/mcp-token",
+            "AI_GOVERNANCE_OAUTH_TOKEN_URL": "https://issuer.example/token",
+            "AI_GOVERNANCE_OAUTH_CLIENT_ID": "walkthrough",
+            "AI_GOVERNANCE_OAUTH_CLIENT_SECRET": "walkthrough-secret",
+            "AI_GOVERNANCE_MCP_CLIENT_ID": "mcp",
+            "AI_GOVERNANCE_MCP_CLIENT_SECRET": "mcp-secret",
+            "AI_GOVERNANCE_MCP_TOKEN_URL": "https://issuer.example/mcp-token",
         }
     )
 
@@ -36,8 +36,8 @@ def test_incomplete_generic_oauth_environment_fails_clearly() -> None:
     with pytest.raises(oauth.OAuthClientCredentialsError, match="missing client_secret"):
         oauth.client_credentials_from_environment(
             {
-                "KAVACH_OAUTH_TOKEN_URL": "https://issuer.example/token",
-                "KAVACH_OAUTH_CLIENT_ID": "walkthrough",
+                "AI_GOVERNANCE_OAUTH_TOKEN_URL": "https://issuer.example/token",
+                "AI_GOVERNANCE_OAUTH_CLIENT_ID": "walkthrough",
             }
         )
 
@@ -93,7 +93,7 @@ def test_walkthrough_prefers_explicit_token_over_service_credentials(
 def test_walkthrough_uses_service_token_when_no_explicit_token(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.delenv("KAVACH_AUTH_MODE", raising=False)
+    monkeypatch.delenv("AI_GOVERNANCE_AUTH_MODE", raising=False)
     monkeypatch.setattr(cli_main_module, "access_token_from_environment", lambda: "service-token")
 
     assert _resolve_walkthrough_token(None) == "service-token"

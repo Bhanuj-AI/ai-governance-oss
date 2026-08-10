@@ -1,8 +1,8 @@
 from types import SimpleNamespace
 
-from kavach.intelligence import ExperimentAdvisor
-from kavach.intelligence.registry import AdvisorRegistrationError, AdvisorRegistry, IntelligenceService
-from kavach.spi.intelligence import (
+from ai_governance.intelligence import ExperimentAdvisor
+from ai_governance.intelligence.registry import AdvisorRegistrationError, AdvisorRegistry, IntelligenceService
+from ai_governance.spi.intelligence import (
     AdvisorDescriptor,
     AdvisorEvidence,
     AdvisorFinding,

@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { getDecisions } from "@/lib/api/decisions";
-import { KavachApiError } from "@/lib/api/client";
+import { AIGovernanceApiError } from "@/lib/api/client";
 import type { GovernanceDecision } from "@/types/decision";
 
 const DECISION_FETCH_LIMIT = 500;
@@ -87,7 +87,7 @@ export function DecisionListPage() {
               </h1>
             </div>
             <p className="mt-1 max-w-[720px] text-sm text-muted-foreground">
-              Read-only decisions persisted by the Kavach Control Plane.
+              Read-only decisions persisted by the AI Governance Control Plane Control Plane.
             </p>
           </div>
           <details className="rounded-md border bg-card px-3 py-2 text-xs text-muted-foreground">
@@ -322,7 +322,7 @@ function matchesStatusFilter(status: string, filter: StatusFilter) {
 
 function ErrorPanel({ error }: { error: Error }) {
   const message =
-    error instanceof KavachApiError
+    error instanceof AIGovernanceApiError
       ? `${error.code}: ${error.message}`
       : error.message;
 

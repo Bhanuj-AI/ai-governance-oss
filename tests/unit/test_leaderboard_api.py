@@ -1,26 +1,26 @@
 from datetime import UTC, datetime
 
-from kavach.api import LeaderboardAPI
-from kavach.domain.experiments import (
+from ai_governance.api import LeaderboardAPI
+from ai_governance.domain.experiments import (
     Leaderboard,
     LeaderboardEntry,
 )
-from kavach.repositories.in_memory_evaluation_repository import (
+from ai_governance.repositories.in_memory_evaluation_repository import (
     InMemoryEvaluationRepository,
 )
-from kavach.repositories.in_memory_evaluation_run_repository import (
+from ai_governance.repositories.in_memory_evaluation_run_repository import (
     InMemoryEvaluationRunRepository,
 )
-from kavach.repositories.in_memory_experiment_candidate_repository import (
+from ai_governance.repositories.in_memory_experiment_candidate_repository import (
     InMemoryExperimentCandidateRepository,
 )
-from kavach.repositories.in_memory_leaderboard_repository import (
+from ai_governance.repositories.in_memory_leaderboard_repository import (
     InMemoryLeaderboardRepository,
 )
-from kavach.repositories.in_memory_model_repository import (
+from ai_governance.repositories.in_memory_model_repository import (
     InMemoryModelRepository,
 )
-from kavach.services.experiments import RankingService
+from ai_governance.services.experiments import RankingService
 
 
 def test_leaderboard_api_exposes_framework_neutral_routes() -> None:

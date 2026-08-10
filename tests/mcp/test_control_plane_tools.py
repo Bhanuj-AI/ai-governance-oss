@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from kavach.mcp.clients import RestClient
-from kavach.mcp.audit import MCPExecutionAuditLog
-from kavach.mcp.server import create_server
+from ai_governance.mcp.clients import RestClient
+from ai_governance.mcp.audit import MCPExecutionAuditLog
+from ai_governance.mcp.server import create_server
 
 
 def test_control_plane_tool_requires_explicit_context():
     server = create_server(
-        RestClient("http://kavach", transport=lambda *args: {}),
+        RestClient("http://ai-governance", transport=lambda *args: {}),
         audit_log=MCPExecutionAuditLog.in_memory(),
     )
     result = server.call_tool("project.list", {})
@@ -23,7 +23,7 @@ def test_project_list_forwards_tenant_scoped_path():
         calls.append(args)
         return []
 
-    server = create_server(RestClient("http://kavach", transport=transport))
+    server = create_server(RestClient("http://ai-governance", transport=transport))
     result = server.call_tool(
         "project.list",
         {"context": {"organization_id": "org_a", "project_id": "project_a"}},
@@ -34,7 +34,7 @@ def test_project_list_forwards_tenant_scoped_path():
 
 def test_controlled_tenant_write_supports_dry_run_and_audit():
     server = create_server(
-        RestClient("http://kavach", transport=lambda *args: {}),
+        RestClient("http://ai-governance", transport=lambda *args: {}),
         audit_log=MCPExecutionAuditLog.in_memory(),
     )
     result = server.call_tool(

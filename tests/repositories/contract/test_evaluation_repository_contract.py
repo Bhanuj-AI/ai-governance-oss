@@ -1,11 +1,11 @@
 from abc import ABC
 from abc import abstractmethod
 
-from kavach.domain.evaluation_result import (
+from ai_governance.domain.evaluation_result import (
     EvaluationMetric,
     EvaluationResult,
 )
-from kavach.repositories.evaluation_repository import EvaluationRepository
+from ai_governance.repositories.evaluation_repository import EvaluationRepository
 
 
 class EvaluationRepositoryContract(ABC):

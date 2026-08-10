@@ -1,0 +1,402 @@
+{
+  "realm": "ai-governance",
+  "enabled": true,
+  "displayName": "AI Governance Control Plane",
+
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+
+
+  "roles": {
+    "realm": [
+      {
+        "name": "ai-governance-access",
+        "description": "AI Governance Control Plane Platform Access Role"
+      },
+      {
+        "name": "ai-governance-service",
+        "description": "AI Governance Control Plane Service Role"
+      }
+    ]
+  },
+
+  "clientScopes": [
+    {
+      "name": "basic",
+      "description": "Standard OpenID Connect subject claim",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "subject",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-sub-mapper",
+          "consentRequired": false,
+          "config": {
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "introspection.token.claim": "true",
+            "lightweight.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "ai-governance-context",
+      "description": "AI Governance Control Plane Organization & Project Context",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "organization-id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "organization_id",
+            "claim.name": "organization_id",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "false"
+          }
+        },
+        {
+          "name": "project-ids",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "project_ids",
+            "claim.name": "project_ids",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true"
+          }
+        }
+      ]
+    }
+  ],
+
+  "clients": [
+    {
+      "clientId": "ai-governance-studio",
+      "name": "AI Governance Control Plane Studio",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+
+      "redirectUris": [
+          "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+          "http://localhost:3000"
+      ],
+
+      "defaultClientScopes": [
+          "basic",
+          "profile",
+          "email",
+          "roles",
+          "ai-governance-context"
+      ],
+
+      "attributes": {
+          "pkce.code.challenge.method": "S256",
+          "use.lightweight.access.token": "false",
+          "post.logout.redirect.uris": "http://localhost:3000/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "subject",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-sub-mapper",
+          "consentRequired": false,
+          "config": {
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "introspection.token.claim": "true",
+            "lightweight.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "ai-governance-api",
+      "name": "AI Governance Control Plane API",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": true,
+      "protocol": "openid-connect",
+
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false
+    },
+    {
+      "clientId": "ai-governance-mcp",
+      "name": "AI Governance Control Plane MCP",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${AI_GOVERNANCE_MCP_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect",
+      "protocolMappers": [
+          {
+            "name": "organization-id",
+            "protocol": "openid-connect",
+            "protocolMapper": "oidc-hardcoded-claim-mapper",
+            "consentRequired": false,
+            "config": {
+              "claim.name": "organization_id",
+              "claim.value": "org_default",
+              "jsonType.label": "String",
+              "access.token.claim": "true",
+              "id.token.claim": "false",
+              "userinfo.token.claim": "false"
+            }
+          },
+          {
+            "name": "project-ids",
+            "protocol": "openid-connect",
+            "protocolMapper": "oidc-hardcoded-claim-mapper",
+            "consentRequired": false,
+            "config": {
+              "claim.name": "project_ids",
+              "claim.value": "project_default",
+              "jsonType.label": "String",
+              "access.token.claim": "true",
+              "id.token.claim": "false",
+              "userinfo.token.claim": "false"
+            }
+          },
+          {
+            "name": "principal-type",
+            "protocol": "openid-connect",
+            "protocolMapper": "oidc-hardcoded-claim-mapper",
+            "consentRequired": false,
+            "config": {
+              "claim.name": "principal_type",
+              "claim.value": "service",
+              "jsonType.label": "String",
+              "access.token.claim": "true",
+              "id.token.claim": "false",
+              "userinfo.token.claim": "false"
+            }
+          }
+      ]
+    },
+    {
+      "clientId": "ai-governance-walkthrough",
+      "name": "AI Governance Control Plane Walkthrough",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${AI_GOVERNANCE_WALKTHROUGH_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "name": "organization-id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "organization_id",
+            "claim.value": "org_default",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        },
+        {
+          "name": "project-ids",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "project_ids",
+            "claim.value": "project_default",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        },
+        {
+          "name": "principal-type",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "principal_type",
+            "claim.value": "service",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "ai-governance-service",
+      "name": "AI Governance Control Plane Service",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${AI_GOVERNANCE_SERVICE_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect",
+
+      "protocolMappers": [
+        {
+          "name": "organization-id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+              "claim.name": "organization_id",
+              "claim.value": "org_default",
+              "jsonType.label": "String",
+              "access.token.claim": "true",
+              "id.token.claim": "false",
+              "userinfo.token.claim": "false"
+          }
+        },
+        {
+          "name": "service-type",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+              "claim.name": "principal_type",
+              "claim.value": "service",
+              "jsonType.label": "String",
+              "access.token.claim": "true",
+              "id.token.claim": "false",
+              "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "ai-governance-mcp-vscode",
+      "name": "AI Governance Control Plane MCP VSCode Client",
+      "enabled": true,
+      "publicClient": true,
+      "clientAuthenticatorType": "none",
+
+      "serviceAccountsEnabled": false,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+
+      "protocol": "openid-connect",
+
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "use.lightweight.access.token": "false"
+      },
+
+      "redirectUris": [
+        "http://127.0.0.1:*",
+        "http://localhost:*",
+        "https://oauth.pstmn.io/v1/callback"
+      ],
+      "webOrigins": [],
+      "bearerOnly": false,
+
+      "defaultClientScopes": [
+        "basic",
+        "profile",
+        "email",
+        "roles",
+        "ai-governance-context"
+      ],
+
+      "protocolMappers": [
+        {
+            "name": "subject",
+            "protocol": "openid-connect",
+            "protocolMapper": "oidc-sub-mapper",
+            "consentRequired": false,
+            "config": {
+              "access.token.claim": "true",
+              "id.token.claim": "true",
+              "introspection.token.claim": "true",
+              "lightweight.claim": "true"
+            }
+        },
+        {
+          "name": "mcp-resource-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "http://localhost:8002/mcp",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+
+  "users": [
+    {
+      "id": "e44566f1-c748-45e1-83db-d2ee5fb424ef",
+      "username": "studio",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "admin@ai-governance.local",
+
+      "attributes": {
+        "organization_id": [
+          "org_default"
+        ],
+        "project_ids": [
+          "project_default"
+        ]
+      },
+
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${AI_GOVERNANCE_STUDIO_PASSWORD}",
+          "temporary": true
+        }
+      ],
+
+      "realmRoles": [
+        "platform-admin"
+      ]
+    }
+  ]
+}

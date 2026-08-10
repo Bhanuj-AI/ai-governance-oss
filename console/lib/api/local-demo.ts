@@ -1,4 +1,4 @@
-import { kavachJsonRequest } from "@/lib/api/client";
+import { aiGovernanceJsonRequest } from "@/lib/api/client";
 
 type DemoSeedResponse = {
   seeded: boolean;
@@ -7,6 +7,6 @@ type DemoSeedResponse = {
 
 /** Seed the idempotent, full workflow fixture used by the local Studio mentor. */
 export const seedLocalDemoData = () =>
-  kavachJsonRequest<DemoSeedResponse, undefined>("/api/v1/local/demo/seed", {
+  aiGovernanceJsonRequest<DemoSeedResponse, undefined>("/api/v1/local/demo/seed", {
     method: "POST",
   });

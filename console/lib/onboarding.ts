@@ -1,1 +1,1 @@
-export const ONBOARDING_STARTUP_KEY = "kavach.onboarding.hide-on-startup";
+export const ONBOARDING_STARTUP_KEY = "ai_governance.onboarding.hide-on-startup";

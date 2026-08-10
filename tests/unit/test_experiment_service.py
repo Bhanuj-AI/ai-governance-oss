@@ -2,11 +2,11 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kavach.domain.experiments import ExperimentStatus
-from kavach.repositories.in_memory_experiment_repository import (
+from ai_governance.domain.experiments import ExperimentStatus
+from ai_governance.repositories.in_memory_experiment_repository import (
     InMemoryExperimentRepository,
 )
-from kavach.services.experiments import (
+from ai_governance.services.experiments import (
     ExperimentConflictError,
     ExperimentLifecycleError,
     ExperimentService,

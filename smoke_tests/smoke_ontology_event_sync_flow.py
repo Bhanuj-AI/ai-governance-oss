@@ -2,17 +2,17 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from kavach.domain.prompts import Prompt, PromptStatus
-from kavach.ontology import InMemoryOntologyGraphRepository, OntologyService
-from kavach.ontology.synchronization import (
+from ai_governance.domain.prompts import Prompt, PromptStatus
+from ai_governance.ontology import InMemoryOntologyGraphRepository, OntologyService
+from ai_governance.ontology.synchronization import (
     DiffBasedOntologyReconciler,
     DiffRepositorySynchronizer,
     OntologySyncEventPublisher,
     OntologySynchronizationWorker,
     PromptOntologySynchronizer,
 )
-from kavach.repositories import InMemoryOntologySyncEventRepository
-from kavach.repositories.in_memory_prompt_repository import (
+from ai_governance.repositories import InMemoryOntologySyncEventRepository
+from ai_governance.repositories.in_memory_prompt_repository import (
     InMemoryPromptRepository,
 )
 

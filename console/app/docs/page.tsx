@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function StudioDocumentationRedirect() {
-  redirect("https://kavach.bhanuj.app/docs");
+  redirect("https://ai_governance.bhanuj.app/docs");
 }

@@ -28,7 +28,7 @@ import {
   getDecisionExplanation,
   getDecisionLineage,
 } from "@/lib/api/decisions";
-import { KavachApiError } from "@/lib/api/client";
+import { AIGovernanceApiError } from "@/lib/api/client";
 import {
   evidenceGraphToFlow,
   lineageToFlow,
@@ -64,7 +64,7 @@ export function DecisionDetailPage({ decisionId }: { decisionId: string }) {
   });
 
   const notFound =
-    detailQuery.error instanceof KavachApiError &&
+    detailQuery.error instanceof AIGovernanceApiError &&
     detailQuery.error.status === 404;
 
   if (notFound) {
@@ -704,7 +704,7 @@ function formatDate(value: string) {
 }
 
 function errorMessage(error: Error) {
-  if (error instanceof KavachApiError) {
+  if (error instanceof AIGovernanceApiError) {
     return `${error.code}: ${error.message}`;
   }
   return error.message;

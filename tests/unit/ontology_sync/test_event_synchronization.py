@@ -5,12 +5,12 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from kavach.api.app import create_app
-from kavach.api.dependencies import get_ontology_sync_event_service
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.domain.prompts import Prompt, PromptStatus
-from kavach.ontology import InMemoryOntologyGraphRepository, OntologyService
-from kavach.ontology.synchronization import (
+from ai_governance.api.app import create_app
+from ai_governance.api.dependencies import get_ontology_sync_event_service
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.domain.prompts import Prompt, PromptStatus
+from ai_governance.ontology import InMemoryOntologyGraphRepository, OntologyService
+from ai_governance.ontology.synchronization import (
     DiffBasedOntologyReconciler,
     DiffRepositorySynchronizer,
     OntologySyncEvent,
@@ -23,14 +23,14 @@ from kavach.ontology.synchronization import (
     OntologySynchronizationWorker,
     PromptOntologySynchronizer,
 )
-from kavach.repositories import (
+from ai_governance.repositories import (
     InMemoryOntologySyncEventRepository,
     SQLiteOntologySyncEventRepository,
 )
-from kavach.repositories.in_memory_prompt_repository import (
+from ai_governance.repositories.in_memory_prompt_repository import (
     InMemoryPromptRepository,
 )
-from kavach.services.prompts import PromptRegistryService
+from ai_governance.services.prompts import PromptRegistryService
 
 
 def test_event_publisher_records_pending_entity_event() -> None:
@@ -135,7 +135,7 @@ def test_worker_retries_then_dead_letters_retryable_failures() -> None:
 
 
 def test_sqlite_event_repository_persists_events(tmp_path: Path) -> None:
-    database = SQLiteDatabase(tmp_path / "kavach.db")
+    database = SQLiteDatabase(tmp_path / "ai_governance.db")
     database.initialize()
     repository = SQLiteOntologySyncEventRepository(database)
     repository.save(

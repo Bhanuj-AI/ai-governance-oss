@@ -1,4 +1,4 @@
 interface:
   display_name: "API Change"
-  short_description: "Implement safe, compatible Kavach REST API changes."
-  default_prompt: "Use $api-change to add a tenant-safe, backwards-compatible Kavach REST API change."
+  short_description: "Implement safe, compatible AI Governance Control Plane REST API changes."
+  default_prompt: "Use $api-change to add a tenant-safe, backwards-compatible AI Governance Control Plane REST API change."

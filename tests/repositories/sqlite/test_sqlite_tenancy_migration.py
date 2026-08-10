@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 
-from kavach.databases.sqlite.database import SQLiteDatabase
+from ai_governance.databases.sqlite.database import SQLiteDatabase
 
 
 def test_legacy_rows_are_backfilled_idempotently(tmp_path, monkeypatch):
@@ -16,8 +16,8 @@ def test_legacy_rows_are_backfilled_idempotently(tmp_path, monkeypatch):
             "('job_1', 'EVALUATION', 'QUEUED', '{}', 'hash', 'key', 'actor', 0, 3, "
             "'2026-01-01T00:00:00+00:00', '2026-01-01T00:00:00+00:00')"
         )
-    monkeypatch.setenv("KAVACH_BOOTSTRAP_ORGANIZATION_ID", "org_migrated")
-    monkeypatch.setenv("KAVACH_BOOTSTRAP_PROJECT_ID", "project_migrated")
+    monkeypatch.setenv("AI_GOVERNANCE_BOOTSTRAP_ORGANIZATION_ID", "org_migrated")
+    monkeypatch.setenv("AI_GOVERNANCE_BOOTSTRAP_PROJECT_ID", "project_migrated")
     database.initialize()
     database.initialize()
     with database.connect() as connection:

@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from kavach.decisions import (
+from ai_governance.decisions import (
     DecisionAuditAction,
     DecisionAuditRecord,
     DecisionEvidenceReference,
@@ -13,7 +13,7 @@ from kavach.decisions import (
     GovernanceDecision,
     MissingEvidence,
 )
-from kavach.repositories.mappers.governance_decision_persistence_mapper import (
+from ai_governance.repositories.mappers.governance_decision_persistence_mapper import (
     GovernanceDecisionPersistenceMapper,
 )
 

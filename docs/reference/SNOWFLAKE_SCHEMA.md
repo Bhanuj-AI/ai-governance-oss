@@ -2,7 +2,7 @@
 
 ## Overview
 
-Snowflake is Kavach's optional enterprise analytics persistence backend. It
+Snowflake is AI Governance Control Plane's optional enterprise analytics persistence backend. It
 implements the same repository contracts as SQLite and PostgreSQL, so services
 remain storage-independent.
 
@@ -15,7 +15,7 @@ while using Snowflake-native types:
 - `NUMBER` for integer-like values
 - informational primary key and unique declarations
 
-Kavach initializes the schema with `CREATE TABLE IF NOT EXISTS`. Snowflake
+AI Governance Control Plane initializes the schema with `CREATE TABLE IF NOT EXISTS`. Snowflake
 support does not introduce Snowpark, Cortex, Dynamic Tables, Streams, Tasks,
 Stages, or deployment orchestration.
 
@@ -23,7 +23,7 @@ Stages, or deployment orchestration.
 
 Snowflake uses the same logical tenancy model as SQLite and PostgreSQL when it
 is selected as a repository backend. Keycloak authenticates the actor, but
-Kavach persists the authorization relationship. `actor_id` is the verified JWT
+AI Governance Control Plane persists the authorization relationship. `actor_id` is the verified JWT
 `sub`; Keycloak roles and tenant claims do not replace membership rows.
 
 ### organizations and projects
@@ -213,7 +213,7 @@ Columns:
 - `status` — worker lifecycle status, currently `RUNNING`
 
 The dashboard compares `heartbeat_at` with
-`KAVACH_WORKER_HEARTBEAT_STALE_SECONDS`. This is distinct from the job-level
+`AI_GOVERNANCE_WORKER_HEARTBEAT_STALE_SECONDS`. This is distinct from the job-level
 `heartbeat_at` stored on `job_execution`.
 - `status`
 
@@ -318,16 +318,16 @@ Notes:
 Snowflake repository tests are optional for normal local development. They skip
 unless Snowflake environment variables are configured:
 
-- `KAVACH_SNOWFLAKE_ACCOUNT`
-- `KAVACH_SNOWFLAKE_USER`
-- `KAVACH_SNOWFLAKE_PASSWORD`, `KAVACH_SNOWFLAKE_AUTHENTICATOR`,
-  `KAVACH_SNOWFLAKE_TOKEN`, or `KAVACH_SNOWFLAKE_PRIVATE_KEY_PATH`
-- `KAVACH_SNOWFLAKE_WAREHOUSE`
-- `KAVACH_SNOWFLAKE_DATABASE`
-- `KAVACH_SNOWFLAKE_SCHEMA`
-- `KAVACH_SNOWFLAKE_ROLE` optionally
+- `AI_GOVERNANCE_SNOWFLAKE_ACCOUNT`
+- `AI_GOVERNANCE_SNOWFLAKE_USER`
+- `AI_GOVERNANCE_SNOWFLAKE_PASSWORD`, `AI_GOVERNANCE_SNOWFLAKE_AUTHENTICATOR`,
+  `AI_GOVERNANCE_SNOWFLAKE_TOKEN`, or `AI_GOVERNANCE_SNOWFLAKE_PRIVATE_KEY_PATH`
+- `AI_GOVERNANCE_SNOWFLAKE_WAREHOUSE`
+- `AI_GOVERNANCE_SNOWFLAKE_DATABASE`
+- `AI_GOVERNANCE_SNOWFLAKE_SCHEMA`
+- `AI_GOVERNANCE_SNOWFLAKE_ROLE` optionally
 
-Tests create a generated `KAVACH_TEST_<uuid>` schema, initialize Kavach tables
+Tests create a generated `AI_GOVERNANCE_TEST_<uuid>` schema, initialize AI Governance Control Plane tables
 there, and drop that schema after the test session.
 
 ## Boundary Notes

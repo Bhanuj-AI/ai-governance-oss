@@ -1,8 +1,8 @@
-# Kavach Studio Ontology Graph
+# AI Governance Control Plane Studio Ontology Graph
 
-![Kavach logo](../../assets/Kavach%20Deisgn.png)
+![AI Governance Control Plane logo](../../assets/AI Governance Control Plane%20Deisgn.png)
 
-Kavach Studio is a Next.js application in `console/`. Its ontology graph area
+AI Governance Control Plane Studio is a Next.js application in `console/`. Its ontology graph area
 supports read-only exploration of ontology graph data exposed by the Python
 Control Plane.
 
@@ -26,16 +26,16 @@ pnpm dev
 Studio reads the API base URL from:
 
 ```text
-NEXT_PUBLIC_KAVACH_API_BASE_URL=http://localhost:8000
+NEXT_PUBLIC_AI_GOVERNANCE_API_BASE_URL=http://localhost:8000
 ```
 
 See [Configuration](../reference/CONFIGURATION.md) for all API, Studio, graph,
 demo seed, and MCP environment variables.
 
 The default is `http://localhost:8000` when the environment variable is not set.
-The Kavach API allows browser requests from `http://localhost:3000` and
+The AI Governance Control Plane API allows browser requests from `http://localhost:3000` and
 `http://127.0.0.1:3000` by default. For a different Studio origin, set
-`KAVACH_CORS_ALLOW_ORIGINS` on the API process.
+`AI_GOVERNANCE_CORS_ALLOW_ORIGINS` on the API process.
 
 Graph canvas colors can be adjusted with public Studio environment variables:
 
@@ -61,13 +61,13 @@ pnpm build
 From the repository root:
 
 ```bash
-./kavach.sh
+./ai_governance.sh
 ```
 
 This starts:
 
-- `kavach-platform` on `http://localhost:8000`
-- `kavach-studio` on `http://localhost:3000`
+- `ai-governance-platform` on `http://localhost:8000`
+- `ai-governance-studio` on `http://localhost:3000`
 - `neo4j` on `bolt://localhost:7687`
 - `seaweedfs` with S3 on `http://localhost:8333` and a Filer UI on
   `http://localhost:8888`
@@ -94,11 +94,11 @@ Entity ID: candidate-1
 Depth: 2
 ```
 
-![Kavach Ontology](../../assets/Kavach%20Ontology%20Graph.png)
+![AI Governance Control Plane Ontology](../../assets/AI Governance Control Plane%20Ontology%20Graph.png)
 
 Or open `/decisions` and choose the seeded decision and load:
 
-![Kavach Decisions Index](../../assets/Governance%20Decisions.png)
+![AI Governance Control Plane Decisions Index](../../assets/Governance%20Decisions.png)
 
 The seed is idempotent. It creates four candidate evidence graphs, evaluates a
 demo release-gate policy, persists approved, proposed-for-review, rejected, and
@@ -109,8 +109,8 @@ for lineage inspection.
 
 The `/assets` area is the registry-centric Studio surface. **Prompt Catalog**
 and **Model Catalog** describe observed runtime identities and configuration;
-Kavach does not author prompts or define model runtime behavior. **Dataset
-Registry** and **Evaluation Providers** are managed Kavach assets. This keeps
+AI Governance Control Plane does not author prompts or define model runtime behavior. **Dataset
+Registry** and **Evaluation Providers** are managed AI Governance Control Plane assets. This keeps
 the OSS console out of model serving and dataset labeling.
 
 Asset detail routes are version-aware and use a consistent operator workflow:
@@ -265,7 +265,7 @@ downstream nodes on opposite sides. It intentionally bounds dense columns so
 wide seeded neighbourhoods remain inspectable. **Reset layout** restores this
 generated arrangement after manual repositioning.
 
-![Kavach Ontology Highlighted Selection](../../assets/Kavach%20Ontology%20Graph%20-%20Highlighted.png)
+![AI Governance Control Plane Ontology Highlighted Selection](../../assets/AI Governance Control Plane%20Ontology%20Graph%20-%20Highlighted.png)
 
 Node IDs are ontology entity IDs. Edge IDs are ontology relationship IDs.
 
@@ -276,7 +276,7 @@ view for one persisted governance decision. It is designed for operators who
 already have a decision ID from an API response, MCP tool result, audit trail,
 or investigation workflow.
 
-![Kavach Decisions Index](../../assets/Governance%20Decisions.png)
+![AI Governance Control Plane Decisions Index](../../assets/Governance%20Decisions.png)
 
 Use `/decisions` to list persisted governance decisions and click through to
 the visual detail page. The list page uses `GET /api/v1/decisions`, displays
@@ -288,19 +288,19 @@ ID lookup form that opens `/decisions/{decisionId}` directly.
 - outcome status, confidence, latest job/audit status, and metric scores
 - policy evaluation outcomes from the persisted reasoning read model
 
-  ![Kavach Decisions Index](../../assets/Governance%20Decisions%20-%20BLOCKED.png)
+  ![AI Governance Control Plane Decisions Index](../../assets/Governance%20Decisions%20-%20BLOCKED.png)
 
 ### Decision Evidence Graph
 - deterministic reasoning explanation timeline
 - evidence graph rendered with React Flow
 
-  ![Kavach Decisions Index](../../assets/Governance%20Decisions%20-%20BLOCKED%20-%20Evidence%20Graph.png)
+  ![AI Governance Control Plane Decisions Index](../../assets/Governance%20Decisions%20-%20BLOCKED%20-%20Evidence%20Graph.png)
 
 ### Decision Lineage
 - ontology lineage graph rendered separately from the evidence graph
 - audit records and request/correlation metadata
 
-    ![Kavach Decisions Index](../../assets/Governance%20Decisions%20-%20BLOCKED%20-%20Decision%20Lineage.png)
+    ![AI Governance Control Plane Decisions Index](../../assets/Governance%20Decisions%20-%20BLOCKED%20-%20Decision%20Lineage.png)
 
 Studio intentionally does not reconstruct policy or evidence semantics in
 the browser. It consumes backend read models and renders them directly.

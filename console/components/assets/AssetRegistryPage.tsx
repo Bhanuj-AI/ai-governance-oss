@@ -16,7 +16,7 @@ const TITLES: Record<AssetKind, { title: string; description: string; icon: type
   prompts: { title: "Prompt Catalog", description: "Observed prompt identities and configurations used by governed work.", icon: MessageSquareText },
   models: { title: "Model Catalog", description: "Observed model identities and runtime configuration used by governed work.", icon: Sparkles },
   datasets: { title: "Dataset Registry", description: "Immutable evaluation dataset records and schemas.", icon: Database },
-  providers: { title: "Evaluation Providers", description: "Kavach-managed evaluator integrations and capabilities.", icon: ShieldCheck },
+  providers: { title: "Evaluation Providers", description: "AI Governance Control Plane-managed evaluator integrations and capabilities.", icon: ShieldCheck },
 };
 
 function providerInstallationTemplate(provider?: ProviderAsset) {

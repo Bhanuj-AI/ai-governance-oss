@@ -2,12 +2,12 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kavach.domain.prompts import PromptStatus
-from kavach.domain.assets import AssetProvenance
-from kavach.repositories.in_memory_prompt_repository import (
+from ai_governance.domain.prompts import PromptStatus
+from ai_governance.domain.assets import AssetProvenance
+from ai_governance.repositories.in_memory_prompt_repository import (
     InMemoryPromptRepository,
 )
-from kavach.services.prompts import (
+from ai_governance.services.prompts import (
     PromptLifecycleError,
     PromptRegistryService,
     PromptVersionConflictError,

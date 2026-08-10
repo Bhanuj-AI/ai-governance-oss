@@ -2,7 +2,7 @@
 
 ## Overview
 
-Graph query APIs expose read-only access to the Kavach Governance Ontology.
+Graph query APIs expose read-only access to the AI Governance Control Plane Governance Ontology.
 They do not synchronize, reconcile, mutate, or repair graph state. All query
 results are returned through storage-independent read models so REST and MCP
 callers never depend on Neo4j records.

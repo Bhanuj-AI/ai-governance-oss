@@ -8,7 +8,7 @@ import subprocess
 from pathlib import Path
 
 from dotenv import load_dotenv
-from kavach.oauth import OAuthClientCredentialsError, access_token_from_environment
+from ai_governance.oauth import OAuthClientCredentialsError, access_token_from_environment
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -19,7 +19,7 @@ try:
 except OAuthClientCredentialsError as exc:
     raise SystemExit(f"OAuth token request failed: {exc}") from exc
 if token is None:
-    raise SystemExit("OAuth token request failed: configure KAVACH_MCP_* credentials.")
+    raise SystemExit("OAuth token request failed: configure AI_GOVERNANCE_MCP_* credentials.")
 
 subprocess.run(["pbcopy"], input=token.encode(), check=True)
 print("Access token copied to clipboard. Prefer scripts/oauth/fetch-access-token.py for new use.")

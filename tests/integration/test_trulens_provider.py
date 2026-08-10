@@ -1,18 +1,18 @@
 from trulens.providers.openai import OpenAI  # type: ignore
 import logging
 
-from kavach.evaluation.evaluation_metrics import (
+from ai_governance.evaluation.evaluation_metrics import (
     ANSWER_RELEVANCE,
     CONTEXT_RELEVANCE,
     GROUNDEDNESS,
 )
-from kavach.domain.evaluation_dataset import (
+from ai_governance.domain.evaluation_dataset import (
     EvaluationDataset,
 )
-from kavach.providers.trulens import (
+from ai_governance.providers.trulens import (
     TruLensProvider,
 )
-from kavach.config import OPENAI_API_KEY, OPENAI_DEFAULT_JUDGE_MODEL
+from ai_governance.config import OPENAI_API_KEY, OPENAI_DEFAULT_JUDGE_MODEL
 
 logging.basicConfig(level=logging.DEBUG)
 logging.getLogger("openai").setLevel(logging.DEBUG)

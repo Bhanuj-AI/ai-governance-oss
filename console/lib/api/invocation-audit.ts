@@ -1,4 +1,4 @@
-import { kavachRequest, type QueryParams } from "@/lib/api/client";
+import { aiGovernanceRequest, type QueryParams } from "@/lib/api/client";
 import type { InvocationAuditPage } from "@/types/invocation-audit";
 
 type InvocationAuditPageDto = {
@@ -21,7 +21,7 @@ type InvocationAuditPageDto = {
 export async function getInvocationAuditPage(
   params?: QueryParams,
 ): Promise<InvocationAuditPage> {
-  const dto = await kavachRequest<InvocationAuditPageDto>(
+  const dto = await aiGovernanceRequest<InvocationAuditPageDto>(
     "/api/v1/audit/invocations",
     params,
   );

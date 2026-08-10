@@ -1,6 +1,6 @@
 import {
-  kavachJsonRequest,
-  kavachRequest,
+  aiGovernanceJsonRequest,
+  aiGovernanceRequest,
   type QueryParams,
 } from "@/lib/api/client";
 import type {
@@ -13,19 +13,19 @@ import type {
 } from "@/types/job";
 
 export async function getJobs(params?: QueryParams) {
-  const dto = await kavachRequest<JobListDto>("/api/v1/jobs", params);
+  const dto = await aiGovernanceRequest<JobListDto>("/api/v1/jobs", params);
   return dto.jobs.map(mapJob);
 }
 
 export async function getJob(jobId: string) {
-  const dto = await kavachRequest<JobDto>(
+  const dto = await aiGovernanceRequest<JobDto>(
     `/api/v1/jobs/${encodeURIComponent(jobId)}`,
   );
   return mapJob(dto);
 }
 
 export async function submitJob(request: SubmitJobRequest) {
-  const dto = await kavachJsonRequest<JobDto, SubmitJobRequest>(
+  const dto = await aiGovernanceJsonRequest<JobDto, SubmitJobRequest>(
     "/api/v1/jobs",
     { method: "POST", body: request },
   );
@@ -33,7 +33,7 @@ export async function submitJob(request: SubmitJobRequest) {
 }
 
 export async function cancelJob(jobId: string) {
-  const dto = await kavachJsonRequest<JobDto, undefined>(
+  const dto = await aiGovernanceJsonRequest<JobDto, undefined>(
     `/api/v1/jobs/${encodeURIComponent(jobId)}/cancel`,
     { method: "POST" },
   );
@@ -41,7 +41,7 @@ export async function cancelJob(jobId: string) {
 }
 
 export async function retryJob(jobId: string) {
-  const dto = await kavachJsonRequest<JobDto, undefined>(
+  const dto = await aiGovernanceJsonRequest<JobDto, undefined>(
     `/api/v1/jobs/${encodeURIComponent(jobId)}/retry`,
     { method: "POST" },
   );
@@ -49,7 +49,7 @@ export async function retryJob(jobId: string) {
 }
 
 export async function getJobResult(jobId: string) {
-  const dto = await kavachRequest<JobResultDto>(
+  const dto = await aiGovernanceRequest<JobResultDto>(
     `/api/v1/jobs/${encodeURIComponent(jobId)}/result`,
   );
   return mapJobResult(dto);

@@ -2,13 +2,13 @@
 
 ## Status
 
-- Ontology name: `kavach.governance`
+- Ontology name: `ai_governance.governance`
 - Ontology version: `1.0.0`
 - Stability: accepted semantic contract
 - Applies to: REST APIs, MCP tools, governance intelligence, repositories, and future graph projections
 - Storage dependency: none
 
-This document defines the versioned governance ontology for Kavach. The
+This document defines the versioned governance ontology for AI Governance Control Plane. The
 ontology is the canonical semantic model for governed AI assets, evaluation
 evidence, experiment decisions, jobs, replay investigation, drift analysis, and
 MCP write audit records.
@@ -19,7 +19,7 @@ define it.
 
 ## Ontology Philosophy
 
-The ontology is the authoritative business model of Kavach; all storage models, APIs, graph projections, UI views, and AI reasoning are derived representations.
+The ontology is the authoritative business model of AI Governance Control Plane; all storage models, APIs, graph projections, UI views, and AI reasoning are derived representations.
 
 ## Design Principles
 
@@ -228,7 +228,7 @@ Every first-class entity has these semantic attributes unless explicitly noted:
 - Lifecycle: immutable evidence reference
 - Immutable attributes: artifact type, URI, payload, metadata as recorded
 - Mutable attributes: none in the ontology; underlying external object
-  retention is outside Kavach
+  retention is outside AI Governance Control Plane
 - Versioning rules: changed artifact content creates a new artifact reference
 - Current projection: `EvaluationArtifact`
 
@@ -293,7 +293,7 @@ Every first-class entity has these semantic attributes unless explicitly noted:
 
 ### GovernanceDecision
 
-![Kavach Governance Decision](../../assets/Governance%20Decisions.png)
+![AI Governance Control Plane Governance Decision](../../assets/Governance%20Decisions.png)
 
 - Identity: decision ID
 - Ownership: approving actor, governance service, or external policy system
@@ -305,7 +305,7 @@ Every first-class entity has these semantic attributes unless explicitly noted:
 - Versioning rules: finalized decisions are immutable; changed decisions
   supersede prior decisions
 - Current projection: `GovernanceDecision`
-- Domain contract: `kavach.decisions.GovernanceDecision` with value objects for
+- Domain contract: `ai_governance.decisions.GovernanceDecision` with value objects for
   target, evidence reference, policy reference, provenance, and supersession
 - Supported decision types: `APPROVE`, `REJECT`, `BLOCK`, `RECOMMEND`,
   `PROMOTE`, `ARCHIVE`, `INVESTIGATE`
@@ -353,7 +353,7 @@ Every first-class entity has these semantic attributes unless explicitly noted:
   through administration workflows
 - Versioning rules: rule changes create a new Policy version
 - Current execution projection: `PolicyVersion -> GovernancePolicy`
-- Domain contract: `kavach.decisions.GovernancePolicy` with structured
+- Domain contract: `ai_governance.decisions.GovernancePolicy` with structured
   `PolicyRule`, `PolicyCondition`, `PolicyEvaluationContext`, and
   `PolicyEvaluationOutcome` value objects
 - Administration contract: `PolicyAdministrationService` owns create, draft
@@ -451,7 +451,7 @@ Every first-class entity has these semantic attributes unless explicitly noted:
 
 ## Relationship Taxonomy
 
-![Kavach Ontology Graph](../../assets/Kavach%20Ontology%20Graph.png)
+![AI Governance Control Plane Ontology Graph](../../assets/AI Governance Control Plane%20Ontology%20Graph.png)
 
 All relationships are directed. Cardinality is stated from source to target.
 
@@ -597,7 +597,7 @@ Migration guidelines:
 
 Ownership:
 
-- The Kavach maintainers own the ontology.
+- The AI Governance Control Plane maintainers own the ontology.
 - Domain service owners own the projection of their domain objects into the
   ontology.
 - Storage implementations own persistence mechanics only.
@@ -633,7 +633,7 @@ Approval process:
 
 ## Current Capability Coverage
 
-The ontology covers the current Kavach capabilities:
+The ontology covers the current AI Governance Control Plane capabilities:
 
 - prompt, model, and dataset registries with versioning, lifecycle management,
   and diffing

@@ -1,6 +1,6 @@
-"""Release-smoke the governed replay walkthrough against a running Kavach API.
+"""Release-smoke the governed replay walkthrough against a running AI Governance Control Plane API.
 
-Run this after the target stack is started. It invokes the installed ``kavach``
+Run this after the target stack is started. It invokes the installed ``ai-governance``
 command twice, so the validation exercises the same public API path that a
 user, demo, or CI job uses. The selected persistence backend is deliberately
 opaque to this script.
@@ -37,11 +37,11 @@ REQUIRED_URLS = {
 
 
 def main() -> None:
-    api_url = os.getenv("KAVACH_SMOKE_API_URL")
+    api_url = os.getenv("AI_GOVERNANCE_SMOKE_API_URL")
     if not api_url:
-        raise SystemExit("Set KAVACH_SMOKE_API_URL to the running Kavach API.")
+        raise SystemExit("Set AI_GOVERNANCE_SMOKE_API_URL to the running AI Governance Control Plane API.")
 
-    with TemporaryDirectory(prefix="kavach-governed-replay-smoke-") as tmpdir:
+    with TemporaryDirectory(prefix="ai-governance-governed-replay-smoke-") as tmpdir:
         first = _run(Path(tmpdir) / "first.json", api_url)
         second = _run(Path(tmpdir) / "second.json", api_url)
 
@@ -59,23 +59,23 @@ def main() -> None:
 
 def _run(manifest_path: Path, api_url: str) -> dict[str, Any]:
     command = [
-        "kavach",
+        "ai-governance",
         "walkthrough",
         "governed-replay",
         "--api-url",
         api_url,
         "--studio-url",
-        os.getenv("KAVACH_SMOKE_STUDIO_URL", "http://localhost:3000"),
+        os.getenv("AI_GOVERNANCE_SMOKE_STUDIO_URL", "http://localhost:3000"),
         "--organization-id",
-        os.getenv("KAVACH_SMOKE_ORGANIZATION_ID", "org_default"),
+        os.getenv("AI_GOVERNANCE_SMOKE_ORGANIZATION_ID", "org_default"),
         "--project-id",
-        os.getenv("KAVACH_SMOKE_PROJECT_ID", "project_default"),
+        os.getenv("AI_GOVERNANCE_SMOKE_PROJECT_ID", "project_default"),
         "--non-interactive",
         "--output-json",
         "--manifest",
         str(manifest_path),
     ]
-    token = os.getenv("KAVACH_SMOKE_TOKEN")
+    token = os.getenv("AI_GOVERNANCE_SMOKE_TOKEN")
     if token:
         command.extend(("--token", token))
     result = subprocess.run(command, check=False, capture_output=True, text=True)

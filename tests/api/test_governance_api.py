@@ -5,10 +5,10 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from kavach.api.app import create_app
-from kavach.api.dependencies import get_evaluation_repository
-from kavach.domain.evaluation_result import EvaluationMetric, EvaluationResult
-from kavach.repositories.in_memory_evaluation_repository import (
+from ai_governance.api.app import create_app
+from ai_governance.api.dependencies import get_evaluation_repository
+from ai_governance.domain.evaluation_result import EvaluationMetric, EvaluationResult
+from ai_governance.repositories.in_memory_evaluation_repository import (
     InMemoryEvaluationRepository,
 )
 
@@ -153,10 +153,10 @@ def test_governance_endpoints_are_in_openapi() -> None:
 
 
 def test_governance_router_has_no_repository_or_provider_adapter_imports() -> None:
-    source = Path("src/kavach/api/routers/governance.py").read_text()
+    source = Path("src/ai_governance/api/routers/governance.py").read_text()
 
-    assert "kavach.repositories" not in source
+    assert "ai_governance.repositories" not in source
     assert "Repository" not in source
-    assert "kavach.providers.trulens" not in source
+    assert "ai_governance.providers.trulens" not in source
     assert "import trulens" not in source
     assert "import openai" not in source

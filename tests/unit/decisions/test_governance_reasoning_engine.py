@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kavach.decisions import (
+from ai_governance.decisions import (
     DecisionEvidenceGraph,
     DecisionTargetType,
     DecisionType,
@@ -21,9 +21,9 @@ from kavach.decisions import (
     PolicyStatus,
     ReasoningEvidenceSummarizer,
 )
-from kavach.decisions.enums import DecisionConfidenceLevel, DecisionStatus
-from kavach.decisions.exceptions import DecisionValidationError
-from kavach.ontology import EntityType
+from ai_governance.decisions.enums import DecisionConfidenceLevel, DecisionStatus
+from ai_governance.decisions.exceptions import DecisionValidationError
+from ai_governance.ontology import EntityType
 
 
 def test_reasoning_request_validation() -> None:

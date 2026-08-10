@@ -2,13 +2,13 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kavach.domain.evaluation_result import (
+from ai_governance.domain.evaluation_result import (
     EvaluationMetric,
     EvaluationResult,
 )
-from kavach.domain.experiments import ExperimentCandidate
-from kavach.domain.models import Model, ModelStatus
-from kavach.services.experiments import (
+from ai_governance.domain.experiments import ExperimentCandidate
+from ai_governance.domain.models import Model, ModelStatus
+from ai_governance.services.experiments import (
     AnswerRelevanceRanking,
     GroundednessRanking,
     HallucinationRanking,

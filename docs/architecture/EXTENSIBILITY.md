@@ -2,22 +2,22 @@
 
 ## Overview
 
-Kavach is designed to grow through explicit extension points. New providers,
+AI Governance Control Plane is designed to grow through explicit extension points. New providers,
 stores, analyzers, and adapters should fit into existing ownership boundaries
 instead of bypassing them.
 
 ## Open-Core Plugin Framework
 
 The OSS package owns the extension contracts consumed by separately released
-plugins, including a future `kavach-enterprise` package. The dependency flow is
-one way: an extension may import `kavach.spi`, `kavach.plugins`,
-`kavach.hooks`, and `kavach.events`; Kavach OSS never imports or detects a
+plugins, including a future `ai-governance-enterprise` package. The dependency flow is
+one way: an extension may import `ai_governance.spi`, `ai_governance.plugins`,
+`ai_governance.hooks`, and `ai_governance.events`; AI Governance Control Plane OSS never imports or detects a
 specific extension package.
 
-Plugins are loaded from the `kavach.plugins` Python entry-point group and may
+Plugins are loaded from the `ai_governance.plugins` Python entry-point group and may
 also be passed directly to `create_app(plugins=[...])` in an embedding
 application. Every plugin declares immutable `PluginMetadata`, including its
-compatible Kavach version range and requested capabilities. Startup fails for
+compatible AI Governance Control Plane version range and requested capabilities. Startup fails for
 duplicate names, incompatible versions, unsupported capabilities, provider
 conflicts, route conflicts, and plugin lifecycle failures.
 
@@ -26,26 +26,26 @@ standard Python package metadata—there is no OSS source modification or
 enterprise-specific import:
 
 ```toml
-# kavach-enterprise/pyproject.toml
+# ai-governance-enterprise/pyproject.toml
 [project]
-dependencies = ["kavach>=1.2,<1.3"]
+dependencies = ["ai-governance>=1.2,<1.3"]
 
-[project.entry-points."kavach.plugins"]
-enterprise-quality = "kavach_enterprise.plugins.quality:QualityPlugin"
+[project.entry-points."ai_governance.plugins"]
+enterprise-quality = "ai_governance_enterprise.plugins.quality:QualityPlugin"
 ```
 
 ```python
-from kavach.events import EvaluationCompleted
-from kavach.hooks import FailurePolicy
-from kavach.plugins import KavachPlugin, PluginMetadata
-from kavach.spi.search import SearchProvider
+from ai_governance.events import EvaluationCompleted
+from ai_governance.hooks import FailurePolicy
+from ai_governance.plugins import AIGovernancePlugin, PluginMetadata
+from ai_governance.spi.search import SearchProvider
 
 
-class QualityPlugin(KavachPlugin):
+class QualityPlugin(AIGovernancePlugin):
     metadata = PluginMetadata(
         name="quality-plugin",
         version="1.0.0",
-        required_kavach_version=">=1.2,<1.3",
+        required_ai_governance_version=">=1.2,<1.3",
         capabilities=("search.read",),
     )
 
@@ -86,7 +86,7 @@ always fails startup.
 
 Operators can inspect the resolved plugin, provider, hook, event, and route
 state at `GET /api/v1/runtime/extensions`. Extension implementations must not
-import `kavach.services`, `kavach.repositories`, or other undocumented runtime
+import `ai_governance.services`, `ai_governance.repositories`, or other undocumented runtime
 internals.
 
 Three working rules apply across extensions:
@@ -281,7 +281,7 @@ candidate validation, evaluation, and ranking behavior in existing services.
 ## MCP Tools
 
 Responsibility:
-Expose existing Kavach REST control-plane capabilities to AI assistants and
+Expose existing AI Governance Control Plane REST control-plane capabilities to AI assistants and
 agent frameworks through tool calls.
 
 Must not own:
@@ -298,7 +298,7 @@ endpoint and returns the REST DTO payload.
 
 ### Optional MCP Tool Packages
 
-An optional tool package registers through the `kavach.mcp.plugins` Python
+An optional tool package registers through the `ai_governance.mcp.plugins` Python
 entry-point group. It implements `MCPToolPlugin` and receives only
 `MCPToolPluginContext`, which registers a tool and performs tenant-scoped REST
 GET or POST calls. The MCP server discovers compatible packages during startup;
@@ -379,8 +379,8 @@ When adding a new persistence backend:
 1. implement the repository contract
 2. add a persistence mapper if records differ from domain objects
 3. create or extend the corresponding factory class in
-   ``src/kavach/repositories/factories/``
-4. add configuration fields to ``Settings`` in ``src/kavach/settings.py``
+   ``src/ai_governance/repositories/factories/``
+4. add configuration fields to ``Settings`` in ``src/ai_governance/settings.py``
 5. update the REST dependency provider to use the factory
 6. reuse the existing contract test pattern
 7. add backend-specific tests for indexing, ordering, and replacement semantics
@@ -396,8 +396,8 @@ any database.
 
 1. Define the repository contract (``ABC`` or ``Protocol``).
 2. Implement one or more concrete repositories.
-3. Create a factory class in ``src/kavach/repositories/factories/``.
-4. Add configuration to ``KavachSettings`` (``src/kavach/settings.py``).
+3. Create a factory class in ``src/ai_governance/repositories/factories/``.
+4. Add configuration to ``AIGovernanceSettings`` (``src/ai_governance/settings.py``).
 5. Update the REST dependency provider to delegate to the factory.
 6. Add unit tests for the factory (inmemory, sqlite, postgres-not-implemented,
    invalid-backend).
@@ -433,7 +433,7 @@ When adding an MCP tool:
 
 1. define a request DTO
 2. register an OSS-owned tool during MCP server startup, or contribute an
-   optional tool through `MCPToolPlugin` and the `kavach.mcp.plugins` entry
+   optional tool through `MCPToolPlugin` and the `ai_governance.mcp.plugins` entry
    point
 3. delegate to exactly one REST endpoint
 4. map REST errors through the MCP exception mapper
@@ -446,7 +446,7 @@ When adding a new job type:
 3. implement a `JobHandler`
 4. register the handler with `JobExecutor`
 5. return an immutable `result_ref`
-6. keep scheduling and workflow sequencing outside Kavach
+6. keep scheduling and workflow sequencing outside AI Governance Control Plane
 
 When adding provider-specific logic:
 

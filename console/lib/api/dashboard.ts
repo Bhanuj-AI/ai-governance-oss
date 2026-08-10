@@ -1,4 +1,4 @@
-import { kavachRequest } from "@/lib/api/client";
+import { aiGovernanceRequest } from "@/lib/api/client";
 import type {
   DashboardMetricDto,
   DashboardSummary,
@@ -8,7 +8,7 @@ import type {
 } from "@/types/dashboard";
 
 export async function getDashboardSummary() {
-  const dto = await kavachRequest<DashboardSummaryDto>("/api/v1/dashboard");
+  const dto = await aiGovernanceRequest<DashboardSummaryDto>("/api/v1/dashboard");
   return mapDashboardSummary(dto);
 }
 

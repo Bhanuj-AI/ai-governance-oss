@@ -9,7 +9,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from kavach.oauth import OAuthClientCredentialsError, access_token_from_environment
+from ai_governance.oauth import OAuthClientCredentialsError, access_token_from_environment
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -34,8 +34,8 @@ def main() -> None:
     if token is None:
         parser.exit(
             1,
-            "OAuth token request failed: configure KAVACH_OAUTH_* credentials "
-            "(or the local KAVACH_MCP_* compatibility variables).\n",
+            "OAuth token request failed: configure AI_GOVERNANCE_OAUTH_* credentials "
+            "(or the local AI_GOVERNANCE_MCP_* compatibility variables).\n",
         )
     if arguments.clipboard:
         subprocess.run(["pbcopy"], input=token.encode(), check=True)

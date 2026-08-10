@@ -1,10 +1,10 @@
 from datetime import UTC, datetime
 
-from kavach.domain.experiments import (
+from ai_governance.domain.experiments import (
     Experiment,
     ExperimentStatus,
 )
-from kavach.repositories.mappers.experiment_persistence_mapper import (
+from ai_governance.repositories.mappers.experiment_persistence_mapper import (
     ExperimentPersistenceMapper,
 )
 

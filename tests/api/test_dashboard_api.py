@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from kavach.api.app import create_app
-from kavach.api.dependencies import (
+from ai_governance.api.app import create_app
+from ai_governance.api.dependencies import (
     get_governance_decision_repository,
     get_job_repository,
     get_ontology_sync_event_repository,
 )
-from kavach.ontology.synchronization import OntologySyncEvent, OntologySyncEventStatus
-from kavach.repositories import (
+from ai_governance.ontology.synchronization import OntologySyncEvent, OntologySyncEventStatus
+from ai_governance.repositories import (
     InMemoryGovernanceDecisionRepository,
     InMemoryJobRepository,
     InMemoryOntologySyncEventRepository,

@@ -4,10 +4,10 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from kavach.api.app import create_app
-from kavach.mcp.audit import MCPExecutionAuditLog
-from kavach.mcp.clients import RestClient, RestClientError
-from kavach.mcp.server import create_server
+from ai_governance.api.app import create_app
+from ai_governance.mcp.audit import MCPExecutionAuditLog
+from ai_governance.mcp.clients import RestClient, RestClientError
+from ai_governance.mcp.server import create_server
 
 
 def _test_client_transport(client: TestClient):

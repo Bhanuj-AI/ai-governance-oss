@@ -1,19 +1,16 @@
 # Architecture
 
 ## Platform Overview
-![Kavach enterprise architecture diagram](/assets/Enterprise%20Architecture%20-%20Marketing.png)
+![AI Governance Control Plane Architecture Diagram](/assets/Enterprise%20Architecture%20-%20Marketing.png)
 
-Kavach is a governance control plane for AI systems. It records governed AI
+AI Governance Control Plane is a governance control plane for AI systems. It records governed AI
 assets, evaluates AI configurations, persists execution evidence, reconstructs
 history, analyzes quality change, ranks experiment candidates, and produces
 recommendations. It does not own prompt deployment, model deployment,
 infrastructure orchestration, or CI/CD execution.
 
 The architecture keeps frameworks and infrastructure at the edge. Runtime
-systems can call into Kavach, but Kavach is not the runtime itself.
-
-### Future State
-![Kavach enterprise architecture diagram](/assets/Enterprise%20Architecture%20-%20Technical.png)
+systems can call into AI Governance Control Plane, but AI Governance Control Plane is not the runtime itself.
 
 ## Architectural Planes
 
@@ -23,18 +20,18 @@ The Runtime Edge is any external system that produces workflow executions or
 requests evaluations. This can be an orchestration framework, an internal
 service, a CLI, or the REST control plane.
 
-Kavach depends on the Runtime Edge only through explicit contracts.
+AI Governance Control Plane depends on the Runtime Edge only through explicit contracts.
 
 ### Authentication Plane
 
 The Authentication Plane validates identity tokens and establishes a trusted
-principal before any authorization or business logic executes. Kavach supports
+principal before any authorization or business logic executes. AI Governance Control Plane supports
 two authentication modes:
 
-- **Development mode** (`KAVACH_AUTH_MODE=development`) — actor identity comes
-  from the ``X-Kavach-Actor-Id`` header or the ``KAVACH_DEVELOPMENT_ACTOR_ID``
+- **Development mode** (`AI_GOVERNANCE_AUTH_MODE=development`) — actor identity comes
+  from the ``X-AI-Governance-Actor-Id`` header or the ``AI_GOVERNANCE_DEVELOPMENT_ACTOR_ID``
   environment variable. No token validation occurs.
-- **Keycloak mode** (`KAVACH_AUTH_MODE=keycloak`) — requires a ``Bearer`` JWT
+- **Keycloak mode** (`AI_GOVERNANCE_AUTH_MODE=keycloak`) — requires a ``Bearer`` JWT
   in the ``Authorization`` header. The platform validates the token signature
   against Keycloak JWKS, checks issuer and expiry, and builds an immutable
   ``AuthenticatedPrincipal`` from the validated claims.
@@ -74,21 +71,21 @@ Configuration:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| ``KAVACH_AUTH_MODE`` | ``development`` | Authentication mode: ``development`` or ``keycloak``. |
-| ``KAVACH_OIDC_ISSUER`` | - | Keycloak realm URL (e.g. ``http://localhost:8080/realms/kavach``). Required in keycloak mode. |
-| ``KAVACH_OIDC_JWKS_REFRESH_SECONDS`` | ``300`` | JWKS signing key cache TTL in seconds. |
+| ``AI_GOVERNANCE_AUTH_MODE`` | ``development`` | Authentication mode: ``development`` or ``keycloak``. |
+| ``AI_GOVERNANCE_OIDC_ISSUER`` | - | Keycloak realm URL (e.g. ``http://localhost:8080/realms/ai-governance``). Required in keycloak mode. |
+| ``AI_GOVERNANCE_OIDC_JWKS_REFRESH_SECONDS`` | ``300`` | JWKS signing key cache TTL in seconds. |
 
 ### Bootstrap administrator identity
 
-The initial Kavach administrator is provisioned during control-plane bootstrap
+The initial AI Governance Control Plane administrator is provisioned during control-plane bootstrap
 (idempotent). The identity used depends on ``auth_mode``:
 
-- **Development mode** — uses ``KAVACH_DEVELOPMENT_ACTOR_ID`` (fallback:
-  ``local-admin``) and ``KAVACH_DEVELOPMENT_ACTOR_NAME`` (fallback:
+- **Development mode** — uses ``AI_GOVERNANCE_DEVELOPMENT_ACTOR_ID`` (fallback:
+  ``local-admin``) and ``AI_GOVERNANCE_DEVELOPMENT_ACTOR_NAME`` (fallback:
   ``Local Administrator``).
-- **Keycloak mode** — requires ``KAVACH_BOOTSTRAP_ADMIN_SUB`` (the immutable
+- **Keycloak mode** — requires ``AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB`` (the immutable
   Keycloak user ``sub``). Fails startup if absent. Optionally uses
-  ``KAVACH_BOOTSTRAP_ADMIN_NAME`` for display purposes.
+  ``AI_GOVERNANCE_BOOTSTRAP_ADMIN_NAME`` for display purposes.
 
 The bootstrap operation is idempotent — repeated startup does not create
 duplicate organizations or memberships.
@@ -123,7 +120,7 @@ be the platform boundary.
 ### Job Execution Plane
 
 The Job Execution Plane records and executes long-running governance work such
-as evaluation, experiment, replay, and drift analysis jobs. It owns Kavach job
+as evaluation, experiment, replay, and drift analysis jobs. It owns AI Governance Control Plane job
 semantics such as idempotent submission, queued/running/succeeded/failed states,
 worker leases, retry attempts, cancellation, and immutable result references.
 
@@ -134,7 +131,7 @@ they own DAGs, cron, branching, and orchestration sequencing.
 
 The Persistence Plane stores governed artifacts and evidence through repository
 contracts. Each repository type is backed by a factory class that selects the
-concrete implementation based on runtime configuration (``KAVACH_*_REPOSITORY``
+concrete implementation based on runtime configuration (``AI_GOVERNANCE_*_REPOSITORY``
 environment variables). SQLite is the current durable reference implementation.
 The architecture treats storage as replaceable.
 
@@ -144,7 +141,7 @@ Repository backend selection is a control-plane concern:
 Environment Variables
         │
         ▼
-Kavach Settings
+AI Governance Control Plane Settings
         │
         ▼
 Repository Factory
@@ -160,7 +157,7 @@ FastAPI Dependency Provider
 Application Service
 ```
 
-Factories live in ``src/kavach/repositories/factories/``. Each factory accepts
+Factories live in ``src/ai_governance/repositories/factories/``. Each factory accepts
 ``Settings`` and returns the appropriate repository implementation. Unsupported
 backends fail fast with a clear ``ValueError`` — no silent fallback to
 in-memory.
@@ -249,14 +246,14 @@ The canonical semantic contract for governance entities, relationships,
 actions, and lifecycle events is defined in the
 [Governance Ontology](./GOVERNANCE_ONTOLOGY.md).
 
-![Kavach Ontology Graph](../../assets/Kavach%20Ontology%20Graph.png)
+![AI Governance Control Plane Ontology Graph](../../assets/AI Governance Control Plane%20Ontology%20Graph.png)
 
 ### Registry Plane
 
 The Assets Plane distinguishes ownership as well as versioning. Datasets and
-evaluation-provider adapters are **managed** assets: Kavach owns their
+evaluation-provider adapters are **managed** assets: AI Governance Control Plane owns their
 registration and lifecycle. Prompt and model records are **observed** assets:
-Kavach catalogs the identities and runtime configuration captured by governed
+AI Governance Control Plane catalogs the identities and runtime configuration captured by governed
 work; it is not a prompt-authoring or model-serving system. The Assets
 workspace presents these catalogs with a consistent version, reference,
 lineage, and audit-history workflow.
@@ -329,7 +326,7 @@ Repository construction follows a separate dependency chain:
 Environment Variables
         |
         v
-Kavach Settings
+AI Governance Control Plane Settings
         |
         v
 Repository Factory
@@ -414,7 +411,7 @@ Dataset Registry ---+                              |
 
 ## Replaceable Components
 
-Kavach keeps provider and storage choices behind contracts.
+AI Governance Control Plane keeps provider and storage choices behind contracts.
 
 - Evaluation providers are pluggable.
 - Repository implementations are pluggable, selected via factory classes.
@@ -428,13 +425,13 @@ provider, store, or transport changes.
 ## Repository Factory Pattern
 
 Repository backend selection is a control-plane configuration concern. Each
-repository type has its own factory class in ``src/kavach/repositories/factories/``.
+repository type has its own factory class in ``src/ai_governance/repositories/factories/``.
 
 ```text
 Environment Variables
         │
         ▼
-Kavach Settings
+AI Governance Control Plane Settings
         │
         ▼
 Repository Factory
@@ -491,7 +488,7 @@ not exposed through public REST routes.
 
 ## Non-Goals
 
-The architecture intentionally does not make Kavach responsible for:
+The architecture intentionally does not make AI Governance Control Plane responsible for:
 
 - prompt deployment
 - model deployment
@@ -500,7 +497,7 @@ The architecture intentionally does not make Kavach responsible for:
 - web-server ownership
 - CI/CD orchestration
 
-Those systems can consume Kavach recommendations, but they remain outside the
+Those systems can consume AI Governance Control Plane recommendations, but they remain outside the
 platform boundary.
 
 ## Related Documents

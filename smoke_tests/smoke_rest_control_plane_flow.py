@@ -4,7 +4,7 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from kavach.api.app import create_app
+from ai_governance.api.app import create_app
 
 
 def main() -> None:

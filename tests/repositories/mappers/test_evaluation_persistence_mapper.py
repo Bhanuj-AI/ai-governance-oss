@@ -1,9 +1,9 @@
-from kavach.domain.evaluation_result import (
+from ai_governance.domain.evaluation_result import (
     EvaluationArtifact,
     EvaluationMetric,
     EvaluationResult,
 )
-from kavach.repositories.mappers.evaluation_persistence_mapper import (
+from ai_governance.repositories.mappers.evaluation_persistence_mapper import (
     EvaluationPersistenceMapper,
 )
 

@@ -4,8 +4,8 @@ from dataclasses import replace
 
 from fastapi.testclient import TestClient
 
-from kavach.api.app import create_app
-from kavach.api.dependencies import get_api_settings
+from ai_governance.api.app import create_app
+from ai_governance.api.dependencies import get_api_settings
 
 
 def test_local_demo_seed_is_idempotent() -> None:

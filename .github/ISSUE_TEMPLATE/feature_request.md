@@ -16,7 +16,7 @@ Describe the feature or change you would like to see.
 
 ## Scope
 
-Which area of Kavach would this affect?
+Which area of AI Governance Control Plane would this affect?
 
 - Execution audit
 - Workflow replay

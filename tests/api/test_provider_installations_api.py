@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from kavach.api.app import create_app
-from kavach.api.dependencies.provider_installations import get_provider_installation_service
-from kavach.providers import EvaluationProviderRegistry, MockEvaluationProvider
-from kavach.repositories.settings_provider_installation_repository import (
+from ai_governance.api.app import create_app
+from ai_governance.api.dependencies.provider_installations import get_provider_installation_service
+from ai_governance.providers import EvaluationProviderRegistry, MockEvaluationProvider
+from ai_governance.repositories.settings_provider_installation_repository import (
     SettingsProviderInstallationRepository,
 )
-from kavach.services.provider_installation_service import ProviderInstallationService
-from kavach.settings_control.repository import InMemorySettingsRepository
+from ai_governance.services.provider_installation_service import ProviderInstallationService
+from ai_governance.settings_control.repository import InMemorySettingsRepository
 
 
 def _client() -> TestClient:
@@ -25,9 +25,9 @@ def _client() -> TestClient:
 
 def _headers() -> dict[str, str]:
     return {
-        "X-Kavach-Organization-Id": "org_default",
-        "X-Kavach-Project-Id": "project_default",
-        "X-Kavach-Actor-Id": "local-admin",
+        "X-AI-Governance-Organization-Id": "org_default",
+        "X-AI-Governance-Project-Id": "project_default",
+        "X-AI-Governance-Actor-Id": "local-admin",
     }
 
 

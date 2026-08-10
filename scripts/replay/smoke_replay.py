@@ -6,20 +6,20 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 
-from kavach.domain.evaluation_result import EvaluationMetric, EvaluationResult
-from kavach.domain.jobs import Job, JobExecutionContext, JobStatus, JobType
-from kavach.domain.workflow_execution import WorkflowExecution
-from kavach.repositories.in_memory_replay_repository import InMemoryReplayRepository
-from kavach.repositories.in_memory_replay_result_repository import (
+from ai_governance.domain.evaluation_result import EvaluationMetric, EvaluationResult
+from ai_governance.domain.jobs import Job, JobExecutionContext, JobStatus, JobType
+from ai_governance.domain.workflow_execution import WorkflowExecution
+from ai_governance.repositories.in_memory_replay_repository import InMemoryReplayRepository
+from ai_governance.repositories.in_memory_replay_result_repository import (
     InMemoryReplayResultRepository,
 )
-from kavach.services.replay_application_service import ReplayApplicationService
-from kavach.services.replay_evaluation import ReplayEvaluationJobHandler
-from kavach.services.replay_execution import (
+from ai_governance.services.replay_application_service import ReplayApplicationService
+from ai_governance.services.replay_evaluation import ReplayEvaluationJobHandler
+from ai_governance.services.replay_execution import (
     ReplayExecutionAdapterRegistry,
     ReplayJobHandler,
 )
-from kavach.tenancy.domain import TenantContext
+from ai_governance.tenancy.domain import TenantContext
 
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)

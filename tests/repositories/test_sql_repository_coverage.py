@@ -7,9 +7,9 @@ from typing import Any
 
 import pytest
 
-from kavach.domain.datasets import Dataset, DatasetStatus
-from kavach.domain.evaluation_result import EvaluationMetric, EvaluationResult
-from kavach.domain.experiments import (
+from ai_governance.domain.datasets import Dataset, DatasetStatus
+from ai_governance.domain.evaluation_result import EvaluationMetric, EvaluationResult
+from ai_governance.domain.experiments import (
     EvaluationRun,
     EvaluationRunStatus,
     Experiment,
@@ -18,78 +18,78 @@ from kavach.domain.experiments import (
     Leaderboard,
     LeaderboardEntry,
 )
-from kavach.domain.models import Model, ModelStatus
-from kavach.domain.prompts import Prompt, PromptStatus
-from kavach.repositories.mappers.dataset_persistence_mapper import (
+from ai_governance.domain.models import Model, ModelStatus
+from ai_governance.domain.prompts import Prompt, PromptStatus
+from ai_governance.repositories.mappers.dataset_persistence_mapper import (
     DatasetPersistenceMapper,
 )
-from kavach.repositories.mappers.evaluation_persistence_mapper import (
+from ai_governance.repositories.mappers.evaluation_persistence_mapper import (
     EvaluationPersistenceMapper,
 )
-from kavach.repositories.mappers.evaluation_run_persistence_mapper import (
+from ai_governance.repositories.mappers.evaluation_run_persistence_mapper import (
     EvaluationRunPersistenceMapper,
 )
-from kavach.repositories.mappers.experiment_candidate_persistence_mapper import (
+from ai_governance.repositories.mappers.experiment_candidate_persistence_mapper import (
     ExperimentCandidatePersistenceMapper,
 )
-from kavach.repositories.mappers.experiment_persistence_mapper import (
+from ai_governance.repositories.mappers.experiment_persistence_mapper import (
     ExperimentPersistenceMapper,
 )
-from kavach.repositories.mappers.leaderboard_persistence_mapper import (
+from ai_governance.repositories.mappers.leaderboard_persistence_mapper import (
     LeaderboardPersistenceMapper,
 )
-from kavach.repositories.mappers.model_persistence_mapper import (
+from ai_governance.repositories.mappers.model_persistence_mapper import (
     ModelPersistenceMapper,
 )
-from kavach.repositories.mappers.prompt_persistence_mapper import (
+from ai_governance.repositories.mappers.prompt_persistence_mapper import (
     PromptPersistenceMapper,
 )
-from kavach.repositories.postgres.postgres_dataset_repository import (
+from ai_governance.repositories.postgres.postgres_dataset_repository import (
     PostgresDatasetRepository,
 )
-from kavach.repositories.postgres.postgres_evaluation_repository import (
+from ai_governance.repositories.postgres.postgres_evaluation_repository import (
     PostgresEvaluationRepository,
 )
-from kavach.repositories.postgres.postgres_evaluation_run_repository import (
+from ai_governance.repositories.postgres.postgres_evaluation_run_repository import (
     PostgresEvaluationRunRepository,
 )
-from kavach.repositories.postgres.postgres_experiment_candidate_repository import (
+from ai_governance.repositories.postgres.postgres_experiment_candidate_repository import (
     PostgresExperimentCandidateRepository,
 )
-from kavach.repositories.postgres.postgres_experiment_repository import (
+from ai_governance.repositories.postgres.postgres_experiment_repository import (
     PostgresExperimentRepository,
 )
-from kavach.repositories.postgres.postgres_leaderboard_repository import (
+from ai_governance.repositories.postgres.postgres_leaderboard_repository import (
     PostgresLeaderboardRepository,
 )
-from kavach.repositories.postgres.postgres_model_repository import (
+from ai_governance.repositories.postgres.postgres_model_repository import (
     PostgresModelRepository,
 )
-from kavach.repositories.postgres.postgres_prompt_repository import (
+from ai_governance.repositories.postgres.postgres_prompt_repository import (
     PostgresPromptRepository,
 )
-from kavach.repositories.snowflake.snowflake_dataset_repository import (
+from ai_governance.repositories.snowflake.snowflake_dataset_repository import (
     SnowflakeDatasetRepository,
 )
-from kavach.repositories.snowflake.snowflake_evaluation_repository import (
+from ai_governance.repositories.snowflake.snowflake_evaluation_repository import (
     SnowflakeEvaluationRepository,
 )
-from kavach.repositories.snowflake.snowflake_evaluation_run_repository import (
+from ai_governance.repositories.snowflake.snowflake_evaluation_run_repository import (
     SnowflakeEvaluationRunRepository,
 )
-from kavach.repositories.snowflake.snowflake_experiment_candidate_repository import (
+from ai_governance.repositories.snowflake.snowflake_experiment_candidate_repository import (
     SnowflakeExperimentCandidateRepository,
 )
-from kavach.repositories.snowflake.snowflake_experiment_repository import (
+from ai_governance.repositories.snowflake.snowflake_experiment_repository import (
     SnowflakeExperimentRepository,
 )
-from kavach.repositories.snowflake.snowflake_leaderboard_repository import (
+from ai_governance.repositories.snowflake.snowflake_leaderboard_repository import (
     SnowflakeLeaderboardRepository,
 )
-from kavach.repositories.snowflake.snowflake_model_repository import (
+from ai_governance.repositories.snowflake.snowflake_model_repository import (
     SnowflakeModelRepository,
 )
-from kavach.repositories.snowflake.snowflake_prompt_repository import (
+from ai_governance.repositories.snowflake.snowflake_prompt_repository import (
     SnowflakePromptRepository,
 )
 
@@ -337,7 +337,7 @@ BACKENDS = (
 def test_postgres_record_adapter_converts_json_fields_to_jsonb() -> None:
     from psycopg.types.json import Jsonb
 
-    from kavach.repositories.postgres._record_adapter import with_jsonb_fields
+    from ai_governance.repositories.postgres._record_adapter import with_jsonb_fields
 
     adapted = with_jsonb_fields(
         {

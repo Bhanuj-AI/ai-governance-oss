@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from kavach.domain.jobs import JobExecutionContext, JobSubmission, JobType
-from kavach.ontology import InMemoryOntologyGraphRepository, OntologyEntity
-from kavach.repositories import InMemoryJobRepository
-from kavach.services.job_submission_service import JobSubmissionService
+from ai_governance.domain.jobs import JobExecutionContext, JobSubmission, JobType
+from ai_governance.ontology import InMemoryOntologyGraphRepository, OntologyEntity
+from ai_governance.repositories import InMemoryJobRepository
+from ai_governance.services.job_submission_service import JobSubmissionService
 
 
 def _submission(organization_id: str, project_id: str) -> JobSubmission:

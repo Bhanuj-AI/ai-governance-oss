@@ -5,24 +5,24 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from kavach.api.app import create_app
-from kavach.api.dependencies import (
+from ai_governance.api.app import create_app
+from ai_governance.api.dependencies import (
     get_dataset_registry_service,
     get_model_registry_service,
     get_prompt_registry_service,
     get_provider_registry_service,
 )
-from kavach.domain.datasets import Dataset, DatasetStatus
-from kavach.domain.assets import AssetProvenance
-from kavach.domain.models import Model, ModelStatus
-from kavach.domain.prompts import Prompt, PromptStatus
-from kavach.providers.errors import ProviderNotFoundError
-from kavach.providers.provider_capabilities import ProviderCapabilities
-from kavach.providers.provider_descriptor import ProviderDescriptor
-from kavach.services.datasets import DatasetNotFoundError
-from kavach.services.models import ModelNotFoundError
-from kavach.services.prompts import PromptNotFoundError, PromptVersionConflictError
-from kavach.api.demo_seed import _demo_evaluation_dataset_jsonl
+from ai_governance.domain.datasets import Dataset, DatasetStatus
+from ai_governance.domain.assets import AssetProvenance
+from ai_governance.domain.models import Model, ModelStatus
+from ai_governance.domain.prompts import Prompt, PromptStatus
+from ai_governance.providers.errors import ProviderNotFoundError
+from ai_governance.providers.provider_capabilities import ProviderCapabilities
+from ai_governance.providers.provider_descriptor import ProviderDescriptor
+from ai_governance.services.datasets import DatasetNotFoundError
+from ai_governance.services.models import ModelNotFoundError
+from ai_governance.services.prompts import PromptNotFoundError, PromptVersionConflictError
+from ai_governance.api.demo_seed import _demo_evaluation_dataset_jsonl
 
 
 class FakeProviderRegistryService:
@@ -433,7 +433,7 @@ def test_upload_dataset_writes_content_and_registers_draft(
             kwargs["uploaded_body"] = body.read()
             body.seek(0)
             self.calls.append(kwargs)
-            from kavach.datasets import ObjectWriteResult
+            from ai_governance.datasets import ObjectWriteResult
 
             return ObjectWriteResult(created=True)
 
@@ -442,10 +442,10 @@ def test_upload_dataset_writes_content_and_registers_draft(
 
     store = FakeObjectStore()
     monkeypatch.setattr(
-        "kavach.api.routers.datasets.dataset_object_store_from_environment",
+        "ai_governance.api.routers.datasets.dataset_object_store_from_environment",
         lambda: store,
     )
-    monkeypatch.setenv("KAVACH_DATASET_S3_BUCKET", "uploaded-datasets")
+    monkeypatch.setenv("AI_GOVERNANCE_DATASET_S3_BUCKET", "uploaded-datasets")
 
     response = _client().post(
         "/api/v1/datasets/upload",
@@ -492,7 +492,7 @@ def test_upload_dataset_rejects_duplicate_content_for_new_version(
 ) -> None:
     class FakeObjectStore:
         def put_stream(self, **kwargs: object):
-            from kavach.datasets import ObjectWriteResult
+            from ai_governance.datasets import ObjectWriteResult
 
             return ObjectWriteResult(created=True)
 
@@ -500,7 +500,7 @@ def test_upload_dataset_rejects_duplicate_content_for_new_version(
             raise AssertionError("duplicate uploads should not write an object")
 
     monkeypatch.setattr(
-        "kavach.api.routers.datasets.dataset_object_store_from_environment",
+        "ai_governance.api.routers.datasets.dataset_object_store_from_environment",
         lambda: FakeObjectStore(),
     )
     app = create_app()
@@ -525,7 +525,7 @@ def test_upload_dataset_deletes_new_object_when_registry_registration_fails(
             self.deleted: list[tuple[str, str]] = []
 
         def put_stream(self, **kwargs: object):
-            from kavach.datasets import ObjectWriteResult
+            from ai_governance.datasets import ObjectWriteResult
 
             return ObjectWriteResult(created=True)
 
@@ -537,13 +537,13 @@ def test_upload_dataset_deletes_new_object_when_registry_registration_fails(
             return []
 
         def register_dataset(self, **kwargs: object) -> Dataset:
-            from kavach.services.datasets import DatasetVersionConflictError
+            from ai_governance.services.datasets import DatasetVersionConflictError
 
             raise DatasetVersionConflictError("Concurrent dataset version registration.")
 
     store = FakeObjectStore()
     monkeypatch.setattr(
-        "kavach.api.routers.datasets.dataset_object_store_from_environment",
+        "ai_governance.api.routers.datasets.dataset_object_store_from_environment",
         lambda: store,
     )
     app = create_app()
@@ -556,7 +556,7 @@ def test_upload_dataset_deletes_new_object_when_registry_registration_fails(
 
     assert response.status_code == 409
     assert len(store.deleted) == 1
-    assert store.deleted[0][0] == "kavach-datasets"
+    assert store.deleted[0][0] == "ai-governance-datasets"
     assert store.deleted[0][1].startswith("datasets/org-default/project-default/")
 
 
@@ -591,10 +591,10 @@ def test_seeded_evaluation_dataset_content_has_expected_record_count() -> None:
 
 
 def test_registry_routers_do_not_import_repositories_directly() -> None:
-    router_dir = Path("src/kavach/api/routers")
+    router_dir = Path("src/ai_governance/api/routers")
 
     for router_file in router_dir.glob("*.py"):
         source = router_file.read_text()
 
-        assert "kavach.repositories" not in source
+        assert "ai_governance.repositories" not in source
         assert "Repository" not in source

@@ -5,10 +5,10 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 
-from kavach.api.app import create_app
-from kavach.api.dependencies import get_mcp_audit_log
-from kavach.mcp.audit import MCPExecutionAuditLog
-from kavach.mcp.dto import WriteEnvelope
+from ai_governance.api.app import create_app
+from ai_governance.api.dependencies import get_mcp_audit_log
+from ai_governance.mcp.audit import MCPExecutionAuditLog
+from ai_governance.mcp.dto import WriteEnvelope
 
 
 def _client(

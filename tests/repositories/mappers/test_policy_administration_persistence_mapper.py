@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from kavach.decisions import (
+from ai_governance.decisions import (
     DecisionTargetType,
     PolicyCondition,
     PolicyConditionOperator,
@@ -8,12 +8,12 @@ from kavach.decisions import (
     PolicyRule,
     PolicyStatus,
 )
-from kavach.decisions.policy_administration import (
+from ai_governance.decisions.policy_administration import (
     PolicyDefinition,
     PolicyVersion,
 )
-from kavach.decisions.policy_enums import PolicyCategory
-from kavach.repositories.mappers import PolicyAdministrationPersistenceMapper
+from ai_governance.decisions.policy_enums import PolicyCategory
+from ai_governance.repositories.mappers import PolicyAdministrationPersistenceMapper
 
 
 def test_policy_definition_mapper_round_trips() -> None:

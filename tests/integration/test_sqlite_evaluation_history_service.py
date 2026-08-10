@@ -1,17 +1,17 @@
 from pathlib import Path
 
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.domain.workflow_execution import WorkflowExecution
-from kavach.evaluation import EvaluationService
-from kavach.repositories.in_memory_execution_repository import (
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.domain.workflow_execution import WorkflowExecution
+from ai_governance.evaluation import EvaluationService
+from ai_governance.repositories.in_memory_execution_repository import (
     InMemoryExecutionRepository,
 )
-from kavach.repositories.sqlite.sqlite_evaluation_repository import (
+from ai_governance.repositories.sqlite.sqlite_evaluation_repository import (
     SQLiteEvaluationRepository,
 )
-from kavach.services.dataset_builder import EvaluationDatasetBuilder
-from kavach.services.history import EvaluationHistoryService
-from kavach.workers.evaluation_worker import EvaluationWorker
+from ai_governance.services.dataset_builder import EvaluationDatasetBuilder
+from ai_governance.services.history import EvaluationHistoryService
+from ai_governance.workers.evaluation_worker import EvaluationWorker
 from tests.providers.FakeProvider import FakeEvaluationProvider
 
 
@@ -33,7 +33,7 @@ def test_sqlite_evaluation_history_service_returns_worker_results(
             execution,
         ]
     )
-    database = SQLiteDatabase(tmp_path / "kavach.db")
+    database = SQLiteDatabase(tmp_path / "ai_governance.db")
     database.initialize()
     evaluation_repository = SQLiteEvaluationRepository(database)
 

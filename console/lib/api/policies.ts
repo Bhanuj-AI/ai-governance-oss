@@ -1,6 +1,6 @@
 import {
-  kavachJsonRequest,
-  kavachRequest,
+  aiGovernanceJsonRequest,
+  aiGovernanceRequest,
   type QueryParams,
 } from "@/lib/api/client";
 import type {
@@ -33,12 +33,12 @@ import type {
 } from "@/types/policy";
 
 export async function getPolicySchema() {
-  const dto = await kavachRequest<PolicySchemaDto>("/api/v1/policy-schema");
+  const dto = await aiGovernanceRequest<PolicySchemaDto>("/api/v1/policy-schema");
   return mapPolicySchema(dto);
 }
 
 export async function getPolicies(params?: QueryParams) {
-  const dto = await kavachRequest<PolicyListItemDto[]>(
+  const dto = await aiGovernanceRequest<PolicyListItemDto[]>(
     "/api/v1/policies",
     params,
   );
@@ -46,7 +46,7 @@ export async function getPolicies(params?: QueryParams) {
 }
 
 export async function createPolicy(request: CreatePolicyRequest) {
-  const dto = await kavachJsonRequest<PolicyDetailDto, CreatePolicyRequest>(
+  const dto = await aiGovernanceJsonRequest<PolicyDetailDto, CreatePolicyRequest>(
     "/api/v1/policies",
     { method: "POST", body: request },
   );
@@ -54,14 +54,14 @@ export async function createPolicy(request: CreatePolicyRequest) {
 }
 
 export async function getPolicy(policyId: string) {
-  const dto = await kavachRequest<PolicyDetailDto>(
+  const dto = await aiGovernanceRequest<PolicyDetailDto>(
     `/api/v1/policies/${encodeURIComponent(policyId)}`,
   );
   return mapPolicyDetail(dto);
 }
 
 export async function getPolicyVersion(policyId: string, version: string) {
-  const dto = await kavachRequest<PolicyVersionDto>(
+  const dto = await aiGovernanceRequest<PolicyVersionDto>(
     `/api/v1/policies/${encodeURIComponent(policyId)}/versions/${encodeURIComponent(version)}`,
   );
   return mapPolicyVersion(dto);
@@ -71,7 +71,7 @@ export async function createPolicyVersion(
   policyId: string,
   request: CreatePolicyVersionRequest,
 ) {
-  const dto = await kavachJsonRequest<
+  const dto = await aiGovernanceJsonRequest<
     PolicyDetailDto,
     CreatePolicyVersionRequest
   >(`/api/v1/policies/${encodeURIComponent(policyId)}/versions`, {
@@ -86,7 +86,7 @@ export async function updateDraftPolicyVersion(
   version: string,
   request: UpdateDraftPolicyVersionRequest,
 ) {
-  const dto = await kavachJsonRequest<
+  const dto = await aiGovernanceJsonRequest<
     PolicyDetailDto,
     UpdateDraftPolicyVersionRequest
   >(
@@ -101,7 +101,7 @@ export async function activatePolicyVersion(
   version: string,
   activatedBy: string,
 ) {
-  const dto = await kavachJsonRequest<
+  const dto = await aiGovernanceJsonRequest<
     PolicyDetailDto,
     { activated_by: string }
   >(
@@ -116,7 +116,7 @@ export async function archivePolicyVersion(
   version: string,
   archivedBy: string,
 ) {
-  const dto = await kavachJsonRequest<PolicyDetailDto, { archived_by: string }>(
+  const dto = await aiGovernanceJsonRequest<PolicyDetailDto, { archived_by: string }>(
     `/api/v1/policies/${encodeURIComponent(policyId)}/versions/${encodeURIComponent(version)}/archive`,
     { method: "POST", body: { archived_by: archivedBy } },
   );
@@ -133,7 +133,7 @@ export async function simulatePolicyVersion(
     metadata: JsonObject;
   },
 ) {
-  const dto = await kavachJsonRequest<PolicySimulationDto, typeof request>(
+  const dto = await aiGovernanceJsonRequest<PolicySimulationDto, typeof request>(
     `/api/v1/policies/${encodeURIComponent(policyId)}/versions/${encodeURIComponent(version)}/simulate`,
     { method: "POST", body: request },
   );

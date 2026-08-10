@@ -2,7 +2,7 @@
 
 ## Overview
 
-PostgreSQL is Kavach's production reference persistence backend. It implements
+PostgreSQL is AI Governance Control Plane's production reference persistence backend. It implements
 the same repository contracts as SQLite and in-memory repositories, so services
 remain storage-independent.
 
@@ -15,11 +15,11 @@ PostgreSQL-native types where useful:
 - explicit primary keys, unique constraints, and indexes
 
 Schema initialization is intentionally simple and uses `CREATE TABLE IF NOT
-EXISTS`. Kavach does not include a migration framework yet.
+EXISTS`. AI Governance Control Plane does not include a migration framework yet.
 
 ## Control-plane tenancy and RBAC
 
-PostgreSQL persists the authenticated actor's Kavach tenancy state separately
+PostgreSQL persists the authenticated actor's AI Governance Control Plane tenancy state separately
 from Keycloak. The `actor_id` in these tables is the verified JWT `sub`; a
 Keycloak username, email, role, or tenant claim does not create authorization
 by itself.
@@ -331,7 +331,7 @@ Columns:
 
 Notes:
 
-- the dashboard compares `heartbeat_at` with `KAVACH_WORKER_HEARTBEAT_STALE_SECONDS`
+- the dashboard compares `heartbeat_at` with `AI_GOVERNANCE_WORKER_HEARTBEAT_STALE_SECONDS`
 - stale workers are reported as `Warning`; no registered workers are `Unknown`
 - this table is separate from `job_execution.heartbeat_at`, which tracks a job lease
 
@@ -501,14 +501,14 @@ Notes:
 ## Test Configuration
 
 PostgreSQL repository tests are integration tests and are skipped unless
-`KAVACH_POSTGRES_DSN` is set.
+`AI_GOVERNANCE_POSTGRES_DSN` is set.
 
 ```bash
-KAVACH_POSTGRES_DSN="postgresql://user:password@localhost:5432/kavach_test" uv run pytest tests/repositories/postgres
+AI_GOVERNANCE_POSTGRES_DSN="postgresql://user:password@localhost:5432/ai_governance_test" uv run pytest tests/repositories/postgres
 ```
 
 Each test creates a unique schema, sets the connection `search_path` to that
-schema, initializes the Kavach tables, and drops the schema afterwards.
+schema, initializes the AI Governance Control Plane tables, and drops the schema afterwards.
 
 ## Boundary Notes
 

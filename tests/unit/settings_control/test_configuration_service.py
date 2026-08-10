@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from kavach.settings_control.domain import (
+from ai_governance.settings_control.domain import (
     SettingContext,
     SettingEnvironmentOverride,
     SettingReadOnly,
@@ -11,12 +11,12 @@ from kavach.settings_control.domain import (
     SettingValidationError,
     SettingVersionConflict,
 )
-from kavach.settings_control.repository import InMemorySettingsRepository
-from kavach.settings_control.registry import SETTINGS_REGISTRY
-from kavach.settings_control.service import ConfigurationService
-from kavach.authorization.contracts import AuthorizationEnforcementDecision
-from kavach.tenancy.domain import TenantContext
-from kavach.tenancy.errors import AuthorizationDenied
+from ai_governance.settings_control.repository import InMemorySettingsRepository
+from ai_governance.settings_control.registry import SETTINGS_REGISTRY
+from ai_governance.settings_control.service import ConfigurationService
+from ai_governance.authorization.contracts import AuthorizationEnforcementDecision
+from ai_governance.tenancy.domain import TenantContext
+from ai_governance.tenancy.errors import AuthorizationDenied
 
 
 def test_scoped_resolution_precedence_and_runtime_audit() -> None:
@@ -63,7 +63,7 @@ def test_scoped_resolution_precedence_and_runtime_audit() -> None:
 
 def test_environment_wins_and_blocks_runtime_updates() -> None:
     service = ConfigurationService(
-        InMemorySettingsRepository(), {"KAVACH_MCP_DRY_RUN_DEFAULT": "true"}
+        InMemorySettingsRepository(), {"AI_GOVERNANCE_MCP_DRY_RUN_DEFAULT": "true"}
     )
     assert service.get("mcp.dry_run_default") is True
     with pytest.raises(SettingEnvironmentOverride):

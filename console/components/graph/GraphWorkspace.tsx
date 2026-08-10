@@ -9,7 +9,7 @@ import {
   getNeighbourhood,
   getUpstream,
 } from "@/lib/api/graph";
-import { KavachApiError } from "@/lib/api/client";
+import { AIGovernanceApiError } from "@/lib/api/client";
 import type { GraphRelationship, GraphSubgraph } from "@/types/graph";
 import { GraphExplorer } from "./GraphExplorer";
 import {
@@ -156,7 +156,7 @@ async function loadLeaderboardGraph(request: GraphLoadRequest) {
       return direct;
     }
   } catch (error) {
-    if (!(error instanceof KavachApiError) || error.status !== 404) {
+    if (!(error instanceof AIGovernanceApiError) || error.status !== 404) {
       throw error;
     }
   }
@@ -184,7 +184,7 @@ async function loadLeaderboardGraph(request: GraphLoadRequest) {
         });
       }
     } catch (error) {
-      if (!(error instanceof KavachApiError) || error.status !== 404) {
+      if (!(error instanceof AIGovernanceApiError) || error.status !== 404) {
         throw error;
       }
     }
@@ -200,7 +200,7 @@ async function loadLeaderboardGraph(request: GraphLoadRequest) {
 
 function GraphError({ error }: { error: Error }) {
   const message =
-    error instanceof KavachApiError
+    error instanceof AIGovernanceApiError
       ? `${error.code}: ${error.message}`
       : error.message;
 

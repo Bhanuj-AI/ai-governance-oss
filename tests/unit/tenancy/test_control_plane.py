@@ -2,20 +2,20 @@ from __future__ import annotations
 
 import pytest
 
-from kavach.tenancy.authorization import AuthorizationReasonCode, AuthorizationService
-from kavach.tenancy.domain import BuiltInRole, MembershipStatus, TenantContext
-from kavach.tenancy.errors import LastOrganizationAdministrator
-from kavach.tenancy.permissions import ROLE_PERMISSIONS, Permission
-from kavach.tenancy.repository import InMemoryControlPlaneRepository
-from kavach.tenancy.services import ControlPlaneService, bootstrap_control_plane
+from ai_governance.tenancy.authorization import AuthorizationReasonCode, AuthorizationService
+from ai_governance.tenancy.domain import BuiltInRole, MembershipStatus, TenantContext
+from ai_governance.tenancy.errors import LastOrganizationAdministrator
+from ai_governance.tenancy.permissions import ROLE_PERMISSIONS, Permission
+from ai_governance.tenancy.repository import InMemoryControlPlaneRepository
+from ai_governance.tenancy.services import ControlPlaneService, bootstrap_control_plane
 
 
 @pytest.fixture
 def control_plane(monkeypatch):
     # Ensure development mode uses "admin" as the actor_id for test compatibility
-    monkeypatch.setenv("KAVACH_AUTH_MODE", "development")
-    monkeypatch.setenv("KAVACH_DEVELOPMENT_ACTOR_ID", "admin")
-    monkeypatch.delenv("KAVACH_BOOTSTRAP_ADMIN_SUB", raising=False)
+    monkeypatch.setenv("AI_GOVERNANCE_AUTH_MODE", "development")
+    monkeypatch.setenv("AI_GOVERNANCE_DEVELOPMENT_ACTOR_ID", "admin")
+    monkeypatch.delenv("AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB", raising=False)
 
     repository = InMemoryControlPlaneRepository()
     bootstrap_control_plane(

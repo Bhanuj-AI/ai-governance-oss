@@ -5,10 +5,10 @@ from uuid import uuid4
 
 import pytest
 
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.domain.prompts import Prompt, PromptStatus
-from kavach.ontology import EntityType, RelationshipType
-from kavach.ontology.synchronization import (
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.domain.prompts import Prompt, PromptStatus
+from ai_governance.ontology import EntityType, RelationshipType
+from ai_governance.ontology.synchronization import (
     DiffBasedOntologyReconciler,
     DiffRepositorySynchronizer,
     GovernanceDecisionOntologySynchronizer,
@@ -21,12 +21,12 @@ from kavach.ontology.synchronization import (
     OntologySynchronizationWorker,
     PromptOntologySynchronizer,
 )
-from kavach.repositories import SQLiteOntologySyncEventRepository
-from kavach.repositories.in_memory_prompt_repository import InMemoryPromptRepository
+from ai_governance.repositories import SQLiteOntologySyncEventRepository
+from ai_governance.repositories.in_memory_prompt_repository import InMemoryPromptRepository
 
 
 def _neo4j_available() -> bool:
-    if os.getenv("KAVACH_RUN_NEO4J_TESTS") != "true":
+    if os.getenv("AI_GOVERNANCE_RUN_NEO4J_TESTS") != "true":
         return False
     try:
         import neo4j  # type: ignore # noqa: F401
@@ -39,14 +39,14 @@ pytestmark = [
     pytest.mark.integration,
     pytest.mark.skipif(
         not _neo4j_available(),
-        reason=("Set KAVACH_RUN_NEO4J_TESTS=true and install/start Neo4j to run."),
+        reason=("Set AI_GOVERNANCE_RUN_NEO4J_TESTS=true and install/start Neo4j to run."),
     ),
 ]
 
 
 def test_prompt_synchronization_against_neo4j():
-    from kavach.ontology import OntologyService
-    from kavach.ontology.neo4j_repository import Neo4jOntologyGraphRepository
+    from ai_governance.ontology import OntologyService
+    from ai_governance.ontology.neo4j_repository import Neo4jOntologyGraphRepository
 
     suffix = str(uuid4())
     prompt_id = f"prompt-{suffix}"
@@ -82,8 +82,8 @@ def test_prompt_synchronization_against_neo4j():
 def test_governance_decision_metric_evidence_synchronizes_against_neo4j():
     """Guard the worker path that previously dead-lettered Metric evidence."""
 
-    from kavach.ontology import OntologyService
-    from kavach.ontology.neo4j_repository import Neo4jOntologyGraphRepository
+    from ai_governance.ontology import OntologyService
+    from ai_governance.ontology.neo4j_repository import Neo4jOntologyGraphRepository
 
     suffix = str(uuid4())
     repository = Neo4jOntologyGraphRepository.from_environment()
@@ -136,8 +136,8 @@ def test_sqlite_event_survives_worker_restart_and_projects_to_neo4j(
 ) -> None:
     """A restarted worker must resume the durable event and repair Neo4j."""
 
-    from kavach.ontology import OntologyService
-    from kavach.ontology.neo4j_repository import Neo4jOntologyGraphRepository
+    from ai_governance.ontology import OntologyService
+    from ai_governance.ontology.neo4j_repository import Neo4jOntologyGraphRepository
 
     suffix = str(uuid4())
     prompt = _prompt(f"restart-prompt-{suffix}")
@@ -179,8 +179,8 @@ def test_sqlite_event_survives_worker_restart_and_projects_to_neo4j(
 def test_dead_letter_retry_repairs_projection_in_neo4j(tmp_path: Path) -> None:
     """An operator retry must turn a repaired dead letter into a projection."""
 
-    from kavach.ontology import OntologyService
-    from kavach.ontology.neo4j_repository import Neo4jOntologyGraphRepository
+    from ai_governance.ontology import OntologyService
+    from ai_governance.ontology.neo4j_repository import Neo4jOntologyGraphRepository
 
     suffix = str(uuid4())
     prompt = _prompt(f"retry-prompt-{suffix}")

@@ -11,10 +11,10 @@ docker compose \
   --env-file .env.keycloak \
   up --build -d
 
-echo "[keycloak] Waiting for the kavach realm endpoint..."
+echo "[keycloak] Waiting for the ai-governance realm endpoint..."
 for attempt in $(seq 1 60); do
   if curl --silent --fail \
-    "$KEYCLOAK_URL/realms/kavach/.well-known/openid-configuration" \
+    "$KEYCLOAK_URL/realms/ai-governance/.well-known/openid-configuration" \
     >/dev/null; then
     echo "[keycloak] Ready after ${attempt} attempt(s)."
     break

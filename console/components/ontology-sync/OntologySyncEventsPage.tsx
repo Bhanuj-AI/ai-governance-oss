@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SyncEventLifecycle } from "@/components/ontology-sync/SyncEventLifecycle";
-import { KavachApiError } from "@/lib/api/client";
+import { AIGovernanceApiError } from "@/lib/api/client";
 import {
   getOntologySyncEvent,
   getOntologySyncMetrics,
@@ -432,7 +432,7 @@ function StatePanel({ label, compact = false }: { label: string; compact?: boole
 }
 
 function ErrorPanel({ error }: { error: Error }) {
-  const message = error instanceof KavachApiError ? `${error.code}: ${error.message}` : error.message;
+  const message = error instanceof AIGovernanceApiError ? `${error.code}: ${error.message}` : error.message;
   return (
     <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
       <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />

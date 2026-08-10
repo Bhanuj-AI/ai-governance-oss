@@ -2,7 +2,7 @@
 
 ## Overview
 
-Kavach adopts a layered testing strategy that aligns with the architecture of the platform. Each layer validates a single responsibility, allowing failures to be isolated quickly while keeping the test suite fast, deterministic, and easy to maintain.
+AI Governance Control Plane adopts a layered testing strategy that aligns with the architecture of the platform. Each layer validates a single responsibility, allowing failures to be isolated quickly while keeping the test suite fast, deterministic, and easy to maintain.
 
 The guiding principles are:
 
@@ -169,7 +169,7 @@ Repository
 SQLite / PostgreSQL
 ```
 
-PostgreSQL repository tests require `KAVACH_POSTGRES_DSN`. When the variable is
+PostgreSQL repository tests require `AI_GOVERNANCE_POSTGRES_DSN`. When the variable is
 not set, those tests are skipped cleanly. Each PostgreSQL test creates and drops
 a unique schema to avoid cross-test contamination.
 
@@ -177,7 +177,7 @@ a unique schema to avoid cross-test contamination.
 
 # Repository Contract Tests
 
-Kavach treats repositories as interchangeable implementations.
+AI Governance Control Plane treats repositories as interchangeable implementations.
 
 Every repository must satisfy the same behavioural contract.
 
@@ -357,7 +357,7 @@ No layer duplicates another.
 
 # Future Evolution
 
-As Kavach grows, new implementations should extend the existing architecture without changing the testing philosophy.
+As AI Governance Control Plane grows, new implementations should extend the existing architecture without changing the testing philosophy.
 
 Examples include:
 

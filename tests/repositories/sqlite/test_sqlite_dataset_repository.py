@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.repositories.dataset_repository import DatasetRepository
-from kavach.repositories.sqlite.sqlite_dataset_repository import (
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.repositories.dataset_repository import DatasetRepository
+from ai_governance.repositories.sqlite.sqlite_dataset_repository import (
     SQLiteDatasetRepository,
 )
 from tests.repositories.contract.test_dataset_repository_contract import (
@@ -18,7 +18,7 @@ class TestSQLiteDatasetRepository(DatasetRepositoryContract):
         self,
         tmp_path: Path,
     ) -> None:
-        database = SQLiteDatabase(tmp_path / "kavach.db")
+        database = SQLiteDatabase(tmp_path / "ai_governance.db")
         database.initialize()
 
         self._repository = SQLiteDatasetRepository(database)

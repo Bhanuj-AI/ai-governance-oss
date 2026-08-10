@@ -57,8 +57,8 @@ There are three different kinds of state involved. They should not be confused.
 
 1. A registry default lives in application code. It is used only when no
    environment or runtime value exists.
-2. A runtime setting is stored by `KAVACH_SETTINGS_REPOSITORY`. The local Docker
-   stack selects SQLite at `/var/lib/kavach/kavach.db`, so runtime values and
+2. A runtime setting is stored by `AI_GOVERNANCE_SETTINGS_REPOSITORY`. The local Docker
+   stack selects SQLite at `/var/lib/ai-governance/governance.db`, so runtime values and
    their audit history survive container restarts. An `inmemory` settings
    repository loses runtime values when the API process stops. PostgreSQL stores
    them durably in the `runtime_setting` and `setting_audit` tables.
@@ -66,7 +66,7 @@ There are three different kinds of state involved. They should not be confused.
    example, jobs are persisted by the job repository, while the MCP idempotency
    result cache is held in the MCP process and is cleared by a restart.
 
-Environment overrides are not stored by Kavach. They belong to the deployment
+Environment overrides are not stored by AI Governance Control Plane. They belong to the deployment
 configuration. If an environment variable is present, it wins at every scope
 and the corresponding Studio control becomes read-only.
 
@@ -81,7 +81,7 @@ PROJECT      no value
 ```
 
 The project inherits `0.80` from its organization. If the project later saves
-`0.90`, it uses `0.90`. If `KAVACH_EVALUATION_PASS_THRESHOLD=0.95` is supplied
+`0.90`, it uses `0.90`. If `AI_GOVERNANCE_EVALUATION_PASS_THRESHOLD=0.95` is supplied
 by the deployment, every system, organization, and project uses `0.95` and UI
 editing is disabled.
 
@@ -107,7 +107,7 @@ Examples are `500ms`, `30s`, `15m`, `24h`, and `30d`.
 
 ### `general.instance_name`
 
-Default: `Kavach`. Environment override: `KAVACH_INSTANCE_NAME`.
+Default: `AI Governance Control Plane`. Environment override: `AI_GOVERNANCE_INSTANCE_NAME`.
 
 This is the human-readable name returned by `GET /api/v1`. The metadata route
 resolves it using the request's organization and project context, so different
@@ -117,7 +117,7 @@ request.
 
 ### `general.environment`
 
-Default: `local`. Environment variable: `KAVACH_ENV`. Read-only and system-only.
+Default: `local`. Environment variable: `AI_GOVERNANCE_ENV`. Read-only and system-only.
 
 This describes the deployment environment and participates in deployment
 guardrails such as development-identity protection. It is not editable at
@@ -126,24 +126,24 @@ running deployment.
 
 ### `general.version`
 
-Read-only and system-only. It reports the installed Kavach package version from
+Read-only and system-only. It reports the installed AI Governance Control Plane package version from
 Python distribution metadata. It is not a runtime setting and changes only
-when a different Kavach build is installed.
+when a different AI Governance Control Plane build is installed.
 
 ### `general.build`
 
-Default: `development`. Environment variable: `KAVACH_BUILD_ID`. Read-only and
+Default: `development`. Environment variable: `AI_GOVERNANCE_BUILD_ID`. Read-only and
 restart-bound.
 
 This identifies the deployed build. Build scripts or CI should populate it. It
-is deployment metadata, not a value Kavach writes to the settings repository.
+is deployment metadata, not a value AI Governance Control Plane writes to the settings repository.
 
 ### `general.timezone`
 
-Default: `UTC`. Environment override: `KAVACH_TIMEZONE`.
+Default: `UTC`. Environment override: `AI_GOVERNANCE_TIMEZONE`.
 
 This is returned by API metadata so clients know the configured display
-timezone. Kavach continues to persist authoritative timestamps in UTC; this
+timezone. AI Governance Control Plane continues to persist authoritative timestamps in UTC; this
 setting does not rewrite stored timestamps.
 
 ## Repository settings
@@ -154,14 +154,14 @@ during process startup.
 
 ### `repositories.active_backend`
 
-Environment variable: `KAVACH_POLICY_REPOSITORY`. It currently reports the
+Environment variable: `AI_GOVERNANCE_POLICY_REPOSITORY`. It currently reports the
 policy-administration repository selection (`inmemory`, `sqlite`, or
-`postgres`). Other domain repositories retain their own `KAVACH_*_REPOSITORY`
+`postgres`). Other domain repositories retain their own `AI_GOVERNANCE_*_REPOSITORY`
 variables.
 
 ### `repositories.settings_backend`
 
-Environment variable: `KAVACH_SETTINGS_REPOSITORY`. It selects where runtime
+Environment variable: `AI_GOVERNANCE_SETTINGS_REPOSITORY`. It selects where runtime
 settings and settings audit records are stored. With `inmemory`, changes are
 process-local. SQLite and PostgreSQL are durable.
 
@@ -182,7 +182,7 @@ it is backed by a migration-state provider.
 ### `jobs.worker_concurrency`
 
 Default: `4`; valid range: `1` to `128`. Environment override:
-`KAVACH_JOB_WORKER_CONCURRENCY`.
+`AI_GOVERNANCE_JOB_WORKER_CONCURRENCY`.
 
 Before a configured `JobWorker` acquires another queued job, it counts jobs in
 `RUNNING` state. If the effective concurrency has already been reached, the
@@ -196,7 +196,7 @@ threads or Kubernetes replicas.
 ### `jobs.retry_attempts`
 
 Default: `3`; valid range: `1` to `10`. Environment override:
-`KAVACH_JOB_RETRY_ATTEMPTS`.
+`AI_GOVERNANCE_JOB_RETRY_ATTEMPTS`.
 
 When a REST job, evaluation job, or experiment job omits `max_attempts`, the
 submission route resolves this setting and stores the result on the `Job`.
@@ -205,7 +205,7 @@ is copied into the persisted job, later setting changes affect new jobs only.
 
 ### `jobs.retry_delay`
 
-Default: `1ms`. Environment override: `KAVACH_JOB_RETRY_DELAY`.
+Default: `1ms`. Environment override: `AI_GOVERNANCE_JOB_RETRY_DELAY`.
 
 When a failed job is retried, `JobApiService` adds this duration to the job's
 completion or update time. A retry before that instant is rejected. The delay
@@ -215,7 +215,7 @@ jobs that have not yet been retried.
 ### `jobs.queue_size`
 
 Default: `1000`; valid range: `1` to `100000`. Environment override:
-`KAVACH_JOB_QUEUE_SIZE`.
+`AI_GOVERNANCE_JOB_QUEUE_SIZE`.
 
 After checking for an existing idempotent job, submission counts queued jobs in
 the selected organization and project. A new submission is rejected when that
@@ -224,7 +224,7 @@ still return their original job even when the queue is full.
 
 ### `jobs.retention`
 
-Default: `30d`. Environment override: `KAVACH_JOB_RETENTION`.
+Default: `30d`. Environment override: `AI_GOVERNANCE_JOB_RETENTION`.
 
 Job list reads resolve this setting and hide completed terminal jobs older than
 the retention cutoff. The current implementation is logical retention: it does
@@ -235,7 +235,7 @@ setting.
 
 ### `governance.decision_retention`
 
-Default: `365d`. Environment override: `KAVACH_DECISION_RETENTION`.
+Default: `365d`. Environment override: `AI_GOVERNANCE_DECISION_RETENTION`.
 
 Every newly evaluated decision receives an internal recorded-at timestamp.
 Decision list and detail reads compare that timestamp with the effective
@@ -245,7 +245,7 @@ integrity; retention is logical rather than destructive.
 
 ### `governance.replay_retention`
 
-Default: `90d`. Environment override: `KAVACH_REPLAY_RETENTION`.
+Default: `90d`. Environment override: `AI_GOVERNANCE_REPLAY_RETENTION`.
 
 `EvaluationHistoryService` filters source evaluation results before creating
 replay history, comparisons, summaries, or drift analysis. Results older than
@@ -255,7 +255,7 @@ stored in their repository.
 ### `governance.default_policy_version_behavior`
 
 Default: `active`. Allowed values: `active`, `latest`, and `explicit`.
-Environment override: `KAVACH_DEFAULT_POLICY_VERSION_BEHAVIOR`.
+Environment override: `AI_GOVERNANCE_DEFAULT_POLICY_VERSION_BEHAVIOR`.
 
 The persisted governance policy provider resolves this setting when a decision
 is evaluated:
@@ -274,7 +274,7 @@ different version.
 
 ### `evaluation.default_provider`
 
-Default: `mock`. Environment override: `KAVACH_DEFAULT_EVALUATION_PROVIDER`.
+Default: `mock`. Environment override: `AI_GOVERNANCE_DEFAULT_EVALUATION_PROVIDER`.
 
 Synchronous evaluation requests may omit `provider_name`. In that case the
 route resolves this setting and asks the provider registry for that provider.
@@ -284,17 +284,17 @@ the evaluation result.
 ### `evaluation.pass_threshold`
 
 Default: `0.8`; valid range: `0` to `1`. Environment override:
-`KAVACH_EVALUATION_PASS_THRESHOLD`.
+`AI_GOVERNANCE_EVALUATION_PASS_THRESHOLD`.
 
-After a provider returns metric scores, Kavach uses this value as the fallback
+After a provider returns metric scores, AI Governance Control Plane uses this value as the fallback
 threshold for every metric. It calculates an average score and records a
-`kavach_evaluation_outcome` structure in evaluation metadata containing the
+`ai_governance_evaluation_outcome` structure in evaluation metadata containing the
 pass result, score, thresholds, and failed metric names. The outcome is stored
 with the evaluation result.
 
 ### `evaluation.thresholds`
 
-Default: `{}`. Environment override: `KAVACH_EVALUATION_THRESHOLDS`.
+Default: `{}`. Environment override: `AI_GOVERNANCE_EVALUATION_THRESHOLDS`.
 
 This JSON object overrides the default threshold for named metrics. For
 example:
@@ -312,7 +312,7 @@ threshold.
 
 ### `evaluation.retention`
 
-Default: `180d`. Environment override: `KAVACH_EVALUATION_RETENTION`.
+Default: `180d`. Environment override: `AI_GOVERNANCE_EVALUATION_RETENTION`.
 
 Evaluation history reads hide results older than the effective cutoff before
 selecting the latest result. This is logical retention; it does not delete the
@@ -322,7 +322,7 @@ stored evaluation or its artifacts.
 
 ### `ontology.projection_interval`
 
-Default: `30s`. Environment override: `KAVACH_ONTOLOGY_PROJECTION_INTERVAL`.
+Default: `30s`. Environment override: `AI_GOVERNANCE_ONTOLOGY_PROJECTION_INTERVAL`.
 
 The ontology synchronization worker processes a batch of pending projection
 events, then waits for this duration. It resolves the setting again on every
@@ -331,7 +331,7 @@ cycle, so a runtime change affects the next wait without restarting the worker.
 ### `ontology.reconciliation_interval`
 
 Default: `5m`. Environment override:
-`KAVACH_ONTOLOGY_RECONCILIATION_INTERVAL`.
+`AI_GOVERNANCE_ONTOLOGY_RECONCILIATION_INTERVAL`.
 
 The same worker tracks the next full reconciliation time. When due, it asks the
 diff-based reconciler to compare authoritative repositories with the ontology
@@ -342,7 +342,7 @@ The worker must be started with a `ConfigurationService` and a stoppable event.
 
 ### `ontology.neo4j_endpoint`
 
-Environment variable: `KAVACH_GRAPH_URI`. Read-only, system-only, and
+Environment variable: `AI_GOVERNANCE_GRAPH_URI`. Read-only, system-only, and
 restart-bound. It reports the endpoint used when graph adapters are built.
 Changing it through the UI is intentionally forbidden because live graph
 repository switching is outside the control-plane boundary.
@@ -357,14 +357,14 @@ health checks.
 
 ### `audit.retention`
 
-Default: `365d`. Environment override: `KAVACH_AUDIT_RETENTION`.
+Default: `365d`. Environment override: `AI_GOVERNANCE_AUDIT_RETENTION`.
 
 Audit list and detail endpoints hide records older than the effective cutoff.
 The underlying audit rows are retained; no destructive purge is performed.
 
 ### `audit.interrupted_timeout`
 
-Default: `15m`. Environment override: `KAVACH_AUDIT_INTERRUPTED_TIMEOUT`.
+Default: `15m`. Environment override: `AI_GOVERNANCE_AUDIT_INTERRUPTED_TIMEOUT`.
 
 When an audit request does not explicitly supply
 `interrupted_after_seconds`, the API converts this duration to seconds. A
@@ -373,10 +373,10 @@ that period. An explicit query parameter wins for that request.
 
 ### `audit.backend`
 
-Environment variable: `KAVACH_MCP_AUDIT_BACKEND`. Read-only, system-only, and
+Environment variable: `AI_GOVERNANCE_MCP_AUDIT_BACKEND`. Read-only, system-only, and
 restart-bound. This setting currently reports deployment intent. Actual MCP
 construction selects in-memory storage when
-`KAVACH_MCP_AUDIT_DATABASE_PATH` is empty and SQLite when a path is present;
+`AI_GOVERNANCE_MCP_AUDIT_DATABASE_PATH` is empty and SQLite when a path is present;
 PostgreSQL audit construction is not yet wired. It cannot be replaced in a
 running process.
 
@@ -384,7 +384,7 @@ running process.
 
 ### `mcp.dry_run_default`
 
-Default: `false`. Environment override: `KAVACH_MCP_DRY_RUN_DEFAULT`.
+Default: `false`. Environment override: `AI_GOVERNANCE_MCP_DRY_RUN_DEFAULT`.
 
 For a controlled MCP write that omits `dry_run`, the MCP server asks the REST
 Settings API for the effective project, organization, or system value. `true`
@@ -396,7 +396,7 @@ is stored in MCP.
 
 ### `mcp.audit_required`
 
-Default: `true`. Environment override: `KAVACH_MCP_AUDIT_REQUIRED`.
+Default: `true`. Environment override: `AI_GOVERNANCE_MCP_AUDIT_REQUIRED`.
 
 MCP resolves this value for every controlled write. When `true`, the MCP audit
 log persists its started and completed records. When `false`, the operation
@@ -405,7 +405,7 @@ process logs and REST-side domain auditing are separate concerns.
 
 ### `mcp.idempotency_expiry`
 
-Default: `24h`. Environment override: `KAVACH_MCP_IDEMPOTENCY_EXPIRY`.
+Default: `24h`. Environment override: `AI_GOVERNANCE_MCP_IDEMPOTENCY_EXPIRY`.
 
 MCP identifies a controlled operation by tool name, idempotency key,
 organization, and project. It caches the successful result in the MCP process
@@ -426,10 +426,10 @@ Integration entries are read-only connection indicators derived from explicit
 deployment variables. Secret values are never returned.
 
 - `integrations.openai` reports connected when `OPENAI_API_KEY` is present.
-- `integrations.neo4j` reports connected when `KAVACH_GRAPH_URI` is present.
+- `integrations.neo4j` reports connected when `AI_GOVERNANCE_GRAPH_URI` is present.
 - `integrations.msteams` reports connected when
-  `KAVACH_MSTEAMS_WEBHOOK_URL` is present.
-- `integrations.webhook` reports connected when `KAVACH_WEBHOOK_URL` is
+  `AI_GOVERNANCE_MSTEAMS_WEBHOOK_URL` is present.
+- `integrations.webhook` reports connected when `AI_GOVERNANCE_WEBHOOK_URL` is
   present.
 
 These indicators confirm configuration presence, not successful remote
@@ -440,9 +440,9 @@ authentication or continuous connectivity.
 System entries are read-only and system-only:
 
 - `system.version` is the installed Python package version.
-- `system.commit_sha` comes from `KAVACH_COMMIT_SHA` and identifies source
+- `system.commit_sha` comes from `AI_GOVERNANCE_COMMIT_SHA` and identifies source
   revision.
-- `system.build_date` comes from `KAVACH_BUILD_DATE`.
+- `system.build_date` comes from `AI_GOVERNANCE_BUILD_DATE`.
 - `system.python_version` is calculated from the running Python interpreter.
 
 They are deployment/runtime metadata and are never persisted as editable
@@ -454,9 +454,9 @@ To create a project-level evaluation threshold:
 
 ```http
 PATCH /api/v1/settings/evaluation.pass_threshold
-X-Kavach-Organization-Id: org_default
-X-Kavach-Project-Id: project_default
-X-Kavach-Actor-Id: local-admin
+X-AI-Governance-Organization-Id: org_default
+X-AI-Governance-Project-Id: project_default
+X-AI-Governance-Actor-Id: local-admin
 Content-Type: application/json
 
 {
@@ -467,7 +467,7 @@ Content-Type: application/json
 }
 ```
 
-Kavach validates the value, compares the expected project-setting version,
+AI Governance Control Plane validates the value, compares the expected project-setting version,
 writes the new runtime value and audit record atomically, and returns the
 effective result. Subsequent evaluations in that project resolve `0.9` and
 persist their threshold outcome. Other projects continue inheriting their own

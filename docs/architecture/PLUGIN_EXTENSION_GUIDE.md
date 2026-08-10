@@ -1,6 +1,6 @@
 # Plugin Extensions
 
-This guide is for a new Kavach engineer, a plugin author, or a support person
+This guide is for a new AI Governance Control Plane engineer, a plugin author, or a support person
 who needs to understand why a feature works in the API but not in a worker.
 It describes the generic OSS extension model. It intentionally does not define
 any Enterprise product feature, database table, route, or event name.
@@ -8,22 +8,22 @@ any Enterprise product feature, database table, route, or event name.
 ## Start with the simple idea
 
 A **plugin** is a separately installed Python package that adds capability to
-Kavach without changing Kavach source code. It is like a carefully controlled
+AI Governance Control Plane without changing AI Governance Control Plane source code. It is like a carefully controlled
 power socket:
 
-- Kavach owns the socket, the startup order, and the safety checks.
+- AI Governance Control Plane owns the socket, the startup order, and the safety checks.
 - A plugin owns the feature it plugs in.
-- Kavach does not know the plugin's product rules.
-- The plugin must not reach into private Kavach objects to make something work.
+- AI Governance Control Plane does not know the plugin's product rules.
+- The plugin must not reach into private AI Governance Control Plane objects to make something work.
 
 This keeps the dependency direction safe:
 
 ```text
-Plugin package  ──uses public contracts──>  Kavach OSS
-Kavach OSS      ──never imports──────────>  a plugin package
+Plugin package  ──uses public contracts──>  AI Governance Control Plane OSS
+AI Governance Control Plane OSS      ──never imports──────────>  a plugin package
 ```
 
-If a plugin is removed, Kavach still starts without that plugin's feature.
+If a plugin is removed, AI Governance Control Plane still starts without that plugin's feature.
 If a plugin is installed but invalid, startup fails clearly rather than
 starting a half-configured process.
 
@@ -34,14 +34,14 @@ starting a half-configured process.
 | Host process | A running API server or background worker. | Starts and stops plugins. |
 | Plugin registry | The OSS component that discovers and manages plugins. | Validation, ordering, diagnostics, lifecycle. |
 | Plugin | A separately packaged feature. | Its routes, subscriptions, providers, and feature behavior. |
-| Plugin context | The public object handed to a plugin during registration. | The only supported way to add something to Kavach. |
+| Plugin context | The public object handed to a plugin during registration. | The only supported way to add something to AI Governance Control Plane. |
 | Event publisher | A generic, in-process notice board. | Lets code in one process notify its installed subscribers. |
 | Worker | A background process that claims and runs durable jobs. | Transitions a job after it has been queued. |
 
 ## How a plugin becomes available?
 
-The plugin package declares a `kavach.plugins` Python entry point. When a
-Kavach process starts, the registry asks Python which installed packages
+The plugin package declares a `ai_governance.plugins` Python entry point. When a
+AI Governance Control Plane process starts, the registry asks Python which installed packages
 declared an entry point in that group. It does not scan source folders and it
 does not import a product edition by name.
 
@@ -53,9 +53,9 @@ sequenceDiagram
     participant Registry as OSS PluginRegistry
     participant Plugin as Installed plugin
 
-    Deploy->>Python: Install Kavach and plugin distribution
+    Deploy->>Python: Install AI Governance Control Plane and plugin distribution
     Host->>Registry: create_plugin_registry()
-    Registry->>Python: Discover kavach.plugins entry points
+    Registry->>Python: Discover ai_governance.plugins entry points
     Python-->>Registry: Plugin instance or plugin class
     Registry->>Plugin: Check version and requested capabilities
     Registry->>Plugin: validate(context)
@@ -126,7 +126,7 @@ facts.
 ## Transaction Boundary
 
 Sometimes a plugin needs a business change and another persisted fact to
-succeed or fail together. Kavach provides a generic `TransactionContext` for
+succeed or fail together. AI Governance Control Plane provides a generic `TransactionContext` for
 the narrow case where the Core repository already owns an open transaction.
 
 ```mermaid
@@ -170,7 +170,7 @@ When a plugin feature appears to be missing, work through this order:
 
 1. Confirm the plugin distribution is installed in the failing process, not
    only in the API image.
-2. Confirm the plugin's Kavach version range matches the installed Kavach
+2. Confirm the plugin's AI Governance Control Plane version range matches the installed AI Governance Control Plane
    version.
 3. Read startup logs for plugin validation or registration errors.
 4. Check the runtime extension diagnostics endpoint when the API is available.

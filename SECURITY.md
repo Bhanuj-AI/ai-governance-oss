@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Kavach is early-stage software. Security fixes are currently expected to target the main development line and the latest published release, when releases are available.
+AI Governance Control Plane is early-stage software. Security fixes are currently expected to target the main development line and the latest published release, when releases are available.
 
 | Version | Supported |
 | ------- | --------- |

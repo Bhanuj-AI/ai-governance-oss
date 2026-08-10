@@ -1,11 +1,11 @@
 from datetime import UTC, datetime
 
-from kavach.domain.evaluation_result import (
+from ai_governance.domain.evaluation_result import (
     EvaluationArtifact,
     EvaluationMetric,
     EvaluationResult,
 )
-from kavach.domain.experiments import (
+from ai_governance.domain.experiments import (
     EvaluationRun,
     EvaluationRunStatus,
     Experiment,
@@ -14,14 +14,14 @@ from kavach.domain.experiments import (
     Leaderboard,
     LeaderboardEntry,
 )
-from kavach.domain.prompts import Prompt, PromptStatus
-from kavach.ontology import (
+from ai_governance.domain.prompts import Prompt, PromptStatus
+from ai_governance.ontology import (
     EntityType,
     InMemoryOntologyGraphRepository,
     OntologyService,
     RelationshipType,
 )
-from kavach.ontology.synchronization import (
+from ai_governance.ontology.synchronization import (
     CandidateOntologySynchronizer,
     EvaluationResultOntologySynchronizer,
     EvaluationRunOntologySynchronizer,

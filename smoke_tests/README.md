@@ -1,6 +1,6 @@
 # Smoke Scripts
 
-These scripts are reference flows for manually testing Kavach without external
+These scripts are reference flows for manually testing AI Governance Control Plane without external
 services. They use FastAPI `TestClient`, seeded data, and MCP in-process calls.
 
 Run from the repository root with `uv run python`.
@@ -14,7 +14,7 @@ uv run python scripts/smoke_mcp_audit_flow.py
 Optional persistent audit DB:
 
 ```bash
-uv run python scripts/smoke_mcp_audit_flow.py --audit-db /tmp/kavach-mcp-audit-smoke.db
+uv run python scripts/smoke_mcp_audit_flow.py --audit-db /tmp/ai-governance-mcp-audit-smoke.db
 ```
 
 Covers:
@@ -35,7 +35,7 @@ uv run python scripts/smoke_mcp_write_flow.py
 Optional persistent audit DB:
 
 ```bash
-uv run python scripts/smoke_mcp_write_flow.py --audit-db /tmp/kavach-mcp-write-smoke.db
+uv run python scripts/smoke_mcp_write_flow.py --audit-db /tmp/ai-governance-mcp-write-smoke.db
 ```
 
 Covers:
@@ -133,7 +133,7 @@ uv run python scripts/smoke_sqlite_persistence_flow.py
 Optional persistent database:
 
 ```bash
-uv run python scripts/smoke_sqlite_persistence_flow.py --database /tmp/kavach-sqlite-smoke.db
+uv run python scripts/smoke_sqlite_persistence_flow.py --database /tmp/ai-governance-sqlite-smoke.db
 ```
 
 Covers:

@@ -1,4 +1,4 @@
 interface:
   display_name: "Domain Feature"
-  short_description: "Implement deterministic Kavach domain capabilities."
-  default_prompt: "Use $domain-feature to add a deterministic, infrastructure-free Kavach domain feature."
+  short_description: "Implement deterministic AI Governance Control Plane domain capabilities."
+  default_prompt: "Use $domain-feature to add a deterministic, infrastructure-free AI Governance Control Plane domain feature."

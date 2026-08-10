@@ -3,16 +3,16 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime
 
-from kavach.domain.prompts import Prompt, PromptStatus
-from kavach.ontology import InMemoryOntologyGraphRepository, OntologyService
-from kavach.ontology.synchronization import (
+from ai_governance.domain.prompts import Prompt, PromptStatus
+from ai_governance.ontology import InMemoryOntologyGraphRepository, OntologyService
+from ai_governance.ontology.synchronization import (
     DiffBasedOntologyReconciler,
     DiffRepositorySynchronizer,
     PromptOntologySynchronizer,
     ProjectionBuilder,
 )
-from kavach.ontology.synchronization.synchronizer import stable_relationship_id
-from kavach.repositories.in_memory_prompt_repository import (
+from ai_governance.ontology.synchronization.synchronizer import stable_relationship_id
+from ai_governance.repositories.in_memory_prompt_repository import (
     InMemoryPromptRepository,
 )
 

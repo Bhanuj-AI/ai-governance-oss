@@ -1,4 +1,4 @@
-import { kavachFormRequest, kavachJsonRequest, kavachRequest } from "@/lib/api/client";
+import { aiGovernanceFormRequest, aiGovernanceJsonRequest, aiGovernanceRequest } from "@/lib/api/client";
 
 export type PromptAsset = {
   prompt_id: string;
@@ -107,20 +107,20 @@ export type ProviderInstallationValidation = {
   message: string;
 };
 
-export const listPromptAssets = () => kavachRequest<PromptAsset[]>("/api/v1/prompts");
+export const listPromptAssets = () => aiGovernanceRequest<PromptAsset[]>("/api/v1/prompts");
 export const listPromptVersions = (name: string) =>
-  kavachRequest<PromptAsset[]>(`/api/v1/prompts/${encodeURIComponent(name)}`);
+  aiGovernanceRequest<PromptAsset[]>(`/api/v1/prompts/${encodeURIComponent(name)}`);
 export const getPromptVersion = (promptId: string) =>
-  kavachRequest<PromptDetailAsset>(`/api/v1/prompts/versions/${encodeURIComponent(promptId)}`);
-export const listModelAssets = () => kavachRequest<ModelAsset[]>("/api/v1/models");
-export const listDatasetAssets = () => kavachRequest<DatasetAsset[]>("/api/v1/datasets");
+  aiGovernanceRequest<PromptDetailAsset>(`/api/v1/prompts/versions/${encodeURIComponent(promptId)}`);
+export const listModelAssets = () => aiGovernanceRequest<ModelAsset[]>("/api/v1/models");
+export const listDatasetAssets = () => aiGovernanceRequest<DatasetAsset[]>("/api/v1/datasets");
 export const uploadDatasetAsset = (form: FormData) =>
-  kavachFormRequest<DatasetAsset>("/api/v1/datasets/upload", form);
-export const listProviderAssets = () => kavachRequest<ProviderAsset[]>("/api/v1/providers");
-export const listProviderInstallations = () => kavachRequest<ProviderInstallation[]>("/api/v1/provider-installations");
+  aiGovernanceFormRequest<DatasetAsset>("/api/v1/datasets/upload", form);
+export const listProviderAssets = () => aiGovernanceRequest<ProviderAsset[]>("/api/v1/providers");
+export const listProviderInstallations = () => aiGovernanceRequest<ProviderInstallation[]>("/api/v1/provider-installations");
 export const createProviderInstallation = (payload: Pick<ProviderInstallation, "provider_type" | "display_name" | "settings" | "secret_refs" | "enabled" | "scope">) =>
-  kavachJsonRequest<ProviderInstallation, typeof payload>("/api/v1/provider-installations", { method: "POST", body: payload });
+  aiGovernanceJsonRequest<ProviderInstallation, typeof payload>("/api/v1/provider-installations", { method: "POST", body: payload });
 export const validateProviderInstallation = (payload: Pick<ProviderInstallation, "provider_type" | "display_name" | "settings" | "secret_refs" | "enabled" | "scope">) =>
-  kavachJsonRequest<ProviderInstallationValidation, typeof payload>("/api/v1/provider-installations/validate", { method: "POST", body: payload });
+  aiGovernanceJsonRequest<ProviderInstallationValidation, typeof payload>("/api/v1/provider-installations/validate", { method: "POST", body: payload });
 export const updateProviderInstallation = (installationId: string, payload: Partial<Pick<ProviderInstallation, "display_name" | "settings" | "secret_refs" | "enabled">>) =>
-  kavachJsonRequest<ProviderInstallation, typeof payload>(`/api/v1/provider-installations/${encodeURIComponent(installationId)}`, { method: "PATCH", body: payload });
+  aiGovernanceJsonRequest<ProviderInstallation, typeof payload>(`/api/v1/provider-installations/${encodeURIComponent(installationId)}`, { method: "PATCH", body: payload });

@@ -4,13 +4,13 @@ import json
 from pathlib import Path
 from typing import Any
 
-from kavach import __version__
-from kavach.mcp.audit import MCPExecutionAuditLog
-from kavach.mcp.invocation_audit import MCPInvocationAuditLog
-from kavach.mcp.clients import RestClient, RestClientError
-from kavach.mcp.dto import EmptyRequest
-from kavach.mcp.plugins import MCPToolPluginMetadata
-from kavach.mcp.server import create_server
+from ai_governance import __version__
+from ai_governance.mcp.audit import MCPExecutionAuditLog
+from ai_governance.mcp.invocation_audit import MCPInvocationAuditLog
+from ai_governance.mcp.clients import RestClient, RestClientError
+from ai_governance.mcp.dto import EmptyRequest
+from ai_governance.mcp.plugins import MCPToolPluginMetadata
+from ai_governance.mcp.server import create_server
 
 
 class FakeTransport:
@@ -50,7 +50,7 @@ class FakeTransport:
 
 def _server(transport: FakeTransport, *, mcp_plugins=()):
     client = RestClient(
-        base_url="http://kavach.test",
+        base_url="http://ai_governance.test",
         transport=transport,
     )
     return create_server(
@@ -203,10 +203,10 @@ def test_mcp_plugins_are_discovered_through_the_packaging_entry_point(
     class _EntryPoints:
         @staticmethod
         def select(*, group: str):
-            assert group == "kavach.mcp.plugins"
+            assert group == "ai_governance.mcp.plugins"
             return (_EntryPoint(),)
 
-    monkeypatch.setattr("kavach.mcp.plugins.entry_points", lambda: _EntryPoints())
+    monkeypatch.setattr("ai_governance.mcp.plugins.entry_points", lambda: _EntryPoints())
     server = _server(FakeTransport())
 
     assert "extension.example" in [tool.name for tool in server.list_tools()]
@@ -873,11 +873,11 @@ def test_mcp_audit_database_path_override_is_used(
 ) -> None:
     database_path = tmp_path / "custom-audit.db"
     monkeypatch.setenv(
-        "KAVACH_MCP_AUDIT_DATABASE_PATH",
+        "AI_GOVERNANCE_MCP_AUDIT_DATABASE_PATH",
         str(database_path),
     )
     client = RestClient(
-        base_url="http://kavach.test",
+        base_url="http://ai_governance.test",
         transport=FakeTransport(),
     )
     server = create_server(client)
@@ -899,11 +899,11 @@ def test_mcp_audit_database_path_override_is_used(
 
 
 def test_mcp_postgres_audit_configuration_is_used(monkeypatch) -> None:
-    from kavach.mcp.server import _create_audit_log, get_mcp_settings
+    from ai_governance.mcp.server import _create_audit_log, get_mcp_settings
 
     expected = MCPExecutionAuditLog.in_memory()
-    monkeypatch.setenv("KAVACH_MCP_AUDIT_REPOSITORY", "postgres")
-    monkeypatch.setenv("KAVACH_MCP_AUDIT_POSTGRES_DSN", "postgresql://audit@db/kavach")
+    monkeypatch.setenv("AI_GOVERNANCE_MCP_AUDIT_REPOSITORY", "postgres")
+    monkeypatch.setenv("AI_GOVERNANCE_MCP_AUDIT_POSTGRES_DSN", "postgresql://audit@db/ai-governance")
     monkeypatch.setattr(
         MCPExecutionAuditLog,
         "postgres",

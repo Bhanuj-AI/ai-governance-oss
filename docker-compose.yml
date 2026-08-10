@@ -1,15 +1,15 @@
-# Local, self-contained Kavach stack.
+# Local, self-contained AI Governance Control Plane stack.
 #
 # All services use development-only credentials and named Docker volumes. The
 # platform persists registry metadata in SQLite, Neo4j holds the ontology, and
 # SeaweedFS holds local dataset content through its S3-compatible API.
-name: kavach-oss
+name: ai-governance-oss
 
 services:
   # ---------------------------------------------------------------------------
   # Core application
   # ---------------------------------------------------------------------------
-  kavach-platform:
+  ai-governance-platform:
     env_file:
       - .env.platform
       - .env.build
@@ -18,96 +18,96 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.platform
-    image: kavach-platform:local
+    image: ai-governance-platform:local
     ports:
       - "8000:8000"
     extra_hosts:
       - "keycloak.localhost:host-gateway"
     environment:
       # Runtime and API
-      KAVACH_ENV: local
-      KAVACH_API_HOST: localhost
-      KAVACH_API_PORT: 8000
-      KAVACH_AUTO_SEED_DEMO_DATA: "false"
+      AI_GOVERNANCE_ENV: local
+      AI_GOVERNANCE_API_HOST: localhost
+      AI_GOVERNANCE_API_PORT: 8000
+      AI_GOVERNANCE_AUTO_SEED_DEMO_DATA: "false"
 
       # Evaluation provider for the local platform. This is used by the replay worker and the MCP.
-      KAVACH_DEFAULT_EVALUATION_PROVIDER: trulens
+      AI_GOVERNANCE_DEFAULT_EVALUATION_PROVIDER: trulens
 
       # Ontology graph
-      KAVACH_GRAPH_URI: bolt://neo4j:7687
-      KAVACH_GRAPH_USER: neo4j
+      AI_GOVERNANCE_GRAPH_URI: bolt://neo4j:7687
+      AI_GOVERNANCE_GRAPH_USER: neo4j
 
       # MCP and local audit data
-      KAVACH_MCP_AUDIT_DATABASE_PATH: /var/lib/kavach/mcp_execution_audit.db
-      KAVACH_MCP_DRY_RUN_DEFAULT: False
-      KAVACH_MCP_URL: http://kavach-mcp:8001
+      AI_GOVERNANCE_MCP_AUDIT_DATABASE_PATH: /var/lib/ai-governance/mcp_execution_audit.db
+      AI_GOVERNANCE_MCP_DRY_RUN_DEFAULT: False
+      AI_GOVERNANCE_MCP_URL: http://ai-governance-mcp:8001
 
       # Local Keycloak identity and demo tenant
-      KAVACH_TENANCY_ENABLED: "true"
-      KAVACH_AUTH_MODE: keycloak
-      KAVACH_OIDC_ISSUER: "http://keycloak.localhost:18080/realms/kavach"
-      KAVACH_DEVELOPMENT_ACTOR_ID: local-admin
-      KAVACH_DEVELOPMENT_ACTOR_NAME: Local Administrator
-      KAVACH_OIDC_JWKS_REFRESH_SECONDS: 300
-      KAVACH_BOOTSTRAP_ORGANIZATION_ID: org_default
-      KAVACH_BOOTSTRAP_ORGANIZATION_NAME: Default Organization
-      KAVACH_BOOTSTRAP_ORGANIZATION_SLUG: default
-      KAVACH_BOOTSTRAP_PROJECT_ID: project_default
-      KAVACH_BOOTSTRAP_PROJECT_NAME: Default Project
-      KAVACH_BOOTSTRAP_PROJECT_SLUG: default
-      KAVACH_BOOTSTRAP_ADMIN_SUB: e44566f1-c748-45e1-83db-d2ee5fb424ef
+      AI_GOVERNANCE_TENANCY_ENABLED: "true"
+      AI_GOVERNANCE_AUTH_MODE: keycloak
+      AI_GOVERNANCE_OIDC_ISSUER: "http://keycloak.localhost:18080/realms/ai-governance"
+      AI_GOVERNANCE_DEVELOPMENT_ACTOR_ID: local-admin
+      AI_GOVERNANCE_DEVELOPMENT_ACTOR_NAME: Local Administrator
+      AI_GOVERNANCE_OIDC_JWKS_REFRESH_SECONDS: 300
+      AI_GOVERNANCE_BOOTSTRAP_ORGANIZATION_ID: org_default
+      AI_GOVERNANCE_BOOTSTRAP_ORGANIZATION_NAME: Default Organization
+      AI_GOVERNANCE_BOOTSTRAP_ORGANIZATION_SLUG: default
+      AI_GOVERNANCE_BOOTSTRAP_PROJECT_ID: project_default
+      AI_GOVERNANCE_BOOTSTRAP_PROJECT_NAME: Default Project
+      AI_GOVERNANCE_BOOTSTRAP_PROJECT_SLUG: default
+      AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB: e44566f1-c748-45e1-83db-d2ee5fb424ef
 
       # Durable registry and operational metadata (shared local SQLite file)
-      KAVACH_TENANCY_REPOSITORY: sqlite
-      KAVACH_TENANCY_SQLITE_PATH: /var/lib/kavach/kavach.db
-      KAVACH_SETTINGS_REPOSITORY: sqlite
-      KAVACH_SETTINGS_SQLITE_PATH: /var/lib/kavach/kavach.db
-      KAVACH_POLICY_REPOSITORY: sqlite
-      KAVACH_POLICY_SQLITE_PATH: /var/lib/kavach/kavach.db
-      KAVACH_EVALUATION_REPOSITORY: sqlite
-      KAVACH_EVALUATION_SQLITE_PATH: /var/lib/kavach/kavach.db
-      KAVACH_EXPERIMENT_REPOSITORY: sqlite
-      KAVACH_EXPERIMENT_SQLITE_PATH: /var/lib/kavach/kavach.db
-      KAVACH_EXPERIMENT_CANDIDATE_REPOSITORY: sqlite
-      KAVACH_EXPERIMENT_CANDIDATE_SQLITE_PATH: /var/lib/kavach/kavach.db
-      KAVACH_EVALUATION_RUN_REPOSITORY: sqlite
-      KAVACH_EVALUATION_RUN_SQLITE_PATH: /var/lib/kavach/kavach.db
-      KAVACH_LEADERBOARD_REPOSITORY: sqlite
-      KAVACH_LEADERBOARD_SQLITE_PATH: /var/lib/kavach/kavach.db
-      KAVACH_PROMPT_REPOSITORY: sqlite
-      KAVACH_PROMPT_SQLITE_PATH: /var/lib/kavach/kavach.db
-      KAVACH_MODEL_REPOSITORY: sqlite
-      KAVACH_MODEL_SQLITE_PATH: /var/lib/kavach/kavach.db
-      KAVACH_DATASET_REPOSITORY: sqlite
-      KAVACH_DATASET_SQLITE_PATH: /var/lib/kavach/kavach.db
+      AI_GOVERNANCE_TENANCY_REPOSITORY: sqlite
+      AI_GOVERNANCE_TENANCY_SQLITE_PATH: /var/lib/ai-governance/governance.db
+      AI_GOVERNANCE_SETTINGS_REPOSITORY: sqlite
+      AI_GOVERNANCE_SETTINGS_SQLITE_PATH: /var/lib/ai-governance/governance.db
+      AI_GOVERNANCE_POLICY_REPOSITORY: sqlite
+      AI_GOVERNANCE_POLICY_SQLITE_PATH: /var/lib/ai-governance/governance.db
+      AI_GOVERNANCE_EVALUATION_REPOSITORY: sqlite
+      AI_GOVERNANCE_EVALUATION_SQLITE_PATH: /var/lib/ai-governance/governance.db
+      AI_GOVERNANCE_EXPERIMENT_REPOSITORY: sqlite
+      AI_GOVERNANCE_EXPERIMENT_SQLITE_PATH: /var/lib/ai-governance/governance.db
+      AI_GOVERNANCE_EXPERIMENT_CANDIDATE_REPOSITORY: sqlite
+      AI_GOVERNANCE_EXPERIMENT_CANDIDATE_SQLITE_PATH: /var/lib/ai-governance/governance.db
+      AI_GOVERNANCE_EVALUATION_RUN_REPOSITORY: sqlite
+      AI_GOVERNANCE_EVALUATION_RUN_SQLITE_PATH: /var/lib/ai-governance/governance.db
+      AI_GOVERNANCE_LEADERBOARD_REPOSITORY: sqlite
+      AI_GOVERNANCE_LEADERBOARD_SQLITE_PATH: /var/lib/ai-governance/governance.db
+      AI_GOVERNANCE_PROMPT_REPOSITORY: sqlite
+      AI_GOVERNANCE_PROMPT_SQLITE_PATH: /var/lib/ai-governance/governance.db
+      AI_GOVERNANCE_MODEL_REPOSITORY: sqlite
+      AI_GOVERNANCE_MODEL_SQLITE_PATH: /var/lib/ai-governance/governance.db
+      AI_GOVERNANCE_DATASET_REPOSITORY: sqlite
+      AI_GOVERNANCE_DATASET_SQLITE_PATH: /var/lib/ai-governance/governance.db
 
       # Dataset content: SeaweedFS locally, AWS S3 in production.
       # Keep path-style addressing for this S3-compatible local endpoint.
-      KAVACH_DATASET_OBJECT_STORE_BACKEND: s3
-      KAVACH_DATASET_S3_ENDPOINT_URL: http://seaweedfs:8333
-      KAVACH_DATASET_S3_BUCKET: kavach-datasets
-      KAVACH_DATASET_S3_REGION: us-east-1
-      KAVACH_DATASET_S3_ACCESS_KEY_ID: kavach-local
-      KAVACH_DATASET_S3_SECRET_ACCESS_KEY: kavach-local-secret
-      KAVACH_DATASET_S3_FORCE_PATH_STYLE: "true"
+      AI_GOVERNANCE_DATASET_OBJECT_STORE_BACKEND: s3
+      AI_GOVERNANCE_DATASET_S3_ENDPOINT_URL: http://seaweedfs:8333
+      AI_GOVERNANCE_DATASET_S3_BUCKET: ai-governance-datasets
+      AI_GOVERNANCE_DATASET_S3_REGION: us-east-1
+      AI_GOVERNANCE_DATASET_S3_ACCESS_KEY_ID: ai-governance-local
+      AI_GOVERNANCE_DATASET_S3_SECRET_ACCESS_KEY: ai-governance-local-secret
+      AI_GOVERNANCE_DATASET_S3_FORCE_PATH_STYLE: "true"
 
       # Remaining operational repositories
-      KAVACH_JOB_REPOSITORY: sqlite
-      KAVACH_JOB_SQLITE_PATH: /var/lib/kavach/kavach.db
-      KAVACH_REPLAY_REPOSITORY: sqlite
-      KAVACH_REPLAY_SQLITE_PATH: /var/lib/kavach/kavach.db
-      KAVACH_GOVERNANCE_DECISION_REPOSITORY: sqlite
-      KAVACH_GOVERNANCE_DECISION_SQLITE_PATH: /var/lib/kavach/kavach.db
-      KAVACH_ONTOLOGY_SYNC_EVENT_REPOSITORY: sqlite
-      KAVACH_ONTOLOGY_SYNC_EVENT_SQLITE_PATH: /var/lib/kavach/kavach.db
-      KAVACH_ONTOLOGY_REPOSITORY: neo4j
+      AI_GOVERNANCE_JOB_REPOSITORY: sqlite
+      AI_GOVERNANCE_JOB_SQLITE_PATH: /var/lib/ai-governance/governance.db
+      AI_GOVERNANCE_REPLAY_REPOSITORY: sqlite
+      AI_GOVERNANCE_REPLAY_SQLITE_PATH: /var/lib/ai-governance/governance.db
+      AI_GOVERNANCE_GOVERNANCE_DECISION_REPOSITORY: sqlite
+      AI_GOVERNANCE_GOVERNANCE_DECISION_SQLITE_PATH: /var/lib/ai-governance/governance.db
+      AI_GOVERNANCE_ONTOLOGY_SYNC_EVENT_REPOSITORY: sqlite
+      AI_GOVERNANCE_ONTOLOGY_SYNC_EVENT_SQLITE_PATH: /var/lib/ai-governance/governance.db
+      AI_GOVERNANCE_ONTOLOGY_REPOSITORY: neo4j
     volumes:
-      - kavach_sqlite_data:/var/lib/kavach
+      - ai-governance_sqlite_data:/var/lib/ai-governance
     healthcheck:
       test:
         [
           "CMD",
-          "/opt/kavach-venv/bin/python",
+          "/opt/ai-governance-venv/bin/python",
           "-c",
           "import urllib.request; urllib.request.urlopen('http://localhost:8000/ready')"
         ]
@@ -118,39 +118,39 @@ services:
     depends_on:
       neo4j:
         condition: service_healthy
-      kavach-neo4j-schema:
+      ai-governance-neo4j-schema:
         condition: service_completed_successfully
       seaweedfs:
         condition: service_healthy
     restart: unless-stopped
 
   # Browser console for the local platform.
-  kavach-studio:
+  ai-governance-studio:
     env_file:
       - ./console/.env.studio
     build:
       context: ./console
       dockerfile: Dockerfile.studio
       args:
-        NEXT_PUBLIC_KAVACH_API_BASE_URL: http://localhost:8000
+        NEXT_PUBLIC_AI_GOVERNANCE_API_BASE_URL: http://localhost:8000
         NEXT_PUBLIC_KEYCLOAK_URL: http://keycloak.localhost:18080
-        NEXT_PUBLIC_KEYCLOAK_REALM: kavach
-        NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: kavach-studio
-    image: kavach-studio:local
+        NEXT_PUBLIC_KEYCLOAK_REALM: ai-governance
+        NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: ai-governance-studio
+    image: ai-governance-studio:local
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_KAVACH_API_BASE_URL: http://localhost:8000
+      NEXT_PUBLIC_AI_GOVERNANCE_API_BASE_URL: http://localhost:8000
       NEXT_PUBLIC_KEYCLOAK_URL: http://keycloak.localhost:18080
-      NEXT_PUBLIC_KEYCLOAK_REALM: kavach
-      NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: kavach-studio
+      NEXT_PUBLIC_KEYCLOAK_REALM: ai-governance
+      NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: ai-governance-studio
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000"]
       interval: 10s
       timeout: 5s
       retries: 10
     depends_on:
-      kavach-platform:
+      ai-governance-platform:
         condition: service_healthy
     restart: unless-stopped
 
@@ -158,46 +158,46 @@ services:
   # Background workers
   # ---------------------------------------------------------------------------
   # Executes queued replay jobs against the local durable repositories.
-  kavach-replay-worker:
-    image: kavach-platform:local
+  ai-governance-replay-worker:
+    image: ai-governance-platform:local
     env_file:
       - .env.platform
       - .env.build
     environment:
-      KAVACH_WORKER_ID: replay-worker-docker
-      KAVACH_REPLAY_EVALUATION_PROVIDER: trulens
-      KAVACH_JOB_REPOSITORY: sqlite
-      KAVACH_JOB_SQLITE_PATH: /var/lib/kavach/kavach.db
-      KAVACH_REPLAY_REPOSITORY: sqlite
-      KAVACH_REPLAY_SQLITE_PATH: /var/lib/kavach/kavach.db
-      KAVACH_REPLAY_EXECUTION_CATALOG_BACKEND: sqlite
-      KAVACH_REPLAY_EXECUTION_CATALOG_SQLITE_PATH: /var/lib/kavach/kavach.db
-      KAVACH_EVALUATION_REPOSITORY: sqlite
-      KAVACH_EVALUATION_SQLITE_PATH: /var/lib/kavach/kavach.db
-    command: ["/opt/kavach-venv/bin/python", "-m", "kavach.workers.replay_worker_runtime"]
+      AI_GOVERNANCE_WORKER_ID: replay-worker-docker
+      AI_GOVERNANCE_REPLAY_EVALUATION_PROVIDER: trulens
+      AI_GOVERNANCE_JOB_REPOSITORY: sqlite
+      AI_GOVERNANCE_JOB_SQLITE_PATH: /var/lib/ai-governance/governance.db
+      AI_GOVERNANCE_REPLAY_REPOSITORY: sqlite
+      AI_GOVERNANCE_REPLAY_SQLITE_PATH: /var/lib/ai-governance/governance.db
+      AI_GOVERNANCE_REPLAY_EXECUTION_CATALOG_BACKEND: sqlite
+      AI_GOVERNANCE_REPLAY_EXECUTION_CATALOG_SQLITE_PATH: /var/lib/ai-governance/governance.db
+      AI_GOVERNANCE_EVALUATION_REPOSITORY: sqlite
+      AI_GOVERNANCE_EVALUATION_SQLITE_PATH: /var/lib/ai-governance/governance.db
+    command: ["/opt/ai-governance-venv/bin/python", "-m", "ai_governance.workers.replay_worker_runtime"]
     volumes:
-      - kavach_sqlite_data:/var/lib/kavach
+      - ai-governance_sqlite_data:/var/lib/ai-governance
     depends_on:
-      kavach-platform:
+      ai-governance-platform:
         condition: service_healthy
     restart: unless-stopped
 
   # Projects durable records to the Neo4j ontology graph.
-  kavach-ontology-sync-worker:
-    image: kavach-platform:local
+  ai-governance-ontology-sync-worker:
+    image: ai-governance-platform:local
     env_file:
       - .env.platform
       - .env.build
     environment:
-      KAVACH_GRAPH_URI: bolt://neo4j:7687
-      KAVACH_GRAPH_USER: neo4j
-      KAVACH_ONTOLOGY_REPOSITORY: neo4j
-      KAVACH_MCP_AUDIT_DATABASE_PATH: /var/lib/kavach/mcp_execution_audit.db
-    command: ["/opt/kavach-venv/bin/python", "-m", "kavach.workers.ontology_sync_worker_runtime"]
+      AI_GOVERNANCE_GRAPH_URI: bolt://neo4j:7687
+      AI_GOVERNANCE_GRAPH_USER: neo4j
+      AI_GOVERNANCE_ONTOLOGY_REPOSITORY: neo4j
+      AI_GOVERNANCE_MCP_AUDIT_DATABASE_PATH: /var/lib/ai-governance/mcp_execution_audit.db
+    command: ["/opt/ai-governance-venv/bin/python", "-m", "ai_governance.workers.ontology_sync_worker_runtime"]
     volumes:
-      - kavach_sqlite_data:/var/lib/kavach
+      - ai-governance_sqlite_data:/var/lib/ai-governance
     depends_on:
-      kavach-platform:
+      ai-governance-platform:
         condition: service_healthy
     restart: unless-stopped
 
@@ -205,8 +205,8 @@ services:
   # MCP transports
   # ---------------------------------------------------------------------------
   # MCP API served by the platform image; exposed as local port 8001.
-  kavach-mcp:
-    image: kavach-platform:local
+  ai-governance-mcp:
+    image: ai-governance-platform:local
     extra_hosts:
       - "keycloak.localhost:host-gateway"
     env_file:
@@ -215,26 +215,26 @@ services:
       - path: .env.service-accounts.generated
         required: false
     environment:
-      KAVACH_API_URL: http://kavach-platform:8000
-      KAVACH_MCP_HOST: 0.0.0.0
-      KAVACH_MCP_PORT: 8001
-      KAVACH_MCP_AUDIT_DATABASE_PATH: /var/lib/kavach/mcp_execution_audit.db
-      KAVACH_API_TOKEN: ${KAVACH_API_TOKEN:-}
-      KAVACH_MCP_CLIENT_ID: kavach-mcp
-      KAVACH_MCP_TOKEN_URL: http://keycloak.localhost:18080/realms/kavach/protocol/openid-connect/token
+      AI_GOVERNANCE_API_URL: http://ai-governance-platform:8000
+      AI_GOVERNANCE_MCP_HOST: 0.0.0.0
+      AI_GOVERNANCE_MCP_PORT: 8001
+      AI_GOVERNANCE_MCP_AUDIT_DATABASE_PATH: /var/lib/ai-governance/mcp_execution_audit.db
+      AI_GOVERNANCE_API_TOKEN: ${AI_GOVERNANCE_API_TOKEN:-}
+      AI_GOVERNANCE_MCP_CLIENT_ID: ai-governance-mcp
+      AI_GOVERNANCE_MCP_TOKEN_URL: http://keycloak.localhost:18080/realms/ai-governance/protocol/openid-connect/token
     command: ["/workspace/scripts/mcp/start-mcp.sh"]
     ports:
       - "8001:8001"
     volumes:
-      - kavach_sqlite_data:/var/lib/kavach
+      - ai-governance_sqlite_data:/var/lib/ai-governance
     depends_on:
-      kavach-platform:
+      ai-governance-platform:
         condition: service_healthy
     healthcheck:
       test:
         [
           "CMD",
-          "/opt/kavach-venv/bin/python",
+          "/opt/ai-governance-venv/bin/python",
           "-c",
           "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/openapi.json')"
         ]
@@ -245,35 +245,35 @@ services:
     restart: unless-stopped
 
   # Streamable HTTP MCP endpoint; exposed as local port 8002.
-  kavach-mcp-http:
-    image: kavach-platform:local
+  ai-governance-mcp-http:
+    image: ai-governance-platform:local
     extra_hosts:
       - "keycloak.localhost:host-gateway"
     environment:
-      KAVACH_API_URL: http://kavach-platform:8000
-      KAVACH_AUTH_MODE: keycloak
-      KAVACH_OIDC_ISSUER: "http://keycloak.localhost:18080/realms/kavach"
-      KAVACH_MCP_TRANSPORT: streamable-http
-      KAVACH_MCP_HTTP_HOST: 0.0.0.0
-      KAVACH_MCP_HTTP_PORT: 8002
-      KAVACH_MCP_PUBLIC_URL: http://localhost:8002
-      KAVACH_MCP_HTTP_ALLOWED_HOSTS: localhost,127.0.0.1
-      KAVACH_MCP_HTTP_STATELESS: "true"
-      KAVACH_MCP_HTTP_JSON_RESPONSE: "true"
-      KAVACH_MCP_AUDIT_DATABASE_PATH: /var/lib/kavach/mcp_execution_audit.db
-    command: ["uv", "run", "kavach-mcp", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8002"]
+      AI_GOVERNANCE_API_URL: http://ai-governance-platform:8000
+      AI_GOVERNANCE_AUTH_MODE: keycloak
+      AI_GOVERNANCE_OIDC_ISSUER: "http://keycloak.localhost:18080/realms/ai-governance"
+      AI_GOVERNANCE_MCP_TRANSPORT: streamable-http
+      AI_GOVERNANCE_MCP_HTTP_HOST: 0.0.0.0
+      AI_GOVERNANCE_MCP_HTTP_PORT: 8002
+      AI_GOVERNANCE_MCP_PUBLIC_URL: http://localhost:8002
+      AI_GOVERNANCE_MCP_HTTP_ALLOWED_HOSTS: localhost,127.0.0.1
+      AI_GOVERNANCE_MCP_HTTP_STATELESS: "true"
+      AI_GOVERNANCE_MCP_HTTP_JSON_RESPONSE: "true"
+      AI_GOVERNANCE_MCP_AUDIT_DATABASE_PATH: /var/lib/ai-governance/mcp_execution_audit.db
+    command: ["uv", "run", "ai-governance-mcp", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8002"]
     ports:
       - "8002:8002"
     volumes:
-      - kavach_sqlite_data:/var/lib/kavach
+      - ai-governance_sqlite_data:/var/lib/ai-governance
     depends_on:
-      kavach-platform:
+      ai-governance-platform:
         condition: service_healthy
     healthcheck:
       test:
         [
           "CMD",
-          "/opt/kavach-venv/bin/python",
+          "/opt/ai-governance-venv/bin/python",
           "-c",
           "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health')"
         ]
@@ -293,7 +293,7 @@ services:
       - "7474:7474"
       - "7687:7687"
     environment:
-      NEO4J_AUTH: neo4j/kavach-local-password
+      NEO4J_AUTH: neo4j/ai-governance-local-password
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
@@ -310,16 +310,16 @@ services:
     restart: unless-stopped
 
   # Runs once after Neo4j is healthy to apply graph constraints and indexes.
-  kavach-neo4j-schema:
-    image: kavach-platform:local
+  ai-governance-neo4j-schema:
+    image: ai-governance-platform:local
     env_file:
       - .env.platform
       - .env.build
     environment:
-      KAVACH_GRAPH_URI: bolt://neo4j:7687
-      KAVACH_GRAPH_USER: neo4j
-      KAVACH_ONTOLOGY_REPOSITORY: neo4j
-    command: ["/opt/kavach-venv/bin/python", "-m", "kavach.ontology.cli", "initialize-schema"]
+      AI_GOVERNANCE_GRAPH_URI: bolt://neo4j:7687
+      AI_GOVERNANCE_GRAPH_USER: neo4j
+      AI_GOVERNANCE_ONTOLOGY_REPOSITORY: neo4j
+    command: ["/opt/ai-governance-venv/bin/python", "-m", "ai_governance.ontology.cli", "initialize-schema"]
     depends_on:
       neo4j:
         condition: service_healthy
@@ -328,13 +328,13 @@ services:
   # Local dataset object storage. Exposes the S3 API on 8333, a browserable
   # Filer UI on 8888, and the SeaweedFS master UI/API on 9333. It intentionally
   # uses the standard S3 protocol so production can replace it with AWS S3
-  # without changing Kavach application code.
+  # without changing AI Governance Control Plane application code.
   seaweedfs:
     image: chrislusf/seaweedfs:4.29
     environment:
-      AWS_ACCESS_KEY_ID: kavach-local
-      AWS_SECRET_ACCESS_KEY: kavach-local-secret
-      S3_BUCKET: kavach-datasets
+      AWS_ACCESS_KEY_ID: ai-governance-local
+      AWS_SECRET_ACCESS_KEY: ai-governance-local-secret
+      S3_BUCKET: ai-governance-datasets
     ports:
       - "8333:8333"
       - "8888:8888"
@@ -353,7 +353,7 @@ services:
 
 volumes:
   # Shared durable local state. These survive `docker compose down`.
-  kavach_sqlite_data:
+  ai-governance_sqlite_data:
   neo4j_data:
   neo4j_logs:
   seaweedfs_data:

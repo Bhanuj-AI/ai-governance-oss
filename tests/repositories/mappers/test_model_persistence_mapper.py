@@ -1,10 +1,10 @@
 from datetime import UTC, datetime
 
-from kavach.domain.models import (
+from ai_governance.domain.models import (
     Model,
     ModelStatus,
 )
-from kavach.repositories.mappers.model_persistence_mapper import (
+from ai_governance.repositories.mappers.model_persistence_mapper import (
     ModelPersistenceMapper,
 )
 

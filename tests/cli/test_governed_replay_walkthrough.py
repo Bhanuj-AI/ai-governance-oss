@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 from rich.console import Console
 
-from kavach.cli.walkthrough import (
+from ai_governance.cli.walkthrough import (
     WalkthroughConfiguration,
     WalkthroughError,
     WalkthroughLifecycleEvent,
@@ -21,15 +21,15 @@ from kavach.cli.walkthrough import (
     run_governed_replay,
     run_policy_gate,
 )
-from kavach.cli.main import _parser, _renderer_for
-from kavach.cli.walkthrough_renderers import JsonRenderer, PlainRenderer, RichRenderer
-from kavach.mcp.clients import RestClient, RestClientError
+from ai_governance.cli.main import _parser, _renderer_for
+from ai_governance.cli.walkthrough_renderers import JsonRenderer, PlainRenderer, RichRenderer
+from ai_governance.mcp.clients import RestClient, RestClientError
 
 
 def test_walkthrough_requires_an_explicit_bearer_token_override(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("KAVACH_TOKEN", "stale-shell-token")
+    monkeypatch.setenv("AI_GOVERNANCE_TOKEN", "stale-shell-token")
 
     default_arguments = _parser().parse_args(["walkthrough", "governed-replay"])
     explicit_arguments = _parser().parse_args(
@@ -442,7 +442,7 @@ def test_rich_renderer_includes_scorecard_and_learning_milestone(
 
 
 def test_manifest_cleanup_requires_explicit_apply(tmp_path: Path) -> None:
-    manifests = tmp_path / ".kavach" / "walkthroughs"
+    manifests = tmp_path / ".ai-governance" / "walkthroughs"
     manifests.mkdir(parents=True)
     old = manifests / "old.json"
     recent = manifests / "recent.json"

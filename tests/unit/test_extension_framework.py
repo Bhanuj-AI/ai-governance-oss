@@ -6,10 +6,10 @@ from importlib.metadata import EntryPoint
 import pytest
 from fastapi.testclient import TestClient
 
-from kavach.api.app import create_app
-from kavach.events import EvaluationCompleted
-from kavach.hooks import FailurePolicy, HookInvocation
-from kavach.plugins import (
+from ai_governance.api.app import create_app
+from ai_governance.events import EvaluationCompleted
+from ai_governance.hooks import FailurePolicy, HookInvocation
+from ai_governance.plugins import (
     ExtensionError,
     PluginMetadata,
     PluginRegistry,
@@ -24,7 +24,7 @@ class _RoutePlugin:
     metadata = PluginMetadata(
         name="route-plugin",
         version="1.0.0",
-        required_kavach_version=">=0",
+        required_ai_governance_version=">=0",
         capabilities=("search.read",),
     )
 
@@ -52,7 +52,7 @@ class _IncompatiblePlugin(_RoutePlugin):
     metadata = PluginMetadata(
         name="incompatible-plugin",
         version="1.0.0",
-        required_kavach_version=">=9",
+        required_ai_governance_version=">=9",
     )
 
 
@@ -67,7 +67,7 @@ def test_plugin_route_lifecycle_and_runtime_diagnostics() -> None:
         {
             "name": "route-plugin",
             "version": "1.0.0",
-            "required_kavach_version": ">=0",
+            "required_ai_governance_version": ">=0",
             "capabilities": ["search.read"],
             "contract_version": "v1",
             "status": "active",
@@ -107,7 +107,7 @@ def test_provider_replacement_and_decoration_are_explicit() -> None:
 
 
 def test_hooks_and_events_have_deterministic_order_and_immutable_context() -> None:
-    registry = PluginRegistry(kavach_version="1.2.4")
+    registry = PluginRegistry(ai_governance_version="1.2.4")
     hook_order: list[str] = []
     registry.hooks.register(
         name="after_execution",
@@ -157,17 +157,17 @@ def test_hooks_and_events_have_deterministic_order_and_immutable_context() -> No
 def test_plugin_compatibility_capabilities_and_route_conflicts_fail_fast() -> None:
     plugin = _RoutePlugin()
     registry = PluginRegistry(
-        supported_capabilities=(), kavach_version="1.2.4"
+        supported_capabilities=(), ai_governance_version="1.2.4"
     )
     registry.register(plugin)
     with pytest.raises(ExtensionError, match="unsupported capabilities"):
         registry.initialize()
 
     incompatible = PluginRegistry(
-        supported_capabilities={"search.read"}, kavach_version="1.2.4"
+        supported_capabilities={"search.read"}, ai_governance_version="1.2.4"
     )
     incompatible.register(_IncompatiblePlugin())
-    with pytest.raises(ExtensionError, match="requires Kavach"):
+    with pytest.raises(ExtensionError, match="requires AI Governance Control Plane"):
         incompatible.initialize()
     assert incompatible.diagnostics()["plugins"][0]["status"] == PluginStatus.INCOMPATIBLE.value
 
@@ -185,17 +185,17 @@ def test_plugin_is_discovered_through_the_packaging_entry_point(monkeypatch) -> 
     entry_point = EntryPoint(
         name="route-plugin",
         value="tests.unit.test_extension_framework:_RoutePlugin",
-        group="kavach.plugins",
+        group="ai_governance.plugins",
     )
 
     class _EntryPoints:
         def select(self, *, group: str):
-            assert group == "kavach.plugins"
+            assert group == "ai_governance.plugins"
             return (entry_point,)
 
-    monkeypatch.setattr("kavach.plugins.registry.entry_points", lambda: _EntryPoints())
+    monkeypatch.setattr("ai_governance.plugins.registry.entry_points", lambda: _EntryPoints())
     registry = PluginRegistry(
-        supported_capabilities={"search.read"}, kavach_version="1.2.4"
+        supported_capabilities={"search.read"}, ai_governance_version="1.2.4"
     )
 
     registry.discover()

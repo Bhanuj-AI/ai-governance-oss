@@ -4,29 +4,29 @@ import sys
 from datetime import UTC, datetime
 from dataclasses import replace
 
-from kavach.domain.evaluation_result import EvaluationMetric, EvaluationResult
-from kavach.domain.jobs import JobStatus, JobType
-from kavach.domain.replay import ReplayStatus
-from kavach.domain.workflow_execution import WorkflowExecution
-from kavach.repositories.in_memory import InMemoryJobRepository
-from kavach.repositories.in_memory_replay_repository import InMemoryReplayRepository
-from kavach.repositories.in_memory_replay_result_repository import (
+from ai_governance.domain.evaluation_result import EvaluationMetric, EvaluationResult
+from ai_governance.domain.jobs import JobStatus, JobType
+from ai_governance.domain.replay import ReplayStatus
+from ai_governance.domain.workflow_execution import WorkflowExecution
+from ai_governance.repositories.in_memory import InMemoryJobRepository
+from ai_governance.repositories.in_memory_replay_repository import InMemoryReplayRepository
+from ai_governance.repositories.in_memory_replay_result_repository import (
     InMemoryReplayResultRepository,
 )
-from kavach.services.job_api_service import JobApiService
-from kavach.services.job_executor import JobExecutor
-from kavach.services.replay_application_service import ReplayApplicationService
-from kavach.services.replay_evaluation import ReplayEvaluationJobHandler
-from kavach.services.replay_execution import (
+from ai_governance.services.job_api_service import JobApiService
+from ai_governance.services.job_executor import JobExecutor
+from ai_governance.services.replay_application_service import ReplayApplicationService
+from ai_governance.services.replay_evaluation import ReplayEvaluationJobHandler
+from ai_governance.services.replay_execution import (
     HistoricalReplayExecutionAdapter,
     ReplayExecutionAdapterRegistry,
     ReplayJobHandler,
 )
-from kavach.services.replay_execution_discovery import InMemoryReplaySourceResolver
-from kavach.tenancy.domain import TenantContext
-from kavach.workers import JobWorker
-from kavach.workers import replay_worker_runtime
-from kavach.workers.replay_worker_runtime import _AutoEvaluationReplayHandler
+from ai_governance.services.replay_execution_discovery import InMemoryReplaySourceResolver
+from ai_governance.tenancy.domain import TenantContext
+from ai_governance.workers import JobWorker
+from ai_governance.workers import replay_worker_runtime
+from ai_governance.workers.replay_worker_runtime import _AutoEvaluationReplayHandler
 
 
 NOW = datetime(2026, 7, 17, tzinfo=UTC)

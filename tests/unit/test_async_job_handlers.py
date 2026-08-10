@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from kavach.domain.evaluation_result import EvaluationMetric, EvaluationResult
-from kavach.domain.experiments import EvaluationRun, EvaluationRunStatus, Leaderboard
-from kavach.domain.jobs import Job, JobExecutionContext, JobStatus, JobType
-from kavach.services.async_job_handlers import EvaluationJobHandler, ExperimentJobHandler
+from ai_governance.domain.evaluation_result import EvaluationMetric, EvaluationResult
+from ai_governance.domain.experiments import EvaluationRun, EvaluationRunStatus, Leaderboard
+from ai_governance.domain.jobs import Job, JobExecutionContext, JobStatus, JobType
+from ai_governance.services.async_job_handlers import EvaluationJobHandler, ExperimentJobHandler
 
 
 NOW = datetime(2026, 7, 17, tzinfo=UTC)

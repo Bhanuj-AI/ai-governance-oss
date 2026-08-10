@@ -1,17 +1,17 @@
 from datetime import UTC, datetime
 
-from kavach.domain.history import EvaluationHistory, EvaluationHistoryRecord
-from kavach.domain.jobs import Job, JobStatus, JobType
-from kavach.domain.replay import ReplayEvaluationHistory, ReplayRequest
-from kavach.domain.workflow_execution import WorkflowExecution
-from kavach.mcp.audit import MCPExecutionAuditRecord
-from kavach.ontology import (
+from ai_governance.domain.history import EvaluationHistory, EvaluationHistoryRecord
+from ai_governance.domain.jobs import Job, JobStatus, JobType
+from ai_governance.domain.replay import ReplayEvaluationHistory, ReplayRequest
+from ai_governance.domain.workflow_execution import WorkflowExecution
+from ai_governance.mcp.audit import MCPExecutionAuditRecord
+from ai_governance.ontology import (
     EntityType,
     InMemoryOntologyGraphRepository,
     OntologyService,
     RelationshipType,
 )
-from kavach.ontology.synchronization import (
+from ai_governance.ontology.synchronization import (
     JobOntologySynchronizer,
     MCPAuditOntologySynchronizer,
     ReplayOntologySynchronizer,

@@ -1,35 +1,35 @@
 # Scope
 
-This file governs the Kavach OSS repository. Child `AGENTS.md` files refine
+This file governs the AI Governance Control Plane OSS repository. Child `AGENTS.md` files refine
 these rules for their own directories.
 
 ## Purpose
 
-Kavach OSS is an independently usable governance control plane for AI
+AI Governance Control Plane OSS is an independently usable governance control plane for AI
 workflows and governed assets. Preserve explicit ownership of governance state,
 evidence, policy, audit, replay and persistence contracts.
 
 ## Architectural Facts
 
-- `src/kavach/api`, `src/kavach/mcp`, and `src/kavach/cli` are transport
-  adapters. `src/kavach/services` coordinates use cases; domain contracts and
+- `src/ai_governance/api`, `src/ai_governance/mcp`, and `src/ai_governance/cli` are transport
+  adapters. `src/ai_governance/services` coordinates use cases; domain contracts and
   repository interfaces remain below that layer.
 - Repository backend selection is a control-plane concern owned by the
-  factories in `src/kavach/repositories/factories/`; API dependency providers
+  factories in `src/ai_governance/repositories/factories/`; API dependency providers
   compose factories with settings. Do not choose a concrete backend in a
   service or adapter.
-- Extensions use the public `KavachPlugin` and SPI (Service Provider Interfaces) contracts. OSS discovers
-  entry points in the `kavach.plugins` group and does not import or detect a
+- Extensions use the public `AIGovernancePlugin` and SPI (Service Provider Interfaces) contracts. OSS discovers
+  entry points in the `ai_governance.plugins` group and does not import or detect a
   separately installed Enterprise distribution. See
   `docs/architecture/EXTENSIBILITY.md`.
 - The current tree still contains Enterprise-named settings. Optional
-  Enterprise MCP tools are discovered through the `kavach.mcp.plugins` entry
+  Enterprise MCP tools are discovered through the `ai_governance.mcp.plugins` entry
   point rather than OSS environment switches. Do not add dependencies on an
   Enterprise distribution from OSS.
 
 ## Core / Enterprise Extension Boundary
 
-Kavach Core owns stable, generic contracts. Enterprise owns its business
+AI Governance Control Plane Core owns stable, generic contracts. Enterprise owns its business
 concepts, semantics, validation, persistence, metrics, routes and handlers.
 Do not add an Enterprise business concept to Core when it can be carried by an
 existing plugin, SPI, handler, event, or provider extension point.
@@ -74,7 +74,7 @@ storage or provider implementations
   evidence, not mutable working state.
 - Resolve tenant scope through the approved runtime path. REST uses
   `get_tenant_context` or `get_compatible_tenant_context` in
-  `src/kavach/api/dependencies/tenancy.py`; Keycloak mode constructs context
+  `src/ai_governance/api/dependencies/tenancy.py`; Keycloak mode constructs context
   from a validated `AuthenticatedPrincipal` with `TenantContextFactory`.
   Development-mode scope headers are validated against the control plane; they
   are not a replacement for server-side authorization.
@@ -116,10 +116,10 @@ architectural constraints.
 
 ## Related Guidance
 
-- `src/kavach/api/AGENTS.md`
-- `src/kavach/domain/AGENTS.md`
-- `src/kavach/repositories/AGENTS.md`
-- `src/kavach/services/AGENTS.md`
-- `src/kavach/tenancy/AGENTS.md`
-- `src/kavach/workers/AGENTS.md`
+- `src/ai_governance/api/AGENTS.md`
+- `src/ai_governance/domain/AGENTS.md`
+- `src/ai_governance/repositories/AGENTS.md`
+- `src/ai_governance/services/AGENTS.md`
+- `src/ai_governance/tenancy/AGENTS.md`
+- `src/ai_governance/workers/AGENTS.md`
 - `docs/architecture/ARCHITECTURE.md`

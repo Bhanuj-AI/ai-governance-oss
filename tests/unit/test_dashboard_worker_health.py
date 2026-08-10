@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from kavach.domain.jobs import WorkerHeartbeat
-from kavach.services.dashboard_service import _worker_health
+from ai_governance.domain.jobs import WorkerHeartbeat
+from ai_governance.services.dashboard_service import _worker_health
 
 
 def test_worker_health_excludes_demo_heartbeats_from_the_live_count() -> None:

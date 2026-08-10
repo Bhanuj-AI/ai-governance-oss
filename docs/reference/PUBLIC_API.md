@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document summarizes the current public API surface exposed by the Kavach
+This document summarizes the current public API surface exposed by the AI Governance Control Plane
 package. It focuses on responsibilities and usage boundaries rather than
 exhaustive method signatures.
 
@@ -21,13 +21,13 @@ For an API-orchestrated product walkthrough, see the
 
 The stable open-core extension surface is intentionally package-scoped:
 
-- `kavach.spi`: provider contracts, including `SearchProvider` and
+- `ai_governance.spi`: provider contracts, including `SearchProvider` and
   `EvaluationProvider`
-- `kavach.plugins`: `KavachPlugin`, `PluginMetadata`, lifecycle context, and
+- `ai_governance.plugins`: `AIGovernancePlugin`, `PluginMetadata`, lifecycle context, and
   explicit provider/route registries
-- `kavach.hooks`: immutable hook invocations, failure policies, and the hook
+- `ai_governance.hooks`: immutable hook invocations, failure policies, and the hook
   registry
-- `kavach.events`: versioned `DomainEvent` contracts, including
+- `ai_governance.events`: versioned `DomainEvent` contracts, including
   `EvaluationCompleted`, and the event publisher
 
 Extensions must use these packages rather than importing core implementation
@@ -39,13 +39,13 @@ for registration, lifecycle, compatibility, and route-contribution rules.
 ### GovernanceDecision
 
 Responsibility:
-Represent an evidence-backed governance outcome produced by Kavach.
+Represent an evidence-backed governance outcome produced by AI Governance Control Plane.
 
 Public imports:
 
-- `kavach.GovernanceDecision`
-- `kavach.decisions.GovernanceDecision`
-- `kavach.domain.GovernanceDecision`
+- `ai_governance.GovernanceDecision`
+- `ai_governance.decisions.GovernanceDecision`
+- `ai_governance.domain.GovernanceDecision`
 
 Related decision value objects and enums:
 
@@ -84,9 +84,9 @@ governance-oriented outcomes from structured evidence.
 
 Public imports:
 
-- `kavach.GovernancePolicy`
-- `kavach.decisions.GovernancePolicy`
-- `kavach.domain.GovernancePolicy`
+- `ai_governance.GovernancePolicy`
+- `ai_governance.decisions.GovernancePolicy`
+- `ai_governance.domain.GovernancePolicy`
 
 Related policy models and enums:
 
@@ -125,17 +125,17 @@ lifecycle, schema metadata, and simulation over the existing evaluator.
 
 Public imports:
 
-- `kavach.PolicyAdministrationService`
-- `kavach.services.PolicyAdministrationService`
-- `kavach.services.policies.PolicyAdministrationService`
-- `kavach.PolicyDefinition`
-- `kavach.decisions.PolicyDefinition`
-- `kavach.PolicyVersion`
-- `kavach.decisions.PolicyVersion`
-- `kavach.PolicyAdministrationRepository`
-- `kavach.repositories.PolicyAdministrationRepository`
-- `kavach.InMemoryPolicyAdministrationRepository`
-- `kavach.repositories.InMemoryPolicyAdministrationRepository`
+- `ai_governance.PolicyAdministrationService`
+- `ai_governance.services.PolicyAdministrationService`
+- `ai_governance.services.policies.PolicyAdministrationService`
+- `ai_governance.PolicyDefinition`
+- `ai_governance.decisions.PolicyDefinition`
+- `ai_governance.PolicyVersion`
+- `ai_governance.decisions.PolicyVersion`
+- `ai_governance.PolicyAdministrationRepository`
+- `ai_governance.repositories.PolicyAdministrationRepository`
+- `ai_governance.InMemoryPolicyAdministrationRepository`
+- `ai_governance.repositories.InMemoryPolicyAdministrationRepository`
 
 Notes:
 
@@ -160,9 +160,9 @@ Build read-only, decision-ready evidence from the governance ontology graph.
 
 Public imports:
 
-- `kavach.DecisionEvidenceBuilder`
-- `kavach.decisions.DecisionEvidenceBuilder`
-- `kavach.domain.DecisionEvidenceBuilder`
+- `ai_governance.DecisionEvidenceBuilder`
+- `ai_governance.decisions.DecisionEvidenceBuilder`
+- `ai_governance.domain.DecisionEvidenceBuilder`
 
 Related evidence models:
 
@@ -194,9 +194,9 @@ policies, and outcome-mapping rules.
 
 Public imports:
 
-- `kavach.GovernanceReasoningEngine`
-- `kavach.decisions.GovernanceReasoningEngine`
-- `kavach.domain.GovernanceReasoningEngine`
+- `ai_governance.GovernanceReasoningEngine`
+- `ai_governance.decisions.GovernanceReasoningEngine`
+- `ai_governance.domain.GovernanceReasoningEngine`
 
 Related reasoning models and services:
 
@@ -230,14 +230,14 @@ decision lifecycle audit records behind a storage-independent contract.
 
 Public imports:
 
-- `kavach.GovernanceDecisionRepository`
-- `kavach.repositories.GovernanceDecisionRepository`
-- `kavach.InMemoryGovernanceDecisionRepository`
-- `kavach.repositories.InMemoryGovernanceDecisionRepository`
-- `kavach.SQLiteGovernanceDecisionRepository`
-- `kavach.repositories.SQLiteGovernanceDecisionRepository`
-- `kavach.PostgresGovernanceDecisionRepository`
-- `kavach.repositories.PostgresGovernanceDecisionRepository`
+- `ai_governance.GovernanceDecisionRepository`
+- `ai_governance.repositories.GovernanceDecisionRepository`
+- `ai_governance.InMemoryGovernanceDecisionRepository`
+- `ai_governance.repositories.InMemoryGovernanceDecisionRepository`
+- `ai_governance.SQLiteGovernanceDecisionRepository`
+- `ai_governance.repositories.SQLiteGovernanceDecisionRepository`
+- `ai_governance.PostgresGovernanceDecisionRepository`
+- `ai_governance.repositories.PostgresGovernanceDecisionRepository`
 
 Related persistence models:
 
@@ -270,10 +270,10 @@ lineage workflows for REST and MCP adapters.
 
 Public imports:
 
-- `kavach.GovernanceDecisionApplicationService`
-- `kavach.services.GovernanceDecisionApplicationService`
-- `kavach.DecisionEvaluateCommand`
-- `kavach.services.DecisionEvaluateCommand`
+- `ai_governance.GovernanceDecisionApplicationService`
+- `ai_governance.services.GovernanceDecisionApplicationService`
+- `ai_governance.DecisionEvaluateCommand`
+- `ai_governance.services.DecisionEvaluateCommand`
 
 Notes:
 
@@ -339,11 +339,11 @@ Public REST resource groups:
 - ontology graph queries
 
 REST routers are intentionally not exported from the package root as the main
-Python API surface. They are mounted through `kavach.api.app:create_app`.
+Python API surface. They are mounted through `ai_governance.api.app:create_app`.
 Routers depend on DTOs, mappers, and API service facades; they do not import
 repository implementations or provider adapters.
 
-## Kavach Studio
+## AI Governance Control Plane Studio
 
 The Next.js Studio in `console/` is a public operator-facing frontend over the
 REST dashboard, decision, and graph query APIs. It does not expose Python
@@ -352,11 +352,11 @@ semantics.
 
 ## Guided CLI
 
-The `kavach` command currently provides a deliberately focused, guided product
+The `ai-governance` command currently provides a deliberately focused, guided product
 walkthrough rather than a second operational control plane:
 
 ```bash
-kavach walkthrough governed-replay
+ai-governance walkthrough governed-replay
 ```
 
 It only calls public REST endpoints to observe prompt/model evidence, select
@@ -368,21 +368,21 @@ The command writes and checkpoints a JSON run manifest containing the API
 version, actual asset/execution/evaluation/decision/replay IDs, step outcomes,
 and inspection URLs. `--output-json` is suitable for CI; `--submit-replay`
 explicitly queues the replay job and does not imply that execution, evaluation,
-comparison, or drift have completed. `kavach walkthrough cleanup` previews
+comparison, or drift have completed. `ai-governance walkthrough cleanup` previews
 local diagnostic manifests and requires `--apply` to remove them; it never
 touches governed assets.
 
-The CLI automatically exchanges configured `KAVACH_OAUTH_*` workload
+The CLI automatically exchanges configured `AI_GOVERNANCE_OAUTH_*` workload
 credentials for a short-lived token in memory. This is a service-account
 identity, not organization-admin impersonation; normal membership and RBAC
 checks still apply. No bearer token export is required. `--token` is an
-explicit override only; the CLI does not read `KAVACH_TOKEN` from the shell.
+explicit override only; the CLI does not read `AI_GOVERNANCE_TOKEN` from the shell.
 
 ## MCP Server
 
 Public MCP entry points:
 
-- `KavachMCPServer`
+- `AIGovernanceMCPServer`
 - `create_mcp_server`
 
 The MCP server is a stateless transport adapter over the REST control plane. It
@@ -509,8 +509,8 @@ policy. Key contracts include:
 - `JobRepository`
 
 SQLite, PostgreSQL, Snowflake, and in-memory implementations sit behind these
-contracts. Snowflake exports live under `kavach.databases.snowflake` and
-`kavach.repositories.snowflake` and remain optional infrastructure concerns.
+contracts. Snowflake exports live under `ai_governance.databases.snowflake` and
+`ai_governance.repositories.snowflake` and remain optional infrastructure concerns.
 
 ## Providers as Contracts
 

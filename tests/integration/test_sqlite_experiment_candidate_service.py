@@ -1,35 +1,35 @@
 from datetime import UTC, datetime
 from pathlib import Path
 
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.repositories.sqlite.sqlite_dataset_repository import (
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.repositories.sqlite.sqlite_dataset_repository import (
     SQLiteDatasetRepository,
 )
-from kavach.repositories.sqlite.sqlite_experiment_candidate_repository import (
+from ai_governance.repositories.sqlite.sqlite_experiment_candidate_repository import (
     SQLiteExperimentCandidateRepository,
 )
-from kavach.repositories.sqlite.sqlite_experiment_repository import (
+from ai_governance.repositories.sqlite.sqlite_experiment_repository import (
     SQLiteExperimentRepository,
 )
-from kavach.repositories.sqlite.sqlite_model_repository import (
+from ai_governance.repositories.sqlite.sqlite_model_repository import (
     SQLiteModelRepository,
 )
-from kavach.repositories.sqlite.sqlite_prompt_repository import (
+from ai_governance.repositories.sqlite.sqlite_prompt_repository import (
     SQLitePromptRepository,
 )
-from kavach.services.datasets import DatasetRegistryService
-from kavach.services.experiments import (
+from ai_governance.services.datasets import DatasetRegistryService
+from ai_governance.services.experiments import (
     ExperimentCandidateService,
     ExperimentService,
 )
-from kavach.services.models import ModelRegistryService
-from kavach.services.prompts import PromptRegistryService
+from ai_governance.services.models import ModelRegistryService
+from ai_governance.services.prompts import PromptRegistryService
 
 
 def test_sqlite_experiment_candidate_service_persists_candidate(
     tmp_path: Path,
 ) -> None:
-    database = SQLiteDatabase(tmp_path / "kavach.db")
+    database = SQLiteDatabase(tmp_path / "ai_governance.db")
     database.initialize()
 
     prompt_repository = SQLitePromptRepository(database)

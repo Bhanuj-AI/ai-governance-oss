@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kavach.ontology import (
+from ai_governance.ontology import (
     EntityType,
     EventType,
     InvalidOntologyEntityError,

@@ -2,9 +2,9 @@
 
 ## Purpose
 
-Kavach uses Keycloak for authentication and keeps tenancy, membership, roles,
-and permissions in Kavach. This separation allows an identity provider to be
-replaced or centrally managed without moving Kavach authorization decisions out
+AI Governance Control Plane uses Keycloak for authentication and keeps tenancy, membership, roles,
+and permissions in AI Governance Control Plane. This separation allows an identity provider to be
+replaced or centrally managed without moving AI Governance Control Plane authorization decisions out
 of the platform.
 
 This document defines the browser-to-API authentication flow, Keycloak realm
@@ -15,13 +15,13 @@ contract, local bootstrap procedure, and operational failure boundaries.
 | Concern | Owner |
 | --- | --- |
 | User login, sessions, passwords, JWT signing keys | Keycloak |
-| Browser login redirect and token refresh | Kavach Studio |
-| JWT signature, issuer, expiry, and subject validation | Kavach API |
-| Organizations, projects, memberships, roles, permissions | Kavach control plane |
-| Policy and governance authorization | Kavach `AuthorizationService` |
+| Browser login redirect and token refresh | AI Governance Control Plane Studio |
+| JWT signature, issuer, expiry, and subject validation | AI Governance Control Plane API |
+| Organizations, projects, memberships, roles, permissions | AI Governance Control Plane control plane |
+| Policy and governance authorization | AI Governance Control Plane `AuthorizationService` |
 
-Keycloak roles and claims must not be used to bypass Kavach membership or RBAC
-checks. The only runtime caller identity trusted by Kavach in Keycloak mode is
+Keycloak roles and claims must not be used to bypass AI Governance Control Plane membership or RBAC
+checks. The only runtime caller identity trusted by AI Governance Control Plane in Keycloak mode is
 the validated JWT `sub` claim.
 
 ## Request flow
@@ -30,17 +30,17 @@ the validated JWT `sub` claim.
 Browser
   │  1. Open Studio
   ▼
-Kavach Studio AuthProvider
+AI Governance Control Plane Studio AuthProvider
   │  2. Keycloak Authorization Code Flow with PKCE (S256)
   ▼
-Keycloak realm: kavach
+Keycloak realm: ai-governance
   │  3. Access token
   ▼
 Studio API client
   │  4. Authorization: Bearer <access token>
-  │     X-Kavach-Organization-Id / X-Kavach-Project-Id
+  │     X-AI-Governance-Organization-Id / X-AI-Governance-Project-Id
   ▼
-Kavach API AuthenticationService
+AI Governance Control Plane API AuthenticationService
   │  5. Validate RS256 signature with JWKS, issuer, and expiry
   ▼
 AuthenticatedPrincipal
@@ -60,7 +60,7 @@ A `403` is an authorization result and must not redirect the user to login.
 
 ## Studio client contract
 
-Studio uses the public Keycloak client `kavach-studio`.
+Studio uses the public Keycloak client `ai-governance-studio`.
 
 ```text
 Client authentication: Off
@@ -74,22 +74,22 @@ The browser client never receives a client secret. Its required build-time
 configuration is:
 
 ```env
-NEXT_PUBLIC_KAVACH_API_BASE_URL=http://localhost:8000
+NEXT_PUBLIC_AI_GOVERNANCE_API_BASE_URL=http://localhost:8000
 NEXT_PUBLIC_KEYCLOAK_URL=http://keycloak.localhost:8080
-NEXT_PUBLIC_KEYCLOAK_REALM=kavach
-NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=kavach-studio
+NEXT_PUBLIC_KEYCLOAK_REALM=ai-governance
+NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=ai-governance-studio
 ```
 
 These variables are compiled into the Next.js browser bundle. Docker builds
-must provide them as `kavach-studio` build arguments; runtime-only changes do
+must provide them as `ai-governance-studio` build arguments; runtime-only changes do
 not update an already-built Studio image.
 
 ## VS Code MCP client contract
 
-The local realm also defines `kavach-mcp-vscode`, a public Authorization Code
+The local realm also defines `ai-governance-mcp-vscode`, a public Authorization Code
 client with PKCE S256 and loopback redirect URIs. Its access-token audience
 mapper adds `http://localhost:8002/mcp`. This must remain equal to the MCP
-service's `KAVACH_MCP_PUBLIC_URL` plus its configured MCP path, because the
+service's `AI_GOVERNANCE_MCP_PUBLIC_URL` plus its configured MCP path, because the
 MCP service rejects tokens intended for any other resource.
 
 ## JWT contract
@@ -98,15 +98,15 @@ The API requires these verified JWT claims:
 
 | Claim | Use |
 | --- | --- |
-| `iss` | Must equal `KAVACH_OIDC_ISSUER`. |
+| `iss` | Must equal `AI_GOVERNANCE_OIDC_ISSUER`. |
 | `exp` | Token expiry validation. |
-| `sub` | Immutable Kavach runtime actor ID. Required. |
+| `sub` | Immutable AI Governance Control Plane runtime actor ID. Required. |
 | `azp` or `client_id` | Authenticated client identifier for observability. |
 | `organization_id` | Optional tenant constraint. |
 | `principal_type` | Optional mapping to USER, SERVICE, or SYSTEM. |
 
-The realm must attach the standard `oidc-sub-mapper` to `kavach-studio` with
-the access-token claim enabled. Kavach rejects a token without `sub`; it does
+The realm must attach the standard `oidc-sub-mapper` to `ai-governance-studio` with
+the access-token claim enabled. AI Governance Control Plane rejects a token without `sub`; it does
 not fall back to username, email, or a client ID.
 
 Keycloak lightweight tokens omit identity claims unless explicitly mapped. The
@@ -118,11 +118,11 @@ defense in depth measure.
 The client supplies requested tenant scope through:
 
 ```http
-X-Kavach-Organization-Id: <organization>
-X-Kavach-Project-Id: <optional project>
+X-AI-Governance-Organization-Id: <organization>
+X-AI-Governance-Project-Id: <optional project>
 ```
 
-The client never supplies the runtime actor ID in Keycloak mode. Kavach creates
+The client never supplies the runtime actor ID in Keycloak mode. AI Governance Control Plane creates
 the tenant context from the verified principal:
 
 ```text
@@ -133,14 +133,14 @@ request_id      = request metadata or generated value
 ```
 
 If the JWT contains `organization_id`, it must equal the requested organization.
-Kavach then requires an active membership and a role assignment that grants the
+AI Governance Control Plane then requires an active membership and a role assignment that grants the
 requested permission. The resulting rule is:
 
 ```text
 JWT organization constraint
-AND active Kavach membership
-AND Kavach role assignment
-AND required Kavach permission
+AND active AI Governance Control Plane membership
+AND AI Governance Control Plane role assignment
+AND required AI Governance Control Plane permission
 ```
 
 Target actor fields in membership and role-management requests remain explicit
@@ -149,10 +149,10 @@ operation inputs. They are distinct from the authenticated caller.
 ## Membership persistence and provisioning
 
 Authentication does not create a membership implicitly. A valid Keycloak token
-establishes *who* is calling (`sub`); Kavach's control-plane repository decides
+establishes *who* is calling (`sub`); AI Governance Control Plane's control-plane repository decides
 whether that actor belongs to an organization and which permissions it has.
 
-For every organization an actor may access, Kavach persists one membership
+For every organization an actor may access, AI Governance Control Plane persists one membership
 identified by the composite key:
 
 ```text
@@ -182,13 +182,13 @@ The control plane creates the membership in either of these ways:
 - A caller with `membership.manage` can add an explicit active membership for
   another actor, then assign organization- or project-scoped roles.
 - Local bootstrap creates the initial admin membership from
-  `KAVACH_BOOTSTRAP_ADMIN_SUB` only when the control-plane database is empty.
+  `AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB` only when the control-plane database is empty.
 
 Changing a Keycloak user's `organization_id` or `project_ids` attributes does
-not provision a Kavach membership or role. Those claims constrain the tenant
+not provision a AI Governance Control Plane membership or role. Those claims constrain the tenant
 scope accepted from that token; membership and role records remain the source
 of authorization truth. For the local `studio`, the stable subject in the
-realm definition, `KAVACH_BOOTSTRAP_ADMIN_SUB`, and the persisted membership
+realm definition, `AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB`, and the persisted membership
 must match.
 
 The repository contract is persistence-independent. The in-memory repository
@@ -200,10 +200,10 @@ This makes membership behavior identical across repository implementations.
 ## Local realm and bootstrap
 
 The local realm definition is
-`keycloak-postgres/keycloak/kavach-realm.json`. It defines:
+`keycloak-postgres/keycloak/ai-governance-realm.json`. It defines:
 
-- Realm `kavach`.
-- Public Studio client `kavach-studio`.
+- Realm `ai-governance`.
+- Public Studio client `ai-governance-studio`.
 - Subject mapper and tenant attribute mappers.
 - Local `studio` user with stable subject ID.
 - `organization_id=org_default` and `project_ids=project_default` user
@@ -214,22 +214,22 @@ The local realm therefore enables `unmanagedAttributePolicy: ENABLED` so the
 tenant attributes are retained and can be mapped into tokens.
 
 The platform's local Compose configuration sets
-`KAVACH_BOOTSTRAP_ADMIN_SUB` to the same stable Keycloak subject. On a clean
-Kavach control-plane database, bootstrap creates the initial membership and
+`AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB` to the same stable Keycloak subject. On a clean
+AI Governance Control Plane control-plane database, bootstrap creates the initial membership and
 organization-wide `ORGANIZATION_ADMIN` role assignment for that subject.
 
-`KAVACH_BOOTSTRAP_ADMIN_SUB` is bootstrap-only. It must not be used to identify
+`AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB` is bootstrap-only. It must not be used to identify
 or impersonate a runtime caller.
 
 ## Local startup
 
 ```bash
 ./scripts/keycloak/start-keycloak.sh
-./kavach.sh
+./ai_governance.sh
 ```
 
 Open Studio at `http://localhost:3000` and sign in as `studio` using the
-password configured by `KAVACH_STUDIO_PASSWORD` in the local Keycloak env file.
+password configured by `AI_GOVERNANCE_STUDIO_PASSWORD` in the local Keycloak env file.
 
 Keycloak imports the realm JSON only for a new PostgreSQL volume. To recreate a
 disposable local Keycloak realm:
@@ -250,8 +250,8 @@ This deletes Keycloak users, sessions, client configuration, and signing state.
 | `401 missing_authorization` | Studio did not send a bearer token. | Rebuild Studio and verify public Keycloak build arguments. |
 | `401 missing_claims` | JWT lacks `sub` or another required claim. | Verify the `oidc-sub-mapper` and disable lightweight tokens for Studio. |
 | `401 invalid_signature` | JWT does not match current Keycloak JWKS. | Verify issuer/JWKS reachability and reauthenticate. |
-| `403 TENANT_SCOPE_MISMATCH` | Requested tenant differs from JWT constraint or membership scope. | Align Keycloak tenant attributes, Studio selection, and Kavach membership. |
-| `403 authorization_denied` | Authenticated actor lacks Kavach permission. | Add or adjust Kavach membership/role assignment; do not change Keycloak roles. |
+| `403 TENANT_SCOPE_MISMATCH` | Requested tenant differs from JWT constraint or membership scope. | Align Keycloak tenant attributes, Studio selection, and AI Governance Control Plane membership. |
+| `403 authorization_denied` | Authenticated actor lacks AI Governance Control Plane permission. | Add or adjust AI Governance Control Plane membership/role assignment; do not change Keycloak roles. |
 
 ## Security properties
 
@@ -262,5 +262,5 @@ This deletes Keycloak users, sessions, client configuration, and signing state.
 - Runtime identity is always the validated `sub` claim.
 - Bootstrap configuration cannot impersonate callers after startup.
 - Keycloak tenant claims constrain tenant scope but never grant permissions.
-- Authorization decisions remain in Kavach and are auditable through its
+- Authorization decisions remain in AI Governance Control Plane and are auditable through its
   existing authorization and control-plane audit mechanisms.

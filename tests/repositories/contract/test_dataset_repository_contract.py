@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
 
-from kavach.domain.datasets import (
+from ai_governance.domain.datasets import (
     Dataset,
     DatasetStatus,
 )
-from kavach.repositories.dataset_repository import DatasetRepository
+from ai_governance.repositories.dataset_repository import DatasetRepository
 
 
 class DatasetRepositoryContract(ABC):

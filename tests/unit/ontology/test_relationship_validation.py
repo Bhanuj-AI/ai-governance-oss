@@ -1,6 +1,6 @@
 import pytest
 
-from kavach.ontology import (
+from ai_governance.ontology import (
     Cardinality,
     EntityType,
     InvalidOntologyRelationshipError,

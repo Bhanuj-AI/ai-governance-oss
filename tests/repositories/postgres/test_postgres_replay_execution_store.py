@@ -1,11 +1,11 @@
 from datetime import UTC, datetime
 
-from kavach.databases.postgres.database import PostgresDatabase
-from kavach.domain.workflow_execution import WorkflowExecution
-from kavach.repositories.postgres.postgres_replay_execution_store import (
+from ai_governance.databases.postgres.database import PostgresDatabase
+from ai_governance.domain.workflow_execution import WorkflowExecution
+from ai_governance.repositories.postgres.postgres_replay_execution_store import (
     PostgresReplayExecutionStore,
 )
-from kavach.tenancy.domain import TenantContext
+from ai_governance.tenancy.domain import TenantContext
 
 
 def test_execution_store_is_shared_by_independent_process_style_instances(

@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.domain.workflow_execution import WorkflowExecution
-from kavach.repositories.sqlite.sqlite_replay_execution_store import (
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.domain.workflow_execution import WorkflowExecution
+from ai_governance.repositories.sqlite.sqlite_replay_execution_store import (
     SQLiteReplayExecutionStore,
 )
-from kavach.tenancy.domain import TenantContext
+from ai_governance.tenancy.domain import TenantContext
 
 
 def test_execution_store_is_shared_by_independent_process_style_instances(tmp_path) -> None:

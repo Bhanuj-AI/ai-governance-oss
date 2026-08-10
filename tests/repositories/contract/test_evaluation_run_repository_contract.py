@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
 
-from kavach.domain.experiments import (
+from ai_governance.domain.experiments import (
     EvaluationRun,
     EvaluationRunStatus,
 )
-from kavach.repositories.evaluation_run_repository import (
+from ai_governance.repositories.evaluation_run_repository import (
     EvaluationRunRepository,
 )
 

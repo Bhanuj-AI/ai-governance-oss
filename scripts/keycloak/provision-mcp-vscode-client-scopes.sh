@@ -8,8 +8,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 KEYCLOAK_ENV="$ROOT_DIR/keycloak-postgres/.env.keycloak"
-REALM="kavach"
-CLIENT_ID="${KAVACH_MCP_VSCODE_CLIENT_ID:-kavach-mcp-vscode}"
+REALM="ai-governance"
+CLIENT_ID="${AI_GOVERNANCE_MCP_VSCODE_CLIENT_ID:-ai-governance-mcp-vscode}"
 
 if [[ ! -f "$KEYCLOAK_ENV" ]]; then
   echo "Keycloak environment file was not found: $KEYCLOAK_ENV" >&2

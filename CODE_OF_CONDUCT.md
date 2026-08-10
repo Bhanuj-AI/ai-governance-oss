@@ -2,9 +2,9 @@
 
 ## Our Pledge
 
-We are committed to making Kavach a welcoming, respectful, and productive open source community.
+We are committed to making AI Governance Control Plane a welcoming, respectful, and productive open source community.
 
-Kavach is about governance, trust, and careful engineering for AI systems. The project community should reflect those same values: clear communication, good-faith collaboration, and respect for the people doing the work.
+AI Governance Control Plane is about governance, trust, and careful engineering for AI systems. The project community should reflect those same values: clear communication, good-faith collaboration, and respect for the people doing the work.
 
 ## Expected Behavior
 
@@ -40,4 +40,4 @@ If you experience or observe unacceptable behavior, report it to the maintainers
 
 ## Attribution
 
-This code of conduct is adapted from common open source community standards, including the Contributor Covenant, with wording tailored for Kavach.
+This code of conduct is adapted from common open source community standards, including the Contributor Covenant, with wording tailored for AI Governance Control Plane.

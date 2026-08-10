@@ -1,4 +1,4 @@
-import { kavachRequest } from "@/lib/api/client";
+import { aiGovernanceRequest } from "@/lib/api/client";
 import type {
   GraphEntity,
   GraphEntityDto,
@@ -19,14 +19,14 @@ import type {
 } from "@/types/graph";
 
 export async function getEntity(entityType: string, entityId: string) {
-  const dto = await kavachRequest<GraphEntityDto>(
+  const dto = await aiGovernanceRequest<GraphEntityDto>(
     `/api/v1/ontology/entities/${encodeURIComponent(entityType)}/${encodeURIComponent(entityId)}`,
   );
   return mapEntity(dto);
 }
 
 export async function getRelationships(request: RelationshipListRequest) {
-  const dto = await kavachRequest<GraphRelationshipPageDto>(
+  const dto = await aiGovernanceRequest<GraphRelationshipPageDto>(
     `/api/v1/ontology/entities/${encodeURIComponent(request.entityType)}/${encodeURIComponent(request.entityId)}/relationships`,
     {
       direction: request.direction,
@@ -39,7 +39,7 @@ export async function getRelationships(request: RelationshipListRequest) {
 }
 
 export async function getNeighbourhood(request: NeighbourhoodRequest) {
-  const dto = await kavachRequest<GraphSubgraphDto>(
+  const dto = await aiGovernanceRequest<GraphSubgraphDto>(
     `/api/v1/ontology/entities/${encodeURIComponent(request.entityType)}/${encodeURIComponent(request.entityId)}/neighbourhood`,
     {
       depth: request.depth,
@@ -52,7 +52,7 @@ export async function getNeighbourhood(request: NeighbourhoodRequest) {
 }
 
 export async function getUpstream(request: TraversalRequest) {
-  const dto = await kavachRequest<GraphSubgraphDto>(
+  const dto = await aiGovernanceRequest<GraphSubgraphDto>(
     `/api/v1/ontology/entities/${encodeURIComponent(request.entityType)}/${encodeURIComponent(request.entityId)}/upstream`,
     {
       depth: request.depth,
@@ -64,7 +64,7 @@ export async function getUpstream(request: TraversalRequest) {
 }
 
 export async function getDownstream(request: TraversalRequest) {
-  const dto = await kavachRequest<GraphSubgraphDto>(
+  const dto = await aiGovernanceRequest<GraphSubgraphDto>(
     `/api/v1/ontology/entities/${encodeURIComponent(request.entityType)}/${encodeURIComponent(request.entityId)}/downstream`,
     {
       depth: request.depth,
@@ -76,7 +76,7 @@ export async function getDownstream(request: TraversalRequest) {
 }
 
 export async function findPaths(request: PathRequest) {
-  const dto = await kavachRequest<GraphPathListDto>("/api/v1/ontology/path", {
+  const dto = await aiGovernanceRequest<GraphPathListDto>("/api/v1/ontology/path", {
     source_type: request.sourceType,
     source_id: request.sourceId,
     target_type: request.targetType,

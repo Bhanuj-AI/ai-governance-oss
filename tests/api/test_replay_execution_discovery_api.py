@@ -2,13 +2,13 @@ from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
 
-from kavach.api.app import create_app
-from kavach.api.dependencies import (
+from ai_governance.api.app import create_app
+from ai_governance.api.dependencies import (
     get_replay_execution_catalog,
     get_replay_source_resolver,
 )
-from kavach.domain.workflow_execution import WorkflowExecution
-from kavach.services.replay_execution_discovery import (
+from ai_governance.domain.workflow_execution import WorkflowExecution
+from ai_governance.services.replay_execution_discovery import (
     InMemoryReplayExecutionCatalog,
     InMemoryReplaySourceResolver,
     projection_from_execution,

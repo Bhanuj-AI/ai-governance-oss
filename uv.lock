@@ -1556,7 +1556,7 @@ wheels = [
 ]
 
 [[package]]
-name = "kavach"
+name = "ai-governance"
 version = "1.0.0"
 source = { editable = "." }
 dependencies = [

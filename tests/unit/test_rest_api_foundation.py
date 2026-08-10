@@ -8,9 +8,9 @@ from fastapi.testclient import TestClient
 from pydantic import BaseModel, ValidationError
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from kavach import __version__
-from kavach.api.app import create_app
-from kavach.api.dependencies import (
+from ai_governance import __version__
+from ai_governance.api.app import create_app
+from ai_governance.api.dependencies import (
     get_api_settings,
     get_governance_decision_repository,
     get_job_repository,
@@ -20,27 +20,27 @@ from kavach.api.dependencies import (
     get_policy_administration_repository,
     get_prompt_registry_service,
 )
-from kavach.api.logging import request_logging_middleware
-from kavach.ontology import (
+from ai_governance.api.logging import request_logging_middleware
+from ai_governance.ontology import (
     InMemoryOntologyGraphQueryRepository,
     InMemoryOntologyGraphRepository,
     OntologyGraphQueryService,
 )
-from kavach.mcp.audit import MCPExecutionAuditLog
-from kavach.providers.errors import (
+from ai_governance.mcp.audit import MCPExecutionAuditLog
+from ai_governance.providers.errors import (
     ProviderContractError,
     ProviderRegistryError,
 )
-from kavach.repositories.in_memory import InMemoryGovernanceDecisionRepository
-from kavach.repositories.in_memory import InMemoryJobRepository
-from kavach.repositories import InMemoryPolicyAdministrationRepository
+from ai_governance.repositories.in_memory import InMemoryGovernanceDecisionRepository
+from ai_governance.repositories.in_memory import InMemoryJobRepository
+from ai_governance.repositories import InMemoryPolicyAdministrationRepository
 
 
 def test_rest_app_starts_with_expected_metadata() -> None:
     app = create_app()
 
     assert isinstance(app, FastAPI)
-    assert app.title == "Kavach REST API"
+    assert app.title == "AI Governance Control Plane REST API"
     assert app.description == ("AI Governance Control Plane for Enterprise LLMs")
     assert app.version == "v1"
 
@@ -70,7 +70,7 @@ def test_metadata_endpoint_returns_versioned_api_metadata() -> None:
 
     assert response.status_code == 200
     assert response.json() == {
-        "name": "Kavach",
+        "name": "AI Governance Control Plane",
         "version": __version__,
         "api_version": "v1",
         "timezone": "UTC",
@@ -97,7 +97,7 @@ def test_openapi_and_swagger_are_available() -> None:
     redoc_response = client.get("/redoc")
 
     assert openapi_response.status_code == 200
-    assert openapi_response.json()["info"]["title"] == "Kavach REST API"
+    assert openapi_response.json()["info"]["title"] == "AI Governance Control Plane REST API"
     assert "/api/v1" in openapi_response.json()["paths"]
     assert docs_response.status_code == 200
     assert "Swagger UI" in docs_response.text
@@ -216,16 +216,16 @@ def test_api_settings_use_environment_defaults_and_overrides(
     monkeypatch,
 ) -> None:
     # Clear any previously set values and use explicit test values
-    monkeypatch.delenv("KAVACH_API_HOST", raising=False)
-    monkeypatch.delenv("KAVACH_API_PORT", raising=False)
-    monkeypatch.delenv("KAVACH_API_LOG_LEVEL", raising=False)
-    monkeypatch.delenv("KAVACH_AUTO_SEED_DEMO_DATA", raising=False)
+    monkeypatch.delenv("AI_GOVERNANCE_API_HOST", raising=False)
+    monkeypatch.delenv("AI_GOVERNANCE_API_PORT", raising=False)
+    monkeypatch.delenv("AI_GOVERNANCE_API_LOG_LEVEL", raising=False)
+    monkeypatch.delenv("AI_GOVERNANCE_AUTO_SEED_DEMO_DATA", raising=False)
 
     # Set explicit values for the "defaults" test
-    monkeypatch.setenv("KAVACH_API_HOST", "127.0.0.1")
-    monkeypatch.setenv("KAVACH_API_PORT", "8000")
-    monkeypatch.setenv("KAVACH_API_LOG_LEVEL", "INFO")
-    monkeypatch.setenv("KAVACH_AUTO_SEED_DEMO_DATA", "false")
+    monkeypatch.setenv("AI_GOVERNANCE_API_HOST", "127.0.0.1")
+    monkeypatch.setenv("AI_GOVERNANCE_API_PORT", "8000")
+    monkeypatch.setenv("AI_GOVERNANCE_API_LOG_LEVEL", "INFO")
+    monkeypatch.setenv("AI_GOVERNANCE_AUTO_SEED_DEMO_DATA", "false")
 
     defaults = get_api_settings()
 
@@ -234,10 +234,10 @@ def test_api_settings_use_environment_defaults_and_overrides(
     assert defaults.log_level == "INFO"
     assert defaults.auto_seed_demo_data is False
 
-    monkeypatch.setenv("KAVACH_API_HOST", "0.0.0.0")
-    monkeypatch.setenv("KAVACH_API_PORT", "9000")
-    monkeypatch.setenv("KAVACH_API_LOG_LEVEL", "debug")
-    monkeypatch.setenv("KAVACH_AUTO_SEED_DEMO_DATA", "true")
+    monkeypatch.setenv("AI_GOVERNANCE_API_HOST", "0.0.0.0")
+    monkeypatch.setenv("AI_GOVERNANCE_API_PORT", "9000")
+    monkeypatch.setenv("AI_GOVERNANCE_API_LOG_LEVEL", "debug")
+    monkeypatch.setenv("AI_GOVERNANCE_AUTO_SEED_DEMO_DATA", "true")
 
     overridden = get_api_settings()
 
@@ -250,7 +250,7 @@ def test_api_settings_use_environment_defaults_and_overrides(
 def test_local_startup_can_seed_demo_data(
     monkeypatch,
 ) -> None:
-    monkeypatch.setenv("KAVACH_AUTO_SEED_DEMO_DATA", "true")
+    monkeypatch.setenv("AI_GOVERNANCE_AUTO_SEED_DEMO_DATA", "true")
     graph_repository = InMemoryOntologyGraphRepository()
     decision_repository = InMemoryGovernanceDecisionRepository()
     job_repository = InMemoryJobRepository()
@@ -300,12 +300,12 @@ def test_local_startup_can_seed_demo_data(
 
 
 def test_routers_do_not_import_repositories_directly() -> None:
-    router_dir = Path("src/kavach/api/routers")
+    router_dir = Path("src/ai_governance/api/routers")
 
     for router_file in router_dir.glob("*.py"):
         source = router_file.read_text()
 
-        assert "kavach.repositories" not in source
+        assert "ai_governance.repositories" not in source
         assert "Repository" not in source
 
 

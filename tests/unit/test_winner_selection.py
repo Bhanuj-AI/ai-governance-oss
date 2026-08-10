@@ -1,10 +1,10 @@
 from datetime import UTC, datetime
 
-from kavach.domain.experiments import (
+from ai_governance.domain.experiments import (
     CandidateRanking,
     ExperimentCandidate,
 )
-from kavach.services.experiments import (
+from ai_governance.services.experiments import (
     HighestOverallScoreSelectionStrategy,
 )
 

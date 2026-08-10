@@ -1,4 +1,4 @@
-import { KAVACH_API_BASE_URL } from "@/lib/api/config";
+import { AI_GOVERNANCE_API_BASE_URL } from "@/lib/api/config";
 import { getAuthToken } from "@/auth/token-provider";
 
 type ApiErrorEnvelope = {
@@ -16,7 +16,7 @@ type ApiErrorEnvelope = {
   };
 };
 
-export class KavachApiError extends Error {
+export class AIGovernanceApiError extends Error {
   readonly status: number;
   readonly code: string;
   readonly details: unknown;
@@ -33,7 +33,7 @@ export class KavachApiError extends Error {
     details?: unknown;
   }) {
     super(message);
-    this.name = "KavachApiError";
+    this.name = "AIGovernanceApiError";
     this.status = status;
     this.code = code;
     this.details = details;
@@ -47,12 +47,12 @@ export type QueryParams = Record<string, QueryValue | QueryValue[]>;
 function tenantHeaders(): Record<string, string> {
   if (typeof window === "undefined") return {};
   const organizationId =
-    localStorage.getItem("kavach.organization_id") || "org_default";
+    localStorage.getItem("ai_governance.organization_id") || "org_default";
   const projectId =
-    localStorage.getItem("kavach.project_id") || "project_default";
+    localStorage.getItem("ai_governance.project_id") || "project_default";
   return {
-    "X-Kavach-Organization-Id": organizationId,
-    ...(projectId ? { "X-Kavach-Project-Id": projectId } : {}),
+    "X-AI-Governance-Organization-Id": organizationId,
+    ...(projectId ? { "X-AI-Governance-Project-Id": projectId } : {}),
   };
 }
 
@@ -70,7 +70,7 @@ export async function request(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(`${KAVACH_API_BASE_URL}${path}`, {
+  const response = await fetch(`${AI_GOVERNANCE_API_BASE_URL}${path}`, {
     ...init,
     headers,
   });
@@ -114,7 +114,7 @@ export function buildQueryString(params?: QueryParams) {
   return queryString ? `?${queryString}` : "";
 }
 
-export async function kavachRequest<TResponse>(
+export async function aiGovernanceRequest<TResponse>(
   path: string,
   params?: QueryParams,
 ): Promise<TResponse> {
@@ -127,7 +127,7 @@ export async function kavachRequest<TResponse>(
   return (await response.json()) as TResponse;
 }
 
-export async function kavachJsonRequest<TResponse, TBody>(
+export async function aiGovernanceJsonRequest<TResponse, TBody>(
   path: string,
   {
     method,
@@ -154,7 +154,7 @@ export async function kavachJsonRequest<TResponse, TBody>(
   return (await response.json()) as TResponse;
 }
 
-export async function kavachFormRequest<TResponse>(
+export async function aiGovernanceFormRequest<TResponse>(
   path: string,
   body: FormData,
 ): Promise<TResponse> {
@@ -173,7 +173,7 @@ export async function kavachFormRequest<TResponse>(
 }
 
 async function toApiError(response: Response) {
-  const fallbackMessage = `Kavach API request failed with status ${response.status}`;
+  const fallbackMessage = `AI Governance Control Plane API request failed with status ${response.status}`;
   let payload: ApiErrorEnvelope | null = null;
 
   try {
@@ -188,11 +188,11 @@ async function toApiError(response: Response) {
       : undefined;
   const detailMessage = typeof payload?.detail === "string" ? payload.detail : undefined;
 
-  return new KavachApiError({
+  return new AIGovernanceApiError({
     status: response.status,
     code:
       payload?.error?.code ?? nestedError?.code ??
-      (response.status === 404 ? "NOT_FOUND" : "KAVACH_API_ERROR"),
+      (response.status === 404 ? "NOT_FOUND" : "AI_GOVERNANCE_API_ERROR"),
     message: payload?.error?.message ?? nestedError?.message ?? detailMessage ?? fallbackMessage,
     details: payload?.error?.details ?? nestedError?.details ?? payload?.detail,
   });

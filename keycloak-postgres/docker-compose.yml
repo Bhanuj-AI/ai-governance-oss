@@ -1,8 +1,9 @@
-name: kavach-oss-keycloak
+name: ai-governance-oss-keycloak
 
 services:
   postgres:
     image: postgres:17-alpine
+    container_name: postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
@@ -24,12 +25,13 @@ services:
       - keycloak_network
 
   keycloak:
+    container_name: keycloak
     env_file:
       - .env.keycloak
     build:
       context: .
       dockerfile: Dockerfile.keycloak
-    image: kavach/keycloak:26.7.0
+    image: ai-governance/keycloak:26.7.0
     restart: unless-stopped
     depends_on:
       postgres:
@@ -50,10 +52,10 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:?KEYCLOAK_ADMIN_USERNAME is required}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required}
 
-      KAVACH_STUDIO_PASSWORD: ${KAVACH_STUDIO_PASSWORD:?KAVACH_STUDIO_PASSWORD is required}
-      KAVACH_SERVICE_CLIENT_SECRET: ${KAVACH_SERVICE_CLIENT_SECRET:?KAVACH_SERVICE_CLIENT_SECRET is required}
-      KAVACH_MCP_CLIENT_SECRET: ${KAVACH_MCP_CLIENT_SECRET:?KAVACH_MCP_CLIENT_SECRET is required}
-      KAVACH_WALKTHROUGH_CLIENT_SECRET: ${KAVACH_WALKTHROUGH_CLIENT_SECRET:-walkthrough-secret}
+      AI_GOVERNANCE_STUDIO_PASSWORD: ${AI_GOVERNANCE_STUDIO_PASSWORD:?AI_GOVERNANCE_STUDIO_PASSWORD is required}
+      AI_GOVERNANCE_SERVICE_CLIENT_SECRET: ${AI_GOVERNANCE_SERVICE_CLIENT_SECRET:?AI_GOVERNANCE_SERVICE_CLIENT_SECRET is required}
+      AI_GOVERNANCE_MCP_CLIENT_SECRET: ${AI_GOVERNANCE_MCP_CLIENT_SECRET:?AI_GOVERNANCE_MCP_CLIENT_SECRET is required}
+      AI_GOVERNANCE_WALKTHROUGH_CLIENT_SECRET: ${AI_GOVERNANCE_WALKTHROUGH_CLIENT_SECRET:-walkthrough-secret}
 
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "true"
@@ -75,7 +77,7 @@ services:
       retries: 15
       start_period: 30s
     volumes:
-      - ./keycloak/kavach-realm.json:/opt/keycloak/data/import/kavach-realm.json:ro
+      - ./keycloak/ai-governance-realm.json:/opt/keycloak/data/import/ai-governance-realm.json:ro
     networks:
       - keycloak_network
 

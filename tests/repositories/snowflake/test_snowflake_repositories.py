@@ -1,42 +1,42 @@
 import pytest
 
-from kavach.databases.snowflake.database import SnowflakeDatabase
-from kavach.repositories.dataset_repository import DatasetRepository
-from kavach.repositories.evaluation_repository import EvaluationRepository
-from kavach.repositories.evaluation_run_repository import (
+from ai_governance.databases.snowflake.database import SnowflakeDatabase
+from ai_governance.repositories.dataset_repository import DatasetRepository
+from ai_governance.repositories.evaluation_repository import EvaluationRepository
+from ai_governance.repositories.evaluation_run_repository import (
     EvaluationRunRepository,
 )
-from kavach.repositories.experiment_candidate_repository import (
+from ai_governance.repositories.experiment_candidate_repository import (
     ExperimentCandidateRepository,
 )
-from kavach.repositories.experiment_repository import ExperimentRepository
-from kavach.repositories.leaderboard_repository import (
+from ai_governance.repositories.experiment_repository import ExperimentRepository
+from ai_governance.repositories.leaderboard_repository import (
     LeaderboardRepository,
 )
-from kavach.repositories.model_repository import ModelRepository
-from kavach.repositories.prompt_repository import PromptRepository
-from kavach.repositories.snowflake.snowflake_dataset_repository import (
+from ai_governance.repositories.model_repository import ModelRepository
+from ai_governance.repositories.prompt_repository import PromptRepository
+from ai_governance.repositories.snowflake.snowflake_dataset_repository import (
     SnowflakeDatasetRepository,
 )
-from kavach.repositories.snowflake.snowflake_evaluation_repository import (
+from ai_governance.repositories.snowflake.snowflake_evaluation_repository import (
     SnowflakeEvaluationRepository,
 )
-from kavach.repositories.snowflake.snowflake_evaluation_run_repository import (
+from ai_governance.repositories.snowflake.snowflake_evaluation_run_repository import (
     SnowflakeEvaluationRunRepository,
 )
-from kavach.repositories.snowflake.snowflake_experiment_candidate_repository import (
+from ai_governance.repositories.snowflake.snowflake_experiment_candidate_repository import (
     SnowflakeExperimentCandidateRepository,
 )
-from kavach.repositories.snowflake.snowflake_experiment_repository import (
+from ai_governance.repositories.snowflake.snowflake_experiment_repository import (
     SnowflakeExperimentRepository,
 )
-from kavach.repositories.snowflake.snowflake_leaderboard_repository import (
+from ai_governance.repositories.snowflake.snowflake_leaderboard_repository import (
     SnowflakeLeaderboardRepository,
 )
-from kavach.repositories.snowflake.snowflake_model_repository import (
+from ai_governance.repositories.snowflake.snowflake_model_repository import (
     SnowflakeModelRepository,
 )
-from kavach.repositories.snowflake.snowflake_prompt_repository import (
+from ai_governance.repositories.snowflake.snowflake_prompt_repository import (
     SnowflakePromptRepository,
 )
 from tests.repositories.contract.test_dataset_repository_contract import (

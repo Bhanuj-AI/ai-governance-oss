@@ -1,10 +1,10 @@
 from datetime import UTC, datetime
 
-from kavach.domain.prompts import (
+from ai_governance.domain.prompts import (
     Prompt,
     PromptStatus,
 )
-from kavach.repositories.mappers.prompt_persistence_mapper import (
+from ai_governance.repositories.mappers.prompt_persistence_mapper import (
     PromptPersistenceMapper,
 )
 

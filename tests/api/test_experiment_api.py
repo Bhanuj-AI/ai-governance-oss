@@ -5,8 +5,8 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from kavach.api.app import create_app
-from kavach.api.dependencies import (
+from ai_governance.api.app import create_app
+from ai_governance.api.dependencies import (
     get_dataset_repository,
     get_evaluation_repository,
     get_evaluation_run_repository,
@@ -18,37 +18,37 @@ from kavach.api.dependencies import (
     get_prompt_repository,
     get_provider_registry,
 )
-from kavach.domain.datasets import Dataset, DatasetStatus
-from kavach.domain.evaluation_result import EvaluationMetric, EvaluationResult
-from kavach.domain.models import Model, ModelStatus
-from kavach.domain.prompts import Prompt, PromptStatus
-from kavach.evaluation import EvaluationRequest
-from kavach.providers.provider_capabilities import ProviderCapabilities
-from kavach.providers.provider_descriptor import ProviderDescriptor
-from kavach.providers.provider_registry import EvaluationProviderRegistry
-from kavach.repositories.in_memory_dataset_repository import (
+from ai_governance.domain.datasets import Dataset, DatasetStatus
+from ai_governance.domain.evaluation_result import EvaluationMetric, EvaluationResult
+from ai_governance.domain.models import Model, ModelStatus
+from ai_governance.domain.prompts import Prompt, PromptStatus
+from ai_governance.evaluation import EvaluationRequest
+from ai_governance.providers.provider_capabilities import ProviderCapabilities
+from ai_governance.providers.provider_descriptor import ProviderDescriptor
+from ai_governance.providers.provider_registry import EvaluationProviderRegistry
+from ai_governance.repositories.in_memory_dataset_repository import (
     InMemoryDatasetRepository,
 )
-from kavach.repositories.in_memory_evaluation_repository import (
+from ai_governance.repositories.in_memory_evaluation_repository import (
     InMemoryEvaluationRepository,
 )
-from kavach.repositories.in_memory_evaluation_run_repository import (
+from ai_governance.repositories.in_memory_evaluation_run_repository import (
     InMemoryEvaluationRunRepository,
 )
-from kavach.repositories.in_memory_experiment_candidate_repository import (
+from ai_governance.repositories.in_memory_experiment_candidate_repository import (
     InMemoryExperimentCandidateRepository,
 )
-from kavach.repositories.in_memory_experiment_repository import (
+from ai_governance.repositories.in_memory_experiment_repository import (
     InMemoryExperimentRepository,
 )
-from kavach.repositories.in_memory_leaderboard_repository import (
+from ai_governance.repositories.in_memory_leaderboard_repository import (
     InMemoryLeaderboardRepository,
 )
-from kavach.repositories import InMemoryJobRepository
-from kavach.repositories.in_memory_model_repository import (
+from ai_governance.repositories import InMemoryJobRepository
+from ai_governance.repositories.in_memory_model_repository import (
     InMemoryModelRepository,
 )
-from kavach.repositories.in_memory_prompt_repository import (
+from ai_governance.repositories.in_memory_prompt_repository import (
     InMemoryPromptRepository,
 )
 
@@ -424,7 +424,7 @@ def test_list_candidates_and_runs_require_the_same_tenant() -> None:
 
     response = client.get(
         f"/api/v1/experiments/{experiment_id}/candidates",
-        headers={"X-Kavach-Organization-Id": "other-org"},
+        headers={"X-AI-Governance-Organization-Id": "other-org"},
     )
 
     assert response.status_code == 400
@@ -583,10 +583,10 @@ def test_experiment_endpoints_are_in_openapi() -> None:
 
 
 def test_experiment_router_has_no_repository_or_provider_adapter_imports() -> None:
-    source = Path("src/kavach/api/routers/experiments.py").read_text()
+    source = Path("src/ai_governance/api/routers/experiments.py").read_text()
 
-    assert "kavach.repositories" not in source
+    assert "ai_governance.repositories" not in source
     assert "Repository" not in source
-    assert "kavach.providers.trulens" not in source
+    assert "ai_governance.providers.trulens" not in source
     assert "import trulens" not in source
     assert "import openai" not in source

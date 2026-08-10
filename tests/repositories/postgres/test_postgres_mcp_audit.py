@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from kavach.databases.postgres.database import PostgresDatabase
-from kavach.mcp.audit import (
+from ai_governance.databases.postgres.database import PostgresDatabase
+from ai_governance.mcp.audit import (
     MCPExecutionAuditLog,
     PostgresMCPExecutionAuditStore,
 )
-from kavach.mcp.dto import WriteEnvelope
+from ai_governance.mcp.dto import WriteEnvelope
 
 
 def test_postgres_audit_log_persists_completed_record(

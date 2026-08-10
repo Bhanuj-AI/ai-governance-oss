@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from kavach.mcp.audit import MCPExecutionAuditLog
-from kavach.ontology.demo_seed import seed_demo_mcp_audit_log
+from ai_governance.mcp.audit import MCPExecutionAuditLog
+from ai_governance.ontology.demo_seed import seed_demo_mcp_audit_log
 
 
 def test_demo_mcp_audit_seed_is_durable_and_idempotent(tmp_path) -> None:

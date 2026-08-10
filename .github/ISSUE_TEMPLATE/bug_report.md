@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a reproducible problem in Kavach
+about: Report a reproducible problem in AI Governance Control Plane
 title: "[Bug]: "
 labels: bug
 assignees: ""
@@ -12,7 +12,7 @@ Describe the problem clearly and briefly.
 
 ## Environment
 
-- Kavach version or commit:
+- AI Governance Control Plane version or commit:
 - Python version:
 - Operating system:
 - Persistence backend, if relevant:

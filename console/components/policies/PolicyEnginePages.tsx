@@ -39,7 +39,7 @@ import {
   simulatePolicyVersion,
   updateDraftPolicyVersion,
 } from "@/lib/api/policies";
-import { KavachApiError } from "@/lib/api/client";
+import { AIGovernanceApiError } from "@/lib/api/client";
 import { cn } from "@/lib/utils/cn";
 import type {
   CreatePolicyRequest,
@@ -1904,7 +1904,7 @@ function formatDate(value: string | null) {
 }
 
 function formatError(error: unknown) {
-  if (error instanceof KavachApiError) {
+  if (error instanceof AIGovernanceApiError) {
     return `${error.code}: ${error.message}`;
   }
   if (error instanceof Error) {

@@ -5,7 +5,7 @@ Sets default environment variables for all tests. This ensures tests run with
 the same configuration as the local development environment without hardcoding
 defaults in os.getenv() calls.
 
-Overrides Docker-specific paths (like /var/lib/kavach) with local paths
+Overrides Docker-specific paths (like /var/lib/ai-governance) with local paths
 for the test environment.
 """
 
@@ -17,58 +17,58 @@ import pytest
 
 # Set default environment variables for tests
 _defaults = {
-    # Kavach Configuration
-    "KAVACH_ENV": "local",
-    "KAVACH_CORS_ALLOW_ORIGINS": "http://localhost:3000,http://127.0.0.1:3000",
-    "KAVACH_AUTO_SEED_DEMO_DATA": "true",
-    "KAVACH_API_LOG_LEVEL": "debug",
-    "KAVACH_API_HOST": "localhost",
-    "KAVACH_API_PORT": "8000",
+    # AI Governance Control Plane Configuration
+    "AI_GOVERNANCE_ENV": "local",
+    "AI_GOVERNANCE_CORS_ALLOW_ORIGINS": "http://localhost:3000,http://127.0.0.1:3000",
+    "AI_GOVERNANCE_AUTO_SEED_DEMO_DATA": "true",
+    "AI_GOVERNANCE_API_LOG_LEVEL": "debug",
+    "AI_GOVERNANCE_API_HOST": "localhost",
+    "AI_GOVERNANCE_API_PORT": "8000",
 
     # IDP Configuration
-    "KAVACH_AUTH_MODE": "development",
-    "KAVACH_IDENTITY_PROVIDER": "development",
-    "KAVACH_DEVELOPMENT_ACTOR_ID": "local-admin",
-    "KAVACH_DEVELOPMENT_ACTOR_NAME": "Local Administrator",
-    "KAVACH_OIDC_ISSUER": "http://localhost:8080/realms/kavach",
-    "KAVACH_OIDC_JWKS_REFRESH_SECONDS": "300",
+    "AI_GOVERNANCE_AUTH_MODE": "development",
+    "AI_GOVERNANCE_IDENTITY_PROVIDER": "development",
+    "AI_GOVERNANCE_DEVELOPMENT_ACTOR_ID": "local-admin",
+    "AI_GOVERNANCE_DEVELOPMENT_ACTOR_NAME": "Local Administrator",
+    "AI_GOVERNANCE_OIDC_ISSUER": "http://localhost:8080/realms/ai-governance",
+    "AI_GOVERNANCE_OIDC_JWKS_REFRESH_SECONDS": "300",
 
     # RBAC & Multi-Tenant Configuration
-    "KAVACH_ALLOW_DEVELOPMENT_IDENTITY_IN_PRODUCTION": "false",
-    "KAVACH_TENANCY_ENABLED": "true",
+    "AI_GOVERNANCE_ALLOW_DEVELOPMENT_IDENTITY_IN_PRODUCTION": "false",
+    "AI_GOVERNANCE_TENANCY_ENABLED": "true",
 
     # Bootstrap Configuration
-    "KAVACH_BOOTSTRAP_ORGANIZATION_ID": "org_default",
-    "KAVACH_BOOTSTRAP_ORGANIZATION_NAME": "Default Organization",
-    "KAVACH_BOOTSTRAP_ORGANIZATION_SLUG": "default",
-    "KAVACH_BOOTSTRAP_PROJECT_ID": "project_default",
-    "KAVACH_BOOTSTRAP_PROJECT_NAME": "Default Project",
-    "KAVACH_BOOTSTRAP_PROJECT_SLUG": "default",
+    "AI_GOVERNANCE_BOOTSTRAP_ORGANIZATION_ID": "org_default",
+    "AI_GOVERNANCE_BOOTSTRAP_ORGANIZATION_NAME": "Default Organization",
+    "AI_GOVERNANCE_BOOTSTRAP_ORGANIZATION_SLUG": "default",
+    "AI_GOVERNANCE_BOOTSTRAP_PROJECT_ID": "project_default",
+    "AI_GOVERNANCE_BOOTSTRAP_PROJECT_NAME": "Default Project",
+    "AI_GOVERNANCE_BOOTSTRAP_PROJECT_SLUG": "default",
 
     # Graph DB Configuration
-    "KAVACH_GRAPH_URI": "bolt://neo4j:7687",
-    "KAVACH_GRAPH_USER": "neo4j",
-    "KAVACH_GRAPH_PASSWORD": "kavach-local-password",
+    "AI_GOVERNANCE_GRAPH_URI": "bolt://neo4j:7687",
+    "AI_GOVERNANCE_GRAPH_USER": "neo4j",
+    "AI_GOVERNANCE_GRAPH_PASSWORD": "ai-governance-local-password",
 
     # Repository Configuration (all use inmemory for tests)
-    "KAVACH_TENANCY_REPOSITORY": "inmemory",
-    "KAVACH_SETTINGS_REPOSITORY": "inmemory",
-    "KAVACH_POLICY_REPOSITORY": "inmemory",
-    "KAVACH_EVALUATION_REPOSITORY": "inmemory",
-    "KAVACH_EXPERIMENT_REPOSITORY": "inmemory",
-    "KAVACH_EXPERIMENT_CANDIDATE_REPOSITORY": "inmemory",
-    "KAVACH_EVALUATION_RUN_REPOSITORY": "inmemory",
-    "KAVACH_LEADERBOARD_REPOSITORY": "inmemory",
-    "KAVACH_PROMPT_REPOSITORY": "inmemory",
-    "KAVACH_MODEL_REPOSITORY": "inmemory",
-    "KAVACH_DATASET_REPOSITORY": "inmemory",
-    "KAVACH_JOB_REPOSITORY": "inmemory",
-    "KAVACH_GOVERNANCE_DECISION_REPOSITORY": "inmemory",
-    "KAVACH_ONTOLOGY_SYNC_EVENT_REPOSITORY": "inmemory",
-    "KAVACH_ONTOLOGY_REPOSITORY": "inmemory",
+    "AI_GOVERNANCE_TENANCY_REPOSITORY": "inmemory",
+    "AI_GOVERNANCE_SETTINGS_REPOSITORY": "inmemory",
+    "AI_GOVERNANCE_POLICY_REPOSITORY": "inmemory",
+    "AI_GOVERNANCE_EVALUATION_REPOSITORY": "inmemory",
+    "AI_GOVERNANCE_EXPERIMENT_REPOSITORY": "inmemory",
+    "AI_GOVERNANCE_EXPERIMENT_CANDIDATE_REPOSITORY": "inmemory",
+    "AI_GOVERNANCE_EVALUATION_RUN_REPOSITORY": "inmemory",
+    "AI_GOVERNANCE_LEADERBOARD_REPOSITORY": "inmemory",
+    "AI_GOVERNANCE_PROMPT_REPOSITORY": "inmemory",
+    "AI_GOVERNANCE_MODEL_REPOSITORY": "inmemory",
+    "AI_GOVERNANCE_DATASET_REPOSITORY": "inmemory",
+    "AI_GOVERNANCE_JOB_REPOSITORY": "inmemory",
+    "AI_GOVERNANCE_GOVERNANCE_DECISION_REPOSITORY": "inmemory",
+    "AI_GOVERNANCE_ONTOLOGY_SYNC_EVENT_REPOSITORY": "inmemory",
+    "AI_GOVERNANCE_ONTOLOGY_REPOSITORY": "inmemory",
 
     # MCP Configuration
-    "KAVACH_MCP_DRY_RUN_DEFAULT": "False",
+    "AI_GOVERNANCE_MCP_DRY_RUN_DEFAULT": "False",
 
     # Extras
     "MODEL_REGISTRY_URL": "http://127.0.0.1:1234/",

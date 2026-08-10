@@ -6,8 +6,8 @@ from typing import Any, Mapping
 import pytest
 from fastapi.testclient import TestClient
 
-from kavach.api.app import create_app
-from kavach.api.dependencies import (
+from ai_governance.api.app import create_app
+from ai_governance.api.dependencies import (
     get_governance_decision_repository,
     get_job_repository,
     get_mcp_audit_log,
@@ -15,11 +15,11 @@ from kavach.api.dependencies import (
     get_ontology_graph_repository,
     get_policy_administration_repository,
 )
-from kavach.mcp.audit import MCPExecutionAuditLog
-from kavach.domain.prompts import PromptStatus
-from kavach.mcp.clients import RestClient
-from kavach.mcp.server import create_server
-from kavach.ontology import (
+from ai_governance.mcp.audit import MCPExecutionAuditLog
+from ai_governance.domain.prompts import PromptStatus
+from ai_governance.mcp.clients import RestClient
+from ai_governance.mcp.server import create_server
+from ai_governance.ontology import (
     EntityType,
     InMemoryOntologyGraphQueryRepository,
     InMemoryOntologyGraphRepository,
@@ -28,10 +28,10 @@ from kavach.ontology import (
     OntologyRelationship,
     RelationshipType,
 )
-from kavach.ontology.neo4j_repository import _node_depths_from_paths
-from kavach.repositories.in_memory import InMemoryGovernanceDecisionRepository
-from kavach.repositories.in_memory import InMemoryJobRepository
-from kavach.repositories.in_memory_policy_administration_repository import (
+from ai_governance.ontology.neo4j_repository import _node_depths_from_paths
+from ai_governance.repositories.in_memory import InMemoryGovernanceDecisionRepository
+from ai_governance.repositories.in_memory import InMemoryJobRepository
+from ai_governance.repositories.in_memory_policy_administration_repository import (
     InMemoryPolicyAdministrationRepository,
 )
 

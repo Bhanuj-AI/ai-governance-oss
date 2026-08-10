@@ -1,6 +1,6 @@
 # Governed Replay Walkthrough
 
-`kavach walkthrough governed-replay` is the first guided Kavach product
+`ai-governance walkthrough governed-replay` is the first guided AI Governance Control Plane product
 experience. It demonstrates one governed lifecycle using only the public REST
 API that Studio and external producers use. It is not a second application
 layer, a repository client, or a privileged demo path.
@@ -27,7 +27,7 @@ until the normal worker lifecycle has created it.
 Start the local stack and wait until the seeded demo data is available:
 
 ```bash
-./kavach.sh
+./ai_governance.sh
 ```
 
 The initial scenario selects the seeded `demo-dataset-evaluation` dataset and a
@@ -36,14 +36,14 @@ stable walkthrough identities, so repeat runs are idempotent at the public API
 boundary.
 
 For a Keycloak-enabled local stack, the walkthrough automatically obtains a
-short-lived token in memory using its configured `KAVACH_OAUTH_*` client
+short-lived token in memory using its configured `AI_GOVERNANCE_OAUTH_*` client
 credentials. No bearer token export is required. Existing local stacks can
-temporarily use their `KAVACH_MCP_*` credentials through the compatibility
+temporarily use their `AI_GOVERNANCE_MCP_*` credentials through the compatibility
 fallback. For a development-mode API, no token is required.
 
 ```bash
-export KAVACH_API_URL=http://localhost:8000
-export KAVACH_STUDIO_URL=http://localhost:3000
+export AI_GOVERNANCE_API_URL=http://localhost:8000
+export AI_GOVERNANCE_STUDIO_URL=http://localhost:3000
 ```
 
 For a production or CI workload, provision a dedicated least-privilege
@@ -52,24 +52,24 @@ protected CI environment. The CLI exchanges them itself; do not create or
 export a bearer token:
 
 ```bash
-export KAVACH_OAUTH_TOKEN_URL=https://keycloak.example/realms/kavach/protocol/openid-connect/token
-export KAVACH_OAUTH_CLIENT_ID=kavach-walkthrough
-export KAVACH_OAUTH_CLIENT_SECRET=replace-with-a-client-secret
+export AI_GOVERNANCE_OAUTH_TOKEN_URL=https://keycloak.example/realms/ai-governance/protocol/openid-connect/token
+export AI_GOVERNANCE_OAUTH_CLIENT_ID=ai-governance-walkthrough
+export AI_GOVERNANCE_OAUTH_CLIENT_SECRET=replace-with-a-client-secret
 ```
 
 The resulting token represents the walkthrough service account, not an
-organization administrator or an impersonated human user. Kavach still checks
+organization administrator or an impersonated human user. AI Governance Control Plane still checks
 that subject's membership and RBAC permissions in the selected tenant. The CLI
 never writes the token to the manifest, a file, or terminal output.
 
 If a caller must use a pre-obtained bearer token, supply it deliberately with
-`--token`. The CLI does not read `KAVACH_TOKEN` from the shell, so a stale
+`--token`. The CLI does not read `AI_GOVERNANCE_TOKEN` from the shell, so a stale
 global export cannot override the configured workload identity.
 
-The local Keycloak realm declares this client as `kavach-walkthrough`. Its
-service-account subject is discovered during `./kavach.sh` and provisioned as a
-separate Kavach actor. Keycloak imports a realm JSON file only when the realm is
-created. After changing `keycloak-postgres/keycloak/kavach-realm.json`, an
+The local Keycloak realm declares this client as `ai-governance-walkthrough`. Its
+service-account subject is discovered during `./ai_governance.sh` and provisioned as a
+separate AI Governance Control Plane actor. Keycloak imports a realm JSON file only when the realm is
+created. After changing `keycloak-postgres/keycloak/ai-governance-realm.json`, an
 existing local Keycloak volume must either be updated through the Keycloak
 Admin Console or recreated before the new client appears:
 
@@ -78,15 +78,15 @@ Admin Console or recreated before the new client appears:
 cd keycloak-postgres
 docker compose --env-file .env.keycloak down -v
 cd ..
-./kavach.sh
+./ai_governance.sh
 ```
 
 The defaults are `org_default` and `project_default`. Override them if you are
 running the scenario in another permitted tenant:
 
 ```bash
-export KAVACH_ORGANIZATION_ID=org_default
-export KAVACH_PROJECT_ID=project_default
+export AI_GOVERNANCE_ORGANIZATION_ID=org_default
+export AI_GOVERNANCE_PROJECT_ID=project_default
 ```
 
 ## Run Golden Path
@@ -95,7 +95,7 @@ Install the project dependencies first if you are running from a source clone:
 
 ```bash
 uv sync
-uv run kavach walkthrough governed-replay
+uv run ai-governance walkthrough governed-replay
 ```
 
 The command prints an operator-oriented list of completed, pending, and
@@ -103,7 +103,7 @@ skipped steps. Each completed item includes a Studio URL. It also writes a
 machine-readable manifest below the current directory:
 
 ```text
-.kavach/walkthroughs/governed-replay-20260720T000000Z-walkthrough-abc123.json
+.ai-governance/walkthroughs/governed-replay-20260720T000000Z-walkthrough-abc123.json
 ```
 
 The manifest captures exactly what happened, including the API contract version,
@@ -118,7 +118,7 @@ make that intention explicit in scripts, and `--output-json` to emit the full
 manifest on stdout:
 
 ```bash
-uv run kavach walkthrough governed-replay \
+uv run ai-governance walkthrough governed-replay \
   --non-interactive \
   --output-json \
   --manifest artifacts/governed-replay-manifest.json
@@ -127,7 +127,7 @@ uv run kavach walkthrough governed-replay \
 To choose a known source execution rather than using the first replayable one:
 
 ```bash
-uv run kavach walkthrough governed-replay \
+uv run ai-governance walkthrough governed-replay \
   --source-execution-id demo-source-execution-01
 ```
 
@@ -144,12 +144,12 @@ Walkthrough manifests are local diagnostics only; they never delete governed
 assets. Preview aged local manifests before removing them:
 
 ```bash
-uv run kavach walkthrough cleanup --older-than-days 14
-uv run kavach walkthrough cleanup --older-than-days 14 --apply
+uv run ai-governance walkthrough cleanup --older-than-days 14
+uv run ai-governance walkthrough cleanup --older-than-days 14 --apply
 ```
 
 `--apply` is required for deletion and the command only considers direct JSON
-files under `.kavach/walkthroughs/` in the current directory.
+files under `.ai-governance/walkthroughs/` in the current directory.
 
 ## Release Smoke Testing
 
@@ -159,18 +159,18 @@ and Studio deep links, and verifies that both runs resolve the same resources.
 It does not know or care whether the running stack uses SQLite or PostgreSQL.
 
 ```bash
-KAVACH_SMOKE_API_URL=http://localhost:8000 \
-KAVACH_SMOKE_STUDIO_URL=http://localhost:3000 \
+AI_GOVERNANCE_SMOKE_API_URL=http://localhost:8000 \
+AI_GOVERNANCE_SMOKE_STUDIO_URL=http://localhost:3000 \
 uv run python smoke_tests/smoke_governed_replay_walkthrough.py
 ```
 
-In Keycloak mode the smoke command uses `KAVACH_OAUTH_*` automatically. Pass
-`KAVACH_SMOKE_TOKEN` only when release infrastructure intentionally supplies
-an explicit bearer token; `KAVACH_TOKEN` is ignored. Development-mode stacks
+In Keycloak mode the smoke command uses `AI_GOVERNANCE_OAUTH_*` automatically. Pass
+`AI_GOVERNANCE_SMOKE_TOKEN` only when release infrastructure intentionally supplies
+an explicit bearer token; `AI_GOVERNANCE_TOKEN` is ignored. Development-mode stacks
 need neither client credentials nor a token.
 
 Run the same command against a fresh SQLite deployment and a fresh PostgreSQL
-deployment in release validation. The test uses only the normal `kavach` CLI
+deployment in release validation. The test uses only the normal `ai-governance` CLI
 and public REST API. A changed or incompatible API response fails clearly via
 the scenario's declared `api_version: v1` contract; a new API version should
 receive its own scenario adapter instead of silently changing this walkthrough.
@@ -182,12 +182,12 @@ safe for onboarding and keeps long-running work explicit. To queue the normal
 replay job, opt in:
 
 ```bash
-uv run kavach walkthrough governed-replay --submit-replay
+uv run ai-governance walkthrough governed-replay --submit-replay
 ```
 
 The command reports the job as queued and links to the replay detail page. The
 worker then executes the ordinary lifecycle. Open the detail page to submit the
-evaluation once the replay execution is complete; Kavach will then create the
+evaluation once the replay execution is complete; AI Governance Control Plane will then create the
 comparison and drift evidence through the same normal worker contracts.
 
 ## Scenario API Calls

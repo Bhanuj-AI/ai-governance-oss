@@ -1,6 +1,6 @@
 ---
 name: domain-feature
-description: Add or change a deterministic Kavach domain entity, value object, lifecycle transition, validation rule, domain error, or domain-level invariant. Use when work belongs in src/kavach/domain or a domain-focused package and must remain independent of transport, persistence, workers, and provider SDKs.
+description: Add or change a deterministic AI Governance Control Plane domain entity, value object, lifecycle transition, validation rule, domain error, or domain-level invariant. Use when work belongs in src/ai_governance/domain or a domain-focused package and must remain independent of transport, persistence, workers, and provider SDKs.
 ---
 
 # Domain Feature
@@ -10,7 +10,7 @@ provider integration.
 
 ## Workflow
 
-1. Read root `AGENTS.md` and `src/kavach/domain/AGENTS.md`. Read the scoped
+1. Read root `AGENTS.md` and `src/ai_governance/domain/AGENTS.md`. Read the scoped
    instruction file for any other layer that will consume the model.
 2. Identify the durable concepts, their valid states, and invalid transitions.
    Prefer named types over an unstructured dictionary for stored or public
@@ -66,7 +66,7 @@ Use the nearest unit test. The following current command validates a domain
 invariant end to end:
 
 ```bash
-uv run ruff check src/kavach/domain
+uv run ruff check src/ai_governance/domain
 uv run pytest tests/unit/test_dataset_domain.py
 ```
 

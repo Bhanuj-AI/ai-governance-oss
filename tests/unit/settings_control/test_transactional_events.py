@@ -6,11 +6,11 @@ from contextlib import contextmanager
 
 import pytest
 
-from kavach.events import EventPublisher, ResourceLifecycleEvent
-from kavach.hooks.contracts import FailurePolicy
-from kavach.settings_control.domain import SettingContext, SettingScope
-from kavach.settings_control.repository import InMemorySettingsRepository
-from kavach.settings_control.service import ConfigurationService
+from ai_governance.events import EventPublisher, ResourceLifecycleEvent
+from ai_governance.hooks.contracts import FailurePolicy
+from ai_governance.settings_control.domain import SettingContext, SettingScope
+from ai_governance.settings_control.repository import InMemorySettingsRepository
+from ai_governance.settings_control.service import ConfigurationService
 
 
 class _Transaction:

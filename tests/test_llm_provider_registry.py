@@ -1,12 +1,12 @@
 import pytest
 
-from kavach.providers import (
+from ai_governance.providers import (
     LLMProviderRegistry,
     ProviderAlreadyRegisteredError,
     ProviderCapabilities,
     ProviderDescriptor,
 )
-from kavach.spi import LLMCompletion
+from ai_governance.spi import LLMCompletion
 
 
 class FakeLLMProvider:

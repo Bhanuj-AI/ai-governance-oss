@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.decisions import (
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.decisions import (
     DecisionAuditAction,
     DecisionEvidenceReference,
     DecisionExplanation,
@@ -17,13 +17,13 @@ from kavach.decisions import (
     DecisionTargetType,
     GovernanceDecision,
 )
-from kavach.decisions.events import (
+from ai_governance.decisions.events import (
     GOVERNANCE_DECISION_ARCHIVED,
     GOVERNANCE_DECISION_CREATED,
     GOVERNANCE_DECISION_SUPERSEDED,
 )
-from kavach.decisions.exceptions import DecisionValidationError
-from kavach.repositories.sqlite import SQLiteGovernanceDecisionRepository
+from ai_governance.decisions.exceptions import DecisionValidationError
+from ai_governance.repositories.sqlite import SQLiteGovernanceDecisionRepository
 
 
 class _RecordingPublisher:
@@ -139,7 +139,7 @@ def _repository(
     *,
     publisher: _RecordingPublisher | None = None,
 ) -> SQLiteGovernanceDecisionRepository:
-    database = SQLiteDatabase(tmp_path / "kavach.db")
+    database = SQLiteDatabase(tmp_path / "ai_governance.db")
     database.initialize()
     return SQLiteGovernanceDecisionRepository(
         database,

@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import pytest
 
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.tenancy.authorization import AuthorizationService
-from kavach.tenancy.domain import MembershipStatus, TenantContext
-from kavach.tenancy.errors import LastOrganizationAdministrator, ProjectNotFound
-from kavach.tenancy.permissions import Permission
-from kavach.tenancy.services import ControlPlaneService, bootstrap_control_plane
-from kavach.tenancy.sqlite_repository import SQLiteControlPlaneRepository
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.tenancy.authorization import AuthorizationService
+from ai_governance.tenancy.domain import MembershipStatus, TenantContext
+from ai_governance.tenancy.errors import LastOrganizationAdministrator, ProjectNotFound
+from ai_governance.tenancy.permissions import Permission
+from ai_governance.tenancy.services import ControlPlaneService, bootstrap_control_plane
+from ai_governance.tenancy.sqlite_repository import SQLiteControlPlaneRepository
 
 
 @pytest.fixture

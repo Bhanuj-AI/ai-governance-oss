@@ -6,34 +6,34 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from kavach.api.app import create_app
-from kavach.api.dependencies import (
+from ai_governance.api.app import create_app
+from ai_governance.api.dependencies import (
     get_evaluation_repository,
     get_job_repository,
     get_provider_registry,
 )
-from kavach.api.dependencies.provider_installations import (
+from ai_governance.api.dependencies.provider_installations import (
     get_provider_installation_service,
 )
-from kavach.domain.evaluation_result import (
+from ai_governance.domain.evaluation_result import (
     EvaluationArtifact,
     EvaluationMetric,
     EvaluationResult,
 )
-from kavach.evaluation.evaluation_request import EvaluationRequest
-from kavach.providers.provider_capabilities import ProviderCapabilities
-from kavach.providers.provider_descriptor import ProviderDescriptor
-from kavach.providers.provider_registry import EvaluationProviderRegistry
-from kavach.repositories.in_memory_evaluation_repository import (
+from ai_governance.evaluation.evaluation_request import EvaluationRequest
+from ai_governance.providers.provider_capabilities import ProviderCapabilities
+from ai_governance.providers.provider_descriptor import ProviderDescriptor
+from ai_governance.providers.provider_registry import EvaluationProviderRegistry
+from ai_governance.repositories.in_memory_evaluation_repository import (
     InMemoryEvaluationRepository,
 )
-from kavach.repositories import InMemoryJobRepository
-from kavach.repositories.settings_provider_installation_repository import (
+from ai_governance.repositories import InMemoryJobRepository
+from ai_governance.repositories.settings_provider_installation_repository import (
     SettingsProviderInstallationRepository,
 )
-from kavach.services.provider_installation_service import ProviderInstallationService
-from kavach.settings_control.repository import InMemorySettingsRepository
-from kavach.tenancy.domain import TenantContext
+from ai_governance.services.provider_installation_service import ProviderInstallationService
+from ai_governance.settings_control.repository import InMemorySettingsRepository
+from ai_governance.tenancy.domain import TenantContext
 
 
 class FakeEvaluationProvider:
@@ -450,14 +450,14 @@ def test_submit_evaluation_job_snapshots_provider_installation_type() -> None:
 
 def test_api_layer_does_not_import_provider_adapters() -> None:
     api_files = [
-        *Path("src/kavach/api/routers").rglob("*.py"),
-        *Path("src/kavach/api/mappers").rglob("*.py"),
-        *Path("src/kavach/api/models").rglob("*.py"),
+        *Path("src/ai_governance/api/routers").rglob("*.py"),
+        *Path("src/ai_governance/api/mappers").rglob("*.py"),
+        *Path("src/ai_governance/api/models").rglob("*.py"),
     ]
 
     for api_file in api_files:
         source = api_file.read_text()
 
-        assert "kavach.providers.trulens" not in source
+        assert "ai_governance.providers.trulens" not in source
         assert "import trulens" not in source
         assert "import openai" not in source

@@ -1,17 +1,17 @@
-from kavach.domain.evaluation_result import EvaluationMetric, EvaluationResult
-from kavach.domain.workflow_execution import WorkflowExecution
-from kavach.evaluation import EvaluationService
-from kavach.evaluation.evaluation_metrics import (
+from ai_governance.domain.evaluation_result import EvaluationMetric, EvaluationResult
+from ai_governance.domain.workflow_execution import WorkflowExecution
+from ai_governance.evaluation import EvaluationService
+from ai_governance.evaluation.evaluation_metrics import (
     ANSWER_RELEVANCE,
     GROUNDEDNESS,
     EvaluationMetricSpec,
 )
-from kavach.evaluation.evaluation_request import EvaluationRequest
-from kavach.providers import EvaluationProviderRegistry
-from kavach.providers.evaluation_provider import EvaluationProvider
-from kavach.providers.provider_capabilities import ProviderCapabilities
-from kavach.providers.provider_descriptor import ProviderDescriptor
-from kavach.services.dataset_builder import EvaluationDatasetBuilder
+from ai_governance.evaluation.evaluation_request import EvaluationRequest
+from ai_governance.providers import EvaluationProviderRegistry
+from ai_governance.providers.evaluation_provider import EvaluationProvider
+from ai_governance.providers.provider_capabilities import ProviderCapabilities
+from ai_governance.providers.provider_descriptor import ProviderDescriptor
+from ai_governance.services.dataset_builder import EvaluationDatasetBuilder
 from tests.providers.FakeProvider import FakeEvaluationProvider
 
 

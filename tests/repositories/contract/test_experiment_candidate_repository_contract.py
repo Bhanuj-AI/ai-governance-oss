@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
 
-from kavach.domain.experiments import ExperimentCandidate
-from kavach.repositories.experiment_candidate_repository import (
+from ai_governance.domain.experiments import ExperimentCandidate
+from ai_governance.repositories.experiment_candidate_repository import (
     ExperimentCandidateRepository,
 )
 

@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from kavach.api.mappers import EvaluationApiMapper
-from kavach.api.models import (
+from ai_governance.api.mappers import EvaluationApiMapper
+from ai_governance.api.models import (
     EvaluationMetricSpecRequest,
     EvaluationSubmitRequest,
 )
-from kavach.domain.evaluation_result import (
+from ai_governance.domain.evaluation_result import (
     EvaluationArtifact,
     EvaluationMetric,
     EvaluationResult,

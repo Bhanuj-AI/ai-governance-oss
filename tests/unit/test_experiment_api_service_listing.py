@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kavach.domain.experiments import (
+from ai_governance.domain.experiments import (
     EvaluationRun,
     EvaluationRunStatus,
     Experiment,
@@ -11,28 +11,28 @@ from kavach.domain.experiments import (
     Leaderboard,
     LeaderboardEntry,
 )
-from kavach.ontology.synchronization import OntologySyncEventPublisher
-from kavach.providers.provider_registry import EvaluationProviderRegistry
-from kavach.repositories import InMemoryOntologySyncEventRepository
-from kavach.repositories.in_memory_dataset_repository import InMemoryDatasetRepository
-from kavach.repositories.in_memory_evaluation_repository import InMemoryEvaluationRepository
-from kavach.repositories.in_memory_evaluation_run_repository import (
+from ai_governance.ontology.synchronization import OntologySyncEventPublisher
+from ai_governance.providers.provider_registry import EvaluationProviderRegistry
+from ai_governance.repositories import InMemoryOntologySyncEventRepository
+from ai_governance.repositories.in_memory_dataset_repository import InMemoryDatasetRepository
+from ai_governance.repositories.in_memory_evaluation_repository import InMemoryEvaluationRepository
+from ai_governance.repositories.in_memory_evaluation_run_repository import (
     InMemoryEvaluationRunRepository,
 )
-from kavach.repositories.in_memory_experiment_candidate_repository import (
+from ai_governance.repositories.in_memory_experiment_candidate_repository import (
     InMemoryExperimentCandidateRepository,
 )
-from kavach.repositories.in_memory_experiment_repository import (
+from ai_governance.repositories.in_memory_experiment_repository import (
     InMemoryExperimentRepository,
 )
-from kavach.repositories.in_memory_leaderboard_repository import (
+from ai_governance.repositories.in_memory_leaderboard_repository import (
     InMemoryLeaderboardRepository,
 )
-from kavach.repositories.in_memory_model_repository import InMemoryModelRepository
-from kavach.repositories.in_memory_prompt_repository import InMemoryPromptRepository
-from kavach.services.experiment_api_service import ExperimentApiService
-from kavach.services.experiments import ExperimentNotFoundError
-from kavach.tenancy.domain import TenantContext
+from ai_governance.repositories.in_memory_model_repository import InMemoryModelRepository
+from ai_governance.repositories.in_memory_prompt_repository import InMemoryPromptRepository
+from ai_governance.services.experiment_api_service import ExperimentApiService
+from ai_governance.services.experiments import ExperimentNotFoundError
+from ai_governance.tenancy.domain import TenantContext
 
 
 def test_experiment_api_service_lists_candidates_and_runs_with_tenant_guard() -> None:

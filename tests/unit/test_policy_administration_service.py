@@ -4,14 +4,14 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from kavach.decisions import (
+from ai_governance.decisions import (
     DecisionTargetType,
     PolicyConditionOperator,
     PolicyEffect,
     PolicyStatus,
 )
-from kavach.repositories import InMemoryPolicyAdministrationRepository
-from kavach.services.policies import (
+from ai_governance.repositories import InMemoryPolicyAdministrationRepository
+from ai_governance.services.policies import (
     InvalidPolicyRequestError,
     PolicyActivationFailedError,
     PolicyAdministrationService,

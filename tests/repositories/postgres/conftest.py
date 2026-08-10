@@ -9,17 +9,17 @@ import pytest
 from psycopg import sql
 from psycopg.conninfo import make_conninfo
 
-from kavach.databases.postgres.database import PostgresDatabase
+from ai_governance.databases.postgres.database import PostgresDatabase
 
 
 @pytest.fixture
 def postgres_database() -> Iterator[PostgresDatabase]:
-    dsn = os.getenv("KAVACH_POSTGRES_DSN")
+    dsn = os.getenv("AI_GOVERNANCE_POSTGRES_DSN")
 
     if not dsn:
-        pytest.skip("KAVACH_POSTGRES_DSN is not set")
+        pytest.skip("AI_GOVERNANCE_POSTGRES_DSN is not set")
 
-    schema_name = f"kavach_test_{uuid4().hex}"
+    schema_name = f"ai_governance_test_{uuid4().hex}"
 
     with psycopg.connect(dsn, autocommit=True) as connection:
         connection.execute(

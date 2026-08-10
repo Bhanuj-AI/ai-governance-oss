@@ -1,7 +1,7 @@
-from kavach.repositories.evaluation_run_repository import (
+from ai_governance.repositories.evaluation_run_repository import (
     EvaluationRunRepository,
 )
-from kavach.repositories.in_memory_evaluation_run_repository import (
+from ai_governance.repositories.in_memory_evaluation_run_repository import (
     InMemoryEvaluationRunRepository,
 )
 from tests.repositories.contract.test_evaluation_run_repository_contract import (

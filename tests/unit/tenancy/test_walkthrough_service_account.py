@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from kavach.tenancy.domain import BuiltInRole, RoleAssignment, utcnow
-from kavach.tenancy.repository import InMemoryControlPlaneRepository
-from kavach.tenancy.services import (
+from ai_governance.tenancy.domain import BuiltInRole, RoleAssignment, utcnow
+from ai_governance.tenancy.repository import InMemoryControlPlaneRepository
+from ai_governance.tenancy.services import (
     bootstrap_control_plane,
     provision_walkthrough_service_account,
 )
@@ -31,7 +31,7 @@ def test_walkthrough_service_account_receives_idempotent_tenant_membership() -> 
     assignments = repository.list_assignments(
         "org_default", actor_id="walkthrough-subject"
     )
-    assert membership.display_name == "Kavach walkthrough service account"
+    assert membership.display_name == "AI Governance Control Plane walkthrough service account"
     assert [assignment.role for assignment in assignments] == [
         BuiltInRole.GOVERNANCE_ADMIN
     ]

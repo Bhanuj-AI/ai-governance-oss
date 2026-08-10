@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
 
-from kavach.domain.experiments import (
+from ai_governance.domain.experiments import (
     Experiment,
     ExperimentStatus,
 )
-from kavach.repositories.experiment_repository import ExperimentRepository
+from ai_governance.repositories.experiment_repository import ExperimentRepository
 
 
 class ExperimentRepositoryContract(ABC):

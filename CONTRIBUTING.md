@@ -1,8 +1,8 @@
-# Contributing to Kavach
+# Contributing to AI Governance Control Plane
 
-Thank you for your interest in contributing to Kavach.
+Thank you for your interest in contributing to AI Governance Control Plane.
 
-Kavach is an AI governance and experiment management platform. Contributions are most useful when they preserve the project boundaries: Kavach records governed assets, evaluation evidence, replayable history, comparisons, drift analysis, rankings, and recommendations. Downstream systems remain responsible for deployment and runtime orchestration.
+AI Governance Control Plane is an AI governance and experiment management platform. Contributions are most useful when they preserve the project boundaries: AI Governance Control Plane records governed assets, evaluation evidence, replayable history, comparisons, drift analysis, rankings, and recommendations. Downstream systems remain responsible for deployment and runtime orchestration.
 
 ## Ways to Contribute
 
@@ -14,7 +14,7 @@ Kavach is an AI governance and experiment management platform. Contributions are
 
 ## Development Setup
 
-Kavach uses Python 3.12 or newer and `uv` for dependency management.
+AI Governance Control Plane uses Python 3.12 or newer and `uv` for dependency management.
 
 ```bash
 uv sync
@@ -87,4 +87,4 @@ For suspected vulnerabilities, follow the process in [SECURITY.md](SECURITY.md).
 
 ## License
 
-By contributing to Kavach, you agree that your contributions are licensed under the Apache License 2.0, unless explicitly stated otherwise by the maintainers.
+By contributing to AI Governance Control Plane, you agree that your contributions are licensed under the Apache License 2.0, unless explicitly stated otherwise by the maintainers.

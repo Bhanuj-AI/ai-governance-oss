@@ -2,19 +2,19 @@
 
 import pytest
 
-from kavach.repositories.factories.policy_repository_factory import (
+from ai_governance.repositories.factories.policy_repository_factory import (
     PolicyRepositoryFactory,
 )
-from kavach.repositories.in_memory_policy_administration_repository import (
+from ai_governance.repositories.in_memory_policy_administration_repository import (
     InMemoryPolicyAdministrationRepository,
 )
-from kavach.repositories.postgres import (
+from ai_governance.repositories.postgres import (
     PostgresPolicyAdministrationRepository,
 )
-from kavach.repositories.sqlite import (
+from ai_governance.repositories.sqlite import (
     SQLitePolicyAdministrationRepository,
 )
-from kavach.settings import Settings
+from ai_governance.settings import Settings
 
 
 def _minimal_settings(
@@ -130,7 +130,7 @@ class TestPolicyRepositoryFactory:
             policy_sqlite_path=None,
         )
 
-        with pytest.raises(ValueError, match="KAVACH_POLICY_SQLITE_PATH"):
+        with pytest.raises(ValueError, match="AI_GOVERNANCE_POLICY_SQLITE_PATH"):
             PolicyRepositoryFactory(settings).create()
 
     def test_create_postgres_missing_dsn_raises_error(self):
@@ -139,7 +139,7 @@ class TestPolicyRepositoryFactory:
             policy_postgres_dsn=None,
         )
 
-        with pytest.raises(ValueError, match="KAVACH_POLICY_POSTGRES_DSN"):
+        with pytest.raises(ValueError, match="AI_GOVERNANCE_POLICY_POSTGRES_DSN"):
             PolicyRepositoryFactory(settings).create()
 
     def test_create_invalid_repository_type_raises_error(self):

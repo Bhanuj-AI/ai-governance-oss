@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from kavach.decisions import (
+from ai_governance.decisions import (
     DecisionConfidenceLevel,
     DecisionEvidenceReference,
     DecisionPolicyReference,

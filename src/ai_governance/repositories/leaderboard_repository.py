@@ -1,0 +1,36 @@
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+
+from ai_governance.domain.experiments import Leaderboard
+
+
+class LeaderboardRepository(ABC):
+    """
+    Persistence contract for immutable experiment leaderboards.
+    """
+
+    @abstractmethod
+    def save(
+        self,
+        leaderboard: Leaderboard,
+    ) -> None:
+        pass
+
+    @abstractmethod
+    def find_by_id(
+        self,
+        leaderboard_id: str,
+    ) -> Leaderboard | None:
+        pass
+
+    @abstractmethod
+    def find_by_experiment_id(
+        self,
+        experiment_id: str,
+    ) -> list[Leaderboard]:
+        pass
+
+    @abstractmethod
+    def find_all(self) -> list[Leaderboard]:
+        pass

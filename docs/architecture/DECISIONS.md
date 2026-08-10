@@ -1,6 +1,6 @@
 # Decisions
 
-## ADR-001: Kavach Is a Governance Control Plane, Not an AI Runtime
+## ADR-001: AI Governance Control Plane Is a Governance Control Plane, Not an AI Runtime
 
 Status: Accepted
 
@@ -10,7 +10,7 @@ AI systems need governance that survives runtime changes and framework churn.
 
 ### Decision
 
-Kavach focuses on governance artifacts, evidence, and recommendations rather
+AI Governance Control Plane focuses on governance artifacts, evidence, and recommendations rather
 than direct runtime execution ownership.
 
 ### Consequences
@@ -85,7 +85,7 @@ The platform needs a transport layer, but not every consumer is an HTTP server.
 
 ### Decision
 
-Kavach exposes framework-neutral API adapters first and keeps REST, CLI, or SDK
+AI Governance Control Plane exposes framework-neutral API adapters first and keeps REST, CLI, or SDK
 mounting in outer layers. The FastAPI REST control plane follows this decision
 by staying thin and delegating behavior to services and API facades.
 
@@ -129,7 +129,7 @@ Leaderboards and leaderboard APIs stop at recommendation semantics.
 
 ### Consequences
 
-- Kavach avoids hidden promotion side effects
+- AI Governance Control Plane avoids hidden promotion side effects
 - external release systems remain in control
 - governance artifacts remain portable
 

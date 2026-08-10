@@ -2,31 +2,31 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kavach.domain.experiments import ExperimentCandidate
-from kavach.repositories.in_memory_dataset_repository import (
+from ai_governance.domain.experiments import ExperimentCandidate
+from ai_governance.repositories.in_memory_dataset_repository import (
     InMemoryDatasetRepository,
 )
-from kavach.repositories.in_memory_experiment_candidate_repository import (
+from ai_governance.repositories.in_memory_experiment_candidate_repository import (
     InMemoryExperimentCandidateRepository,
 )
-from kavach.repositories.in_memory_experiment_repository import (
+from ai_governance.repositories.in_memory_experiment_repository import (
     InMemoryExperimentRepository,
 )
-from kavach.repositories.in_memory_model_repository import (
+from ai_governance.repositories.in_memory_model_repository import (
     InMemoryModelRepository,
 )
-from kavach.repositories.in_memory_prompt_repository import (
+from ai_governance.repositories.in_memory_prompt_repository import (
     InMemoryPromptRepository,
 )
-from kavach.services.datasets import DatasetRegistryService
-from kavach.services.experiments import (
+from ai_governance.services.datasets import DatasetRegistryService
+from ai_governance.services.experiments import (
     ExperimentCandidateLifecycleError,
     ExperimentCandidateReferenceError,
     ExperimentCandidateService,
     ExperimentService,
 )
-from kavach.services.models import ModelRegistryService
-from kavach.services.prompts import PromptRegistryService
+from ai_governance.services.models import ModelRegistryService
+from ai_governance.services.prompts import PromptRegistryService
 
 
 def test_candidate_service_creates_candidate() -> None:

@@ -3,13 +3,13 @@ from uuid import uuid4
 
 import pytest
 
-from kavach.ontology import EntityType, OntologyService, RelationshipType
+from ai_governance.ontology import EntityType, OntologyService, RelationshipType
 
 pytestmark = pytest.mark.integration
 
 
 def _neo4j_available() -> bool:
-    if os.getenv("KAVACH_RUN_NEO4J_TESTS") != "true":
+    if os.getenv("AI_GOVERNANCE_RUN_NEO4J_TESTS") != "true":
         return False
     try:
         import neo4j  # type: ignore # noqa: F401
@@ -23,7 +23,7 @@ pytestmark = [
     pytest.mark.skipif(
         not _neo4j_available(),
         reason=(
-            "Set KAVACH_RUN_NEO4J_TESTS=true and install/start Neo4j to run."
+            "Set AI_GOVERNANCE_RUN_NEO4J_TESTS=true and install/start Neo4j to run."
         ),
     ),
 ]
@@ -31,7 +31,7 @@ pytestmark = [
 
 @pytest.fixture()
 def ontology_service():
-    from kavach.ontology.neo4j_repository import Neo4jOntologyGraphRepository
+    from ai_governance.ontology.neo4j_repository import Neo4jOntologyGraphRepository
 
     repository = Neo4jOntologyGraphRepository.from_environment()
     repository.initialize_schema()

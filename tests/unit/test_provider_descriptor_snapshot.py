@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from kavach.providers import MockEvaluationProvider
-from kavach.providers.provider_metadata import ProviderDescriptorSnapshot
+from ai_governance.providers import MockEvaluationProvider
+from ai_governance.providers.provider_metadata import ProviderDescriptorSnapshot
 
 
 def test_provider_descriptor_snapshot_hash_is_deterministic() -> None:

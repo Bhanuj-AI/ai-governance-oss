@@ -1,4 +1,4 @@
 interface:
   display_name: "Governance Policy"
-  short_description: "Implement auditable Kavach policy and decision changes."
-  default_prompt: "Use $governance-policy to add an explainable, auditable Kavach policy or decision change."
+  short_description: "Implement auditable AI Governance Control Plane policy and decision changes."
+  default_prompt: "Use $governance-policy to add an explainable, auditable AI Governance Control Plane policy or decision change."

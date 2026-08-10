@@ -14,12 +14,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from kavach.tenancy.authentication import (
+from ai_governance.tenancy.authentication import (
     AuthenticationError,
     AuthenticationService,
 )
-from kavach.tenancy.context_factory import TenantContextFactory
-from kavach.tenancy.domain import ActorType, AuthenticatedPrincipal
+from ai_governance.tenancy.context_factory import TenantContextFactory
+from ai_governance.tenancy.domain import ActorType, AuthenticatedPrincipal
 
 
 # ---------------------------------------------------------------------------
@@ -33,9 +33,9 @@ def _b64url_encode(data: bytes) -> str:
 
 def _make_jwt(
     sub: str = "user-123",
-    iss: str = "http://localhost:8080/realms/kavach",
+    iss: str = "http://localhost:8080/realms/ai-governance",
     exp: int | None = None,
-    azp: str = "kavach-service",
+    azp: str = "ai-governance-service",
     principal_type: str = "USER",
     organization_id: str | None = None,
     kid: str = "key-1",
@@ -69,8 +69,8 @@ def _make_jwt(
 
 def _make_jwt_no_exp(
     sub: str = "user-123",
-    iss: str = "http://localhost:8080/realms/kavach",
-    azp: str = "kavach-service",
+    iss: str = "http://localhost:8080/realms/ai-governance",
+    azp: str = "ai-governance-service",
     principal_type: str = "USER",
     organization_id: str | None = None,
     kid: str = "key-1",
@@ -96,9 +96,9 @@ def _make_jwt_no_exp(
 
 
 def _make_jwt_no_sub(
-    iss: str = "http://localhost:8080/realms/kavach",
+    iss: str = "http://localhost:8080/realms/ai-governance",
     exp: int = None,
-    azp: str = "kavach-service",
+    azp: str = "ai-governance-service",
     principal_type: str = "USER",
     organization_id: str | None = None,
     kid: str = "key-1",
@@ -148,21 +148,21 @@ def _make_mock_urlopen_response(jwks_data: dict) -> MagicMock:
 class TestMalformedTokens:
     def test_empty_string(self):
         service = AuthenticationService(
-            issuer="http://localhost:8080/realms/kavach"
+            issuer="http://localhost:8080/realms/ai-governance"
         )
         with pytest.raises(AuthenticationError, match="Malformed JWT"):
             service.validate("")
 
     def test_two_segments(self):
         service = AuthenticationService(
-            issuer="http://localhost:8080/realms/kavach"
+            issuer="http://localhost:8080/realms/ai-governance"
         )
         with pytest.raises(AuthenticationError, match="Malformed JWT"):
             service.validate("a.b")
 
     def test_four_segments(self):
         service = AuthenticationService(
-            issuer="http://localhost:8080/realms/kavach"
+            issuer="http://localhost:8080/realms/ai-governance"
         )
         with pytest.raises(AuthenticationError, match="Malformed JWT"):
             service.validate("a.b.c.d")
@@ -174,7 +174,7 @@ class TestMalformedTokens:
         token = f"{header_b64}.{payload_b64}.{sig_b64}"
 
         service = AuthenticationService(
-            issuer="http://localhost:8080/realms/kavach"
+            issuer="http://localhost:8080/realms/ai-governance"
         )
         with pytest.raises(AuthenticationError, match="Malformed JWT"):
             service.validate(token)
@@ -188,7 +188,7 @@ class TestAlgorithmValidation:
     def test_unsupported_algorithm(self):
         token = _make_jwt(alg="HS256")
         service = AuthenticationService(
-            issuer="http://localhost:8080/realms/kavach"
+            issuer="http://localhost:8080/realms/ai-governance"
         )
         with pytest.raises(AuthenticationError, match="Unsupported JWT algorithm"):
             service.validate(token)
@@ -200,9 +200,9 @@ class TestAlgorithmValidation:
 
 class TestIssuerValidation:
     def test_wrong_issuer(self):
-        token = _make_jwt(iss="http://evil.com/realms/kavach")
+        token = _make_jwt(iss="http://evil.com/realms/ai-governance")
         service = AuthenticationService(
-            issuer="http://localhost:8080/realms/kavach"
+            issuer="http://localhost:8080/realms/ai-governance"
         )
         with pytest.raises(AuthenticationError, match="JWT issuer mismatch"):
             service.validate(token)
@@ -216,7 +216,7 @@ class TestExpiryValidation:
     def test_expired_token(self):
         token = _make_jwt(exp=int(time.time()) - 3600)
         service = AuthenticationService(
-            issuer="http://localhost:8080/realms/kavach"
+            issuer="http://localhost:8080/realms/ai-governance"
         )
         with pytest.raises(AuthenticationError, match="JWT has expired"):
             service.validate(token)
@@ -224,15 +224,15 @@ class TestExpiryValidation:
     def test_missing_exp_claim(self):
         token = _make_jwt_no_exp()
         service = AuthenticationService(
-            issuer="http://localhost:8080/realms/kavach"
+            issuer="http://localhost:8080/realms/ai-governance"
         )
         with pytest.raises(AuthenticationError, match="JWT missing expiry claim"):
             service.validate(token)
 
 
 class TestAudienceValidation:
-    @patch("kavach.tenancy.authentication._rsa_public_key_from_jwk")
-    @patch("kavach.tenancy.authentication.urlopen")
+    @patch("ai_governance.tenancy.authentication._rsa_public_key_from_jwk")
+    @patch("ai_governance.tenancy.authentication.urlopen")
     def test_rejects_token_without_expected_resource_audience(
         self, mock_urlopen, mock_rsa
     ):
@@ -241,22 +241,22 @@ class TestAudienceValidation:
             {"keys": [{"kid": "key-1", "n": "abc", "e": "AQAB"}]}
         )
         service = AuthenticationService(
-            issuer="http://localhost:8080/realms/kavach",
+            issuer="http://localhost:8080/realms/ai-governance",
             audience="http://localhost:8002/mcp",
         )
 
         with pytest.raises(AuthenticationError, match="JWT audience does not include"):
             service.validate(_make_jwt(aud="some-other-resource"))
 
-    @patch("kavach.tenancy.authentication._rsa_public_key_from_jwk")
-    @patch("kavach.tenancy.authentication.urlopen")
+    @patch("ai_governance.tenancy.authentication._rsa_public_key_from_jwk")
+    @patch("ai_governance.tenancy.authentication.urlopen")
     def test_accepts_expected_resource_in_audience_array(self, mock_urlopen, mock_rsa):
         mock_rsa.return_value = MagicMock()
         mock_urlopen.return_value = _make_mock_urlopen_response(
             {"keys": [{"kid": "key-1", "n": "abc", "e": "AQAB"}]}
         )
         service = AuthenticationService(
-            issuer="http://localhost:8080/realms/kavach",
+            issuer="http://localhost:8080/realms/ai-governance",
             audience="http://localhost:8002/mcp",
         )
 
@@ -271,8 +271,8 @@ class TestAudienceValidation:
 # ---------------------------------------------------------------------------
 
 class TestSubjectValidation:
-    @patch("kavach.tenancy.authentication._rsa_public_key_from_jwk")
-    @patch("kavach.tenancy.authentication.urlopen")
+    @patch("ai_governance.tenancy.authentication._rsa_public_key_from_jwk")
+    @patch("ai_governance.tenancy.authentication.urlopen")
     def test_missing_subject(self, mock_urlopen, mock_rsa):
         # Must include a valid exp so expiry check passes first
         mock_rsa.return_value = MagicMock()
@@ -284,7 +284,7 @@ class TestSubjectValidation:
 
         token = _make_jwt_no_sub(exp=int(time.time()) + 3600)
         service = AuthenticationService(
-            issuer="http://localhost:8080/realms/kavach"
+            issuer="http://localhost:8080/realms/ai-governance"
         )
         with pytest.raises(AuthenticationError, match="JWT missing subject claim"):
             service.validate(token)
@@ -295,8 +295,8 @@ class TestSubjectValidation:
 # ---------------------------------------------------------------------------
 
 class TestSuccessfulValidation:
-    @patch("kavach.tenancy.authentication._rsa_public_key_from_jwk")
-    @patch("kavach.tenancy.authentication.urlopen")
+    @patch("ai_governance.tenancy.authentication._rsa_public_key_from_jwk")
+    @patch("ai_governance.tenancy.authentication.urlopen")
     def test_valid_token_returns_principal(self, mock_urlopen, mock_rsa):
         mock_rsa.return_value = MagicMock()
 
@@ -308,19 +308,19 @@ class TestSuccessfulValidation:
         token = _make_jwt()
 
         service = AuthenticationService(
-            issuer="http://localhost:8080/realms/kavach",
+            issuer="http://localhost:8080/realms/ai-governance",
             jwks_refresh_seconds=300,
         )
         principal = service.validate(token)
 
         assert principal.subject == "user-123"
         assert principal.principal_type == ActorType.USER
-        assert principal.client_id == "kavach-service"
-        assert principal.issuer == "http://localhost:8080/realms/kavach"
+        assert principal.client_id == "ai-governance-service"
+        assert principal.issuer == "http://localhost:8080/realms/ai-governance"
         assert principal.organization_id is None
 
-    @patch("kavach.tenancy.authentication._rsa_public_key_from_jwk")
-    @patch("kavach.tenancy.authentication.urlopen")
+    @patch("ai_governance.tenancy.authentication._rsa_public_key_from_jwk")
+    @patch("ai_governance.tenancy.authentication.urlopen")
     def test_service_principal_type(self, mock_urlopen, mock_rsa):
         mock_rsa.return_value = MagicMock()
 
@@ -332,14 +332,14 @@ class TestSuccessfulValidation:
         token = _make_jwt(principal_type="SERVICE")
 
         service = AuthenticationService(
-            issuer="http://localhost:8080/realms/kavach"
+            issuer="http://localhost:8080/realms/ai-governance"
         )
         principal = service.validate(token)
 
         assert principal.principal_type == ActorType.SERVICE
 
-    @patch("kavach.tenancy.authentication._rsa_public_key_from_jwk")
-    @patch("kavach.tenancy.authentication.urlopen")
+    @patch("ai_governance.tenancy.authentication._rsa_public_key_from_jwk")
+    @patch("ai_governance.tenancy.authentication.urlopen")
     def test_organization_id_from_jwt(self, mock_urlopen, mock_rsa):
         mock_rsa.return_value = MagicMock()
 
@@ -351,14 +351,14 @@ class TestSuccessfulValidation:
         token = _make_jwt(organization_id="org_test")
 
         service = AuthenticationService(
-            issuer="http://localhost:8080/realms/kavach"
+            issuer="http://localhost:8080/realms/ai-governance"
         )
         principal = service.validate(token)
 
         assert principal.organization_id == "org_test"
 
-    @patch("kavach.tenancy.authentication._rsa_public_key_from_jwk")
-    @patch("kavach.tenancy.authentication.urlopen")
+    @patch("ai_governance.tenancy.authentication._rsa_public_key_from_jwk")
+    @patch("ai_governance.tenancy.authentication.urlopen")
     def test_client_id_falls_back_to_client_id_claim(self, mock_urlopen, mock_rsa):
         mock_rsa.return_value = MagicMock()
 
@@ -372,7 +372,7 @@ class TestSuccessfulValidation:
         header_b64 = _b64url_encode(json.dumps(header).encode())
         payload = {
             "sub": "user-123",
-            "iss": "http://localhost:8080/realms/kavach",
+            "iss": "http://localhost:8080/realms/ai-governance",
             "principal_type": "USER",
             "exp": int(time.time()) + 3600,
             "client_id": "fallback-client",
@@ -382,7 +382,7 @@ class TestSuccessfulValidation:
         token = f"{header_b64}.{payload_b64}.{sig_b64}"
 
         service = AuthenticationService(
-            issuer="http://localhost:8080/realms/kavach"
+            issuer="http://localhost:8080/realms/ai-governance"
         )
         principal = service.validate(token)
 
@@ -394,7 +394,7 @@ class TestSuccessfulValidation:
 # ---------------------------------------------------------------------------
 
 class TestJwksCaching:
-    @patch("kavach.tenancy.authentication.urlopen")
+    @patch("ai_governance.tenancy.authentication.urlopen")
     def test_jwks_fetched_once_then_cached(self, mock_urlopen):
         call_count = 0
 
@@ -407,13 +407,13 @@ class TestJwksCaching:
 
         mock_urlopen.side_effect = side_effect
 
-        with patch("kavach.tenancy.authentication._rsa_public_key_from_jwk") as mock_rsa:
+        with patch("ai_governance.tenancy.authentication._rsa_public_key_from_jwk") as mock_rsa:
             mock_rsa.return_value = MagicMock()
 
             token = _make_jwt(exp=int(time.time()) + 3600)
 
             service = AuthenticationService(
-                issuer="http://localhost:8080/realms/kavach",
+                issuer="http://localhost:8080/realms/ai-governance",
                 jwks_refresh_seconds=300,
             )
 
@@ -436,8 +436,8 @@ class TestTenantContextFactory:
             subject="user-456",
             principal_type=ActorType.USER,
             organization_id="org_test",
-            client_id="kavach-service",
-            issuer="http://localhost:8080/realms/kavach",
+            client_id="ai-governance-service",
+            issuer="http://localhost:8080/realms/ai-governance",
         )
 
         factory = TenantContextFactory()
@@ -455,7 +455,7 @@ class TestTenantContextFactory:
             principal_type=ActorType.SERVICE,
             organization_id=None,
             client_id="svc-client",
-            issuer="http://localhost:8080/realms/kavach",
+            issuer="http://localhost:8080/realms/ai-governance",
         )
 
         factory = TenantContextFactory()
@@ -469,7 +469,7 @@ class TestTenantContextFactory:
             principal_type=ActorType.SERVICE,
             organization_id=None,
             client_id="svc-client",
-            issuer="http://localhost:8080/realms/kavach",
+            issuer="http://localhost:8080/realms/ai-governance",
         )
 
         factory = TenantContextFactory()
@@ -483,7 +483,7 @@ class TestTenantContextFactory:
             principal_type=ActorType.USER,
             organization_id=None,
             client_id="client",
-            issuer="http://localhost:8080/realms/kavach",
+            issuer="http://localhost:8080/realms/ai-governance",
         )
 
         factory = TenantContextFactory()
@@ -497,7 +497,7 @@ class TestTenantContextFactory:
             principal_type=ActorType.USER,
             organization_id="jwt-org",
             client_id="client",
-            issuer="http://localhost:8080/realms/kavach",
+            issuer="http://localhost:8080/realms/ai-governance",
         )
 
         context = TenantContextFactory().create(

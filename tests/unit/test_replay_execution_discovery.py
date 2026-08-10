@@ -1,12 +1,12 @@
 from datetime import UTC, datetime, timedelta
 
-from kavach.domain.workflow_execution import WorkflowExecution
-from kavach.services.replay_execution_discovery import (
+from ai_governance.domain.workflow_execution import WorkflowExecution
+from ai_governance.services.replay_execution_discovery import (
     InMemoryReplayExecutionCatalog,
     ReplayExecutionSearchFilters,
     projection_from_execution,
 )
-from kavach.tenancy.domain import TenantContext
+from ai_governance.tenancy.domain import TenantContext
 
 
 def test_search_is_cursor_paginated_tenant_scoped_and_can_filter_replayability() -> (

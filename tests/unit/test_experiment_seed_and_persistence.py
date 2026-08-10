@@ -6,57 +6,57 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
-from kavach.api.demo_seed import (
+from ai_governance.api.demo_seed import (
     _resolve_graph_query_service,
     seed_demo_experiment_workflows,
     seed_demo_experiments,
     seed_demo_registry_assets,
     synchronize_demo_experiment_graph,
 )
-from kavach.domain.datasets import Dataset, DatasetStatus
-from kavach.api.dependencies import get_ontology_graph_query_repository
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.domain.experiments import Experiment, ExperimentStatus
-from kavach.ontology import (
+from ai_governance.domain.datasets import Dataset, DatasetStatus
+from ai_governance.api.dependencies import get_ontology_graph_query_repository
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.domain.experiments import Experiment, ExperimentStatus
+from ai_governance.ontology import (
     EntityType,
     InMemoryOntologyGraphRepository,
     OntologyService,
     RelationshipType,
 )
-from kavach.repositories.in_memory_dataset_repository import (
+from ai_governance.repositories.in_memory_dataset_repository import (
     InMemoryDatasetRepository,
 )
-from kavach.repositories.in_memory_evaluation_repository import (
+from ai_governance.repositories.in_memory_evaluation_repository import (
     InMemoryEvaluationRepository,
 )
-from kavach.repositories.in_memory_evaluation_run_repository import (
+from ai_governance.repositories.in_memory_evaluation_run_repository import (
     InMemoryEvaluationRunRepository,
 )
-from kavach.repositories.in_memory_experiment_candidate_repository import (
+from ai_governance.repositories.in_memory_experiment_candidate_repository import (
     InMemoryExperimentCandidateRepository,
 )
-from kavach.repositories.in_memory_experiment_repository import (
+from ai_governance.repositories.in_memory_experiment_repository import (
     InMemoryExperimentRepository,
 )
-from kavach.repositories.in_memory_leaderboard_repository import (
+from ai_governance.repositories.in_memory_leaderboard_repository import (
     InMemoryLeaderboardRepository,
 )
-from kavach.repositories.in_memory_model_repository import (
+from ai_governance.repositories.in_memory_model_repository import (
     InMemoryModelRepository,
 )
-from kavach.repositories.in_memory_prompt_repository import (
+from ai_governance.repositories.in_memory_prompt_repository import (
     InMemoryPromptRepository,
 )
-from kavach.repositories.mappers.experiment_persistence_mapper import (
+from ai_governance.repositories.mappers.experiment_persistence_mapper import (
     ExperimentPersistenceMapper,
 )
-from kavach.repositories.sqlite.sqlite_experiment_repository import (
+from ai_governance.repositories.sqlite.sqlite_experiment_repository import (
     SQLiteExperimentRepository,
 )
-from kavach.repositories.postgres.postgres_experiment_repository import (
+from ai_governance.repositories.postgres.postgres_experiment_repository import (
     PostgresExperimentRepository,
 )
-from kavach.repositories.snowflake.snowflake_experiment_repository import (
+from ai_governance.repositories.snowflake.snowflake_experiment_repository import (
     SnowflakeExperimentRepository,
 )
 
@@ -202,7 +202,7 @@ def test_demo_registry_seed_writes_dataset_content_to_configured_object_store(
             name="Demo Evaluation Set",
             version="v1.0",
             description="Older local registry metadata",
-            storage_uri="memory://kavach/demo-evaluation",
+            storage_uri="memory://ai-governance/demo-evaluation",
             storage_type="memory",
             schema_version="1.0",
             record_count=120,
@@ -213,10 +213,10 @@ def test_demo_registry_seed_writes_dataset_content_to_configured_object_store(
         )
     )
     monkeypatch.setattr(
-        "kavach.api.demo_seed.dataset_object_store_from_environment",
+        "ai_governance.api.demo_seed.dataset_object_store_from_environment",
         lambda: object_store,
     )
-    monkeypatch.setenv("KAVACH_DATASET_S3_BUCKET", "local-datasets")
+    monkeypatch.setenv("AI_GOVERNANCE_DATASET_S3_BUCKET", "local-datasets")
 
     seed_demo_registry_assets(
         prompt_repository,
@@ -403,8 +403,8 @@ def test_non_sqlite_experiment_repositories_include_updated_at_in_sql() -> None:
 
 def test_non_sqlite_schemas_declare_updated_at() -> None:
     for schema_path in (
-        "src/kavach/databases/postgres/schema.sql",
-        "src/kavach/databases/snowflake/schema.sql",
+        "src/ai_governance/databases/postgres/schema.sql",
+        "src/ai_governance/databases/snowflake/schema.sql",
     ):
         schema = Path(schema_path).read_text(encoding="utf-8")
         assert "updated_at" in schema

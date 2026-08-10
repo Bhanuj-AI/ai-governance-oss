@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.repositories.in_memory.in_memory_job_repository import (
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.repositories.in_memory.in_memory_job_repository import (
     InMemoryJobRepository,
 )
-from kavach.repositories.postgres.postgres_job_repository import PostgresJobRepository
-from kavach.repositories.sqlite.sqlite_job_repository import SQLiteJobRepository
-from kavach.services.dashboard_service import _database_health
+from ai_governance.repositories.postgres.postgres_job_repository import PostgresJobRepository
+from ai_governance.repositories.sqlite.sqlite_job_repository import SQLiteJobRepository
+from ai_governance.services.dashboard_service import _database_health
 
 
 def test_database_health_reports_postgres_without_a_sqlite_path() -> None:

@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kavach.decisions import (
+from ai_governance.decisions import (
     DecisionConfidenceLevel,
     DecisionEvidenceReference,
     DecisionPolicyReference,

@@ -3,19 +3,19 @@ from pathlib import Path
 
 import pytest
 
-from kavach.domain.evaluation_result import (
+from ai_governance.domain.evaluation_result import (
     EvaluationMetric,
     EvaluationResult,
 )
-from kavach.governance import DriftSeverity
-from kavach.repositories.in_memory_evaluation_repository import (
+from ai_governance.governance import DriftSeverity
+from ai_governance.repositories.in_memory_evaluation_repository import (
     InMemoryEvaluationRepository,
 )
-from kavach.services.history import (
+from ai_governance.services.history import (
     EvaluationHistoryRecordNotFoundError,
     EvaluationHistoryService,
 )
-from kavach.tenancy.domain import TenantContext
+from ai_governance.tenancy.domain import TenantContext
 
 
 def test_evaluation_history_service_returns_execution_history() -> None:
@@ -494,7 +494,7 @@ def test_evaluation_history_service_uses_evaluation_retention(
         )
     )
     configuration = _RecordingConfigurationService()
-    from kavach.services.history import evaluation_history_service
+    from ai_governance.services.history import evaluation_history_service
 
     monkeypatch.setattr(
         evaluation_history_service,
@@ -531,10 +531,10 @@ def test_evaluation_history_service_returns_all_records_without_configuration() 
 def test_evaluation_history_service_does_not_depend_on_replay_domain() -> None:
     source = (
         Path(__file__).parents[2]
-        / "src/kavach/services/history/evaluation_history_service.py"
+        / "src/ai_governance/services/history/evaluation_history_service.py"
     ).read_text()
 
-    assert "kavach.domain.replay" not in source
+    assert "ai_governance.domain.replay" not in source
 
 
 class _RecordingConfigurationService:

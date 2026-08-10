@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from kavach.providers.provider_capabilities import ProviderCapabilities
-from kavach.providers.provider_descriptor import (
+from ai_governance.providers.provider_capabilities import ProviderCapabilities
+from ai_governance.providers.provider_descriptor import (
     ProviderDescriptor,
     normalize_provider_name,
 )

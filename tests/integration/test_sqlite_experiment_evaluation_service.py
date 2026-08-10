@@ -3,53 +3,53 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.domain.evaluation_dataset import EvaluationDataset
-from kavach.domain.evaluation_result import (
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.domain.evaluation_dataset import EvaluationDataset
+from ai_governance.domain.evaluation_result import (
     EvaluationMetric,
     EvaluationResult,
 )
-from kavach.domain.workflow_execution import WorkflowExecution
-from kavach.evaluation import EvaluationService
-from kavach.providers.evaluation_provider import EvaluationProvider
-from kavach.providers.provider_capabilities import ProviderCapabilities
-from kavach.providers.provider_descriptor import ProviderDescriptor
-from kavach.repositories.in_memory_evaluation_repository import (
+from ai_governance.domain.workflow_execution import WorkflowExecution
+from ai_governance.evaluation import EvaluationService
+from ai_governance.providers.evaluation_provider import EvaluationProvider
+from ai_governance.providers.provider_capabilities import ProviderCapabilities
+from ai_governance.providers.provider_descriptor import ProviderDescriptor
+from ai_governance.repositories.in_memory_evaluation_repository import (
     InMemoryEvaluationRepository,
 )
-from kavach.repositories.sqlite.sqlite_dataset_repository import (
+from ai_governance.repositories.sqlite.sqlite_dataset_repository import (
     SQLiteDatasetRepository,
 )
-from kavach.repositories.sqlite.sqlite_evaluation_run_repository import (
+from ai_governance.repositories.sqlite.sqlite_evaluation_run_repository import (
     SQLiteEvaluationRunRepository,
 )
-from kavach.repositories.sqlite.sqlite_experiment_candidate_repository import (
+from ai_governance.repositories.sqlite.sqlite_experiment_candidate_repository import (
     SQLiteExperimentCandidateRepository,
 )
-from kavach.repositories.sqlite.sqlite_experiment_repository import (
+from ai_governance.repositories.sqlite.sqlite_experiment_repository import (
     SQLiteExperimentRepository,
 )
-from kavach.repositories.sqlite.sqlite_model_repository import (
+from ai_governance.repositories.sqlite.sqlite_model_repository import (
     SQLiteModelRepository,
 )
-from kavach.repositories.sqlite.sqlite_prompt_repository import (
+from ai_governance.repositories.sqlite.sqlite_prompt_repository import (
     SQLitePromptRepository,
 )
-from kavach.services.dataset_builder import EvaluationDatasetBuilder
-from kavach.services.datasets import DatasetRegistryService
-from kavach.services.experiments import (
+from ai_governance.services.dataset_builder import EvaluationDatasetBuilder
+from ai_governance.services.datasets import DatasetRegistryService
+from ai_governance.services.experiments import (
     ExperimentCandidateService,
     ExperimentEvaluationService,
     ExperimentService,
 )
-from kavach.services.models import ModelRegistryService
-from kavach.services.prompts import PromptRegistryService
+from ai_governance.services.models import ModelRegistryService
+from ai_governance.services.prompts import PromptRegistryService
 
 
 def test_sqlite_experiment_evaluation_service_executes_complete_experiment(
     tmp_path: Path,
 ) -> None:
-    database = SQLiteDatabase(tmp_path / "kavach.db")
+    database = SQLiteDatabase(tmp_path / "ai_governance.db")
     database.initialize()
 
     prompt_repository = SQLitePromptRepository(database)

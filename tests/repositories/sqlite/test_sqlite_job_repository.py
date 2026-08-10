@@ -7,21 +7,21 @@ from threading import Barrier, Thread
 
 import pytest
 
-from kavach.databases.sqlite.database import SQLiteDatabase
-from kavach.domain.jobs import (
+from ai_governance.databases.sqlite.database import SQLiteDatabase
+from ai_governance.domain.jobs import (
     IdempotencyConflictError,
     Job,
     JobStatus,
     JobType,
 )
-from kavach.repositories.sqlite.sqlite_job_repository import SQLiteJobRepository
+from ai_governance.repositories.sqlite.sqlite_job_repository import SQLiteJobRepository
 
 
 @pytest.fixture
 def repository(
     tmp_path: Path,
 ) -> SQLiteJobRepository:
-    database = SQLiteDatabase(tmp_path / "kavach.db")
+    database = SQLiteDatabase(tmp_path / "ai_governance.db")
     database.initialize()
     return SQLiteJobRepository(database)
 

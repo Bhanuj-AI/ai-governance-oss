@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from kavach.decisions import (
+from ai_governance.decisions import (
     DecisionTargetType,
     PolicyCondition,
     PolicyConditionOperator,
@@ -14,12 +14,12 @@ from kavach.decisions import (
     PolicyRule,
     PolicyStatus,
 )
-from kavach.decisions.policy_administration import (
+from ai_governance.decisions.policy_administration import (
     PolicyDefinition,
     PolicyVersion,
 )
-from kavach.decisions.policy_enums import PolicyCategory
-from kavach.repositories.policy_administration_repository import (
+from ai_governance.decisions.policy_enums import PolicyCategory
+from ai_governance.repositories.policy_administration_repository import (
     PolicyAdministrationConflictError,
     PolicyAdministrationRepository,
 )

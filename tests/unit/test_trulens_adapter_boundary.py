@@ -4,16 +4,16 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kavach.domain.evaluation_dataset import EvaluationDataset
-from kavach.domain.workflow_execution import WorkflowExecution
-from kavach.evaluation.evaluation_metrics import (
+from ai_governance.domain.evaluation_dataset import EvaluationDataset
+from ai_governance.domain.workflow_execution import WorkflowExecution
+from ai_governance.evaluation.evaluation_metrics import (
     ANSWER_RELEVANCE,
     CONTEXT_RELEVANCE,
     GROUNDEDNESS,
     EvaluationMetricSpec,
 )
-from kavach.evaluation.evaluation_request import EvaluationRequest
-from kavach.providers.trulens import (
+from ai_governance.evaluation.evaluation_request import EvaluationRequest
+from ai_governance.providers.trulens import (
     TruLensAdapter,
     TruLensConfig,
     TruLensMetricMapper,

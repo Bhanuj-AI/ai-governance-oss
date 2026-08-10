@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from kavach.plugins import PluginMetadata, create_plugin_registry
+from ai_governance.plugins import PluginMetadata, create_plugin_registry
 
 
 class _LifecyclePlugin:
@@ -11,7 +11,7 @@ class _LifecyclePlugin:
     metadata = PluginMetadata(
         name="worker-plugin",
         version="1.0.0",
-        required_kavach_version=">=0",
+        required_ai_governance_version=">=0",
     )
 
     def __init__(self) -> None:
@@ -36,11 +36,11 @@ def test_plugin_registry_bootstrap_has_a_complete_lifecycle(monkeypatch) -> None
 
     class _EntryPoints:
         def select(self, *, group: str):
-            assert group == "kavach.plugins"
+            assert group == "ai_governance.plugins"
             return ()
 
     monkeypatch.setattr(
-        "kavach.plugins.registry.entry_points", lambda: _EntryPoints()
+        "ai_governance.plugins.registry.entry_points", lambda: _EntryPoints()
     )
     registry = create_plugin_registry(plugins=(plugin,))
     registry.start()

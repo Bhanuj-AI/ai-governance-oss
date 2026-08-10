@@ -4,50 +4,50 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kavach.domain.evaluation_dataset import EvaluationDataset
-from kavach.domain.evaluation_result import (
+from ai_governance.domain.evaluation_dataset import EvaluationDataset
+from ai_governance.domain.evaluation_result import (
     EvaluationMetric,
     EvaluationResult,
 )
-from kavach.domain.experiments import (
+from ai_governance.domain.experiments import (
     EvaluationRunStatus,
 )
-from kavach.domain.workflow_execution import WorkflowExecution
-from kavach.evaluation import EvaluationService
-from kavach.providers.evaluation_provider import EvaluationProvider
-from kavach.providers.provider_capabilities import ProviderCapabilities
-from kavach.providers.provider_descriptor import ProviderDescriptor
-from kavach.repositories.in_memory_dataset_repository import (
+from ai_governance.domain.workflow_execution import WorkflowExecution
+from ai_governance.evaluation import EvaluationService
+from ai_governance.providers.evaluation_provider import EvaluationProvider
+from ai_governance.providers.provider_capabilities import ProviderCapabilities
+from ai_governance.providers.provider_descriptor import ProviderDescriptor
+from ai_governance.repositories.in_memory_dataset_repository import (
     InMemoryDatasetRepository,
 )
-from kavach.repositories.in_memory_evaluation_repository import (
+from ai_governance.repositories.in_memory_evaluation_repository import (
     InMemoryEvaluationRepository,
 )
-from kavach.repositories.in_memory_evaluation_run_repository import (
+from ai_governance.repositories.in_memory_evaluation_run_repository import (
     InMemoryEvaluationRunRepository,
 )
-from kavach.repositories.in_memory_experiment_candidate_repository import (
+from ai_governance.repositories.in_memory_experiment_candidate_repository import (
     InMemoryExperimentCandidateRepository,
 )
-from kavach.repositories.in_memory_experiment_repository import (
+from ai_governance.repositories.in_memory_experiment_repository import (
     InMemoryExperimentRepository,
 )
-from kavach.repositories.in_memory_model_repository import (
+from ai_governance.repositories.in_memory_model_repository import (
     InMemoryModelRepository,
 )
-from kavach.repositories.in_memory_prompt_repository import (
+from ai_governance.repositories.in_memory_prompt_repository import (
     InMemoryPromptRepository,
 )
-from kavach.services.dataset_builder import EvaluationDatasetBuilder
-from kavach.services.datasets import DatasetRegistryService
-from kavach.services.experiments import (
+from ai_governance.services.dataset_builder import EvaluationDatasetBuilder
+from ai_governance.services.datasets import DatasetRegistryService
+from ai_governance.services.experiments import (
     ExperimentCandidateService,
     ExperimentEvaluationError,
     ExperimentEvaluationService,
     ExperimentService,
 )
-from kavach.services.models import ModelRegistryService
-from kavach.services.prompts import PromptRegistryService
+from ai_governance.services.models import ModelRegistryService
+from ai_governance.services.prompts import PromptRegistryService
 
 
 def test_experiment_evaluation_service_executes_candidates_and_selects_winner() -> None:
