@@ -194,7 +194,7 @@ cp keycloak-postgres/.env.keycloak.example keycloak-postgres/.env.keycloak
 cp console/.env.local.example console/.env.studio
 
 # Starts local Keycloak, builds the platform, and starts the Compose stack
-./ai_governance.sh
+./servers.sh
 
 ```
 
@@ -251,7 +251,7 @@ It is also scriptable for CI-like local use:
 
 ## Your first two minutes in Studio
 
-Open [AI Governance Control Plane Studio](http://localhost:3000) after `./ai_governance.sh` completes. It
+Open [AI Governance Control Plane Studio](http://localhost:3000) after `./servers.sh` completes. It
 will redirect you to the local Keycloak sign-in page. Sign in as `studio` with
 the `AI_GOVERNANCE_STUDIO_PASSWORD` value from `keycloak-postgres/.env.keycloak`.
 The local stack starts with representative demo data, so you can follow the
@@ -306,7 +306,7 @@ docker compose down -v
 
 To reseed the local demo data manually without deleting local state, use the
 same short-lived Keycloak client-credentials flow as the local walkthrough and
-MCP tools. `./ai_governance.sh` generates `.env.oauth.generated` for the provisioned
+MCP tools. `./servers.sh` generates `.env.oauth.generated` for the provisioned
 local walkthrough service account; the token stays in the shell only and is not
 printed or written to a file:
 
