@@ -19,9 +19,9 @@ first-class domain objects.
 
 It enables organizations to govern AI systems through deterministic decision-making, versioned assets, explainable reasoning, auditability, replayability, and framework-independent integrations.
 
-- [Website](https://ai_governance.bhanuj.app)
-- [Documentation](https://ai_governance.bhanuj.app/docs)
-- [Tutorials](https://ai_governance.bhanuj.app/tutorials)
+- [Website](https://ai-governance.bhanuj.app)
+- [Documentation](https://ai-governance.bhanuj.app/docs)
+- [Tutorials](https://ai-governance.bhanuj.app/tutorials)
 - [Roadmap](docs/roadmap/ROADMAP.md)
 
 ---
