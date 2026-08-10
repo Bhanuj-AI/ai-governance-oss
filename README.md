@@ -35,7 +35,7 @@ It enables organizations to govern AI systems through deterministic decision-mak
   </tr>
   <tr>
     <td width="50%"><img src="assets/Governance%20Decisions%20-%20BLOCKED%20-%20Evidence%20Graph.png" alt="AI Governance Control Plane Studio evidence graph" /><br /><strong>Evidence Graph</strong> — make the basis of a decision visible and auditable.</td>
-    <td width="50%"><img src="assets/AI Governance Control Plane%20Ontology%20Graph.png" alt="AI Governance Control Plane Studio knowledge graph" /><br /><strong>Knowledge Graph</strong> — explore governed AI assets and their relationships.</td>
+    <td width="50%"><img src="assets/AI Governance Control Plane Ontology Graph.png" alt="AI Governance Control Plane Studio knowledge graph" /><br /><strong>Knowledge Graph</strong> — explore governed AI assets and their relationships.</td>
   </tr>
 </table>
 
