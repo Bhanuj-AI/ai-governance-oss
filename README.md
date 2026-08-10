@@ -178,26 +178,6 @@ AI Governance Control Plane currently includes:
 
 # Run Locally
 
-## Local preflight before committing
-
-Run the local quality gate before creating a commit. It prompts for a
-[Conventional Commit](https://www.conventionalcommits.org/en/v1.0.0/) message
-and release-note bullets, checks the patch, runs Python lint and unit tests,
-and type-checks Studio when `console/` changed. It does not commit, push, or
-start Docker services.
-
-```bash
-./scripts/dev/preflight.sh
-```
-
-It is also scriptable for CI-like local use:
-
-```bash
-./scripts/dev/preflight.sh \
-  --message "fix(jobs): retain local demo records" \
-  --summary "Keep local demo jobs visible within the retention window"
-```
-
 Start the local Studio, API, ontology, worker and storage topology:
 
 ```bash
@@ -218,9 +198,9 @@ cp console/.env.local.example console/.env.studio
 
 ```
 
-`./ai_governance.sh` starts local Keycloak automatically, then starts the containerized
+`./servers.sh` starts local Keycloak automatically, then starts the containerized
 local stack. You do not need to run the Keycloak launcher separately. The three
-files above configure the platform, Keycloak, and Studio respectively. Their
+files above configure the platform, Keycloak and Studio respectively. Their
 example values are development-only; change them on shared machines and never
 use them in production. The launcher generates `.env.build` and the local
 service-account files itself.
@@ -228,10 +208,10 @@ service-account files itself.
 Use the same wrapper to inspect or manage the stack:
 
 ```bash
-./ai_governance.sh logs                    # Follow all application and infrastructure logs
-./ai_governance.sh logs ai-governance-platform    # Follow only API logs
-./ai_governance.sh ps                      # Show service status
-./ai_governance.sh down                    # Stop services and preserve local data
+./servers.sh logs                    # Follow all application and infrastructure logs
+./servers.sh logs ai-governance-platform    # Follow only API logs
+./servers.sh ps                      # Show service status
+./servers.sh down                    # Stop services and preserve local data
 ```
 
 Keycloak runs in its own Compose project, so follow its logs separately when
@@ -247,6 +227,26 @@ environment file:
 
 ```bash
 cp .env.local.example .env.local
+```
+
+## Local preflight before committing
+
+Run the local quality gate before creating a commit. It prompts for a
+[Conventional Commit](https://www.conventionalcommits.org/en/v1.0.0/) message
+and release-note bullets, checks the patch, runs Python lint and unit tests,
+and type-checks Studio when `console/` changed. It does not commit, push, or
+start Docker services.
+
+```bash
+./scripts/dev/preflight.sh
+```
+
+It is also scriptable for CI-like local use:
+
+```bash
+./scripts/dev/preflight.sh \
+  --message "fix(jobs): retain local demo records" \
+  --summary "Keep local demo jobs visible within the retention window"
 ```
 
 ## Your first two minutes in Studio
@@ -293,7 +293,7 @@ survive container recreation and normal `docker compose down` operations.
 To stop the stack without deleting local data:
 
 ```bash
-./ai_governance.sh down
+./servers.sh down
 ```
 
 To delete the local SQLite, Neo4j, and SeaweedFS data and start with a clean
@@ -301,7 +301,7 @@ seed:
 
 ```bash
 docker compose down -v
-./ai_governance.sh
+./servers.sh
 ```
 
 To reseed the local demo data manually without deleting local state, use the
