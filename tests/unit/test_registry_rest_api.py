@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -70,12 +71,12 @@ class FakePromptRegistryService:
             status=PromptStatus.ACTIVE,
         )
 
-    def list_visible_prompts(self) -> list[Prompt]:
+    def list_visible_prompts(self, *_: object) -> list[Prompt]:
         return [self.prompt]
 
     def list_prompt_versions(
         self,
-        name: str,
+        name: str, *_: object,
     ) -> list[Prompt]:
         if name != self.prompt.name:
             raise PromptNotFoundError(f"Prompt '{name}' does not exist.")
@@ -84,7 +85,7 @@ class FakePromptRegistryService:
 
     def get_prompt(
         self,
-        prompt_id: str,
+        prompt_id: str, *_: object,
     ) -> Prompt:
         if prompt_id != self.prompt.prompt_id:
             raise PromptNotFoundError(f"Prompt '{prompt_id}' does not exist.")
@@ -109,6 +110,21 @@ class FakePromptRegistryService:
         )
         return self.prompt
 
+    def create_prompt(self, **kwargs: object) -> Prompt:
+        self.prompt = Prompt(
+            prompt_id="managed-prompt-1", name=str(kwargs["name"]), version=str(kwargs["version"]),
+            template=str(kwargs["template"]), variables=tuple(kwargs["variables"]),
+            created_at=datetime(2026, 7, 20, tzinfo=UTC), created_by=str(kwargs["created_by"]),
+            status=PromptStatus.DRAFT,
+        )
+        return self.prompt
+
+    def version_prompt(self, **kwargs: object) -> Prompt:
+        return self.create_prompt(
+            name=self.prompt.name, version=kwargs["version"], template=kwargs["template"] or self.prompt.template,
+            variables=kwargs["variables"] or self.prompt.variables, created_by=kwargs["created_by"],
+        )
+
 
 class FakeModelRegistryService:
     def __init__(self) -> None:
@@ -126,12 +142,12 @@ class FakeModelRegistryService:
             status=ModelStatus.ACTIVE,
         )
 
-    def list_models(self) -> list[Model]:
+    def list_models(self, *_: object) -> list[Model]:
         return [self.model]
 
     def get_model(
         self,
-        model_id: str,
+        model_id: str, *_: object,
     ) -> Model:
         if model_id != self.model.model_id:
             raise ModelNotFoundError(f"Model '{model_id}' does not exist.")
@@ -155,6 +171,42 @@ class FakeModelRegistryService:
             source_system=str(kwargs["source_system"]),
             source_reference=kwargs["source_reference"] if isinstance(kwargs["source_reference"], str) else None,
         )
+        return self.model
+
+    def register_model(self, **kwargs: object) -> Model:
+        self.model = Model(
+            model_id="managed-model-1", provider=str(kwargs["provider"]), model_name=str(kwargs["model_name"]),
+            version=str(kwargs["version"]), parameters=dict(kwargs["parameters"]), cost=kwargs["cost"],
+            latency=kwargs["latency"], context_window=int(kwargs["context_window"]), creator=str(kwargs["creator"]),
+            created_at=datetime(2026, 7, 20, tzinfo=UTC), status=ModelStatus.DRAFT,
+        )
+        return self.model
+
+    def create_model_version(self, **kwargs: object) -> Model:
+        self.get_model(str(kwargs["model_id"]))
+        self.model = replace(
+            self.model,
+            model_id="managed-model-2",
+            version=str(kwargs["version"]),
+            parameters=dict(kwargs["parameters"] or self.model.parameters),  # type: ignore[arg-type]
+            context_window=int(kwargs["context_window"] or self.model.context_window),
+            status=ModelStatus.DRAFT,
+        )
+        return self.model
+
+    def activate_model_version(self, model_id: str, *_: object) -> Model:
+        self.get_model(model_id)
+        self.model = replace(self.model, status=ModelStatus.ACTIVE)
+        return self.model
+
+    def deprecate_model_version(self, model_id: str, *_: object) -> Model:
+        self.get_model(model_id)
+        self.model = replace(self.model, status=ModelStatus.DEPRECATED)
+        return self.model
+
+    def archive_model(self, model_id: str, *_: object) -> Model:
+        self.get_model(model_id)
+        self.model = replace(self.model, status=ModelStatus.ARCHIVED)
         return self.model
 
 
@@ -315,6 +367,17 @@ def test_observe_prompt_accepts_hash_when_content_is_withheld() -> None:
     assert response.json()["source_system"] == "evaluation-sdk"
 
 
+def test_create_managed_prompt_and_immutable_version() -> None:
+    client = _client()
+    created = client.post("/api/v1/prompts", json={"name": "claims", "version": "v1", "template": "Classify {{claim}}", "variables": ["claim"]})
+    versioned = client.post("/api/v1/prompts/managed-prompt-1/versions", json={"version": "v2", "template": "Explain {{claim}}", "variables": ["claim"]})
+
+    assert created.status_code == 201
+    assert created.json()["provenance"] == "MANAGED"
+    assert versioned.status_code == 201
+    assert versioned.json()["version"] == "v2"
+
+
 def test_observe_prompt_requires_hash_when_content_is_withheld() -> None:
     response = _client().post(
         "/api/v1/prompts/observations",
@@ -396,6 +459,54 @@ def test_observe_model_records_runtime_configuration() -> None:
     assert response.status_code == 201
     assert response.json()["provenance"] == "OBSERVED"
     assert response.json()["parameters"] == {"temperature": 0.2}
+
+
+def test_register_managed_model() -> None:
+    response = _client().post("/api/v1/models", json={"provider": "openai", "model_name": "gpt-5", "version": "2026-08", "parameters": {"temperature": 0}, "context_window": 128000})
+
+    assert response.status_code == 201
+    assert response.json()["provenance"] == "MANAGED"
+    assert response.json()["status"] == "DRAFT"
+
+
+def test_create_managed_model_version() -> None:
+    response = _client().post(
+        "/api/v1/models/model-1/versions",
+        json={"version": "2026-08", "parameters": {"temperature": 0.2}, "context_window": 256000},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["model_id"] == "managed-model-2"
+    assert response.json()["version"] == "2026-08"
+    assert response.json()["status"] == "DRAFT"
+
+
+def test_managed_model_lifecycle_endpoints_transition_state() -> None:
+    client = _client()
+
+    deprecated = client.post("/api/v1/models/model-1/deprecate")
+    activated = client.post("/api/v1/models/model-1/activate")
+    archived = client.post("/api/v1/models/model-1/archive")
+
+    assert deprecated.status_code == 200
+    assert deprecated.json()["status"] == "DEPRECATED"
+    assert activated.status_code == 200
+    assert activated.json()["status"] == "ACTIVE"
+    assert archived.status_code == 200
+    assert archived.json()["status"] == "ARCHIVED"
+
+
+def test_list_managed_model_runtime_providers() -> None:
+    response = _client().get("/api/v1/models/runtime-providers")
+
+    assert response.status_code == 200
+    providers = {item["key"]: item for item in response.json()}
+    assert providers["openai"] == {
+        "key": "openai",
+        "display_name": "OpenAI",
+        "allowed": True,
+    }
+    assert providers["custom"]["allowed"] is True
 
 
 def test_model_not_found_returns_404() -> None:

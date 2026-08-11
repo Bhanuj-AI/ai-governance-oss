@@ -1,15 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, GitBranch, History, Network, PackageSearch, ScrollText } from "lucide-react";
 import { useState } from "react";
 import { AssetProvenanceBadge, StatusBadge } from "@/components/assets/AssetsPage";
+import { ModelVersionForm, PromptVersionForm } from "@/components/assets/ManagedAssetForm";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getNeighbourhood, getRelationships } from "@/lib/api/graph";
 import { listOntologySyncEvents } from "@/lib/api/ontology-sync";
 import {
+  activateModelAsset,
+  archiveModelAsset,
+  deprecateModelAsset,
   getPromptVersion,
   listDatasetAssets,
   listModelAssets,
@@ -78,7 +83,7 @@ export function AssetDetailPage({ kind, assetId }: { kind: string; assetId: stri
           <p className="mt-1 text-sm text-muted-foreground">{assetSubtitle(registryKind, asset)}</p>
           <code className="mt-2 block text-xs text-muted-foreground">{entityId}</code>
         </div>
-        <Link href={`/graph?entityType=${encodeURIComponent(entityType)}&entityId=${encodeURIComponent(entityId)}&depth=3`} className="inline-flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-sm font-medium shadow-sm hover:bg-accent"><Network className="h-4 w-4" />Open Ontology</Link>
+        <div className="flex flex-wrap gap-2">{registryKind === "prompts" && assetProvenance(registryKind, selected) === "MANAGED" ? <PromptVersionForm promptId={(selected as PromptAsset).prompt_id} /> : null}{registryKind === "models" && assetProvenance(registryKind, selected) === "MANAGED" ? <><ModelVersionForm model={selected as ModelAsset} /><ModelLifecycleControls model={selected as ModelAsset} /></> : null}<Link href={`/graph?entityType=${encodeURIComponent(entityType)}&entityId=${encodeURIComponent(entityId)}&depth=3`} className="inline-flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-sm font-medium shadow-sm hover:bg-accent"><Network className="h-4 w-4" />Open Ontology</Link></div>
       </header>
       <div className="flex gap-1 overflow-x-auto border-b">
         {TABS.map((item) => <button key={item} className={`shrink-0 px-3 py-2 text-sm ${tab === item ? "border-b-2 border-primary font-medium" : "text-muted-foreground hover:text-foreground"}`} onClick={() => setTab(item)}>{item}</button>)}
@@ -92,11 +97,19 @@ export function AssetDetailPage({ kind, assetId }: { kind: string; assetId: stri
   );
 }
 
+function ModelLifecycleControls({ model }: { model: ModelAsset }) {
+  const client = useQueryClient();
+  const transition = useMutation({ mutationFn: (action: "activate" | "deprecate" | "archive") => action === "activate" ? activateModelAsset(model.model_id) : action === "deprecate" ? deprecateModelAsset(model.model_id) : archiveModelAsset(model.model_id), onSuccess: async () => { await client.invalidateQueries({ queryKey: ["asset-registry", "models"] }); }, });
+  if (model.status === "ARCHIVED") return null;
+  return <div className="flex flex-wrap gap-2">{model.status !== "ACTIVE" ? <Button size="sm" onClick={() => transition.mutate("activate")} disabled={transition.isPending}>{transition.isPending ? "Updating…" : "Activate"}</Button> : <Button size="sm" variant="outline" onClick={() => transition.mutate("deprecate")} disabled={transition.isPending}>{transition.isPending ? "Updating…" : "Deprecate"}</Button>}<Button size="sm" variant="outline" onClick={() => transition.mutate("archive")} disabled={transition.isPending}>Archive</Button>{transition.error ? <span className="self-center text-xs text-destructive">{transition.error.message}</span> : null}</div>;
+}
+
 function Overview({ kind, asset, promptTemplate }: { kind: AssetKind; asset: PromptAsset | ModelAsset | DatasetAsset | ProviderAsset; promptTemplate?: string | null }) {
   const rows = commonRows(kind, asset);
+  const observed = assetProvenance(kind, asset) === "OBSERVED";
   return <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.7fr)]">
     <Card><CardHeader><CardTitle>Overview</CardTitle><CardDescription>Governed metadata for this selected asset version.</CardDescription></CardHeader><CardContent><dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">{rows.map(([label, value]) => <div key={label}><dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</dt><dd className="mt-1 break-words text-sm">{value}</dd></div>)}</dl></CardContent></Card>
-    <Card><CardHeader><CardTitle>{kind === "prompts" ? "Observed Configuration" : kind === "models" ? "Observed Runtime Configuration" : kind === "datasets" ? "Schema Preview" : "Provider Configuration"}</CardTitle><CardDescription>{kind === "datasets" ? "Schema fields are registered separately from the dataset storage location." : kind === "prompts" || kind === "models" ? "Captured from governed execution evidence; AI Governance Control Plane does not author runtime configuration." : "Versioned configuration recorded by the registry."}</CardDescription></CardHeader><CardContent>{configuration(kind, asset, promptTemplate)}</CardContent></Card>
+    <Card><CardHeader><CardTitle>{kind === "prompts" ? observed ? "Observed Configuration" : "Managed Prompt Configuration" : kind === "models" ? observed ? "Observed Runtime Configuration" : "Registered Runtime Configuration" : kind === "datasets" ? "Schema Preview" : "Provider Configuration"}</CardTitle><CardDescription>{kind === "datasets" ? "Schema fields are registered separately from the dataset storage location." : kind === "prompts" || kind === "models" ? observed ? "Captured from governed execution evidence; AI Governance Control Plane does not author runtime configuration." : "Explicitly declared governance state. Compare it with observed runtime evidence to identify drift." : "Versioned configuration recorded by the registry."}</CardDescription></CardHeader><CardContent>{configuration(kind, asset, promptTemplate)}</CardContent></Card>
   </div>;
 }
 

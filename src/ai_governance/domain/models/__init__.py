@@ -5,6 +5,12 @@ from ai_governance.domain.models.model import (
     ModelStatus,
 )
 from ai_governance.domain.assets import AssetProvenance
+from ai_governance.domain.models.runtime_providers import (
+    RuntimeModelProvider,
+    known_runtime_model_provider_keys,
+    runtime_model_provider_display_name,
+    runtime_model_provider_key,
+)
 
 __all__ = [
     "Model",
@@ -12,4 +18,8 @@ __all__ = [
     "ModelParameterChange",
     "ModelStatus",
     "AssetProvenance",
+    "RuntimeModelProvider",
+    "known_runtime_model_provider_keys",
+    "runtime_model_provider_display_name",
+    "runtime_model_provider_key",
 ]

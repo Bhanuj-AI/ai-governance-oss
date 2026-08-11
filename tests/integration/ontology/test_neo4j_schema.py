@@ -39,5 +39,6 @@ def test_neo4j_schema_initialization_creates_indexes_and_constraints():
         repository.close()
 
     assert "ontology_entity_unique" in names
+    assert "ontology_relationship_unique" in names
     assert "ontology_entity_type" in names
     assert "ontology_entity_version" in names

@@ -16,7 +16,11 @@ from ai_governance.api.dependencies.repositories import (
 )
 from ai_governance.api.dependencies.ontology import get_ontology_sync_event_publisher
 from ai_governance.api.dependencies.events import get_event_publisher
+from ai_governance.api.dependencies.settings_control import get_configuration_service
 from ai_governance.events import EventPublisher
+from ai_governance.settings_control import ConfigurationService
+from ai_governance.settings_control.domain import SettingContext
+from ai_governance.tenancy.domain import TenantContext
 
 
 def get_provider_registry_service(
@@ -55,6 +59,7 @@ def get_model_registry_service(
     model_repository: Any = Depends(get_model_repository),
     ontology_event_publisher: Any = Depends(get_ontology_sync_event_publisher),
     event_publisher: EventPublisher = Depends(get_event_publisher),
+    configuration_service: ConfigurationService = Depends(get_configuration_service),
 ) -> Any:
     """
     Create a model registry service through FastAPI dependency injection.
@@ -62,10 +67,18 @@ def get_model_registry_service(
 
     from ai_governance.services.models import ModelRegistryService
 
+    def allowed_runtime_providers(context: TenantContext) -> tuple[str, ...]:
+        value = configuration_service.get(
+            "model_registry.allowed_runtime_providers",
+            SettingContext(context.organization_id, context.project_id),
+        )
+        return tuple(value)
+
     return ModelRegistryService(
         model_repository,
         ontology_event_publisher=ontology_event_publisher,
         event_publisher=event_publisher,
+        allowed_runtime_providers=allowed_runtime_providers,
     )
 
 

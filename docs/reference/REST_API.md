@@ -91,6 +91,12 @@ GET /api/v1/prompts/versions/{prompt_id}
 
 GET /api/v1/models
 GET /api/v1/models/{model_id}
+GET /api/v1/models/runtime-providers
+POST /api/v1/models
+POST /api/v1/models/{model_id}/versions
+POST /api/v1/models/{model_id}/activate
+POST /api/v1/models/{model_id}/deprecate
+POST /api/v1/models/{model_id}/archive
 
 GET /api/v1/datasets
 GET /api/v1/datasets/{dataset_id}
@@ -131,6 +137,12 @@ identity and evidence is idempotent. A conflicting payload for the same
 logical name/version returns `409` rather than overwriting history.
 The [producer integration guide](../tutorials/producer-integration.md) includes
 copy-paste curl, Python, and Node.js examples.
+
+Managed models are explicitly registered as immutable **DRAFT** versions. A
+governance administrator can activate a managed version, which automatically
+deprecates another active version of the same provider/model identity, or
+deprecate and archive it explicitly. Archived versions cannot be reactivated.
+Observed runtime evidence never accepts these managed lifecycle transitions.
 
 Example observed prompt with protected content:
 

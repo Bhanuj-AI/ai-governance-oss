@@ -43,6 +43,7 @@ class Permission(str, Enum):
     AUDIT_READ = "audit.read"
     MCP_AUDIT_READ = "mcp_audit.read"
     PLATFORM_HEALTH_READ = "platform_health.read"
+    ASSET_MANAGE = "asset.manage"
     SETTINGS_READ = "settings.read"
     SETTINGS_MANAGE = "settings.manage"
     REPLAY_READ = "replay.read"
@@ -93,6 +94,7 @@ _operator = frozenset(
 )
 _governance_admin = frozenset(
     {
+        Permission.ASSET_MANAGE,
         Permission.POLICY_CREATE,
         Permission.POLICY_READ,
         Permission.POLICY_UPDATE,

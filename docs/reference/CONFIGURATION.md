@@ -224,6 +224,13 @@ default. Environment-controlled and deployment settings remain read-only.
 | `AI_GOVERNANCE_SETTINGS_SQLITE_PATH` | - | SQLite database path when the settings backend is `sqlite`. |
 | `AI_GOVERNANCE_SETTINGS_POSTGRES_DSN` | - | PostgreSQL DSN when the settings backend is `postgres`. |
 
+`model_registry.allowed_runtime_providers` is a live, tenant-scoped JSON
+setting that controls which built-in runtime providers can be used for managed
+model registration. The default allows the complete built-in vocabulary,
+including `custom`; project or organization administrators can restrict it to
+their approved runtimes. Observed model evidence is never rejected by this
+policy, because it records runtime reality rather than a declaration.
+
 The local Compose stack uses the shared durable SQLite database. Runtime
 updates are validated, versioned, and recorded in `setting_audit` with actor,
 reason, old value, and new value. Static deployment architecture—including

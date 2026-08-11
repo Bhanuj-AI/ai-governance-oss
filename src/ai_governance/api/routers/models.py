@@ -2,17 +2,74 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from ai_governance.api.dependencies import get_model_registry_service
+from ai_governance.api.dependencies.authorization import enforce_permission
+from ai_governance.api.dependencies.settings_control import get_configuration_service
 from ai_governance.api.dependencies.tenancy import get_compatible_tenant_context
-from ai_governance.api.models import ErrorResponse, ModelObservationRequest, ModelResponse
+from ai_governance.api.models import (
+    ErrorResponse,
+    ModelObservationRequest,
+    ModelRegisterRequest,
+    ModelResponse,
+    ModelVersionCreateRequest,
+    RuntimeModelProviderResponse,
+)
+from ai_governance.domain.models import (
+    RuntimeModelProvider,
+    runtime_model_provider_display_name,
+)
+from ai_governance.services.models import (
+    ModelLifecycleError,
+    ModelNotFoundError,
+    ModelProviderNotAllowedError,
+    ModelVersionConflictError,
+)
+from ai_governance.settings_control import ConfigurationService
+from ai_governance.settings_control.domain import SettingContext
 from ai_governance.tenancy.domain import TenantContext
+from ai_governance.tenancy.permissions import Permission
 
 router = APIRouter(
     prefix="/api/v1/models",
     tags=["Models"],
 )
+
+
+@router.get(
+    "/runtime-providers",
+    response_model=list[RuntimeModelProviderResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List managed model runtime providers",
+    description=(
+        "Return the built-in runtime-provider vocabulary and the providers "
+        "currently allowed for managed model registration in this tenant scope."
+    ),
+)
+def list_runtime_providers(
+    tenant_context: Annotated[TenantContext, Depends(get_compatible_tenant_context)],
+    configuration_service: Annotated[
+        ConfigurationService, Depends(get_configuration_service)
+    ],
+) -> list[RuntimeModelProviderResponse]:
+    allowed = set(
+        configuration_service.get(
+            "model_registry.allowed_runtime_providers",
+            SettingContext(
+                tenant_context.organization_id,
+                tenant_context.project_id,
+            ),
+        )
+    )
+    return [
+        RuntimeModelProviderResponse(
+            key=provider.value,
+            display_name=runtime_model_provider_display_name(provider.value),
+            allowed=provider.value in allowed,
+        )
+        for provider in RuntimeModelProvider
+    ]
 
 
 @router.post(
@@ -43,8 +100,162 @@ def observe_model(
         observed_by=tenant_context.actor_id,
         cost=request.cost,
         latency=request.latency,
+        context=tenant_context,
     )
     return ModelResponse.from_domain(model)
+
+
+@router.post(
+    "",
+    response_model=ModelResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Register a managed model",
+    description="Register an immutable managed model/runtime configuration in DRAFT status.",
+)
+def register_model(
+    request: ModelRegisterRequest,
+    model_registry_service: Annotated[object, Depends(get_model_registry_service)],
+    tenant_context: Annotated[TenantContext, Depends(get_compatible_tenant_context)],
+) -> ModelResponse:
+    try:
+        model = model_registry_service.register_model(
+            provider=request.provider,
+            model_name=request.model_name,
+            version=request.version,
+            parameters=request.parameters,
+            context_window=request.context_window,
+            creator=tenant_context.actor_id,
+            cost=request.cost,
+            latency=request.latency,
+            context=tenant_context,
+        )
+    except ModelProviderNotAllowedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    return ModelResponse.from_domain(model)
+
+
+@router.post(
+    "/{model_id}/versions",
+    response_model=ModelResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a managed model version",
+    description="Create an immutable DRAFT version from a managed model version.",
+)
+def create_model_version(
+    model_id: str,
+    request: ModelVersionCreateRequest,
+    model_registry_service: Annotated[object, Depends(get_model_registry_service)],
+    tenant_context: Annotated[TenantContext, Depends(get_compatible_tenant_context)],
+) -> ModelResponse:
+    try:
+        model = model_registry_service.create_model_version(
+            model_id=model_id,
+            version=request.version,
+            parameters=request.parameters,
+            cost=request.cost,
+            latency=request.latency,
+            context_window=request.context_window,
+            creator=tenant_context.actor_id,
+            context=tenant_context,
+        )
+    except ModelNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Model '{model_id}' was not found.",
+        ) from exc
+    except (ModelLifecycleError, ModelVersionConflictError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+    return ModelResponse.from_domain(model)
+
+
+@router.post(
+    "/{model_id}/activate",
+    response_model=ModelResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(enforce_permission(Permission.ASSET_MANAGE))],
+    summary="Activate a managed model version",
+    description=(
+        "Activate a managed model version and deprecate any other active "
+        "version of the same logical model in the selected tenant scope."
+    ),
+)
+def activate_model(
+    model_id: str,
+    model_registry_service: Annotated[object, Depends(get_model_registry_service)],
+    tenant_context: Annotated[TenantContext, Depends(get_compatible_tenant_context)],
+) -> ModelResponse:
+    return ModelResponse.from_domain(
+        _transition_model(
+            model_registry_service.activate_model_version,
+            model_id,
+            tenant_context,
+        )
+    )
+
+
+@router.post(
+    "/{model_id}/deprecate",
+    response_model=ModelResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(enforce_permission(Permission.ASSET_MANAGE))],
+    summary="Deprecate a managed model version",
+    description="Mark a managed model version as deprecated while preserving history.",
+)
+def deprecate_model(
+    model_id: str,
+    model_registry_service: Annotated[object, Depends(get_model_registry_service)],
+    tenant_context: Annotated[TenantContext, Depends(get_compatible_tenant_context)],
+) -> ModelResponse:
+    return ModelResponse.from_domain(
+        _transition_model(
+            model_registry_service.deprecate_model_version,
+            model_id,
+            tenant_context,
+        )
+    )
+
+
+@router.post(
+    "/{model_id}/archive",
+    response_model=ModelResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(enforce_permission(Permission.ASSET_MANAGE))],
+    summary="Archive a managed model version",
+    description="Archive a managed model version so it is no longer deployable.",
+)
+def archive_model(
+    model_id: str,
+    model_registry_service: Annotated[object, Depends(get_model_registry_service)],
+    tenant_context: Annotated[TenantContext, Depends(get_compatible_tenant_context)],
+) -> ModelResponse:
+    return ModelResponse.from_domain(
+        _transition_model(
+            model_registry_service.archive_model,
+            model_id,
+            tenant_context,
+        )
+    )
+
+
+def _transition_model(operation, model_id: str, context: TenantContext):
+    try:
+        return operation(model_id, context)
+    except ModelNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Model '{model_id}' was not found.",
+        ) from exc
+    except ModelLifecycleError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
 
 
 @router.get(
@@ -65,6 +276,7 @@ def list_models(
         object,
         Depends(get_model_registry_service),
     ],
+    tenant_context: Annotated[TenantContext, Depends(get_compatible_tenant_context)],
 ) -> list[ModelResponse]:
     """
     Return model registry metadata.
@@ -72,7 +284,7 @@ def list_models(
 
     return [
         ModelResponse.from_domain(model)
-        for model in model_registry_service.list_models()
+        for model in model_registry_service.list_models(tenant_context)
     ]
 
 
@@ -99,9 +311,10 @@ def get_model(
         object,
         Depends(get_model_registry_service),
     ],
+    tenant_context: Annotated[TenantContext, Depends(get_compatible_tenant_context)],
 ) -> ModelResponse:
     """
     Return model metadata by ID.
     """
 
-    return ModelResponse.from_domain(model_registry_service.get_model(model_id))
+    return ModelResponse.from_domain(model_registry_service.get_model(model_id, tenant_context))

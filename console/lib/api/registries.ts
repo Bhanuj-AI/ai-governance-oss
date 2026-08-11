@@ -16,6 +16,7 @@ export type PromptAsset = {
 };
 
 export type PromptDetailAsset = PromptAsset & { template: string | null };
+export type PromptCreateInput = Pick<PromptAsset, "name" | "version" | "variables"> & { template: string };
 
 export type ModelAsset = {
   model_id: string;
@@ -31,6 +32,9 @@ export type ModelAsset = {
   source_system: string | null;
   source_reference: string | null;
 };
+export type ModelRegisterInput = Pick<ModelAsset, "provider" | "model_name" | "version" | "parameters" | "context_window"> & { cost?: Record<string, number> | null; latency?: number | null };
+export type ModelVersionCreateInput = Pick<ModelRegisterInput, "version"> & Partial<Pick<ModelRegisterInput, "parameters" | "cost" | "latency" | "context_window">>;
+export type RuntimeModelProvider = { key: string; display_name: string; allowed: boolean };
 
 export type DatasetAsset = {
   dataset_id: string;
@@ -108,11 +112,19 @@ export type ProviderInstallationValidation = {
 };
 
 export const listPromptAssets = () => aiGovernanceRequest<PromptAsset[]>("/api/v1/prompts");
+export const createPromptAsset = (payload: PromptCreateInput) => aiGovernanceJsonRequest<PromptAsset, PromptCreateInput>("/api/v1/prompts", { method: "POST", body: payload });
+export const createPromptVersion = (promptId: string, payload: Pick<PromptCreateInput, "version"> & Partial<Pick<PromptCreateInput, "template" | "variables">>) => aiGovernanceJsonRequest<PromptAsset, typeof payload>(`/api/v1/prompts/${encodeURIComponent(promptId)}/versions`, { method: "POST", body: payload });
 export const listPromptVersions = (name: string) =>
   aiGovernanceRequest<PromptAsset[]>(`/api/v1/prompts/${encodeURIComponent(name)}`);
 export const getPromptVersion = (promptId: string) =>
   aiGovernanceRequest<PromptDetailAsset>(`/api/v1/prompts/versions/${encodeURIComponent(promptId)}`);
 export const listModelAssets = () => aiGovernanceRequest<ModelAsset[]>("/api/v1/models");
+export const listRuntimeModelProviders = () => aiGovernanceRequest<RuntimeModelProvider[]>("/api/v1/models/runtime-providers");
+export const registerModelAsset = (payload: ModelRegisterInput) => aiGovernanceJsonRequest<ModelAsset, ModelRegisterInput>("/api/v1/models", { method: "POST", body: payload });
+export const createModelVersion = (modelId: string, payload: ModelVersionCreateInput) => aiGovernanceJsonRequest<ModelAsset, ModelVersionCreateInput>(`/api/v1/models/${encodeURIComponent(modelId)}/versions`, { method: "POST", body: payload });
+export const activateModelAsset = (modelId: string) => aiGovernanceJsonRequest<ModelAsset, undefined>(`/api/v1/models/${encodeURIComponent(modelId)}/activate`, { method: "POST" });
+export const deprecateModelAsset = (modelId: string) => aiGovernanceJsonRequest<ModelAsset, undefined>(`/api/v1/models/${encodeURIComponent(modelId)}/deprecate`, { method: "POST" });
+export const archiveModelAsset = (modelId: string) => aiGovernanceJsonRequest<ModelAsset, undefined>(`/api/v1/models/${encodeURIComponent(modelId)}/archive`, { method: "POST" });
 export const listDatasetAssets = () => aiGovernanceRequest<DatasetAsset[]>("/api/v1/datasets");
 export const uploadDatasetAsset = (form: FormData) =>
   aiGovernanceFormRequest<DatasetAsset>("/api/v1/datasets/upload", form);

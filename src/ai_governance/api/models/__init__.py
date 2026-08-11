@@ -84,10 +84,19 @@ from ai_governance.api.models.mcp_audit import (
     MCPAuditResponse,
 )
 from ai_governance.api.models.metadata import MetadataResponse
-from ai_governance.api.models.model import ModelResponse
+from ai_governance.api.models.model import (
+    ModelRegisterRequest,
+    ModelResponse,
+    ModelVersionCreateRequest,
+    RuntimeModelProviderResponse,
+)
 from ai_governance.api.models.observations import (
     ModelObservationRequest,
     PromptObservationRequest,
+)
+from ai_governance.api.models.prompt import (
+    PromptCreateRequest,
+    PromptVersionCreateRequest,
 )
 from ai_governance.api.models.ontology_graph import (
     GraphEdgeResponse,
@@ -229,6 +238,9 @@ __all__ = [
     "MCPAuditResponse",
     "MetadataResponse",
     "ModelResponse",
+    "ModelRegisterRequest",
+    "ModelVersionCreateRequest",
+    "RuntimeModelProviderResponse",
     "ModelObservationRequest",
     "OntologySyncEventListResponse",
     "OntologySyncEventResponse",
@@ -253,6 +265,8 @@ __all__ = [
     "PolicyVersionSummaryResponse",
     "UpdateDraftPolicyVersionRequest",
     "PromptResponse",
+    "PromptCreateRequest",
+    "PromptVersionCreateRequest",
     "PromptObservationRequest",
     "PromptDetailResponse",
     "ReplayArchiveRequest",

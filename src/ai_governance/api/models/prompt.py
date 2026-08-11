@@ -48,6 +48,23 @@ class PromptResponse(BaseModel):
         )
 
 
+class PromptCreateRequest(BaseModel):
+    """Create the first immutable managed version of a prompt."""
+
+    name: str = Field(min_length=1)
+    version: str = Field(min_length=1)
+    template: str = Field(min_length=1)
+    variables: list[str] = Field(default_factory=list)
+
+
+class PromptVersionCreateRequest(BaseModel):
+    """Create an immutable managed version from a governed prompt."""
+
+    version: str = Field(min_length=1)
+    template: str | None = None
+    variables: list[str] | None = None
+
+
 class PromptDetailResponse(PromptResponse):
     """
     Full registry representation of a prompt version.

@@ -16,8 +16,8 @@ import {
 export type AssetKind = "prompts" | "models" | "datasets" | "providers";
 
 const REGISTRIES: { kind: AssetKind; title: string; description: string; icon: typeof MessageSquareText }[] = [
-  { kind: "prompts", title: "Prompt Catalog", description: "Observed prompt identities and configurations used by governed work.", icon: MessageSquareText },
-  { kind: "models", title: "Model Catalog", description: "Observed provider, model, revision, and runtime configuration.", icon: Sparkles },
+  { kind: "prompts", title: "Prompt Catalog", description: "Managed and observed prompt identities and immutable configurations.", icon: MessageSquareText },
+  { kind: "models", title: "Model Catalog", description: "Registered and observed provider, model, revision, and runtime configuration.", icon: Sparkles },
   { kind: "datasets", title: "Datasets", description: "Immutable evaluation dataset records and schemas.", icon: Database },
   { kind: "providers", title: "Evaluation Providers", description: "AI Governance Control Plane-managed evaluator integrations and capabilities.", icon: ShieldCheck },
 ];

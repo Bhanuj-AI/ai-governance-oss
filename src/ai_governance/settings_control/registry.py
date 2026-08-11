@@ -6,6 +6,10 @@ from types import MappingProxyType
 from typing import Any
 
 from ai_governance.version import __version__
+from ai_governance.domain.models import (
+    known_runtime_model_provider_keys,
+    runtime_model_provider_key,
+)
 
 from .domain import SettingCategory as C
 from .domain import SettingDefinition, SettingScope, SettingValidationError
@@ -45,6 +49,28 @@ def _synthesizer_pricing(value: Any) -> None:
                 raise SettingValidationError(
                     f"Pricing for '{model}' must include a non-negative '{key}' rate."
                 )
+
+
+def _runtime_model_provider_allow_list(value: Any) -> None:
+    if not isinstance(value, list) or not value:
+        raise SettingValidationError(
+            "Expected a non-empty JSON array of runtime provider keys."
+        )
+    if not all(isinstance(provider, str) for provider in value):
+        raise SettingValidationError(
+            "Each runtime provider must be a canonical built-in provider key."
+        )
+    if len(value) != len(set(value)):
+        raise SettingValidationError("Runtime provider keys must not be repeated.")
+    for provider in value:
+        if provider not in known_runtime_model_provider_keys():
+            raise SettingValidationError(
+                "Each runtime provider must be a canonical built-in provider key."
+            )
+        if runtime_model_provider_key(provider) != provider:
+            raise SettingValidationError(
+                "Runtime provider keys must use their canonical form."
+            )
 
 
 def _definition(
@@ -673,6 +699,17 @@ _DEFINITIONS = (
         env="OPENAI_API_KEY",
         enum=("connected", "disconnected"),
         sensitive=True,
+    ),
+    _definition(
+        "model_registry.allowed_runtime_providers",
+        C.INTEGRATIONS,
+        "Allowed Managed Model Runtime Providers",
+        "Runtime providers permitted when registering managed models. "
+        "Observed runtime evidence is retained even when its provider is not listed.",
+        T.JSON,
+        list(known_runtime_model_provider_keys()),
+        validator=_runtime_model_provider_allow_list,
+        runtime_applied=True,
     ),
     _definition(
         "integrations.neo4j",

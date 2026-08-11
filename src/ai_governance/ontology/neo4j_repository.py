@@ -37,6 +37,29 @@ from ai_governance.ontology.repositories import _normalize_direction
 from ai_governance.ontology.schema import ONTOLOGY_SCHEMA_CYPHER
 
 
+_NORMALIZE_RELATIONSHIP_TENANT_SCOPE_CYPHER = """
+MATCH (source:OntologyEntity)-[r]->()
+WHERE r.relationship_id IS NOT NULL
+  AND (r.organization_id IS NULL OR r.project_id IS NULL)
+SET r.organization_id = coalesce(r.organization_id, source.organization_id),
+    r.project_id = coalesce(r.project_id, source.project_id)
+"""
+
+
+_REMOVE_DUPLICATE_RELATIONSHIPS_CYPHER = """
+MATCH ()-[r]->()
+WHERE r.relationship_id IS NOT NULL
+WITH r
+ORDER BY r.created_at ASC, elementId(r) ASC
+WITH r.organization_id AS organization_id,
+     r.project_id AS project_id,
+     r.relationship_id AS relationship_id,
+     collect(r) AS duplicates
+WHERE size(duplicates) > 1
+FOREACH (duplicate IN tail(duplicates) | DELETE duplicate)
+"""
+
+
 class Neo4jOntologyGraphRepository:
     """
     Neo4j-backed implementation of `OntologyGraphRepository`.
@@ -103,6 +126,8 @@ class Neo4jOntologyGraphRepository:
         """
 
         with self._session() as session:
+            session.run(_NORMALIZE_RELATIONSHIP_TENANT_SCOPE_CYPHER)
+            session.run(_REMOVE_DUPLICATE_RELATIONSHIPS_CYPHER)
             for statement in ONTOLOGY_SCHEMA_CYPHER:
                 session.run(statement)
 
@@ -656,14 +681,21 @@ class Neo4jOntologyGraphQueryRepository(OntologyGraphQueryRepository):
         if record is None:
             return GraphSubgraph()
         node_depths = _node_depths_from_paths(record["paths"])
+        edges_by_relationship_id = {
+            relationship.relationship_id: GraphEdge(relationship)
+            for relationship in (
+                _relationship_from_mapping(item)
+                for item in record["graph_relationships"]
+            )
+        }
         return GraphSubgraph(
             nodes=tuple(
                 _graph_node_from_neo4j_node(node, node_depths)
                 for node in record["graph_nodes"]
             ),
             edges=tuple(
-                GraphEdge(_relationship_from_mapping(item))
-                for item in record["graph_relationships"]
+                edges_by_relationship_id[relationship_id]
+                for relationship_id in sorted(edges_by_relationship_id)
             ),
         )
 

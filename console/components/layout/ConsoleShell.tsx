@@ -290,7 +290,7 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
                 Guided journeys
               </Link>
               <a
-                href="https://ai_governance.bhanuj.app/docs"
+                href="https://ai-governance.bhanuj.app/docs"
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"

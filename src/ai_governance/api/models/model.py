@@ -49,3 +49,33 @@ class ModelResponse(BaseModel):
             source_system=model.source_system,
             source_reference=model.source_reference,
         )
+
+
+class ModelRegisterRequest(BaseModel):
+    """Register a managed model/runtime configuration without credentials."""
+
+    provider: str = Field(min_length=1)
+    model_name: str = Field(min_length=1)
+    version: str = Field(min_length=1)
+    parameters: dict[str, Any] = Field(default_factory=dict)
+    cost: dict[str, float] | None = None
+    latency: float | None = Field(default=None, ge=0)
+    context_window: int = Field(gt=0)
+
+
+class ModelVersionCreateRequest(BaseModel):
+    """Create an immutable managed version from an existing managed model."""
+
+    version: str = Field(min_length=1)
+    parameters: dict[str, Any] | None = None
+    cost: dict[str, float] | None = None
+    latency: float | None = Field(default=None, ge=0)
+    context_window: int | None = Field(default=None, gt=0)
+
+
+class RuntimeModelProviderResponse(BaseModel):
+    """One configured runtime-provider choice for managed registration."""
+
+    key: str
+    display_name: str
+    allowed: bool
