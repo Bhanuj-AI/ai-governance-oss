@@ -61,7 +61,7 @@ pnpm build
 From the repository root:
 
 ```bash
-./ai_governance.sh
+./servers.sh
 ```
 
 This starts:

@@ -3,6 +3,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT_DIR"
+# A shell activated for another checkout must not influence this project's
+# dependency resolution or emit an irrelevant virtual-environment warning.
+unset VIRTUAL_ENV
 
 echo "[local] Starting Keycloak..."
 ./scripts/keycloak/start-keycloak.sh
@@ -40,9 +43,15 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-echo "[local] Starting MCPO on ${AI_GOVERNANCE_MCP_HOST:-127.0.0.1}:${AI_GOVERNANCE_MCP_PORT:-8001}..."
-./scripts/mcp/start-mcp.sh &
-MCP_PID=$!
+MCP_HOST="${AI_GOVERNANCE_MCP_HOST:-127.0.0.1}"
+MCP_PORT="${AI_GOVERNANCE_MCP_PORT:-8001}"
+if lsof -nP -iTCP:"$MCP_PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+  echo "[local] Reusing existing MCP listener on ${MCP_HOST}:${MCP_PORT}."
+else
+  echo "[local] Starting MCPO on ${MCP_HOST}:${MCP_PORT}..."
+  ./scripts/mcp/start-mcp.sh &
+  MCP_PID=$!
+fi
 
 echo "[local] Starting AI Governance Control Plane API on ${AI_GOVERNANCE_API_HOST:-127.0.0.1}:${AI_GOVERNANCE_API_PORT:-8000}..."
-exec uvicorn ai_governance.api.app:app --reload
+exec uv run python -m uvicorn ai_governance.api.app:app --reload

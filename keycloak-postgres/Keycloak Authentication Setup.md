@@ -53,7 +53,7 @@ AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB=e44566f1-c748-45e1-83db-d2ee5fb424ef
 From the repository root:
 
 ```bash
-./ai_governance.sh
+./servers.sh
 ```
 
 This builds and starts Studio, API, and Neo4j.
@@ -168,7 +168,7 @@ authorization records associated with the previous subject.
 Check that the Studio Docker image was rebuilt after changes:
 
 ```bash
-./ai_governance.sh
+./servers.sh
 ```
 
 Check browser console and confirm all `NEXT_PUBLIC_KEYCLOAK_*` variables were supplied as Docker build arguments.
@@ -180,7 +180,7 @@ The Studio request started before the token provider was available, or the brows
 Hard refresh the page. If needed:
 
 ```bash
-./ai_governance.sh
+./servers.sh
 ```
 
 ### `401 missing_claims: JWT missing subject claim`

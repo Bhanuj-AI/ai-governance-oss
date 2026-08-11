@@ -55,6 +55,9 @@ cat > "$OAUTH_ENV" <<EOF
 AI_GOVERNANCE_OAUTH_TOKEN_URL=$KC_URL/realms/ai-governance/protocol/openid-connect/token
 AI_GOVERNANCE_OAUTH_CLIENT_ID=ai-governance-walkthrough
 AI_GOVERNANCE_OAUTH_CLIENT_SECRET=${AI_GOVERNANCE_WALKTHROUGH_CLIENT_SECRET:-walkthrough-secret}
+AI_GOVERNANCE_MCP_CLIENT_ID=ai-governance-mcp
+AI_GOVERNANCE_MCP_CLIENT_SECRET=${AI_GOVERNANCE_MCP_CLIENT_SECRET:?AI_GOVERNANCE_MCP_CLIENT_SECRET is required}
+AI_GOVERNANCE_MCP_TOKEN_URL=$KC_URL/realms/ai-governance/protocol/openid-connect/token
 EOF
 
 echo "[service-identities] Wrote runtime configuration to $GENERATED_ENV"

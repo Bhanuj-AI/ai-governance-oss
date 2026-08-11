@@ -11,10 +11,10 @@ data, or connecting external storage and graph services.
 ## Local Quick Start
 
 ```bash
-./ai_governance.sh
+./servers.sh
 ```
 
-`./ai_governance.sh` validates the Compose definition and runs `docker compose up
+`./servers.sh` validates the Compose definition and runs `docker compose up
 --build -d`. The platform Compose stack starts:
 
 - REST API on `http://localhost:8000`
@@ -41,7 +41,7 @@ docker compose down
 
 # Remove all local persistent data; the next startup creates a clean demo seed.
 docker compose down -v
-./ai_governance.sh
+./servers.sh
 ```
 
 Startup seeding uses stable identifiers and SQLite upserts, making repeated
@@ -88,7 +88,7 @@ The default Compose stack starts Keycloak at
 `http://keycloak.localhost:8080`. Start the local Keycloak and PostgreSQL stack:
 
 ```bash
-./ai_governance.sh
+./servers.sh
 ```
 
 The Keycloak realm import is only applied when its PostgreSQL data volume is

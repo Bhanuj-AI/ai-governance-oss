@@ -452,7 +452,7 @@ For a disposable local reset:
 
 ```bash
 docker compose down -v
-./ai_governance.sh
+./servers.sh
 ```
 
 MCPO may wrap REST `401`/`403` responses as HTTP `500`; inspect the nested

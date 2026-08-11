@@ -27,10 +27,10 @@ them in a shared or production environment.
 From the repository root, provision Keycloak and start AI Governance Control Plane:
 
 ```bash
-./ai_governance.sh
+./servers.sh
 ```
 
-`./ai_governance.sh` validates the Compose configuration and starts the Keycloak, platform,
+`./servers.sh` validates the Compose configuration and starts the Keycloak, platform,
 Studio, Neo4j, SeaweedFS, workers and MCP services. The first build can take
 a few minutes.
 
@@ -55,7 +55,7 @@ volumes and start again:
 
 ```bash
 docker compose down -v
-./ai_governance.sh
+./servers.sh
 ```
 
 This also removes the local SQLite, Neo4j, and SeaweedFS data.

@@ -31,10 +31,10 @@ start AI Governance Control Plane:
 
 ```bash
 ./scripts/keycloak/start-keycloak.sh
-./ai_governance.sh
+./servers.sh
 ```
 
-`./ai_governance.sh` uses Docker Compose. Compose waits for Neo4j, runs the one-shot
+`./servers.sh` uses Docker Compose. Compose waits for Neo4j, runs the one-shot
 `ai-governance-neo4j-schema` initializer, starts the Platform, then starts Studio and
 the ontology synchronization worker.
 

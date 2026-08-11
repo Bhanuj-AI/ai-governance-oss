@@ -225,7 +225,7 @@ or impersonate a runtime caller.
 
 ```bash
 ./scripts/keycloak/start-keycloak.sh
-./ai_governance.sh
+./servers.sh
 ```
 
 Open Studio at `http://localhost:3000` and sign in as `studio` using the
