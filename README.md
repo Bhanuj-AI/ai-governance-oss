@@ -205,6 +205,28 @@ example values are development-only; change them on shared machines and never
 use them in production. The launcher generates `.env.build` and the local
 service-account files itself.
 
+### Local Runtime Process
+
+```mermaid
+flowchart TD
+    start[Repository checkout and local configuration]
+
+    start --> docker[Docker Compose flow: ./servers.sh]
+    docker --> docker_services[Keycloak, API, Studio, MCP, Neo4j, and SeaweedFS]
+    docker --> docker_workers[Replay worker and ontology-sync worker: started automatically]
+
+    start --> host[Host-local flow: ./servers-local.sh]
+    host --> host_services[Keycloak, Neo4j, API, and MCPO]
+    host --> studio[Separate terminal: cd console and pnpm dev]
+    host --> replay[Separate terminal: replay_worker_runtime]
+    host --> ontology[Separate terminal: ontology_sync_worker_runtime]
+```
+
+Choose one runtime flow. `./servers.sh` runs the complete containerized
+topology, including both workers. `./servers-local.sh` is for host API/MCP
+development and deliberately leaves Studio and both workers as separate host
+processes.
+
 Use the same wrapper to inspect or manage the stack:
 
 ```bash

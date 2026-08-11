@@ -27,7 +27,7 @@ until the normal worker lifecycle has created it.
 Start the local stack and wait until the seeded demo data is available:
 
 ```bash
-./ai_governance.sh
+./servers.sh
 ```
 
 The initial scenario selects the seeded `demo-dataset-evaluation` dataset and a
@@ -67,7 +67,7 @@ If a caller must use a pre-obtained bearer token, supply it deliberately with
 global export cannot override the configured workload identity.
 
 The local Keycloak realm declares this client as `ai-governance-walkthrough`. Its
-service-account subject is discovered during `./ai_governance.sh` and provisioned as a
+service-account subject is discovered during `./servers.sh` and provisioned as a
 separate AI Governance Control Plane actor. Keycloak imports a realm JSON file only when the realm is
 created. After changing `keycloak-postgres/keycloak/ai-governance-realm.json`, an
 existing local Keycloak volume must either be updated through the Keycloak
@@ -78,7 +78,7 @@ Admin Console or recreated before the new client appears:
 cd keycloak-postgres
 docker compose --env-file .env.keycloak down -v
 cd ..
-./ai_governance.sh
+./servers.sh
 ```
 
 The defaults are `org_default` and `project_default`. Override them if you are

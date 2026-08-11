@@ -7,6 +7,11 @@ if [ -f .env.local ]; then
   . ./.env.local
   set +a
 fi
+if [ -f .env.oauth.generated ]; then
+  set -a
+  . ./.env.oauth.generated
+  set +a
+fi
 if [ -n "$provided_api_token" ]; then
   export AI_GOVERNANCE_API_TOKEN="$provided_api_token"
 fi
