@@ -144,6 +144,10 @@ configuration and resolves secret references without returning their values.
 `OPENAI_API_KEY` under deployment integrations remains a platform credential
 and is not a tenant runtime connection.
 
+See [Configure Runtime Connections](../tutorials/configure-runtime-connections.md)
+for the complete Studio workflow, request examples, secret-reference rules,
+and the current OSS boundary for model invocation.
+
 `POST /api/v1/prompts/observations` and `POST /api/v1/models/observations`
 are the vendor-neutral OSS ingestion boundary for runtime or evaluation
 evidence. They create immutable **OBSERVED** catalog records rather than

@@ -393,6 +393,10 @@ OpenAI, Anthropic, and OpenAI-compatible custom endpoints. The allowed managed
 model-provider setting controls which of these connection providers may be
 created in each tenant scope.
 
+See [Configure Runtime Connections](../tutorials/configure-runtime-connections.md)
+for Studio and REST workflows, credential rotation, scope semantics, and the
+current OSS invocation boundary.
+
 ## Test Backends
 
 Some repository integration tests require additional backend-specific

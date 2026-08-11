@@ -1,0 +1,143 @@
+# Configure Runtime Connections
+
+Runtime Connections are tenant-owned operational resources for future
+registered-model invocation. They hold a runtime provider, non-sensitive
+endpoint configuration, scope, enabled state and **secret references**. They
+do not store credentials and are not part of an immutable model version.
+
+This guide is deliberately separate from
+[evaluation provider installations](./configure-evaluation-provider-installations.md).
+Provider installations configure evaluators such as TruLens; Runtime
+Connections configure a user's model runtime.
+
+## Before you begin
+
+- Register a managed model provider that is allowed by
+  `model_registry.allowed_runtime_providers` in the selected organization or
+  project.
+- Make the referenced secret available to the API process. For local OSS,
+  `env://` references resolve from that process environment.
+- Use a durable settings backend (`sqlite` or `postgres`) if connections must
+  survive a restart. The development-only `inmemory` backend does not persist
+  them.
+
+For example, set a tenant runtime credential with a purpose-specific variable:
+
+```bash
+export OPENAI_DEVELOPMENT_API_KEY='…'
+```
+
+Do not reuse `OPENAI_API_KEY` merely because it exists. That variable is a
+deployment-owned platform credential for internal OpenAI-backed evaluation or
+judge flows; it is not a tenant Runtime Connection.
+
+## Create Connection in Studio
+
+1. Open **Settings → Runtime Connections**.
+2. Select **New Runtime Connection**.
+3. Enter an operator-facing name, such as `OpenAI Development`.
+4. Select the runtime provider. OSS currently supports **OpenAI**,
+   **Anthropic**, and **OpenAI-compatible custom** endpoints. A provider shown
+   as unavailable is blocked by the allowed-managed-model-provider policy.
+5. Set the provider configuration:
+
+   | Provider | API key reference | Base URL | Organization |
+   | --- | --- | --- | --- |
+   | OpenAI | Required | Optional | Optional |
+   | Anthropic | Required | Optional | Not used |
+   | OpenAI-compatible custom | Optional | Required | Optional |
+
+   For an OpenAI development connection, use
+   `env://OPENAI_DEVELOPMENT_API_KEY` as the API key reference. Never paste an
+   API key into this form.
+6. Choose a scope:
+   - **Organization**: shared by projects in the organization.
+   - **Current project**: visible only in the selected project.
+7. Select **Test Connection**. In the current OSS implementation this validates
+   provider configuration and confirms that each secret reference can be
+   resolved. It does **not** send a request to the provider or invoke a model.
+8. Leave **Active** selected and create the connection. Active connections must
+   pass validation before Studio permits saving; the API validates again.
+
+The list records Active/Disabled state and the last validation result. Use
+**Edit** to rotate a secret reference or update a base URL. This updates the
+connection; it never creates a new model version.
+
+## Use the REST API
+
+First inspect the OSS connection types and their tenant policy:
+
+```bash
+curl "$AI_GOVERNANCE_API_URL/api/v1/runtime-connections/providers" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "X-AI-Governance-Organization-Id: org_example" \
+  -H "X-AI-Governance-Project-Id: project_example"
+```
+
+Validate an unsaved OpenAI connection:
+
+```bash
+curl -X POST "$AI_GOVERNANCE_API_URL/api/v1/runtime-connections/validate" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "X-AI-Governance-Organization-Id: org_example" \
+  -H "X-AI-Governance-Project-Id: project_example" \
+  -d '{
+    "display_name": "OpenAI Development",
+    "provider": "openai",
+    "settings": {"organization": "org_example"},
+    "secret_refs": {"api_key": "env://OPENAI_DEVELOPMENT_API_KEY"},
+    "enabled": true,
+    "scope": "PROJECT"
+  }'
+```
+
+Create the validated connection with the same payload, using
+`POST /api/v1/runtime-connections`. The response contains a
+`runtime_connection_id`, status, scope, timestamps, and test state—but never a
+resolved secret.
+
+To test a saved connection, call:
+
+```bash
+curl -X POST "$AI_GOVERNANCE_API_URL/api/v1/runtime-connections/<connection-id>/test" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "X-AI-Governance-Organization-Id: org_example" \
+  -H "X-AI-Governance-Project-Id: project_example"
+```
+
+Use `PATCH /api/v1/runtime-connections/<connection-id>` to change
+`display_name`, `settings`, `secret_refs`, or `enabled`. Provider and scope are
+fixed at creation so the connection identity and tenant ownership remain
+clear.
+
+## Credential rotation and isolation
+
+- Rotate a credential by updating only `secret_refs`, for example from
+  `env://OPENAI_DEVELOPMENT_API_KEY_V1` to
+  `env://OPENAI_DEVELOPMENT_API_KEY_V2`.
+- Re-test after rotation, then keep the connection Active.
+- A project-scoped connection cannot be read or changed from another project or
+  organization. Organization-scoped connections are visible to the projects in
+  that organization.
+- The `runtime_connection.manage` permission is required for writes. Read
+  access follows the evaluation-read capability.
+
+## Current OSS boundary
+
+This feature establishes the governed connection lifecycle and secure runtime
+configuration resolution point. The current experiment and replay flows
+evaluate already-recorded executions; they do not yet invoke a registered model
+through a Runtime Connection. A future model-invocation adapter will resolve an
+enabled, provider-compatible connection immediately before use and will not
+persist the resolved credential.
+
+## Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| Provider is absent or unavailable | Check `model_registry.allowed_runtime_providers` for the selected tenant scope. OSS exposes only OpenAI, Anthropic, and custom connection types. |
+| Test fails | Confirm the API process—not only your shell—has the referenced environment variable. The response intentionally does not reveal a secret or its value. |
+| OpenAI/Anthropic cannot be saved as Active | Supply an `api_key` secret reference using an allowed scheme such as `env://NAME`. |
+| Custom connection cannot be saved | Supply an absolute `http://` or `https://` `base_url`. |
+| Connection disappears after restart | Configure `AI_GOVERNANCE_SETTINGS_REPOSITORY=sqlite` or `postgres`; `inmemory` is ephemeral. |
