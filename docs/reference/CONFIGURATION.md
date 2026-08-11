@@ -377,6 +377,22 @@ registers `trulens` when both an OpenAI API key and judge model are configured.
 Use `AI_GOVERNANCE_TRULENS_MODEL` to override `OPENAI_DEFAULT_JUDGE_MODEL` for
 TruLens. Mock remains the default for a fully offline local stack.
 
+### Runtime connections
+
+`OPENAI_API_KEY` is a deployment-owned platform credential for internal
+capabilities such as OpenAI-backed evaluation or judge flows. It is not a
+tenant or project runtime credential.
+
+Create tenant-owned **Runtime Connections** from **Settings → Runtime
+Connections** when a registered model must be invoked. A connection holds a
+provider, optional endpoint/organization metadata, scope, enablement state,
+and a secret reference such as `env://OPENAI_DEVELOPMENT_API_KEY`; no raw key
+is persisted or returned. Connections can be updated as credentials rotate,
+without creating a new managed model version. The initial OSS connection types cover
+OpenAI, Anthropic, and OpenAI-compatible custom endpoints. The allowed managed
+model-provider setting controls which of these connection providers may be
+created in each tenant scope.
+
 ## Test Backends
 
 Some repository integration tests require additional backend-specific

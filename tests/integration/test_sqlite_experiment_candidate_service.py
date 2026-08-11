@@ -24,6 +24,10 @@ from ai_governance.services.experiments import (
 )
 from ai_governance.services.models import ModelRegistryService
 from ai_governance.services.prompts import PromptRegistryService
+from ai_governance.tenancy.domain import TenantContext
+
+
+_CONTEXT = TenantContext("org_default", "project_default", "governance-admin", "test-request")
 
 
 def test_sqlite_experiment_candidate_service_persists_candidate(
@@ -79,6 +83,7 @@ def test_sqlite_experiment_candidate_service_persists_candidate(
         template="Answer the claim question.",
         variables=("question",),
         created_by="prompt-owner",
+        context=_CONTEXT,
     )
     model = model_service.register_model(
         provider="OpenAI",
@@ -87,6 +92,7 @@ def test_sqlite_experiment_candidate_service_persists_candidate(
         parameters={"temperature": 0.0},
         context_window=128000,
         creator="model-owner",
+        context=_CONTEXT,
     )
     dataset = dataset_service.register_dataset(
         name="claims-benchmark",

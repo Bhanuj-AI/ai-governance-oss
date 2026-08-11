@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { RuntimeConnectionsPanel } from "@/components/settings/RuntimeConnectionsPanel";
 import { listSettingCategories, listSettings, updateSetting } from "@/lib/api/settings";
 import type { PlatformSetting, SettingScope } from "@/types/settings";
 
@@ -14,7 +15,8 @@ export function SettingsPage() {
   const [category, setCategory] = useState("General");
   const [scope, setScope] = useState<SettingScope>("SYSTEM");
   const categories = useQuery({ queryKey: ["setting-categories"], queryFn: listSettingCategories });
-  const settings = useQuery({ queryKey: ["settings", category, scope], queryFn: () => listSettings(category, scope) });
+  const isRuntimeConnections = category === "__runtime_connections__";
+  const settings = useQuery({ queryKey: ["settings", category, scope], queryFn: () => listSettings(category, scope), enabled: !isRuntimeConnections });
 
   return <div className="mx-auto max-w-7xl space-y-6 p-6 lg:p-10">
     <div className="flex flex-wrap items-end justify-between gap-4">
@@ -29,13 +31,14 @@ export function SettingsPage() {
         {(categories.data || []).map(item => <button key={item.key} onClick={() => setCategory(item.name)} className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition ${category === item.name ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}>
           <span>{item.name}</span><span className={`text-xs ${category === item.name ? "text-primary-foreground/70" : "text-muted-foreground"}`}>{item.setting_count}</span>
         </button>)}
+        <button onClick={() => setCategory("__runtime_connections__")} className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition ${isRuntimeConnections ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}><span>Runtime Connections</span><span className={`text-xs ${isRuntimeConnections ? "text-primary-foreground/70" : "text-muted-foreground"}`}>Tenant</span></button>
       </nav>
-      <section className="min-w-0 space-y-4">
+      {isRuntimeConnections ? <RuntimeConnectionsPanel /> : <section className="min-w-0 space-y-4">
         <div><h2 className="text-2xl font-semibold">{category}</h2><p className="mt-1 text-sm text-muted-foreground">Effective values follow Environment → Runtime → Default precedence.</p></div>
         {settings.isLoading ? <Card><CardContent className="p-6 text-sm text-muted-foreground">Loading settings…</CardContent></Card> : null}
         {settings.error ? <Card><CardContent className="p-6 text-sm text-destructive">Unable to load settings: {settings.error.message}</CardContent></Card> : null}
         {(settings.data || []).map(setting => <SettingCard key={`${setting.key}:${scope}`} setting={setting} />)}
-      </section>
+      </section>}
     </div>
   </div>;
 }

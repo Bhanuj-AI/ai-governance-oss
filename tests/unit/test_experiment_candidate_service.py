@@ -27,6 +27,10 @@ from ai_governance.services.experiments import (
 )
 from ai_governance.services.models import ModelRegistryService
 from ai_governance.services.prompts import PromptRegistryService
+from ai_governance.tenancy.domain import TenantContext
+
+
+_CONTEXT = TenantContext("org_default", "project_default", "governance-admin", "test-request")
 
 
 def test_candidate_service_creates_candidate() -> None:
@@ -130,7 +134,7 @@ def test_candidate_service_rejects_archived_prompt_reference() -> None:
         owner="governance-team",
     )
     prompt, model, dataset = _create_assets(services)
-    services["prompt_service"].archive_prompt(prompt.prompt_id)
+    services["prompt_service"].archive_prompt(prompt.prompt_id, _CONTEXT)
 
     with pytest.raises(ExperimentCandidateReferenceError):
         services["candidate_service"].create_candidate(
@@ -230,6 +234,7 @@ def test_candidate_service_compares_candidate_configuration() -> None:
         prompt.prompt_id,
         version="v2",
         created_by="prompt-owner",
+        context=_CONTEXT,
     )
 
     baseline = services["candidate_service"].create_candidate(
@@ -336,6 +341,7 @@ def _create_assets(
         template="Answer the claim question.",
         variables=("question",),
         created_by="prompt-owner",
+        context=_CONTEXT,
     )
     model = model_service.register_model(
         provider="OpenAI",
@@ -344,6 +350,7 @@ def _create_assets(
         parameters={"temperature": 0.0},
         context_window=128000,
         creator="model-owner",
+        context=_CONTEXT,
     )
     dataset = dataset_service.register_dataset(
         name="claims-benchmark",

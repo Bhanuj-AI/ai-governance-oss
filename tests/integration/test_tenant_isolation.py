@@ -10,8 +10,13 @@ from ai_governance.ontology import InMemoryOntologyGraphRepository, OntologyEnti
 from ai_governance.repositories import InMemoryJobRepository
 from ai_governance.repositories.in_memory_model_repository import InMemoryModelRepository
 from ai_governance.repositories.in_memory_prompt_repository import InMemoryPromptRepository
+from ai_governance.repositories.settings_runtime_connection_repository import (
+    SettingsRuntimeConnectionRepository,
+)
 from ai_governance.services.models import ModelNotFoundError, ModelRegistryService
 from ai_governance.services.prompts import PromptRegistryService
+from ai_governance.services.runtime_connection_service import RuntimeConnectionService
+from ai_governance.settings_control.repository import InMemorySettingsRepository
 from ai_governance.services.job_submission_service import JobSubmissionService
 from ai_governance.tenancy.domain import TenantContext
 
@@ -115,3 +120,27 @@ def test_managed_model_lifecycle_is_tenant_isolated():
         service.activate_model_version(model.model_id, other_tenant)
 
     assert service.get_model(model.model_id, owner).status == ModelStatus.DRAFT
+
+
+def test_runtime_connections_are_tenant_isolated():
+    service = RuntimeConnectionService(
+        SettingsRuntimeConnectionRepository(InMemorySettingsRepository()),
+        allowed_runtime_providers=lambda _: ("openai",),
+        id_generator=lambda: "same-connection-id",
+    )
+    first = TenantContext("org_a", "project_a", "actor-a", "request-a")
+    second = TenantContext("org_b", "project_b", "actor-b", "request-b")
+
+    for context in (first, second):
+        service.create(
+            display_name="OpenAI",
+            provider="openai",
+            settings={},
+            secret_refs={"api_key": "env://MISSING"},
+            enabled=False,
+            project_id=context.project_id,
+            context=context,
+        )
+
+    assert [item.organization_id for item in service.list(first)] == ["org_a"]
+    assert [item.organization_id for item in service.list(second)] == ["org_b"]

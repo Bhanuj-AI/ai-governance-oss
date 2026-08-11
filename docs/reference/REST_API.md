@@ -85,6 +85,13 @@ POST /api/v1/provider-installations
 POST /api/v1/provider-installations/validate
 PATCH /api/v1/provider-installations/{installation_id}
 
+GET /api/v1/runtime-connections
+GET /api/v1/runtime-connections/providers
+POST /api/v1/runtime-connections/validate
+POST /api/v1/runtime-connections
+PATCH /api/v1/runtime-connections/{runtime_connection_id}
+POST /api/v1/runtime-connections/{runtime_connection_id}/test
+
 GET /api/v1/prompts
 GET /api/v1/prompts/{prompt_name}
 GET /api/v1/prompts/versions/{prompt_id}
@@ -126,6 +133,16 @@ the references and initializes the adapter without persisting an installation.
 An enabled installation is validated server-side on creation and update. Submit
 an evaluation, evaluation job, experiment candidate, or replay evaluation with
 `provider_installation_id` to resolve that configuration at execution time.
+
+Runtime connections are separate tenant-owned resources for model-runtime
+invocation. They contain a provider, non-sensitive endpoint configuration, an
+organization or project scope, and secret references only. They are not model
+version fields: a key rotation or endpoint change updates the connection rather
+than creating a new governed model version. In OSS, OpenAI, Anthropic, and
+OpenAI-compatible custom connections are supported; `POST .../test` validates
+configuration and resolves secret references without returning their values.
+`OPENAI_API_KEY` under deployment integrations remains a platform credential
+and is not a tenant runtime connection.
 
 `POST /api/v1/prompts/observations` and `POST /api/v1/models/observations`
 are the vendor-neutral OSS ingestion boundary for runtime or evaluation

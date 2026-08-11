@@ -46,6 +46,7 @@ from ai_governance.api.routers import (
     reports_router,
     replay_executions_router,
     replays_router,
+    runtime_connections_router,
     settings_router,
     tenancy_router,
 )
@@ -136,6 +137,16 @@ def create_app(*, plugins: Iterable[AIGovernancePlugin] = ()) -> FastAPI:
             Depends(
                 enforce_read_write(
                     Permission.EVALUATION_READ, Permission.SETTINGS_MANAGE
+                )
+            )
+        ],
+    )
+    app.include_router(
+        runtime_connections_router,
+        dependencies=[
+            Depends(
+                enforce_read_write(
+                    Permission.EVALUATION_READ, Permission.RUNTIME_CONNECTION_MANAGE
                 )
             )
         ],

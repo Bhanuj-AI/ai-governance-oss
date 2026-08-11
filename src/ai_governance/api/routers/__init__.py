@@ -21,6 +21,7 @@ from ai_governance.api.routers.providers import router as providers_router
 from ai_governance.api.routers.provider_installations import router as provider_installations_router
 from ai_governance.api.routers.reports import router as reports_router
 from ai_governance.api.routers.replays import router as replays_router
+from ai_governance.api.routers.runtime_connections import router as runtime_connections_router
 from ai_governance.api.routers.replay_executions import router as replay_executions_router
 from ai_governance.api.routers.tenancy import router as tenancy_router
 from ai_governance.api.routers.settings_control import router as settings_router
@@ -49,6 +50,7 @@ __all__ = [
     "provider_installations_router",
     "reports_router",
     "replays_router",
+    "runtime_connections_router",
     "replay_executions_router",
     "tenancy_router",
     "settings_router",

@@ -98,6 +98,13 @@ from ai_governance.api.models.prompt import (
     PromptCreateRequest,
     PromptVersionCreateRequest,
 )
+from ai_governance.api.models.runtime_connection import (
+    RuntimeConnectionCreateRequest,
+    RuntimeConnectionProviderResponse,
+    RuntimeConnectionResponse,
+    RuntimeConnectionUpdateRequest,
+    RuntimeConnectionValidationResponse,
+)
 from ai_governance.api.models.ontology_graph import (
     GraphEdgeResponse,
     GraphEntityResponse,
@@ -241,6 +248,11 @@ __all__ = [
     "ModelRegisterRequest",
     "ModelVersionCreateRequest",
     "RuntimeModelProviderResponse",
+    "RuntimeConnectionCreateRequest",
+    "RuntimeConnectionProviderResponse",
+    "RuntimeConnectionResponse",
+    "RuntimeConnectionUpdateRequest",
+    "RuntimeConnectionValidationResponse",
     "ModelObservationRequest",
     "OntologySyncEventListResponse",
     "OntologySyncEventResponse",

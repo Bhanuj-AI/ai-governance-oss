@@ -72,6 +72,7 @@ from ai_governance.services.policies import (
     PolicyVersionNotFoundError,
 )
 from ai_governance.services.provider_registry_service import ProviderRegistryService
+from ai_governance.services.runtime_connection_service import RuntimeConnectionService
 from ai_governance.services.prompts import PromptRegistryService
 from ai_governance.services.replay_application_service import (
     HistoricalReplayabilityValidator,
@@ -158,6 +159,7 @@ __all__ = [
     "ReplayComparisonService",
     "ReplayDriftService",
     "ProviderRegistryService",
+    "RuntimeConnectionService",
     "RankingError",
     "RankingService",
     "RankingStrategy",

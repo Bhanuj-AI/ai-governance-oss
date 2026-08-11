@@ -117,6 +117,17 @@ settings, optional project-local variation, and secret references resolved only
 when a worker executes. Evaluation exists to create governance evidence, not to
 be the platform boundary.
 
+### Runtime Connection Plane
+
+Runtime connections are tenant-owned operational resources for invoking
+registered models. They are separate from deployment-level integration
+environment variables and from evaluation-provider installations: a model
+version remains immutable while a connection's secret reference or endpoint may
+rotate. Connection records carry only provider identity, non-sensitive
+configuration, scope, status, and secret references. OSS validates OpenAI,
+Anthropic, and OpenAI-compatible custom connection configuration; provider
+invocation adapters consume a resolved connection only at execution time.
+
 ### Job Execution Plane
 
 The Job Execution Plane records and executes long-running governance work such
@@ -474,6 +485,7 @@ The current REST control plane exposes:
 - `/api/v1` for API metadata
 - `/api/v1/providers` for provider discovery
 - `/api/v1/provider-installations` for schema-validated provider configuration
+- `/api/v1/runtime-connections` for tenant-owned model runtime configuration
 - `/api/v1/prompts`, `/api/v1/models`, and `/api/v1/datasets` for registry reads
 - `/api/v1/evaluations` for synchronous evaluation submission and persisted result reads
 - `/api/v1/experiments` for experiment creation, candidates, runs, candidate

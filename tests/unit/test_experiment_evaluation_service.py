@@ -48,6 +48,10 @@ from ai_governance.services.experiments import (
 )
 from ai_governance.services.models import ModelRegistryService
 from ai_governance.services.prompts import PromptRegistryService
+from ai_governance.tenancy.domain import TenantContext
+
+
+_CONTEXT = TenantContext("org_default", "project_default", "governance-admin", "test-request")
 
 
 def test_experiment_evaluation_service_executes_candidates_and_selects_winner() -> None:
@@ -64,6 +68,7 @@ def test_experiment_evaluation_service_executes_candidates_and_selects_winner() 
         creator="model-owner",
         cost={"input_per_1k": 0.03},
         latency=0.6,
+        context=_CONTEXT,
     )
 
     services["candidate_service"].create_candidate(
@@ -341,6 +346,7 @@ def _create_shared_assets(
         template="Answer the claim question.",
         variables=("question",),
         created_by="prompt-owner",
+        context=_CONTEXT,
     )
     model = model_service.register_model(
         provider="OpenAI",
@@ -351,6 +357,7 @@ def _create_shared_assets(
         latency=0.4,
         context_window=128000,
         creator="model-owner",
+        context=_CONTEXT,
     )
     dataset = dataset_service.register_dataset(
         name="claims-benchmark",

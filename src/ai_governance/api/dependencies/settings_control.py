@@ -62,3 +62,13 @@ def get_provider_installation_repository():
     )
 
     return SettingsProviderInstallationRepository(get_settings_repository())
+
+
+@lru_cache(maxsize=1)
+def get_runtime_connection_repository():
+    """Expose tenant runtime connections through the durable settings store."""
+    from ai_governance.repositories.settings_runtime_connection_repository import (
+        SettingsRuntimeConnectionRepository,
+    )
+
+    return SettingsRuntimeConnectionRepository(get_settings_repository())
