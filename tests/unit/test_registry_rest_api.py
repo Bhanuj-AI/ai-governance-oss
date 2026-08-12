@@ -227,12 +227,13 @@ class FakeDatasetRegistryService:
             status=DatasetStatus.ACTIVE,
         )
 
-    def list_datasets(self) -> list[Dataset]:
+    def list_datasets(self, *_: object) -> list[Dataset]:
         return [self.dataset]
 
     def get_dataset(
         self,
         dataset_id: str,
+        *_: object,
     ) -> Dataset:
         if dataset_id != self.dataset.dataset_id:
             raise DatasetNotFoundError(
@@ -241,7 +242,7 @@ class FakeDatasetRegistryService:
 
         return self.dataset
 
-    def list_versions(self, name: str) -> list[Dataset]:
+    def list_versions(self, name: str, *_: object) -> list[Dataset]:
         return [self.dataset] if name == self.dataset.name else []
 
     def register_dataset(
@@ -276,6 +277,26 @@ class FakeDatasetRegistryService:
             organization_id=organization_id,
             project_id=project_id,
         )
+        return self.dataset
+
+    def freeze_dataset(self, dataset_id: str, *_: object) -> Dataset:
+        self.get_dataset(dataset_id)
+        self.dataset = replace(self.dataset, status=DatasetStatus.FROZEN)
+        return self.dataset
+
+    def promote_dataset(self, dataset_id: str, *_: object) -> Dataset:
+        self.get_dataset(dataset_id)
+        self.dataset = replace(self.dataset, status=DatasetStatus.ACTIVE)
+        return self.dataset
+
+    def deprecate_dataset(self, dataset_id: str, *_: object) -> Dataset:
+        self.get_dataset(dataset_id)
+        self.dataset = replace(self.dataset, status=DatasetStatus.DEPRECATED)
+        return self.dataset
+
+    def archive_dataset(self, dataset_id: str, *_: object) -> Dataset:
+        self.get_dataset(dataset_id)
+        self.dataset = replace(self.dataset, status=DatasetStatus.ARCHIVED)
         return self.dataset
 
 
@@ -658,7 +679,7 @@ def test_upload_dataset_deletes_new_object_when_registry_registration_fails(
             self.deleted.append((bucket, key))
 
     class FailingRegistry:
-        def list_versions(self, name: str) -> list[Dataset]:
+        def list_versions(self, name: str, *_: object) -> list[Dataset]:
             return []
 
         def register_dataset(self, **kwargs: object) -> Dataset:
@@ -692,6 +713,28 @@ def test_dataset_not_found_returns_404() -> None:
     assert response.json()["error"]["code"] == "not_found"
 
 
+def test_managed_dataset_lifecycle_endpoints_transition_state() -> None:
+    app = create_app()
+    registry = FakeDatasetRegistryService()
+    app.dependency_overrides[get_dataset_registry_service] = lambda: registry
+    client = TestClient(app)
+    registry.dataset = replace(registry.dataset, status=DatasetStatus.DRAFT)
+
+    frozen = client.post("/api/v1/datasets/dataset-1/freeze")
+    activated = client.post("/api/v1/datasets/dataset-1/activate")
+    deprecated = client.post("/api/v1/datasets/dataset-1/deprecate")
+    archived = client.post("/api/v1/datasets/dataset-1/archive")
+
+    assert frozen.status_code == 200
+    assert frozen.json()["status"] == "FROZEN"
+    assert activated.status_code == 200
+    assert activated.json()["status"] == "ACTIVE"
+    assert deprecated.status_code == 200
+    assert deprecated.json()["status"] == "DEPRECATED"
+    assert archived.status_code == 200
+    assert archived.json()["status"] == "ARCHIVED"
+
+
 def test_registry_resources_are_in_openapi() -> None:
     response = _client().get("/openapi.json")
 
@@ -706,6 +749,7 @@ def test_registry_resources_are_in_openapi() -> None:
     assert "/api/v1/models/{model_id}" in paths
     assert "/api/v1/datasets" in paths
     assert "/api/v1/datasets/{dataset_id}" in paths
+    assert "/api/v1/datasets/{dataset_id}/freeze" in paths
 
 
 def test_seeded_evaluation_dataset_content_has_expected_record_count() -> None:
