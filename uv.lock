@@ -14,6 +14,67 @@ resolution-markers = [
 ]
 
 [[package]]
+name = "ai-governance"
+version = "1.0.0"
+source = { editable = "." }
+dependencies = [
+    { name = "boto3" },
+    { name = "fastapi" },
+    { name = "mcp" },
+    { name = "neo4j" },
+    { name = "packaging" },
+    { name = "psycopg", extra = ["binary"] },
+    { name = "pydantic" },
+    { name = "pyjwt" },
+    { name = "python-dotenv" },
+    { name = "python-multipart" },
+    { name = "pyyaml" },
+    { name = "rich" },
+    { name = "snowflake-connector-python" },
+    { name = "trulens" },
+    { name = "trulens-connectors-snowflake" },
+    { name = "trulens-core" },
+    { name = "trulens-providers-openai" },
+    { name = "uvicorn" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "boto3", specifier = ">=1.43.34" },
+    { name = "fastapi", specifier = ">=0.138.1" },
+    { name = "mcp", specifier = ">=1.26,<2" },
+    { name = "neo4j", specifier = ">=5.28,<6" },
+    { name = "packaging", specifier = ">=24.2" },
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.3.2" },
+    { name = "pydantic", specifier = ">=2.13.4" },
+    { name = "pyjwt", specifier = ">=2.10.0" },
+    { name = "python-dotenv", specifier = ">=1.2.2" },
+    { name = "python-multipart", specifier = ">=0.0.20" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "rich", specifier = ">=13.9.4" },
+    { name = "snowflake-connector-python", specifier = ">=4.6.0" },
+    { name = "trulens", specifier = ">=2.10.0" },
+    { name = "trulens-connectors-snowflake", specifier = ">=2.10.0" },
+    { name = "trulens-core", specifier = ">=2.10.0" },
+    { name = "trulens-providers-openai", specifier = ">=2.10.0" },
+    { name = "uvicorn", specifier = ">=0.49.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=9.1.1" },
+    { name = "pytest-cov", specifier = ">=7.1.0" },
+    { name = "ruff", specifier = ">=0.15.19" },
+]
+
+[[package]]
 name = "aiohappyeyeballs"
 version = "2.6.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1553,67 +1614,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/26/2d/ef58fed122b268c69c0aa099da20bc67657cdfb2e222688d5731bd5b971d/jupyterlab_widgets-3.0.16.tar.gz", hash = "sha256:423da05071d55cf27a9e602216d35a3a65a3e41cdf9c5d3b643b814ce38c19e0", size = 897423, upload-time = "2025-11-01T21:11:29.724Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ab/b5/36c712098e6191d1b4e349304ef73a8d06aed77e56ceaac8c0a306c7bda1/jupyterlab_widgets-3.0.16-py3-none-any.whl", hash = "sha256:45fa36d9c6422cf2559198e4db481aa243c7a32d9926b500781c830c80f7ecf8", size = 914926, upload-time = "2025-11-01T21:11:28.008Z" },
-]
-
-[[package]]
-name = "ai-governance"
-version = "1.0.0"
-source = { editable = "." }
-dependencies = [
-    { name = "boto3" },
-    { name = "fastapi" },
-    { name = "mcp" },
-    { name = "neo4j" },
-    { name = "packaging" },
-    { name = "psycopg", extra = ["binary"] },
-    { name = "pydantic" },
-    { name = "pyjwt" },
-    { name = "python-dotenv" },
-    { name = "python-multipart" },
-    { name = "pyyaml" },
-    { name = "rich" },
-    { name = "snowflake-connector-python" },
-    { name = "trulens" },
-    { name = "trulens-connectors-snowflake" },
-    { name = "trulens-core" },
-    { name = "trulens-providers-openai" },
-    { name = "uvicorn" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "boto3", specifier = ">=1.43.34" },
-    { name = "fastapi", specifier = ">=0.138.1" },
-    { name = "mcp", specifier = ">=1.26,<2" },
-    { name = "neo4j", specifier = ">=5.28,<6" },
-    { name = "packaging", specifier = ">=24.2" },
-    { name = "psycopg", extras = ["binary"], specifier = ">=3.3.2" },
-    { name = "pydantic", specifier = ">=2.13.4" },
-    { name = "pyjwt", specifier = ">=2.10.0" },
-    { name = "python-dotenv", specifier = ">=1.2.2" },
-    { name = "python-multipart", specifier = ">=0.0.20" },
-    { name = "pyyaml", specifier = ">=6.0" },
-    { name = "rich", specifier = ">=13.9.4" },
-    { name = "snowflake-connector-python", specifier = ">=4.6.0" },
-    { name = "trulens", specifier = ">=2.8.1" },
-    { name = "trulens-connectors-snowflake", specifier = ">=2.8.1" },
-    { name = "trulens-core", specifier = ">=2.8.1" },
-    { name = "trulens-providers-openai", specifier = ">=2.8.1" },
-    { name = "uvicorn", specifier = ">=0.49.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = ">=9.1.1" },
-    { name = "pytest-cov", specifier = ">=7.1.0" },
-    { name = "ruff", specifier = ">=0.15.19" },
 ]
 
 [[package]]
@@ -3913,7 +3913,7 @@ wheels = [
 
 [[package]]
 name = "trulens"
-version = "2.8.1"
+version = "2.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "trulens-core" },
@@ -3922,28 +3922,28 @@ dependencies = [
     { name = "trulens-feedback" },
     { name = "trulens-otel-semconv" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e1/96/4c8d33a33d48d824bfbb5b70197e33ae9c96961d238cdae24a01b642402d/trulens-2.8.1.tar.gz", hash = "sha256:40109b778cd158c4a3fccffe6725a38224e1b0b646bd57c6919ce4116f88e18b", size = 4271, upload-time = "2026-05-14T17:05:43.654Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a5/33/aebeace806bc86c60e90a3d033639f7d0e1ed7e9b5a19f63c10286ab8856/trulens-2.12.0.tar.gz", hash = "sha256:1806738e884215fdc2534621a49c4374cd277a3b802b83a501ba723e6137eefe", size = 6528, upload-time = "2026-08-06T20:39:57.425Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ef/59/94d63652e38baa0627a6035a6ee2227da1791b216a8747f5b9cb9cd5742a/trulens-2.8.1-py3-none-any.whl", hash = "sha256:8913c972c249dcdbcd04ccbb5ec7f64f1eb56bb96e936adae0cd41f0f3aaaddd", size = 3619, upload-time = "2026-05-14T17:05:23.133Z" },
+    { url = "https://files.pythonhosted.org/packages/c0/d4/8cae610075fd7b45015dceee698cf8030e8af06aba4146d1e6f91a22361a/trulens-2.12.0-py3-none-any.whl", hash = "sha256:2128252716c1a4535742dc3ae894ef65ae5ce6947ce32dee227c78fbaeac3bf1", size = 5966, upload-time = "2026-08-06T20:39:38.867Z" },
 ]
 
 [[package]]
 name = "trulens-connectors-snowflake"
-version = "2.8.1"
+version = "2.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "snowflake-snowpark-python" },
     { name = "snowflake-sqlalchemy" },
     { name = "trulens-core" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fe/1d/23c51c96ff6c3712db6f1909d1ed2e2b81462428bf027fd6ad7fdbf90e19/trulens_connectors_snowflake-2.8.1.tar.gz", hash = "sha256:021a5a097627fe2fb1685bbf168ed986644c8bd22639b6c333d1fc525d2e82e7", size = 1555970, upload-time = "2026-05-14T17:05:30.748Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5d/86/9eca7c4960a5e806fca3372df15dc22f8f6e15ecfac175a03d91c727f666/trulens_connectors_snowflake-2.12.0.tar.gz", hash = "sha256:568def54c50e760902a57b3003b1afcd84e2aaf1e055447d6ff88706de191408", size = 1583405, upload-time = "2026-08-06T20:39:45.952Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/04/5b/8ef9b43a69063f66a92c3ba2b25c3372c72d931ca840c68a8f83710c5972/trulens_connectors_snowflake-2.8.1-py3-none-any.whl", hash = "sha256:8a2df5373b9bde7e5b62973cd9490b4b46be6466de9de7df10644384912e7dbd", size = 1562680, upload-time = "2026-05-14T17:05:03.986Z" },
+    { url = "https://files.pythonhosted.org/packages/00/6a/c30c475b0a1591cae18c98f96bace58ecf2898c9a982a9ea81c4f84992f4/trulens_connectors_snowflake-2.12.0-py3-none-any.whl", hash = "sha256:cec562c421f3ce368d4fcbed9099c6411098e650be491f2dd5b81b7c16afe063", size = 1591389, upload-time = "2026-08-06T20:39:21.874Z" },
 ]
 
 [[package]]
 name = "trulens-core"
-version = "2.8.1"
+version = "2.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "alembic" },
@@ -3966,14 +3966,14 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/56/66/1847350468161ad399b227e786222ab71e29d9c7b41ac02b95dece4ae379/trulens_core-2.8.1.tar.gz", hash = "sha256:269a8d0bee786adebd204daffa5b6bbd00188ff4993b5a6dc771e8b8458ae095", size = 289562, upload-time = "2026-05-14T17:05:32.257Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/09/61/021f3f3681efc69f9b2b1ceb7c3bdbfab8bfbfa0e617e043b3c86714fc0f/trulens_core-2.12.0.tar.gz", hash = "sha256:7f068ba612cf9936edc2089d9b2a3c241c0ff7c9b56117657687e304bcb0bb39", size = 297876, upload-time = "2026-08-06T20:39:47.171Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/56/df/a86e90ef87c192c85523ec378b29a7ecd4fe5ed3398f9832dc793dd0bdec/trulens_core-2.8.1-py3-none-any.whl", hash = "sha256:ac93212130d744168998d1f8a59980140a1d749bb30b0960e1289dbcc7a51234", size = 341982, upload-time = "2026-05-14T17:05:05.842Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/b4/86222da6abb115f80fa0cc7e2e7439b662515860bd33d7c1fea633391eab/trulens_core-2.12.0-py3-none-any.whl", hash = "sha256:f843a49e077a185557618b4d4e288b64f89fad43fa76548e777304e91d313596", size = 357089, upload-time = "2026-08-06T20:39:23.317Z" },
 ]
 
 [[package]]
 name = "trulens-dashboard"
-version = "2.8.1"
+version = "2.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ipywidgets" },
@@ -3987,9 +3987,9 @@ dependencies = [
     { name = "traitlets" },
     { name = "trulens-core" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8f/cc/75ffc13dfd9f205000fb5171723a570551402982efff6d83c502aa6a73f7/trulens_dashboard-2.8.1.tar.gz", hash = "sha256:f3acac68508dafb9c1dbf3dbe2e4410ed95783ee68e31f65b46479cc6ef133fc", size = 1067735, upload-time = "2026-05-14T17:05:33.272Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/61/65/20fcb23ade399c06a46f1589c182990dc079375cb38969494674a312fd81/trulens_dashboard-2.12.0.tar.gz", hash = "sha256:addc4708d23997c3662c2667a372ab645b4e8685419094e60759e9fde64b4895", size = 1059656, upload-time = "2026-08-06T20:39:48.114Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/23/f6/e2bf43bff8c4084e1fc983ac5eaf0f025306bafa6c2734a4d1559e9a1314/trulens_dashboard-2.8.1-py3-none-any.whl", hash = "sha256:c3d84385daba12256825ec089d5bb0e21bf6d528be1481dd0cc3b25bf514289c", size = 1088983, upload-time = "2026-05-14T17:05:07.332Z" },
+    { url = "https://files.pythonhosted.org/packages/37/82/13e8bc777468b3d280daf1d58af2c6e67d0409b94cff40888d9c36cf5a50/trulens_dashboard-2.12.0-py3-none-any.whl", hash = "sha256:4f69c9e9a7aa23eb0d6a79a3149e909704e78f56f36a0b79637909cf8be1cbee", size = 1083377, upload-time = "2026-08-06T20:39:24.765Z" },
 ]
 
 [package.optional-dependencies]
@@ -3999,21 +3999,21 @@ full = [
 
 [[package]]
 name = "trulens-eval"
-version = "2.8.1"
+version = "2.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "trulens-core" },
     { name = "trulens-dashboard" },
     { name = "trulens-feedback" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/31/06/f557fd0b64cf7c516ac751944c2c7ded95edee5e343a36c1b90958007d5e/trulens_eval-2.8.1.tar.gz", hash = "sha256:f5e170a7f3d69439a1986ab902dc5e3a3773ef3049decdca633aa5e17e0490ff", size = 12968, upload-time = "2026-05-14T17:05:42.756Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/37/83/8bd0f62a4036329bdb27d6c2eed83771367b06775a2fcff482d9a8043687/trulens_eval-2.12.0.tar.gz", hash = "sha256:fb083fed9f587abb9c63142ad3e85e47086a2506a4079c739d7f4bc7e241df7c", size = 11229, upload-time = "2026-08-06T20:39:56.662Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f3/51/54b090ff5bd00f93828aefb6b712bc9a413d9bd3eb6f56af71b685cc6659/trulens_eval-2.8.1-py3-none-any.whl", hash = "sha256:2602e3d3d9f164d547b3b4a2d8e4c4c2d52d5383079775aa02ace5de00d25ae4", size = 38066, upload-time = "2026-05-14T17:05:21.837Z" },
+    { url = "https://files.pythonhosted.org/packages/24/29/b6bfddd62009771aeab97b219566b56df8b5de740e038beb7eac217251a2/trulens_eval-2.12.0-py3-none-any.whl", hash = "sha256:c94c6f22b05399df47fcce7c40f6efaed8d7f48acc2d669aca707d11f575d26b", size = 38091, upload-time = "2026-08-06T20:39:37.784Z" },
 ]
 
 [[package]]
 name = "trulens-feedback"
-version = "2.8.1"
+version = "2.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "nltk" },
@@ -4024,26 +4024,26 @@ dependencies = [
     { name = "scipy" },
     { name = "trulens-core" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/dd/b4/0b585ba28bd9d6a0ef69c59d94a0f477d664bc4f8c3a46c5fac9cb50a7b4/trulens_feedback-2.8.1.tar.gz", hash = "sha256:d2973b36915c5f015ea724740996ddf380e3abde9865b68307a863e46b7baa4e", size = 69151, upload-time = "2026-05-14T17:05:34.422Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/58/6b/a5ae6942b7585232318f9c92cdfb8330a0847ac74edfdbecf5a59e698559/trulens_feedback-2.12.0.tar.gz", hash = "sha256:bf828ab85341d10a6027051bfa1ed3cc88abebe17676861bac488bab6368567f", size = 84120, upload-time = "2026-08-06T20:39:49.364Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cf/9b/bc02763661053c837ebcd11e7f3da7ace9a5cfd0dd6fc09033613356d85d/trulens_feedback-2.8.1-py3-none-any.whl", hash = "sha256:36a6557e2f9265720f233c2509aab9db484c28807239db72f5befcb29a0f79eb", size = 72120, upload-time = "2026-05-14T17:05:09.22Z" },
+    { url = "https://files.pythonhosted.org/packages/f3/07/53b9509f46fd7dc1f6b16c4973d00de2848319e770be7cfc3072293b9111/trulens_feedback-2.12.0-py3-none-any.whl", hash = "sha256:225db49f9cf87741be74d22d1e4cda9655c119f4cb39e9a63a6f0a4b5d4437b7", size = 90167, upload-time = "2026-08-06T20:39:26.185Z" },
 ]
 
 [[package]]
 name = "trulens-otel-semconv"
-version = "2.8.1"
+version = "2.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "opentelemetry-semantic-conventions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9b/31/4ec13a90d16569f8d2ab9e029f795f64a33cae00f958da3db040715fa334/trulens_otel_semconv-2.8.1.tar.gz", hash = "sha256:8c1709b768000e5301468d45bd3471c7bcbbbf0b710f4b189db4793a3e09ee74", size = 5114, upload-time = "2026-05-14T17:05:36.578Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3c/5e/a52aaaeba53d286c92c48d505409042872af2619b331bdd7fcc1ea0048f1/trulens_otel_semconv-2.12.0.tar.gz", hash = "sha256:d5e23d849f4890f00dc584a520a633e984af6476eb170a3f38e28de2e44b5a7a", size = 6224, upload-time = "2026-08-06T20:39:50.834Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/30/4c/1f49238ecde6a2b4972352bc8849ea8df60bfa1fdc1b1dda3055e08920a9/trulens_otel_semconv-2.8.1-py3-none-any.whl", hash = "sha256:9b6ac82bd8a0e6f8242ad2d93a03c71ef9cf1cf46e4e340238a95ca352c0cdc6", size = 5903, upload-time = "2026-05-14T17:05:13.294Z" },
+    { url = "https://files.pythonhosted.org/packages/fa/29/0696bab22a2d8f19606386e57378c6a427617ad308d0982a1bdefb57368f/trulens_otel_semconv-2.12.0-py3-none-any.whl", hash = "sha256:fa9a2c0d629f7761a7ce898449533c3dc7767b3a90d74a6582efddc3f01f5aa3", size = 7308, upload-time = "2026-08-06T20:39:28.529Z" },
 ]
 
 [[package]]
 name = "trulens-providers-openai"
-version = "2.8.1"
+version = "2.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "langchain-community" },
@@ -4051,9 +4051,9 @@ dependencies = [
     { name = "trulens-core" },
     { name = "trulens-feedback" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f6/65/fd9f200edcd1c8110d5b50bed83a269f7c548dd140a0094833ebd89ee131/trulens_providers_openai-2.8.1.tar.gz", hash = "sha256:166931b11f6160d4e1b456f94954982065f40bc3bf65d4577eb90623691cd202", size = 13022, upload-time = "2026-05-14T17:05:42.067Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ce/69/68af26050564b98e59be873c9988438f940356161b3846e22aa416038df9/trulens_providers_openai-2.12.0.tar.gz", hash = "sha256:3f63f51a3bfcfd7bc3042b162c99ba0a5dd805cd281fff847f362e19b41439f5", size = 13043, upload-time = "2026-08-06T20:39:55.924Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9f/70/a98a184303cd95bc903e380ba292d3316aed1f94942f241f072bcbaccf0d/trulens_providers_openai-2.8.1-py3-none-any.whl", hash = "sha256:7b89865727b75b5aa60866e6eeb8c8828cd1afafe542096a9a34db003baa25e3", size = 14219, upload-time = "2026-05-14T17:05:20.679Z" },
+    { url = "https://files.pythonhosted.org/packages/36/a1/3dc87a38fb3995aa66ce6013f0da53a3a2d2d50abcdf80f4a22b684ea080/trulens_providers_openai-2.12.0-py3-none-any.whl", hash = "sha256:3e9c24610aabedce30ff76081f52b2905fc8765e67b4cc65d15ca4573962c8cc", size = 14533, upload-time = "2026-08-06T20:39:35.848Z" },
 ]
 
 [[package]]

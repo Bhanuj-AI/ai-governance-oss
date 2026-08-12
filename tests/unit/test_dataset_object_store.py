@@ -5,7 +5,9 @@ import boto3
 import pytest
 
 from ai_governance.datasets import (
+    FilesystemDatasetObjectStore,
     S3DatasetObjectStore,
+    dataset_object_uri,
     dataset_object_store_from_environment,
 )
 
@@ -38,6 +40,34 @@ def test_s3_dataset_object_store_writes_standard_s3_object() -> None:
             "Metadata": {"dataset_id": "dataset-1"},
         }
     ]
+
+
+def test_s3_dataset_object_store_reads_dataset_bytes() -> None:
+    class FakeBody:
+        def __init__(self) -> None:
+            self.closed = False
+
+        def read(self) -> bytes:
+            return b'{"question":"Example"}\n'
+
+        def close(self) -> None:
+            self.closed = True
+
+    class FakeClient:
+        def __init__(self) -> None:
+            self.body = FakeBody()
+            self.calls: list[dict[str, str]] = []
+
+        def get_object(self, **kwargs: str) -> dict[str, FakeBody]:
+            self.calls.append(kwargs)
+            return {"Body": self.body}
+
+    client = FakeClient()
+    assert S3DatasetObjectStore(client).get_bytes(
+        bucket="ai-governance-datasets", key="example.jsonl"
+    ) == b'{"question":"Example"}\n'
+    assert client.calls == [{"Bucket": "ai-governance-datasets", "Key": "example.jsonl"}]
+    assert client.body.closed is True
 
 
 def test_s3_dataset_object_store_reads_seaweedfs_environment(
@@ -80,12 +110,33 @@ def test_dataset_object_store_is_disabled_by_default(
     assert dataset_object_store_from_environment() is None
 
 
+def test_filesystem_dataset_object_store_preserves_immutable_content(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    monkeypatch.setenv("AI_GOVERNANCE_DATASET_OBJECT_STORE_BACKEND", "filesystem")
+    monkeypatch.setenv("AI_GOVERNANCE_DATASET_FILESYSTEM_ROOT", str(tmp_path))
+
+    store = dataset_object_store_from_environment()
+
+    assert isinstance(store, FilesystemDatasetObjectStore)
+    assert store.put_bytes(
+        bucket="datasets", key="support/v1.jsonl", body=b'{"question":"Example"}\n',
+        content_type="application/x-ndjson",
+    ).created is True
+    assert store.get_bytes(bucket="datasets", key="support/v1.jsonl") == b'{"question":"Example"}\n'
+    assert dataset_object_uri(store, bucket="datasets", key="support/v1.jsonl").startswith("file://")
+    assert store.put_bytes(
+        bucket="datasets", key="support/v1.jsonl", body=b"different", content_type="text/plain"
+    ).created is False
+
+
 def test_dataset_object_store_rejects_unknown_backend(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("AI_GOVERNANCE_DATASET_OBJECT_STORE_BACKEND", "filesystem")
+    monkeypatch.setenv("AI_GOVERNANCE_DATASET_OBJECT_STORE_BACKEND", "unknown")
 
-    with pytest.raises(ValueError, match="must be 'none' or 's3'"):
+    with pytest.raises(ValueError, match="must be 'none', 'filesystem', or 's3'"):
         dataset_object_store_from_environment()
 
 

@@ -3,7 +3,13 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from ai_governance.domain.evaluation_result import EvaluationMetric, EvaluationResult
-from ai_governance.domain.experiments import EvaluationRun, EvaluationRunStatus, Leaderboard
+from ai_governance.domain.experiments import (
+    EvaluationRun,
+    EvaluationRunStatus,
+    Experiment,
+    ExperimentStatus,
+    Leaderboard,
+)
 from ai_governance.domain.jobs import Job, JobExecutionContext, JobStatus, JobType
 from ai_governance.services.async_job_handlers import EvaluationJobHandler, ExperimentJobHandler
 
@@ -32,6 +38,19 @@ class _Evaluations:
 class _Experiments:
     def __init__(self) -> None:
         self.called_with = None
+        self.status = ExperimentStatus.RUNNING
+
+    def get_experiment(self, experiment_id, **_kwargs):
+        return Experiment(
+            experiment_id,
+            "Experiment",
+            "Description",
+            "owner",
+            NOW,
+            self.status,
+            "org-1",
+            "project-1",
+        )
 
     def run_experiment(self, experiment_id, **kwargs):
         self.called_with = (experiment_id, kwargs)
@@ -84,6 +103,19 @@ def test_experiment_handler_returns_generated_leaderboard_reference() -> None:
     assert outcome.status is JobStatus.SUCCEEDED
     assert outcome.result_ref == "leaderboard:leaderboard-1"
     assert service.called_with[0] == "experiment-1"
+
+
+def test_experiment_handler_cancels_a_job_for_a_cancelled_experiment() -> None:
+    service = _Experiments()
+    service.status = ExperimentStatus.CANCELLED
+
+    outcome = ExperimentJobHandler(service).handle(
+        _job(JobType.EXPERIMENT, {"experiment_id": "experiment-1"})
+    )
+
+    assert outcome.status is JobStatus.CANCELLED
+    assert outcome.failure_reason == "Experiment cancellation requested."
+    assert service.called_with is None
 
 
 def _job(job_type: JobType, input_refs: dict[str, object]) -> Job:

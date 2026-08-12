@@ -103,6 +103,14 @@ function presentationFor({
       tone: "success",
     };
   }
+  if (experiment.status === "CANCELLED") {
+    return {
+      activeStep: 1,
+      outcome: "CANCELLED",
+      detail: "The experiment was cancelled. Any evidence already produced remains available for review, but no recommendation is generated.",
+      tone: "warning",
+    };
+  }
   if (experiment.status === "FAILED" || failedRuns > 0) {
     return {
       activeStep: 1,

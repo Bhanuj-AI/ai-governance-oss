@@ -10,8 +10,10 @@ from ai_governance.api.dependencies.settings_control import get_configuration_se
 from ai_governance.api.dependencies.tenancy import get_compatible_tenant_context
 from ai_governance.api.models import (
     ErrorResponse,
+    ModelCapabilityResolveRequest,
     ModelObservationRequest,
     ModelRegisterRequest,
+    ModelRuntimeCapabilitiesResponse,
     ModelResponse,
     ModelVersionCreateRequest,
     RuntimeModelProviderResponse,
@@ -24,7 +26,9 @@ from ai_governance.services.models import (
     ModelLifecycleError,
     ModelNotFoundError,
     ModelProviderNotAllowedError,
+    ModelRuntimeParameterError,
     ModelVersionConflictError,
+    resolve_runtime_capabilities,
 )
 from ai_governance.settings_control import ConfigurationService
 from ai_governance.settings_control.domain import SettingContext
@@ -70,6 +74,29 @@ def list_runtime_providers(
         )
         for provider in RuntimeModelProvider
     ]
+
+
+@router.post(
+    "/runtime-capabilities/resolve",
+    response_model=ModelRuntimeCapabilitiesResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Resolve a managed model runtime capability profile",
+    description=(
+        "Return the provider-neutral, immutable capability profile that will be "
+        "stored when this managed model version is registered."
+    ),
+)
+def resolve_model_runtime_capabilities(
+    request: ModelCapabilityResolveRequest,
+    tenant_context: Annotated[TenantContext, Depends(get_compatible_tenant_context)],
+) -> ModelRuntimeCapabilitiesResponse:
+    # Tenant context is resolved before returning a policy-relevant profile.
+    del tenant_context
+    return ModelRuntimeCapabilitiesResponse.from_domain(
+        resolve_runtime_capabilities(
+            request.provider, request.provider_model_id or request.model_name
+        )
+    )
 
 
 @router.post(
@@ -121,6 +148,7 @@ def register_model(
         model = model_registry_service.register_model(
             provider=request.provider,
             model_name=request.model_name,
+            provider_model_id=request.provider_model_id,
             version=request.version,
             parameters=request.parameters,
             context_window=request.context_window,
@@ -129,7 +157,7 @@ def register_model(
             latency=request.latency,
             context=tenant_context,
         )
-    except ModelProviderNotAllowedError as exc:
+    except (ModelProviderNotAllowedError, ModelRuntimeParameterError) as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
@@ -154,6 +182,7 @@ def create_model_version(
         model = model_registry_service.create_model_version(
             model_id=model_id,
             version=request.version,
+            provider_model_id=request.provider_model_id,
             parameters=request.parameters,
             cost=request.cost,
             latency=request.latency,
@@ -169,6 +198,11 @@ def create_model_version(
     except (ModelLifecycleError, ModelVersionConflictError) as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+    except ModelRuntimeParameterError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
     return ModelResponse.from_domain(model)

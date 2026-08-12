@@ -7,6 +7,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from ai_governance.api.dependencies.runtime_connections import get_runtime_connection_service
+from ai_governance.api.dependencies.model_catalog_discovery import (
+    get_model_catalog_discovery_service,
+)
 from ai_governance.api.dependencies.tenancy import get_compatible_tenant_context
 from ai_governance.api.models.runtime_connection import (
     RuntimeConnectionCreateRequest,
@@ -14,12 +17,16 @@ from ai_governance.api.models.runtime_connection import (
     RuntimeConnectionResponse,
     RuntimeConnectionUpdateRequest,
     RuntimeConnectionValidationResponse,
+    DiscoveredRuntimeModelResponse,
 )
 from ai_governance.domain.models import runtime_model_provider_display_name
 from ai_governance.services.runtime_connection_service import (
     RuntimeConnectionNotFoundError,
     RuntimeConnectionProviderNotAllowedError,
     RuntimeConnectionProviderUnavailableError,
+)
+from ai_governance.services.model_catalog_discovery_service import (
+    ModelCatalogDiscoveryError,
 )
 from ai_governance.tenancy.domain import TenantContext
 
@@ -84,6 +91,31 @@ def list_runtime_connections(
     context: Annotated[TenantContext, Depends(get_compatible_tenant_context)],
 ) -> list[RuntimeConnectionResponse]:
     return [RuntimeConnectionResponse.from_domain(item) for item in service.list(context)]
+
+
+@router.get(
+    "/{runtime_connection_id}/models",
+    response_model=list[DiscoveredRuntimeModelResponse],
+    summary="Discover provider-visible model IDs",
+    description=(
+        "Use the selected runtime connection to list provider-visible model IDs. "
+        "Credentials remain secret references and are never returned."
+    ),
+)
+def discover_runtime_connection_models(
+    runtime_connection_id: str,
+    service: Annotated[object, Depends(get_model_catalog_discovery_service)],
+    context: Annotated[TenantContext, Depends(get_compatible_tenant_context)],
+) -> list[DiscoveredRuntimeModelResponse]:
+    try:
+        return [
+            DiscoveredRuntimeModelResponse(provider_model_id=item.provider_model_id)
+            for item in service.discover(runtime_connection_id, context)
+        ]
+    except RuntimeConnectionNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Runtime connection was not found.") from exc
+    except ModelCatalogDiscoveryError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.post(

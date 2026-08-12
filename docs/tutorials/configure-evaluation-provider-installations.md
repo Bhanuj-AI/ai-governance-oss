@@ -101,6 +101,10 @@ AI_GOVERNANCE_TRULENS_MODEL=gpt-5-mini
 The installation's explicit `model` takes precedence for that run; the
 environment model remains the adapter fallback.
 
+Keep the bundled `trulens-providers-openai` dependency at version 2.10.0 or
+newer. Earlier releases are incompatible with OpenAI Responses API custom
+tool-call score extraction.
+
 ## Persistence, Scope, and Restart Behavior
 
 Installations are stored as typed records in AI Governance Control Plane's settings-control store,
@@ -114,6 +118,11 @@ organization can select a common evaluator. Choose **Current project** scope
 only when a project needs a deliberately different evaluator configuration.
 
 ## Troubleshooting
+
+Experiment failures are recorded per candidate under **Experiments → Evaluation
+Runs**. Configuration and connection failures show a safe reason there; other
+provider errors show only the exception type and direct operators to the API or
+worker logs, so credentials and provider payloads are not exposed.
 
 | Symptom | Check |
 | --- | --- |

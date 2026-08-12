@@ -469,6 +469,20 @@ def test_register_managed_model() -> None:
     assert response.json()["status"] == "DRAFT"
 
 
+def test_resolve_managed_model_runtime_capabilities() -> None:
+    response = _client().post(
+        "/api/v1/models/runtime-capabilities/resolve",
+        json={"provider": "openai", "model_name": "gpt-5.5"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["profile_id"] == "openai-chat-completions-reasoning"
+    assert {
+        parameter["name"]: parameter["supported"]
+        for parameter in response.json()["parameters"]
+    } == {"max_output_tokens": True, "temperature": False, "top_p": False}
+
+
 def test_create_managed_model_version() -> None:
     response = _client().post(
         "/api/v1/models/model-1/versions",

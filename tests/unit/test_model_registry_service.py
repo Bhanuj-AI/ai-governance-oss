@@ -11,6 +11,7 @@ from ai_governance.services.models import (
     ModelLifecycleError,
     ModelProviderNotAllowedError,
     ModelRegistryService,
+    ModelRuntimeParameterError,
     ModelVersionConflictError,
 )
 from ai_governance.tenancy.domain import TenantContext
@@ -62,6 +63,63 @@ def test_model_registry_registers_model() -> None:
     assert model.creator == "governance-admin"
     assert model.created_at == datetime(2026, 6, 25, tzinfo=UTC)
     assert model.status == ModelStatus.DRAFT
+    assert model.runtime_capabilities.profile_id == "openai-chat-completions-standard"
+    assert model.runtime_capabilities.supports("temperature") is True
+
+
+def test_model_registry_persists_reasoning_model_capability_contract() -> None:
+    model = _create_service().register_model(
+        provider="openai",
+        model_name="gpt-5.5",
+        version="v1",
+        parameters={},
+        context_window=128000,
+        creator="governance-admin",
+    )
+
+    assert model.runtime_capabilities.supports("max_output_tokens") is True
+    assert model.runtime_capabilities.supports("temperature") is False
+
+
+def test_model_registry_rejects_unsupported_reasoning_model_runtime_defaults() -> None:
+    with pytest.raises(ModelRuntimeParameterError, match="temperature.*not supported"):
+        _create_service().register_model(
+            provider="openai",
+            model_name="gpt-5.5",
+            version="v1",
+            parameters={"temperature": 0.2},
+            context_window=128000,
+            creator="governance-admin",
+        )
+
+
+def test_model_registry_accepts_canonical_reasoning_model_output_limit() -> None:
+    model = _create_service().register_model(
+        provider="openai",
+        model_name="gpt-5.5",
+        version="v1",
+        parameters={"max_output_tokens": 4096},
+        context_window=128000,
+        creator="governance-admin",
+    )
+
+    assert model.parameters == {"max_output_tokens": 4096}
+
+
+def test_model_registry_keeps_governed_name_separate_from_provider_model_id() -> None:
+    model = _create_service().register_model(
+        provider="openai",
+        model_name="claims-assistant",
+        provider_model_id="gpt-5.5",
+        version="v1",
+        parameters={"max_output_tokens": 4096},
+        context_window=128000,
+        creator="governance-admin",
+    )
+
+    assert model.model_name == "claims-assistant"
+    assert model.runtime_model_identifier == "gpt-5.5"
+    assert model.runtime_capabilities.supports("temperature") is False
 
 
 def test_model_registry_rejects_duplicate_model_version() -> None:
@@ -113,6 +171,7 @@ def test_model_registry_creates_new_version() -> None:
         "temperature": 0.2,
         "reasoning": "medium",
     }
+    assert versioned.runtime_capabilities.profile_id == "openai-chat-completions-standard"
     assert versioned.context_window == 256000
     assert versioned.status == ModelStatus.DRAFT
 

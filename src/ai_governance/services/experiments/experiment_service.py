@@ -192,6 +192,29 @@ class ExperimentService:
 
         return failed
 
+    def cancel_experiment(
+        self,
+        experiment_id: str,
+    ) -> Experiment:
+        """Terminally cancel a running experiment without deleting evidence."""
+
+        experiment = self._get_experiment(experiment_id)
+        if experiment.status == ExperimentStatus.CANCELLED:
+            return experiment
+        if experiment.status != ExperimentStatus.RUNNING:
+            raise ExperimentLifecycleError(
+                "Only running experiments may be cancelled."
+            )
+
+        cancelled = replace(
+            experiment,
+            status=ExperimentStatus.CANCELLED,
+            updated_at=self._clock(),
+        )
+        self._experiment_repository.save(cancelled)
+        self._publish_experiment_event("ExperimentCancelled", cancelled)
+        return cancelled
+
     def archive_experiment(
         self,
         experiment_id: str,

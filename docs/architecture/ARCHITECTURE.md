@@ -285,8 +285,11 @@ contract.
 ### Experiment Plane
 
 The Experiment Plane assembles governed assets into experiment candidates,
-tracks evaluation runs, performs candidate comparison, ranks candidates, and
-persists leaderboards.
+uses the Candidate Execution Runtime to render prompts and invoke the selected
+model against immutable dataset items, persists execution evidence, then
+evaluates that evidence. It tracks evaluation runs, performs candidate
+comparison, ranks candidates, and persists leaderboards. The evaluator never
+reconstructs a candidate or invokes its model.
 
 ### API Adapter Plane
 
@@ -360,6 +363,12 @@ Experiment
 Experiment Candidate
     |
     v
+Candidate Execution Runtime
+    |
+    v
+Workflow Execution Evidence
+    |
+    v
 Evaluation Run
     |
     v
@@ -405,8 +414,11 @@ The flow from asset registration to recommendation is broader:
 
 ```text
 Prompt Registry ----+
-Model Registry -----+--> Experiment Candidate --> Evaluation Run
+Model Registry -----+--> Experiment Candidate --> Candidate Execution Runtime
 Dataset Registry ---+                              |
+                                                   v
+                                        Workflow Execution Evidence
+                                                   |
                                                    v
                                             Evaluation Result
                                                    |

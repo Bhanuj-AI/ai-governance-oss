@@ -4,6 +4,15 @@ from ai_governance.services.audit_service import (
 )
 from ai_governance.services.datasets import DatasetRegistryService
 from ai_governance.services.dataset_builder import EvaluationDatasetBuilder
+from ai_governance.services.candidate_execution_runtime import (
+    CandidateExecutionError,
+    CandidateExecutionRuntime,
+    ModelRuntimeAdapter,
+    ModelRuntimeAdapterRegistry,
+    ModelRuntimeRequest,
+    OpenAIModelRuntimeAdapter,
+    RuntimeExecutionResult,
+)
 from ai_governance.services.decision_application_service import (
     DecisionConflictError,
     DecisionEvaluateCommand,
@@ -98,6 +107,8 @@ __all__ = [
     "AuditReadService",
     "AuditRecordNotFoundError",
     "DatasetRegistryService",
+    "CandidateExecutionError",
+    "CandidateExecutionRuntime",
     "DecisionConflictError",
     "DecisionEvaluateCommand",
     "DecisionEvaluationResult",
@@ -133,6 +144,10 @@ __all__ = [
     "LowestCostRanking",
     "LowestLatencyRanking",
     "ModelRegistryService",
+    "ModelRuntimeAdapter",
+    "ModelRuntimeAdapterRegistry",
+    "ModelRuntimeRequest",
+    "OpenAIModelRuntimeAdapter",
     "OverallScoreRanking",
     "PolicyActivationFailedError",
     "PolicyAdminNotFoundError",
@@ -160,6 +175,7 @@ __all__ = [
     "ReplayDriftService",
     "ProviderRegistryService",
     "RuntimeConnectionService",
+    "RuntimeExecutionResult",
     "RankingError",
     "RankingService",
     "RankingStrategy",

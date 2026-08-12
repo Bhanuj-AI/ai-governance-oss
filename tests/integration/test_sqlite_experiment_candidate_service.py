@@ -85,6 +85,7 @@ def test_sqlite_experiment_candidate_service_persists_candidate(
         created_by="prompt-owner",
         context=_CONTEXT,
     )
+    prompt = prompt_service.activate_prompt(prompt.prompt_id, _CONTEXT)
     model = model_service.register_model(
         provider="OpenAI",
         model_name="GPT-4.1",
@@ -94,6 +95,7 @@ def test_sqlite_experiment_candidate_service_persists_candidate(
         creator="model-owner",
         context=_CONTEXT,
     )
+    model = model_service.activate_model_version(model.model_id, _CONTEXT)
     dataset = dataset_service.register_dataset(
         name="claims-benchmark",
         version="2026-06-26",
@@ -105,6 +107,7 @@ def test_sqlite_experiment_candidate_service_persists_candidate(
         checksum="sha256:claims-v1",
         creator="data-owner",
     )
+    dataset = dataset_service.promote_dataset(dataset.dataset_id)
 
     candidate = candidate_service.create_candidate(
         experiment_id=experiment.experiment_id,

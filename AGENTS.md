@@ -112,6 +112,7 @@ architectural constraints.
 - `skills/api-change/SKILL.md`
 - `skills/domain-feature/SKILL.md`
 - `skills/governance-policy/SKILL.md`
+- `skills/model-runtime-capability-profile/SKILL.md`
 - `skills/tenant-isolation/SKILL.md`
 
 ## Related Guidance

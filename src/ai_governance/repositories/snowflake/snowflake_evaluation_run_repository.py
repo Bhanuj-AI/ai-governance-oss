@@ -36,7 +36,11 @@ class SnowflakeEvaluationRunRepository(EvaluationRunRepository):
             %(evaluation_result_id)s AS evaluation_result_id,
             TO_TIMESTAMP_TZ(%(started_at)s) AS started_at,
             TO_TIMESTAMP_TZ(%(completed_at)s) AS completed_at,
-            %(status)s AS status
+            %(status)s AS status,
+            %(failure_reason)s AS failure_reason,
+            %(total_item_count)s AS total_item_count,
+            %(completed_item_count)s AS completed_item_count,
+            %(evaluated_item_count)s AS evaluated_item_count
     ) source
     ON target.run_id = source.run_id
     WHEN MATCHED THEN UPDATE SET
@@ -47,7 +51,11 @@ class SnowflakeEvaluationRunRepository(EvaluationRunRepository):
         evaluation_result_id = source.evaluation_result_id,
         started_at = source.started_at,
         completed_at = source.completed_at,
-        status = source.status
+        status = source.status,
+        failure_reason = source.failure_reason,
+        total_item_count = source.total_item_count,
+        completed_item_count = source.completed_item_count,
+        evaluated_item_count = source.evaluated_item_count
     WHEN NOT MATCHED THEN INSERT (
         run_id,
         experiment_id,
@@ -57,7 +65,11 @@ class SnowflakeEvaluationRunRepository(EvaluationRunRepository):
         evaluation_result_id,
         started_at,
         completed_at,
-        status
+        status,
+        failure_reason,
+        total_item_count,
+        completed_item_count,
+        evaluated_item_count
     )
     VALUES (
         source.run_id,
@@ -68,7 +80,11 @@ class SnowflakeEvaluationRunRepository(EvaluationRunRepository):
         source.evaluation_result_id,
         source.started_at,
         source.completed_at,
-        source.status
+        source.status,
+        source.failure_reason,
+        source.total_item_count,
+        source.completed_item_count,
+        source.evaluated_item_count
     )
     """
 
@@ -84,7 +100,11 @@ class SnowflakeEvaluationRunRepository(EvaluationRunRepository):
             AS started_at,
         TO_VARCHAR(completed_at, 'YYYY-MM-DD"T"HH24:MI:SS.FF6TZH:TZM')
             AS completed_at,
-        status
+        status,
+        failure_reason,
+        total_item_count,
+        completed_item_count,
+        evaluated_item_count
     FROM evaluation_run
     """
 

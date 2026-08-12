@@ -70,7 +70,6 @@ def test_experiment_evaluation_service_executes_candidates_and_selects_winner() 
         latency=0.6,
         context=_CONTEXT,
     )
-
     services["candidate_service"].create_candidate(
         experiment_id=experiment.experiment_id,
         name="Baseline",
@@ -84,6 +83,10 @@ def test_experiment_evaluation_service_executes_candidates_and_selects_winner() 
         temperature=0.0,
         top_p=1.0,
         max_tokens=4096,
+    )
+    model_b = services["model_service"].activate_model_version(
+        model_b.model_id,
+        _CONTEXT,
     )
     candidate = services["candidate_service"].create_candidate(
         experiment_id=experiment.experiment_id,
@@ -133,6 +136,9 @@ def test_experiment_evaluation_service_rejects_mixed_dataset_versions() -> None:
         version="2026-07-01",
         checksum="sha256:claims-v2",
         creator="data-owner",
+    )
+    second_dataset = services["dataset_service"].freeze_dataset(
+        second_dataset.dataset_id
     )
 
     services["candidate_service"].create_candidate(
@@ -348,6 +354,7 @@ def _create_shared_assets(
         created_by="prompt-owner",
         context=_CONTEXT,
     )
+    prompt = prompt_service.activate_prompt(prompt.prompt_id, _CONTEXT)
     model = model_service.register_model(
         provider="OpenAI",
         model_name="GPT-4.1",
@@ -359,6 +366,7 @@ def _create_shared_assets(
         creator="model-owner",
         context=_CONTEXT,
     )
+    model = model_service.activate_model_version(model.model_id, _CONTEXT)
     dataset = dataset_service.register_dataset(
         name="claims-benchmark",
         version="2026-06-26",
@@ -370,6 +378,7 @@ def _create_shared_assets(
         checksum="sha256:claims-v1",
         creator="data-owner",
     )
+    dataset = dataset_service.promote_dataset(dataset.dataset_id)
 
     return prompt, model, dataset
 

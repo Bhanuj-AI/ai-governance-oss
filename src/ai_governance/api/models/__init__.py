@@ -50,6 +50,10 @@ from ai_governance.api.models.evaluation import (
 )
 from ai_governance.api.models.experiment import (
     EvaluationRunResponse,
+    EvaluationRunItemResultResponse,
+    EvaluationRunResultPageResponse,
+    ExperimentRunPlanResponse,
+    ExperimentRunProgressResponse,
     ExperimentCandidateComparisonResponse,
     ExperimentCandidateCreateRequest,
     ExperimentCandidateResponse,
@@ -85,6 +89,8 @@ from ai_governance.api.models.mcp_audit import (
 )
 from ai_governance.api.models.metadata import MetadataResponse
 from ai_governance.api.models.model import (
+    ModelCapabilityResolveRequest,
+    ModelRuntimeCapabilitiesResponse,
     ModelRegisterRequest,
     ModelResponse,
     ModelVersionCreateRequest,
@@ -99,6 +105,7 @@ from ai_governance.api.models.prompt import (
     PromptVersionCreateRequest,
 )
 from ai_governance.api.models.runtime_connection import (
+    DiscoveredRuntimeModelResponse,
     RuntimeConnectionCreateRequest,
     RuntimeConnectionProviderResponse,
     RuntimeConnectionResponse,
@@ -215,6 +222,10 @@ __all__ = [
     "EvaluationMetricSpecRequest",
     "EvaluationResponse",
     "EvaluationRunResponse",
+    "EvaluationRunItemResultResponse",
+    "EvaluationRunResultPageResponse",
+    "ExperimentRunPlanResponse",
+    "ExperimentRunProgressResponse",
     "ExperimentCandidateComparisonResponse",
     "EvaluationSubmitRequest",
     "ExperimentCandidateCreateRequest",
@@ -244,12 +255,15 @@ __all__ = [
     "MCPAuditListResponse",
     "MCPAuditResponse",
     "MetadataResponse",
+    "ModelCapabilityResolveRequest",
+    "ModelRuntimeCapabilitiesResponse",
     "ModelResponse",
     "ModelRegisterRequest",
     "ModelVersionCreateRequest",
     "RuntimeModelProviderResponse",
     "RuntimeConnectionCreateRequest",
     "RuntimeConnectionProviderResponse",
+    "DiscoveredRuntimeModelResponse",
     "RuntimeConnectionResponse",
     "RuntimeConnectionUpdateRequest",
     "RuntimeConnectionValidationResponse",

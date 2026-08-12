@@ -3,7 +3,11 @@ from ai_governance.services.models.model_registry_service import (
     ModelNotFoundError,
     ModelProviderNotAllowedError,
     ModelRegistryService,
+    ModelRuntimeParameterError,
     ModelVersionConflictError,
+)
+from ai_governance.services.models.runtime_capability_service import (
+    resolve_runtime_capabilities,
 )
 
 __all__ = [
@@ -11,5 +15,7 @@ __all__ = [
     "ModelNotFoundError",
     "ModelProviderNotAllowedError",
     "ModelRegistryService",
+    "ModelRuntimeParameterError",
     "ModelVersionConflictError",
+    "resolve_runtime_capabilities",
 ]

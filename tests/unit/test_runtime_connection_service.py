@@ -69,11 +69,15 @@ def test_runtime_connection_tests_and_resolves_only_for_matching_model_provider(
     )
 
     tested = service.test(created.runtime_connection_id, _context())
+    compatible = service.validate_model_compatibility(
+        created.runtime_connection_id, "openai", _context()
+    )
     connection, config = service.resolve_runtime_config(
         created.runtime_connection_id, "openai", _context()
     )
 
     assert tested.last_test_status.value == "SUCCEEDED"
+    assert compatible.runtime_connection_id == created.runtime_connection_id
     assert connection == tested
     assert config["api_key"] == "resolved-secret"
     with pytest.raises(RuntimeConnectionProviderMismatchError):

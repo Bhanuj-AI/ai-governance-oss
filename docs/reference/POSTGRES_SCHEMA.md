@@ -92,11 +92,14 @@ Columns:
 - `artifacts_json`
 - `created_at`
 - `explanation`
+- `organization_id`
+- `project_id`
 
 Notes:
 
 - primary key is `(evaluation_id, metric_name)`
 - indexed by execution, metric, and evaluator
+- item-evaluation listing is scoped by organization and project
 - `metadata_json` is stored as `JSONB`
 - provider descriptor snapshots and runtime metadata are stored as generic
   `JSONB`, not provider-specific columns
@@ -237,6 +240,10 @@ Columns:
 - `started_at`
 - `completed_at`
 - `status`
+- `failure_reason`
+- `total_item_count`
+- `completed_item_count`
+- `evaluated_item_count`
 
 Notes:
 

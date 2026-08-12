@@ -12,7 +12,9 @@ from ai_governance.domain.models import (
     Model,
     ModelDiff,
     ModelParameterChange,
+    ModelRuntimeCapabilitySnapshot,
     ModelStatus,
+    RuntimeCapabilityVerification,
     runtime_model_provider_key,
 )
 from ai_governance.ontology.synchronization import (
@@ -20,6 +22,9 @@ from ai_governance.ontology.synchronization import (
 )
 from ai_governance.repositories.model_repository import ModelRepository
 from ai_governance.tenancy.domain import TenantContext
+from ai_governance.services.models.runtime_capability_service import (
+    resolve_runtime_capabilities,
+)
 
 
 class ModelNotFoundError(Exception):
@@ -42,6 +47,10 @@ class ModelLifecycleError(Exception):
 
 class ModelProviderNotAllowedError(Exception):
     """Raised when managed registration uses a disallowed runtime provider."""
+
+
+class ModelRuntimeParameterError(ValueError):
+    """Raised when managed runtime defaults violate the model contract."""
 
 
 class ModelRegistryService:
@@ -78,6 +87,7 @@ class ModelRegistryService:
         context_window: int,
         creator: str,
         context: TenantContext,
+        provider_model_id: str | None = None,
         cost: dict[str, float] | None = None,
         latency: float | None = None,
     ) -> Model:
@@ -92,6 +102,10 @@ class ModelRegistryService:
             version=version,
             context=context,
         )
+        runtime_capabilities = resolve_runtime_capabilities(
+            provider, provider_model_id or model_name
+        )
+        self._validate_runtime_defaults(parameters, runtime_capabilities)
 
         model = Model(
             model_id=self._id_generator(),
@@ -108,6 +122,8 @@ class ModelRegistryService:
             tenant_id=context.organization_id,
             organization_id=context.organization_id,
             project_id=self._project_id(context),
+            runtime_capabilities=runtime_capabilities,
+            provider_model_id=provider_model_id,
         )
 
         self._model_repository.save(model)
@@ -125,6 +141,7 @@ class ModelRegistryService:
         cost: dict[str, float] | None = None,
         latency: float | None = None,
         context_window: int | None = None,
+        provider_model_id: str | None = None,
     ) -> Model:
         """
         Create a new DRAFT version from an existing model.
@@ -138,17 +155,26 @@ class ModelRegistryService:
             version=version,
             context=context,
         )
+        effective_provider_model_id = provider_model_id or source.provider_model_id
+        runtime_capabilities = (
+            resolve_runtime_capabilities(
+                source.provider, effective_provider_model_id or source.model_name
+            )
+            if (
+                source.runtime_capabilities.profile_id == "legacy-runtime-contract"
+                or effective_provider_model_id != source.provider_model_id
+            )
+            else source.runtime_capabilities
+        )
+        effective_parameters = parameters if parameters is not None else source.parameters
+        self._validate_runtime_defaults(effective_parameters, runtime_capabilities)
 
         model = Model(
             model_id=self._id_generator(),
             provider=source.provider,
             model_name=source.model_name,
             version=version,
-            parameters=(
-                parameters
-                if parameters is not None
-                else source.parameters
-            ),
+            parameters=effective_parameters,
             cost=cost if cost is not None else source.cost,
             latency=latency if latency is not None else source.latency,
             context_window=(
@@ -162,6 +188,8 @@ class ModelRegistryService:
             tenant_id=context.organization_id,
             organization_id=context.organization_id,
             project_id=self._project_id(context),
+            runtime_capabilities=runtime_capabilities,
+            provider_model_id=effective_provider_model_id,
         )
 
         self._model_repository.save(model)
@@ -223,6 +251,10 @@ class ModelRegistryService:
             tenant_id=context.organization_id,
             organization_id=context.organization_id,
             project_id=self._project_id(context),
+            runtime_capabilities=replace(
+                resolve_runtime_capabilities(provider, model_name),
+                verification=RuntimeCapabilityVerification.OBSERVED,
+            ),
         )
         self._model_repository.save(model)
         self._publish_model_event("ModelVersionObserved", model)
@@ -476,6 +508,69 @@ class ModelRegistryService:
             raise ModelProviderNotAllowedError(
                 f"Runtime provider '{provider}' is not allowed for managed model registration."
             )
+
+    @staticmethod
+    def _validate_runtime_defaults(
+        parameters: dict[str, Any],
+        runtime_capabilities: ModelRuntimeCapabilitySnapshot,
+    ) -> None:
+        """Validate governed runtime controls without rejecting provider metadata.
+
+        Profiles are deliberately conservative: they govern the portable controls
+        we invoke directly, while provider-specific metadata remains extensible.
+        Unverified historical/provider profiles retain their existing behaviour.
+        """
+
+        if runtime_capabilities.verification == RuntimeCapabilityVerification.UNVERIFIED:
+            return
+
+        capabilities = {
+            capability.name: capability
+            for capability in runtime_capabilities.parameters
+        }
+        aliases = {"max_tokens": "max_output_tokens"}
+        expected_names = {
+            "temperature": "temperature",
+            "top_p": "top_p",
+            "max_tokens": "max_tokens",
+            "max_output_tokens": "max_output_tokens",
+        }
+
+        for supplied_name, value in parameters.items():
+            normalized_name = supplied_name.lower()
+            expected_name = expected_names.get(normalized_name)
+            if expected_name is not None and supplied_name != expected_name:
+                raise ModelRuntimeParameterError(
+                    f"Runtime parameter '{supplied_name}' is not recognized. "
+                    f"Use '{expected_name}' with lowercase spelling."
+                )
+
+            capability = capabilities.get(aliases.get(supplied_name, supplied_name))
+            if capability is None:
+                continue
+            if not capability.supported:
+                raise ModelRuntimeParameterError(
+                    f"Runtime parameter '{supplied_name}' is not supported by "
+                    f"the {runtime_capabilities.profile_id} capability profile."
+                )
+            if isinstance(value, bool) or not isinstance(value, int | float):
+                raise ModelRuntimeParameterError(
+                    f"Runtime parameter '{supplied_name}' must be a number."
+                )
+            if capability.value_type == "integer" and not isinstance(value, int):
+                raise ModelRuntimeParameterError(
+                    f"Runtime parameter '{supplied_name}' must be an integer."
+                )
+            if capability.minimum is not None and value < capability.minimum:
+                raise ModelRuntimeParameterError(
+                    f"Runtime parameter '{supplied_name}' must be at least "
+                    f"{capability.minimum:g}."
+                )
+            if capability.maximum is not None and value > capability.maximum:
+                raise ModelRuntimeParameterError(
+                    f"Runtime parameter '{supplied_name}' must be at most "
+                    f"{capability.maximum:g}."
+                )
 
     @staticmethod
     def _require_managed_lifecycle(model: Model) -> None:

@@ -5,7 +5,10 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from ai_governance.api.models.evaluation import EvaluationMetricSpecRequest
+from ai_governance.api.models.evaluation import (
+    EvaluationMetricResponse,
+    EvaluationMetricSpecRequest,
+)
 from ai_governance.api.models.governance import EvaluationMetricComparisonResponse
 
 
@@ -55,6 +58,7 @@ class ExperimentCandidateCreateRequest(BaseModel):
     dataset_version: str = Field(min_length=1)
     provider_name: str | None = None
     provider_installation_id: str | None = None
+    runtime_connection_id: str | None = None
     runtime_parameters: dict[str, Any] = Field(default_factory=dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -96,6 +100,7 @@ class ExperimentCandidateResponse(BaseModel):
     dataset_version: str
     provider_name: str
     provider_installation_id: str | None = None
+    runtime_connection_id: str | None = None
     runtime_parameters: dict[str, Any]
     metadata: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
@@ -154,6 +159,55 @@ class EvaluationRunResponse(BaseModel):
     started_at: datetime | None = None
     completed_at: datetime | None = None
     status: str
+    failure_reason: str | None = None
+    total_item_count: int | None = Field(default=None, ge=0)
+    completed_item_count: int = Field(default=0, ge=0)
+    evaluated_item_count: int = Field(default=0, ge=0)
+
+
+class EvaluationRunItemResultResponse(BaseModel):
+    """Safe, item-level evaluator evidence displayed for one experiment run."""
+
+    evaluation_id: str
+    execution_id: str
+    evaluator_type: str
+    evaluator_version: str
+    created_at: datetime
+    model_latency_ms: int | None = Field(default=None, ge=0)
+    metrics: list[EvaluationMetricResponse] = Field(default_factory=list)
+
+
+class EvaluationRunResultPageResponse(BaseModel):
+    """Bounded page of complete item evaluations, including partial runs."""
+
+    run_id: str
+    page: int = Field(ge=1)
+    page_size: int = Field(ge=1, le=100)
+    total_items: int = Field(ge=0)
+    items: list[EvaluationRunItemResultResponse] = Field(default_factory=list)
+
+
+class ExperimentRunProgressResponse(BaseModel):
+    """Live, persisted progress for the active candidate evaluation run."""
+
+    run_id: str
+    candidate_id: str
+    candidate_name: str
+    candidate_position: int = Field(ge=1)
+    total_item_count: int | None = Field(default=None, ge=0)
+    completed_item_count: int = Field(ge=0)
+    evaluated_item_count: int = Field(ge=0)
+
+
+class ExperimentRunPlanResponse(BaseModel):
+    """Preflight execution volume and active-run progress."""
+
+    experiment_id: str
+    candidate_count: int = Field(ge=0)
+    dataset_item_count: int = Field(ge=0)
+    model_invocation_count: int = Field(ge=0)
+    evaluation_item_count: int = Field(ge=0)
+    active_run: ExperimentRunProgressResponse | None = None
 
 
 class LeaderboardEntryResponse(BaseModel):

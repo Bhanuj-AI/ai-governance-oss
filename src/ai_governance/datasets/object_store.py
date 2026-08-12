@@ -1,4 +1,4 @@
-"""S3-compatible object storage for dataset content.
+"""Immutable object storage for dataset content.
 
 The dataset registry owns immutable metadata. This adapter owns only the
 bytes referenced by a registry record, using the standard S3 API so local
@@ -8,8 +8,9 @@ SeaweedFS and managed AWS S3 share the same application contract.
 from __future__ import annotations
 
 import os
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from typing import BinaryIO
 from typing import Any, Protocol
 
@@ -50,6 +51,9 @@ class DatasetObjectStore(Protocol):
         if_absent: bool,
     ) -> ObjectWriteResult:
         """Write a seekable upload stream without loading it into application memory."""
+
+    def get_bytes(self, *, bucket: str, key: str) -> bytes:
+        """Read one immutable dataset object for governed execution."""
 
     def delete_object(self, *, bucket: str, key: str) -> None:
         """Delete an object created by a failed cross-system write."""
@@ -138,8 +142,126 @@ class S3DatasetObjectStore:
                 raise ValueError("An existing dataset object failed checksum verification.") from exc
             return ObjectWriteResult(created=False)
 
+    def get_bytes(self, *, bucket: str, key: str) -> bytes:
+        """Read immutable dataset bytes through the configured S3 API."""
+        response = self._client.get_object(Bucket=bucket, Key=key)
+        body = response["Body"]
+        try:
+            return body.read()
+        finally:
+            body.close()
+
     def delete_object(self, *, bucket: str, key: str) -> None:
         self._client.delete_object(Bucket=bucket, Key=key)
+
+
+class FilesystemDatasetObjectStore:
+    """Local-development object store rooted at one configured directory.
+
+    It preserves the same immutable object-key contract as S3 without making
+    the non-Docker workflow depend on a local object-storage service.
+    """
+
+    def __init__(self, root: Path) -> None:
+        self._root = root.resolve()
+
+    @property
+    def root(self) -> Path:
+        return self._root
+
+    @classmethod
+    def from_environment(cls) -> "FilesystemDatasetObjectStore":
+        configured_root = _optional_environment("AI_GOVERNANCE_DATASET_FILESYSTEM_ROOT")
+        return cls(Path(configured_root or ".ai-governance/datasets"))
+
+    def put_bytes(
+        self,
+        *,
+        bucket: str,
+        key: str,
+        body: bytes,
+        content_type: str,
+        metadata: Mapping[str, str] | None = None,
+    ) -> ObjectWriteResult:
+        del content_type, metadata
+        return self._write_if_absent(bucket=bucket, key=key, chunks=(body,))
+
+    def put_stream(
+        self,
+        *,
+        bucket: str,
+        key: str,
+        body: BinaryIO,
+        content_length: int,
+        content_type: str,
+        metadata: Mapping[str, str],
+        if_absent: bool,
+    ) -> ObjectWriteResult:
+        del content_length, content_type, metadata
+        path = self._path(bucket, key)
+        if path.exists() and if_absent:
+            return ObjectWriteResult(created=False)
+        if path.exists():
+            raise ValueError("Filesystem dataset objects are immutable.")
+        return self._write_if_absent(
+            bucket=bucket,
+            key=key,
+            chunks=iter(lambda: body.read(1024 * 1024), b""),
+        )
+
+    def get_bytes(self, *, bucket: str, key: str) -> bytes:
+        return self._path(bucket, key).read_bytes()
+
+    def delete_object(self, *, bucket: str, key: str) -> None:
+        path = self._path(bucket, key)
+        if path.exists():
+            path.unlink()
+
+    def uri_for(self, *, bucket: str, key: str) -> str:
+        return self._path(bucket, key).as_uri()
+
+    def get_bytes_for_uri(self, storage_uri: str) -> bytes:
+        from urllib.parse import unquote, urlparse
+
+        parsed = urlparse(storage_uri)
+        if parsed.scheme != "file":
+            raise ValueError("Filesystem dataset storage requires a file URI.")
+        path = Path(unquote(parsed.path)).resolve()
+        try:
+            path.relative_to(self._root)
+        except ValueError as exc:
+            raise ValueError("Dataset file URI is outside the configured object-store root.") from exc
+        return path.read_bytes()
+
+    def _write_if_absent(
+        self, *, bucket: str, key: str, chunks: Iterable[bytes]
+    ) -> ObjectWriteResult:
+        path = self._path(bucket, key)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with path.open("xb") as target:
+                for chunk in chunks:
+                    target.write(chunk)
+        except FileExistsError:
+            return ObjectWriteResult(created=False)
+        return ObjectWriteResult(created=True)
+
+    def _path(self, bucket: str, key: str) -> Path:
+        path = (self._root / bucket / key).resolve()
+        try:
+            path.relative_to(self._root)
+        except ValueError as exc:
+            raise ValueError("Dataset object key escapes the configured filesystem root.") from exc
+        return path
+
+
+def dataset_object_uri(
+    object_store: DatasetObjectStore, *, bucket: str, key: str
+) -> str:
+    """Return the immutable registry URI for an object-store key."""
+    if isinstance(object_store, FilesystemDatasetObjectStore):
+        return object_store.uri_for(bucket=bucket, key=key)
+    return f"s3://{bucket}/{key}"
 
 
 def dataset_object_store_from_environment() -> DatasetObjectStore | None:
@@ -150,8 +272,10 @@ def dataset_object_store_from_environment() -> DatasetObjectStore | None:
         return None
     if backend == "s3":
         return S3DatasetObjectStore.from_environment()
+    if backend == "filesystem":
+        return FilesystemDatasetObjectStore.from_environment()
     raise ValueError(
-        "AI_GOVERNANCE_DATASET_OBJECT_STORE_BACKEND must be 'none' or 's3'."
+        "AI_GOVERNANCE_DATASET_OBJECT_STORE_BACKEND must be 'none', 'filesystem', or 's3'."
     )
 
 

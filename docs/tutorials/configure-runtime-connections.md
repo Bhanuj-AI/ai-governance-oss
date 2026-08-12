@@ -1,7 +1,7 @@
 # Configure Runtime Connections
 
-Runtime Connections are tenant-owned operational resources for future
-registered-model invocation. They hold a runtime provider, non-sensitive
+Runtime Connections are tenant-owned operational resources for registered-model
+runtime use. They hold a runtime provider, non-sensitive
 endpoint configuration, scope, enabled state and **secret references**. They
 do not store credentials and are not part of an immutable model version.
 
@@ -111,7 +111,67 @@ Use `PATCH /api/v1/runtime-connections/<connection-id>` to change
 fixed at creation so the connection identity and tenant ownership remain
 clear.
 
-## Credential rotation and isolation
+## Bind a connection to an experiment candidate
+
+When adding a candidate in **Experiments → Candidates**, choose its **Runtime
+connection** after selecting the model version. An enabled, provider-compatible
+connection is required when that candidate is run; the API performs the same
+operation with `runtime_connection_id`:
+
+```bash
+curl -X POST "$AI_GOVERNANCE_API_URL/api/v1/experiments/<experiment-id>/candidates" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "X-AI-Governance-Organization-Id: org_example" \
+  -H "X-AI-Governance-Project-Id: project_example" \
+  -d '{
+    "candidate_name": "OpenAI candidate",
+    "prompt_version": "<prompt-id>:v1",
+    "model_version": "<model-id>:v1",
+    "dataset_version": "<dataset-id>:v1",
+    "provider_name": "mock",
+    "runtime_connection_id": "<connection-id>",
+    "runtime_parameters": {"temperature": 0.2, "top_p": 1, "max_tokens": 512}
+  }'
+```
+
+At creation, AI Governance Control Plane verifies the connection is visible in
+the selected tenant scope, enabled, and compatible with the managed model's
+provider. It stores only the ID on the immutable candidate configuration. At
+experiment execution, the Candidate Execution Runtime resolves the current
+secret reference in memory, renders the immutable prompt against every record
+in the immutable dataset version, invokes the registered model, and persists a
+secret-free `WorkflowExecution` record for each dataset item. Evaluators consume
+those persisted records; they do not reconstruct prompts or call the candidate
+model themselves. The run is marked `EXECUTION_FAILED` if any candidate
+invocation fails, and evaluation does not proceed for that candidate.
+
+All candidates in one experiment must use the same dataset identity and version.
+This makes the evaluated item set identical before scores are compared. Per-item
+evaluation results are retained as evidence and the experiment result uses the
+mean of each metric across that shared item set.
+
+The same rule applies when an experiment is submitted as an asynchronous job:
+the worker reconstructs the tenant context captured on the job, then resolves
+the candidate's connection in that scope, executes and persists the same
+per-item evidence, then evaluates that evidence. The job payload carries no
+credential and does not need a copied connection configuration.
+
+## Operational Signals
+
+Candidate execution emits structured application log messages for resolution,
+model invocation, durable evidence persistence, evaluator aggregation, and
+failure. Correlate them with `experiment_id`, `candidate_id`, `run_id`, and
+`execution_id`. The logs deliberately omit prompt text, dataset contents,
+model output, and credentials. Completion logs include provider request ID,
+latency, token counts, and finish reason when the runtime returns them.
+
+The same lifecycle is available to extensions through the generic
+`ResourceLifecycleEvent` contract with `resource_kind="candidate_execution"`
+and `started`, `completed`, or `failed` states. Its payload is likewise
+secret-free and contains only stable IDs and runtime telemetry.
+
+## Credential rotation and Isolation
 
 - Rotate a credential by updating only `secret_refs`, for example from
   `env://OPENAI_DEVELOPMENT_API_KEY_V1` to
@@ -123,14 +183,20 @@ clear.
 - The `runtime_connection.manage` permission is required for writes. Read
   access follows the evaluation-read capability.
 
-## Current OSS boundary
+## Current OSS Boundary
 
 This feature establishes the governed connection lifecycle and secure runtime
-configuration resolution point. The current experiment and replay flows
-evaluate already-recorded executions; they do not yet invoke a registered model
-through a Runtime Connection. A future model-invocation adapter will resolve an
-enabled, provider-compatible connection immediately before use and will not
-persist the resolved credential.
+configuration resolution point. In Studio, a draft experiment candidate may
+select an optional Runtime Connection. Candidate creation verifies the selected
+connection is tenant-visible, active, and compatible with the registered model
+provider. Before the candidate is evaluated, the experiment run resolves the
+current secret reference and validates the same contract; no resolved value is
+persisted in the candidate, run, API response, or job.
+
+The current experiment and replay flows still evaluate already-recorded
+executions—they do not yet invoke a registered model through that connection.
+A future model-invocation adapter will consume this already-validated runtime
+configuration immediately before provider use.
 
 ## Troubleshooting
 

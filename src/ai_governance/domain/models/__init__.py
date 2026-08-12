@@ -11,6 +11,11 @@ from ai_governance.domain.models.runtime_providers import (
     runtime_model_provider_display_name,
     runtime_model_provider_key,
 )
+from ai_governance.domain.models.runtime_capabilities import (
+    ModelRuntimeCapabilitySnapshot,
+    RuntimeCapabilityVerification,
+    RuntimeParameterCapability,
+)
 
 __all__ = [
     "Model",
@@ -22,4 +27,7 @@ __all__ = [
     "known_runtime_model_provider_keys",
     "runtime_model_provider_display_name",
     "runtime_model_provider_key",
+    "ModelRuntimeCapabilitySnapshot",
+    "RuntimeCapabilityVerification",
+    "RuntimeParameterCapability",
 ]

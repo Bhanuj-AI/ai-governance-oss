@@ -48,6 +48,7 @@ class SQLiteDatabase:
             self._ensure_agent_evaluation_columns(connection)
             self._ensure_job_context_column(connection)
             self._ensure_experiment_columns(connection)
+            self._ensure_evaluation_run_columns(connection)
             self._ensure_replay_columns(connection)
             self._ensure_tenancy_columns(connection)
             self._ensure_asset_provenance_columns(connection)
@@ -276,6 +277,23 @@ class SQLiteDatabase:
                 "UPDATE experiment SET updated_at=created_at "
                 "WHERE updated_at IS NULL"
             )
+
+    @staticmethod
+    def _ensure_evaluation_run_columns(connection: sqlite3.Connection) -> None:
+        columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(evaluation_run)")
+        }
+        for column_name, column_type in {
+            "failure_reason": "TEXT",
+            "total_item_count": "INTEGER",
+            "completed_item_count": "INTEGER NOT NULL DEFAULT 0",
+            "evaluated_item_count": "INTEGER NOT NULL DEFAULT 0",
+        }.items():
+            if columns and column_name not in columns:
+                connection.execute(
+                    f"ALTER TABLE evaluation_run ADD COLUMN {column_name} {column_type}"
+                )
 
     @staticmethod
     def _ensure_replay_columns(connection: sqlite3.Connection) -> None:

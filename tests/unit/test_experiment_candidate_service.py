@@ -153,6 +153,69 @@ def test_candidate_service_rejects_archived_prompt_reference() -> None:
         )
 
 
+def test_candidate_service_rejects_a_draft_asset_version() -> None:
+    services = _create_services()
+    experiment = services["experiment_service"].create_experiment(
+        name="support-benchmark",
+        description="Compare support assistant variants.",
+        owner="governance-team",
+    )
+    prompt, model, dataset = _create_assets(services)
+    draft_prompt = services["prompt_service"].version_prompt(
+        prompt.prompt_id,
+        version="v2",
+        created_by="prompt-owner",
+        context=_CONTEXT,
+    )
+
+    with pytest.raises(
+        ExperimentCandidateReferenceError,
+        match="prompt version that is not ACTIVE",
+    ):
+        services["candidate_service"].create_candidate(
+            experiment_id=experiment.experiment_id,
+            name="Draft Prompt",
+            prompt_id=draft_prompt.prompt_id,
+            prompt_version=draft_prompt.version,
+            model_id=model.model_id,
+            model_version=model.version,
+            dataset_id=dataset.dataset_id,
+            dataset_version=dataset.version,
+            evaluation_provider="TruLens",
+            temperature=0.0,
+            top_p=1.0,
+            max_tokens=4096,
+        )
+
+
+def test_candidate_service_accepts_a_frozen_dataset_version() -> None:
+    services = _create_services()
+    experiment = services["experiment_service"].create_experiment(
+        name="support-benchmark",
+        description="Compare support assistant variants.",
+        owner="governance-team",
+    )
+    prompt, model, dataset = _create_assets(services)
+    frozen_dataset = services["dataset_service"].freeze_dataset(dataset.dataset_id)
+
+    candidate = services["candidate_service"].create_candidate(
+        experiment_id=experiment.experiment_id,
+        name="Frozen Benchmark",
+        prompt_id=prompt.prompt_id,
+        prompt_version=prompt.version,
+        model_id=model.model_id,
+        model_version=model.version,
+        dataset_id=frozen_dataset.dataset_id,
+        dataset_version=frozen_dataset.version,
+        evaluation_provider="TruLens",
+        temperature=0.0,
+        top_p=1.0,
+        max_tokens=4096,
+    )
+
+    assert candidate.dataset_id == frozen_dataset.dataset_id
+
+
 def test_candidate_service_rejects_version_mismatch() -> None:
     services = _create_services()
     experiment = services["experiment_service"].create_experiment(
@@ -230,13 +293,6 @@ def test_candidate_service_compares_candidate_configuration() -> None:
         owner="governance-team",
     )
     prompt, model, dataset = _create_assets(services)
-    alternate_prompt = services["prompt_service"].version_prompt(
-        prompt.prompt_id,
-        version="v2",
-        created_by="prompt-owner",
-        context=_CONTEXT,
-    )
-
     baseline = services["candidate_service"].create_candidate(
         experiment_id=experiment.experiment_id,
         name="Baseline",
@@ -251,6 +307,16 @@ def test_candidate_service_compares_candidate_configuration() -> None:
         top_p=1.0,
         max_tokens=4096,
         metadata={"tier": "baseline"},
+    )
+    alternate_prompt = services["prompt_service"].version_prompt(
+        prompt.prompt_id,
+        version="v2",
+        created_by="prompt-owner",
+        context=_CONTEXT,
+    )
+    alternate_prompt = services["prompt_service"].activate_prompt(
+        alternate_prompt.prompt_id,
+        _CONTEXT,
     )
     candidate = services["candidate_service"].create_candidate(
         experiment_id=experiment.experiment_id,
@@ -343,6 +409,7 @@ def _create_assets(
         created_by="prompt-owner",
         context=_CONTEXT,
     )
+    prompt = prompt_service.activate_prompt(prompt.prompt_id, _CONTEXT)
     model = model_service.register_model(
         provider="OpenAI",
         model_name="GPT-4.1",
@@ -352,6 +419,7 @@ def _create_assets(
         creator="model-owner",
         context=_CONTEXT,
     )
+    model = model_service.activate_model_version(model.model_id, _CONTEXT)
     dataset = dataset_service.register_dataset(
         name="claims-benchmark",
         version="2026-06-26",
@@ -363,6 +431,7 @@ def _create_assets(
         checksum="sha256:claims-v1",
         creator="data-owner",
     )
+    dataset = dataset_service.promote_dataset(dataset.dataset_id)
 
     return prompt, model, dataset
 

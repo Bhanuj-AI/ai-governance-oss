@@ -124,6 +124,7 @@ def test_sqlite_experiment_evaluation_service_executes_complete_experiment(
         created_by="prompt-owner",
         context=_CONTEXT,
     )
+    prompt = prompt_service.activate_prompt(prompt.prompt_id, _CONTEXT)
     model_a = model_service.register_model(
         provider="OpenAI",
         model_name="GPT-4.1",
@@ -135,6 +136,7 @@ def test_sqlite_experiment_evaluation_service_executes_complete_experiment(
         creator="model-owner",
         context=_CONTEXT,
     )
+    model_a = model_service.activate_model_version(model_a.model_id, _CONTEXT)
     model_b = model_service.create_model_version(
         model_id=model_a.model_id,
         version="2026-07-01",
@@ -154,6 +156,7 @@ def test_sqlite_experiment_evaluation_service_executes_complete_experiment(
         checksum="sha256:claims-v1",
         creator="data-owner",
     )
+    dataset = dataset_service.promote_dataset(dataset.dataset_id)
 
     candidate_service.create_candidate(
         experiment_id=experiment.experiment_id,
@@ -169,6 +172,7 @@ def test_sqlite_experiment_evaluation_service_executes_complete_experiment(
         top_p=1.0,
         max_tokens=4096,
     )
+    model_b = model_service.activate_model_version(model_b.model_id, _CONTEXT)
     improved = candidate_service.create_candidate(
         experiment_id=experiment.experiment_id,
         name="Improved",

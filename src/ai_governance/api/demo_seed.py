@@ -32,7 +32,7 @@ from ai_governance.api.dependencies import (
     get_provider_registry,
 )
 from ai_governance.domain.datasets import Dataset, DatasetStatus
-from ai_governance.datasets import dataset_object_store_from_environment
+from ai_governance.datasets import dataset_object_store_from_environment, dataset_object_uri
 from ai_governance.domain.evaluation_result import EvaluationMetric, EvaluationResult
 from ai_governance.domain.experiments import (
     EvaluationRun,
@@ -988,8 +988,8 @@ def seed_demo_registry_assets(
             content_type="application/x-ndjson",
             metadata={"dataset_id": dataset_id, "version": "v1.0"},
         )
-        storage_uri = f"s3://{bucket}/{key}"
-        storage_type = "S3"
+        storage_uri = dataset_object_uri(object_store, bucket=bucket, key=key)
+        storage_type = "S3" if storage_uri.startswith("s3://") else "filesystem"
     dataset_repository.save(
         Dataset(
             dataset_id=dataset_id,

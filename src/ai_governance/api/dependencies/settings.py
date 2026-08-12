@@ -18,6 +18,7 @@ class ApiSettings:
     environment: str
     port: int
     log_level: str
+    log_format: str
     cors_allow_origins: tuple[str, ...]
     auto_seed_demo_data: bool
     tenancy_enabled: bool
@@ -54,6 +55,7 @@ def get_api_settings() -> ApiSettings:
         environment=environment,
         port=int(os.getenv("AI_GOVERNANCE_API_PORT", "8000")),
         log_level=os.getenv("AI_GOVERNANCE_API_LOG_LEVEL", "info"),
+        log_format=os.getenv("AI_GOVERNANCE_API_LOG_FORMAT", "json"),
         cors_allow_origins=_split_csv_env(
             "AI_GOVERNANCE_CORS_ALLOW_ORIGINS",
             "http://localhost:3000,http://127.0.0.1:3000",

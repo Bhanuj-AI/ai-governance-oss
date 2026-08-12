@@ -22,6 +22,7 @@ export type ModelAsset = {
   model_id: string;
   provider: string;
   model_name: string;
+  provider_model_id: string | null;
   version: string;
   parameters: Record<string, unknown>;
   context_window: number;
@@ -31,9 +32,12 @@ export type ModelAsset = {
   provenance: "MANAGED" | "OBSERVED" | "IMPORTED";
   source_system: string | null;
   source_reference: string | null;
+  runtime_capabilities: ModelRuntimeCapabilities;
 };
-export type ModelRegisterInput = Pick<ModelAsset, "provider" | "model_name" | "version" | "parameters" | "context_window"> & { cost?: Record<string, number> | null; latency?: number | null };
-export type ModelVersionCreateInput = Pick<ModelRegisterInput, "version"> & Partial<Pick<ModelRegisterInput, "parameters" | "cost" | "latency" | "context_window">>;
+export type RuntimeParameterCapability = { name: string; supported: boolean; value_type: "number" | "integer"; minimum: number | null; maximum: number | null; default: unknown | null };
+export type ModelRuntimeCapabilities = { profile_id: string; profile_version: string; invocation_contract: string; verification: "DECLARED" | "VERIFIED" | "UNVERIFIED" | "OBSERVED"; parameters: RuntimeParameterCapability[] };
+export type ModelRegisterInput = Pick<ModelAsset, "provider" | "model_name" | "provider_model_id" | "version" | "parameters" | "context_window"> & { cost?: Record<string, number> | null; latency?: number | null };
+export type ModelVersionCreateInput = Pick<ModelRegisterInput, "version"> & Partial<Pick<ModelRegisterInput, "provider_model_id" | "parameters" | "cost" | "latency" | "context_window">>;
 export type RuntimeModelProvider = { key: string; display_name: string; allowed: boolean };
 
 export type DatasetAsset = {
@@ -120,6 +124,7 @@ export const getPromptVersion = (promptId: string) =>
   aiGovernanceRequest<PromptDetailAsset>(`/api/v1/prompts/versions/${encodeURIComponent(promptId)}`);
 export const listModelAssets = () => aiGovernanceRequest<ModelAsset[]>("/api/v1/models");
 export const listRuntimeModelProviders = () => aiGovernanceRequest<RuntimeModelProvider[]>("/api/v1/models/runtime-providers");
+export const resolveModelRuntimeCapabilities = (payload: Pick<ModelAsset, "provider" | "model_name" | "provider_model_id">) => aiGovernanceJsonRequest<ModelRuntimeCapabilities, typeof payload>("/api/v1/models/runtime-capabilities/resolve", { method: "POST", body: payload });
 export const registerModelAsset = (payload: ModelRegisterInput) => aiGovernanceJsonRequest<ModelAsset, ModelRegisterInput>("/api/v1/models", { method: "POST", body: payload });
 export const createModelVersion = (modelId: string, payload: ModelVersionCreateInput) => aiGovernanceJsonRequest<ModelAsset, ModelVersionCreateInput>(`/api/v1/models/${encodeURIComponent(modelId)}/versions`, { method: "POST", body: payload });
 export const activateModelAsset = (modelId: string) => aiGovernanceJsonRequest<ModelAsset, undefined>(`/api/v1/models/${encodeURIComponent(modelId)}/activate`, { method: "POST" });

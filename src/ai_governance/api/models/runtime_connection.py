@@ -78,3 +78,7 @@ class RuntimeConnectionProviderResponse(BaseModel):
     key: str
     display_name: str
     allowed: bool
+
+
+class DiscoveredRuntimeModelResponse(BaseModel):
+    provider_model_id: str

@@ -13,7 +13,11 @@ from fastapi.middleware.cors import CORSMiddleware  # type: ignore
 from ai_governance.api.demo_seed import seed_demo_data_for_app
 from ai_governance.api.dependencies import get_api_settings
 from ai_governance.api.exception_handlers import register_exception_handlers
-from ai_governance.api.logging import request_logging_middleware
+from ai_governance.api.logging import (
+    configure_sensitive_third_party_logging,
+    formatter_for,
+    request_logging_middleware,
+)
 from ai_governance.api.dependencies.authorization import (
     enforce_permission,
     enforce_policy_permission,
@@ -51,6 +55,35 @@ from ai_governance.api.routers import (
     tenancy_router,
 )
 from ai_governance.plugins import AIGovernancePlugin, PluginRegistry, create_plugin_registry
+
+
+def _configure_application_logging(log_level: str, log_format: str = "json") -> None:
+    """Route application logs to stderr when Uvicorn owns the process.
+
+    Uvicorn configures handlers for its own ``uvicorn.*`` namespaces but not
+    for application loggers. Without an explicit handler, progress records
+    from services are silently discarded even when
+    ``AI_GOVERNANCE_API_LOG_LEVEL=debug`` is configured.
+    """
+
+    application_logger = logging.getLogger("ai_governance")
+    application_logger.setLevel(log_level.upper())
+    application_logger.propagate = False
+    handler = next(
+        (
+            candidate
+            for candidate in application_logger.handlers
+            if getattr(candidate, "_ai_governance_application_handler", False)
+        ),
+        None,
+    )
+
+    if handler is None:
+        handler = logging.StreamHandler()
+        handler._ai_governance_application_handler = True  # type: ignore[attr-defined]
+        application_logger.addHandler(handler)
+    handler.setFormatter(formatter_for(log_format))
+    configure_sensitive_third_party_logging()
 
 
 @asynccontextmanager
@@ -91,6 +124,7 @@ def create_app(*, plugins: Iterable[AIGovernancePlugin] = ()) -> FastAPI:
     """
 
     settings = get_api_settings()
+    _configure_application_logging(settings.log_level, settings.log_format)
     logging.getLogger("ai_governance.api").setLevel(settings.log_level.upper())
     if settings.identity_provider == "development":
         logging.getLogger("ai_governance.api").critical(

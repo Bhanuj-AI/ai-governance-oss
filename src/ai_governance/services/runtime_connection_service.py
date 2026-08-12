@@ -257,6 +257,31 @@ class RuntimeConnectionService:
             resolved[key] = self._secret_resolver.resolve(reference)
         return connection, resolved
 
+    def validate_model_compatibility(
+        self,
+        runtime_connection_id: str,
+        model_provider: str,
+        context: TenantContext,
+    ) -> RuntimeConnection:
+        """Verify that an enabled connection can serve a registered model.
+
+        Candidate registration calls this without resolving a secret.  Secret
+        resolution remains an execution-time concern so a candidate never
+        captures credential material.
+        """
+
+        connection = self.get(runtime_connection_id, context)
+        if not connection.enabled:
+            raise RuntimeConnectionDisabledError(
+                f"Runtime connection '{connection.display_name}' is disabled."
+            )
+        expected_provider = runtime_model_provider_key(model_provider)
+        if expected_provider != connection.provider:
+            raise RuntimeConnectionProviderMismatchError(
+                "Runtime connection provider does not match the registered model provider."
+            )
+        return connection
+
     @staticmethod
     def supported_provider_keys() -> tuple[str, ...]:
         return tuple(_RUNTIME_CONNECTION_SCHEMAS)

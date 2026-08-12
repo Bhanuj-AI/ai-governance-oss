@@ -46,4 +46,20 @@ class PostgresDatabase:
                 (_SCHEMA_INITIALIZATION_LOCK,),
             )
             connection.execute(schema)
+            connection.execute(
+                "ALTER TABLE evaluation_run "
+                "ADD COLUMN IF NOT EXISTS failure_reason TEXT"
+            )
+            connection.execute(
+                "ALTER TABLE evaluation_run "
+                "ADD COLUMN IF NOT EXISTS total_item_count INTEGER"
+            )
+            connection.execute(
+                "ALTER TABLE evaluation_run "
+                "ADD COLUMN IF NOT EXISTS completed_item_count INTEGER NOT NULL DEFAULT 0"
+            )
+            connection.execute(
+                "ALTER TABLE evaluation_run "
+                "ADD COLUMN IF NOT EXISTS evaluated_item_count INTEGER NOT NULL DEFAULT 0"
+            )
             connection.commit()

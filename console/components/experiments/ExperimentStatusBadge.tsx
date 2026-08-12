@@ -15,6 +15,7 @@ export function ExperimentStatusBadge({ status }: { status: string }) {
 function statusClassName(status: string) {
   if (status === "COMPLETED") return "bg-[#32d74b] text-[#1f2328]";
   if (status === "FAILED") return "bg-[#ff453a] text-[#1f2328]";
+  if (status === "CANCELLED") return "bg-[#ff9f0a] text-[#1f2328]";
   if (status === "RUNNING") return "bg-primary text-primary-foreground";
   if (status === "DRAFT" || status === "PENDING") return "bg-[#ffd60a] text-[#1f2328]";
   if (status === "ARCHIVED") return "bg-secondary text-secondary-foreground";

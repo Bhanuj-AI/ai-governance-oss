@@ -1,11 +1,14 @@
 from abc import ABC
 from abc import abstractmethod
+from dataclasses import replace
+from datetime import UTC, datetime
 
 from ai_governance.domain.evaluation_result import (
     EvaluationMetric,
     EvaluationResult,
 )
 from ai_governance.repositories.evaluation_repository import EvaluationRepository
+from ai_governance.tenancy.domain import TenantContext
 
 
 class EvaluationRepositoryContract(ABC):
@@ -112,3 +115,38 @@ class EvaluationRepositoryContract(ABC):
             first,
             second,
         ]
+
+    def test_should_page_execution_family_with_tenant_scope(self) -> None:
+        repository = self.repository()
+        first = replace(
+            self.create_evaluation_result(),
+            evaluation_id="evaluation-1",
+            execution_id="run-1:item-1",
+            created_at=datetime(2026, 8, 12, 1, tzinfo=UTC),
+        )
+        second = replace(
+            first,
+            evaluation_id="evaluation-2",
+            execution_id="run-1:item-2",
+            created_at=datetime(2026, 8, 12, 2, tzinfo=UTC),
+        )
+        other_tenant = replace(
+            first,
+            evaluation_id="evaluation-3",
+            execution_id="run-1:item-3",
+            organization_id="other-org",
+            project_id="other-project",
+        )
+        repository.save(first)
+        repository.save(second)
+        repository.save(other_tenant)
+
+        page = repository.find_page_by_execution_id_prefix(
+            "run-1:",
+            TenantContext("org_default", "project_default", "actor", "request"),
+            offset=1,
+            limit=1,
+        )
+
+        assert page.total_count == 2
+        assert page.items == (second,)

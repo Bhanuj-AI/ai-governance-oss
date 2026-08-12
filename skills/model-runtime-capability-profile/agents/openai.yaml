@@ -1,0 +1,4 @@
+interface:
+  display_name: "Model Runtime Capability Profiles"
+  short_description: "Add governed provider and model runtime capability adapters."
+  default_prompt: "Use $model-runtime-capability-profile to add or update a governed provider/model runtime capability profile."

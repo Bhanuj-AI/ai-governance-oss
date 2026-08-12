@@ -377,6 +377,11 @@ registers `trulens` when both an OpenAI API key and judge model are configured.
 Use `AI_GOVERNANCE_TRULENS_MODEL` to override `OPENAI_DEFAULT_JUDGE_MODEL` for
 TruLens. Mock remains the default for a fully offline local stack.
 
+OpenAI-backed TruLens evaluations require `trulens-providers-openai>=2.10.0`.
+The locked OSS environment supplies this version or newer; do not downgrade it,
+because earlier releases can misread OpenAI Responses API custom tool-call
+scores.
+
 ### Runtime connections
 
 `OPENAI_API_KEY` is a deployment-owned platform credential for internal
@@ -453,7 +458,8 @@ configured because `AI_GOVERNANCE_ONTOLOGY_REPOSITORY=sqlite` is not implemented
 | `AI_GOVERNANCE_DATASET_REPOSITORY` | `inmemory` | Dataset artifact backend. Options: `inmemory`, `sqlite`, `postgres`. |
 | `AI_GOVERNANCE_DATASET_SQLITE_PATH` | - | SQLite path (required when `sqlite`). |
 | `AI_GOVERNANCE_DATASET_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
-| `AI_GOVERNANCE_DATASET_OBJECT_STORE_BACKEND` | `none` | Dataset content store. Options: `none`, `s3`. The registry metadata remains in the dataset repository. |
+| `AI_GOVERNANCE_DATASET_OBJECT_STORE_BACKEND` | `none` | Dataset content store. Options: `none`, `filesystem`, `s3`. The registry metadata remains in the dataset repository. |
+| `AI_GOVERNANCE_DATASET_FILESYSTEM_ROOT` | `.ai-governance/datasets` | Root for immutable dataset objects when the backend is `filesystem`; intended for the non-Docker local workflow. |
 | `AI_GOVERNANCE_DATASET_S3_BUCKET` | `ai-governance-datasets` | Bucket for dataset content when the object-store backend is `s3`. |
 | `AI_GOVERNANCE_DATASET_S3_ENDPOINT_URL` | - | Optional S3-compatible endpoint. Leave unset for AWS S3; set for SeaweedFS or another compatible service. |
 | `AI_GOVERNANCE_DATASET_S3_REGION` | `us-east-1` | S3 region. |

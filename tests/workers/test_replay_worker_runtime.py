@@ -103,6 +103,17 @@ def test_standalone_worker_uses_the_plugin_event_publisher(monkeypatch) -> None:
     assert calls == ["start", "run_once", "stop"]
 
 
+def test_worker_wires_runtime_connections_into_async_experiments() -> None:
+    """Async experiments enforce the same connection contract as REST runs."""
+
+    runtime = replay_worker_runtime.create_replay_worker_runtime(
+        worker_id="runtime-connection-test-worker"
+    )
+    experiment_handler = runtime._worker._executor._handlers[JobType.EXPERIMENT]
+
+    assert experiment_handler._experiments._runtime_connection_service is not None
+
+
 def test_worker_dispatches_replay_then_automatically_consumes_evaluation() -> None:
     jobs = InMemoryJobRepository()
     replays = InMemoryReplayRepository()

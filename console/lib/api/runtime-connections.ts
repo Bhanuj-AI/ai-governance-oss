@@ -36,9 +36,12 @@ export type RuntimeConnectionProvider = {
   allowed: boolean;
 };
 
+export type DiscoveredRuntimeModel = { provider_model_id: string };
+
 export const listRuntimeConnections = () => aiGovernanceRequest<RuntimeConnection[]>("/api/v1/runtime-connections");
 export const listRuntimeConnectionProviders = () => aiGovernanceRequest<RuntimeConnectionProvider[]>("/api/v1/runtime-connections/providers");
 export const validateRuntimeConnection = (payload: RuntimeConnectionInput) => aiGovernanceJsonRequest<{ valid: boolean; provider: string; message: string }, RuntimeConnectionInput>("/api/v1/runtime-connections/validate", { method: "POST", body: payload });
 export const createRuntimeConnection = (payload: RuntimeConnectionInput) => aiGovernanceJsonRequest<RuntimeConnection, RuntimeConnectionInput>("/api/v1/runtime-connections", { method: "POST", body: payload });
 export const updateRuntimeConnection = (connectionId: string, payload: Partial<Pick<RuntimeConnectionInput, "display_name" | "settings" | "secret_refs" | "enabled">>) => aiGovernanceJsonRequest<RuntimeConnection, typeof payload>(`/api/v1/runtime-connections/${encodeURIComponent(connectionId)}`, { method: "PATCH", body: payload });
 export const testRuntimeConnection = (connectionId: string) => aiGovernanceJsonRequest<RuntimeConnection, undefined>(`/api/v1/runtime-connections/${encodeURIComponent(connectionId)}/test`, { method: "POST" });
+export const discoverRuntimeConnectionModels = (connectionId: string) => aiGovernanceRequest<DiscoveredRuntimeModel[]>(`/api/v1/runtime-connections/${encodeURIComponent(connectionId)}/models`);

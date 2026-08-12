@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from ai_governance.api.dependencies import (
     get_dataset_repository,
     get_evaluation_repository,
     get_evaluation_run_repository,
+    get_experiment_api_service,
     get_experiment_candidate_repository,
     get_experiment_repository,
     get_job_repository,
@@ -18,10 +20,19 @@ from ai_governance.api.dependencies import (
     get_prompt_repository,
     get_provider_registry,
 )
+from ai_governance.api.dependencies.runtime_connections import (
+    get_runtime_connection_service,
+)
 from ai_governance.domain.datasets import Dataset, DatasetStatus
 from ai_governance.domain.evaluation_result import EvaluationMetric, EvaluationResult
+from ai_governance.domain.experiments import (
+    EvaluationRun,
+    EvaluationRunStatus,
+    ExperimentStatus,
+)
 from ai_governance.domain.models import Model, ModelStatus
 from ai_governance.domain.prompts import Prompt, PromptStatus
+from ai_governance.domain.workflow_execution import WorkflowExecution
 from ai_governance.evaluation import EvaluationRequest
 from ai_governance.providers.provider_capabilities import ProviderCapabilities
 from ai_governance.providers.provider_descriptor import ProviderDescriptor
@@ -51,11 +62,27 @@ from ai_governance.repositories.in_memory_model_repository import (
 from ai_governance.repositories.in_memory_prompt_repository import (
     InMemoryPromptRepository,
 )
+from ai_governance.repositories.settings_runtime_connection_repository import (
+    SettingsRuntimeConnectionRepository,
+)
+from ai_governance.services.runtime_connection_service import (
+    RuntimeConnectionService,
+)
+from ai_governance.services.experiment_api_service import ExperimentApiService
+from ai_governance.settings_control.repository import InMemorySettingsRepository
+
+
+class _RuntimeSecretResolver:
+    def resolve(self, reference: str) -> str:
+        if reference == "env://AVAILABLE":
+            return "resolved-secret"
+        raise ValueError("unavailable")
 
 
 class FakeEvaluationProvider:
     def __init__(self) -> None:
         self.requests: list[EvaluationRequest] = []
+        self.should_fail = False
 
     @property
     def descriptor(self) -> ProviderDescriptor:
@@ -77,6 +104,8 @@ class FakeEvaluationProvider:
         request: EvaluationRequest,
     ) -> EvaluationResult:
         self.requests.append(request)
+        if self.should_fail:
+            raise RuntimeError("provider secret=should-not-be-disclosed")
         metric_names = [
             metric_spec.name
             for metric_spec in request.metric_specs
@@ -96,6 +125,30 @@ class FakeEvaluationProvider:
             ],
         )
 
+
+class _EvidenceProducingCandidateRuntime:
+    """Test double that produces completed candidate evidence, never blanks."""
+
+    def execute(self, *, experiment, candidate, run_id, context, progress_callback=None):
+        if progress_callback is not None:
+            progress_callback(1, 0)
+            progress_callback(1, 1)
+        return (
+            WorkflowExecution(
+                workflow_id=experiment.experiment_id,
+                execution_id=f"{run_id}:dataset-item-1",
+                workflow_name=experiment.name,
+                workflow_version="candidate-execution-v1",
+                execution_status="COMPLETED",
+                input={"input": "Test question", "dataset_item_id": "dataset-item-1"},
+                final_state={"answer": f"Answer from {candidate.name}", "context": "Test context"},
+                events=[],
+                organization_id=context.organization_id,
+                project_id=context.project_id or "",
+                execution_adapter="candidate_runtime",
+                metadata={"runtime_evidence": {"latency_ms": 321}},
+            ),
+        )
 
 def _client(
     job_repository: InMemoryJobRepository | None = None,
@@ -117,6 +170,12 @@ def _client(
     prompt_repository = InMemoryPromptRepository()
     model_repository = InMemoryModelRepository()
     dataset_repository = InMemoryDatasetRepository()
+    runtime_connection_service = RuntimeConnectionService(
+        SettingsRuntimeConnectionRepository(InMemorySettingsRepository()),
+        secret_resolver=_RuntimeSecretResolver(),
+        allowed_runtime_providers=lambda _: ("openai", "anthropic", "custom"),
+        id_generator=lambda: "connection-1",
+    )
     _seed_registry_assets(
         prompt_repository=prompt_repository,
         model_repository=model_repository,
@@ -124,6 +183,10 @@ def _client(
     )
 
     app = create_app()
+    # Expose test-owned repositories only for assertions against persisted
+    # lifecycle state that cannot be created through a synchronous request.
+    app.state.test_experiment_repository = experiment_repository
+    app.state.test_evaluation_run_repository = evaluation_run_repository
     app.dependency_overrides[get_provider_registry] = lambda: provider_registry
     app.dependency_overrides[get_experiment_repository] = (
         lambda: experiment_repository
@@ -149,6 +212,22 @@ def _client(
     )
     app.dependency_overrides[get_job_repository] = (
         lambda: resolved_job_repository
+    )
+    app.dependency_overrides[get_runtime_connection_service] = (
+        lambda: runtime_connection_service
+    )
+    app.dependency_overrides[get_experiment_api_service] = lambda: ExperimentApiService(
+        experiment_repository=experiment_repository,
+        candidate_repository=candidate_repository,
+        evaluation_run_repository=evaluation_run_repository,
+        evaluation_repository=evaluation_repository,
+        leaderboard_repository=leaderboard_repository,
+        prompt_repository=prompt_repository,
+        model_repository=model_repository,
+        dataset_repository=dataset_repository,
+        provider_registry=provider_registry,
+        runtime_connection_service=runtime_connection_service,
+        candidate_execution_runtime=_EvidenceProducingCandidateRuntime(),
     )
     return TestClient(app), provider, evaluation_repository
 
@@ -176,6 +255,21 @@ def _seed_registry_assets(
             model_id="model",
             provider="fake",
             model_name="model",
+            version="v1",
+            parameters={},
+            cost={"input": 0.01},
+            latency=0.2,
+            context_window=4096,
+            creator="tester",
+            created_at=created_at,
+            status=ModelStatus.ACTIVE,
+        )
+    )
+    model_repository.save(
+        Model(
+            model_id="openai-model",
+            provider="openai",
+            model_name="gpt-test",
             version="v1",
             parameters={},
             cost={"input": 0.01},
@@ -303,6 +397,94 @@ def test_add_candidate() -> None:
     assert candidate_id
 
 
+def test_add_candidate_binds_a_compatible_runtime_connection() -> None:
+    client, _provider, _evaluation_repository = _client()
+    experiment_id = _create_experiment(client)
+    connection = client.post(
+        "/api/v1/runtime-connections",
+        json={
+            "display_name": "OpenAI Development",
+            "provider": "openai",
+            "secret_refs": {"api_key": "env://AVAILABLE"},
+            "scope": "PROJECT",
+        },
+    )
+    assert connection.status_code == 201
+
+    response = client.post(
+        f"/api/v1/experiments/{experiment_id}/candidates",
+        json={
+            "candidate_name": "candidate-openai",
+            "prompt_version": "prompt:v1",
+            "model_version": "openai-model:v1",
+            "dataset_version": "dataset:v1",
+            "provider_name": "fake",
+            "provider_installation_id": None,
+            "runtime_connection_id": connection.json()["runtime_connection_id"],
+            "runtime_parameters": {"max_tokens": 256},
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["runtime_connection_id"] == "connection-1"
+    assert response.json()["metadata"]["runtime_connection_id"] == "connection-1"
+
+    run = client.post(
+        f"/api/v1/experiments/{experiment_id}/run",
+        json={"metric_specs": [{"name": "answer_relevance"}]},
+    )
+    assert run.status_code == 200
+    assert run.json()["runs"][0]["status"] == "COMPLETED"
+
+
+def test_add_candidate_requires_a_runtime_connection_for_openai_models() -> None:
+    client, _provider, _evaluation_repository = _client()
+    experiment_id = _create_experiment(client)
+
+    response = client.post(
+        f"/api/v1/experiments/{experiment_id}/candidates",
+        json={
+            "candidate_name": "candidate-openai",
+            "prompt_version": "prompt:v1",
+            "model_version": "openai-model:v1",
+            "dataset_version": "dataset:v1",
+            "provider_name": "fake",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "requires an active runtime connection" in response.json()["error"]["message"]
+
+
+def test_add_candidate_rejects_an_incompatible_runtime_connection() -> None:
+    client, _provider, _evaluation_repository = _client()
+    experiment_id = _create_experiment(client)
+    assert client.post(
+        "/api/v1/runtime-connections",
+        json={
+            "display_name": "OpenAI Development",
+            "provider": "openai",
+            "secret_refs": {"api_key": "env://AVAILABLE"},
+            "scope": "PROJECT",
+        },
+    ).status_code == 201
+
+    response = client.post(
+        f"/api/v1/experiments/{experiment_id}/candidates",
+        json={
+            "candidate_name": "candidate-mismatch",
+            "prompt_version": "prompt:v1",
+            "model_version": "model:v1",
+            "dataset_version": "dataset:v1",
+            "provider_name": "fake",
+            "runtime_connection_id": "connection-1",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "does not match" in response.json()["error"]["message"]
+
+
 def test_list_candidates_and_runs() -> None:
     client, _provider, _evaluation_repository = _client()
     experiment_id = _create_experiment(client)
@@ -327,6 +509,179 @@ def test_list_candidates_and_runs() -> None:
     )
     assert populated_runs_response.status_code == 200
     assert populated_runs_response.json()[0]["status"] == "COMPLETED"
+    assert populated_runs_response.json()[0]["total_item_count"] == 1
+    assert populated_runs_response.json()[0]["completed_item_count"] == 1
+    assert populated_runs_response.json()[0]["evaluated_item_count"] == 1
+
+
+def test_list_run_evaluations_returns_paginated_partial_evidence() -> None:
+    client, _provider, _evaluation_repository = _client()
+    experiment_id = _create_experiment(client)
+    _add_candidate(client, experiment_id)
+
+    run_response = client.post(
+        f"/api/v1/experiments/{experiment_id}/run",
+        json={"metric_specs": [{"name": "answer_relevance"}]},
+    )
+    assert run_response.status_code == 200
+    run_id = run_response.json()["runs"][0]["run_id"]
+
+    response = client.get(
+        f"/api/v1/experiments/{experiment_id}/runs/{run_id}/evaluations",
+        params={"page": 1, "page_size": 25},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["run_id"] == run_id
+    assert response.json()["page"] == 1
+    assert response.json()["page_size"] == 25
+    assert response.json()["total_items"] == 1
+    assert response.json()["items"][0]["metrics"] == [
+        {"name": "answer_relevance", "score": 0.9, "explanation": None, "metadata": {}}
+    ]
+    assert response.json()["items"][0]["model_latency_ms"] == 321
+
+
+def test_get_run_plan_reports_declared_workload_and_active_progress() -> None:
+    client, _provider, _evaluation_repository = _client()
+    experiment_id = _create_experiment(client)
+    first_candidate_id = _add_candidate(client, experiment_id)
+    _add_candidate(client, experiment_id, candidate_name="candidate-b")
+    experiment_repository = client.app.state.test_experiment_repository
+    evaluation_run_repository = client.app.state.test_evaluation_run_repository
+    experiment = experiment_repository.find_by_id(experiment_id)
+    assert experiment is not None
+    experiment_repository.save(replace(experiment, status=ExperimentStatus.RUNNING))
+    evaluation_run_repository.save(
+        EvaluationRun(
+            run_id="running-run",
+            experiment_id=experiment_id,
+            candidate_id=first_candidate_id,
+            dataset_version="v1",
+            evaluation_provider="fake",
+            evaluation_result_id=None,
+            started_at=datetime.now(UTC),
+            completed_at=None,
+            status=EvaluationRunStatus.RUNNING,
+            total_item_count=1,
+            completed_item_count=1,
+            evaluated_item_count=0,
+        )
+    )
+
+    response = client.get(f"/api/v1/experiments/{experiment_id}/run-plan")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "experiment_id": experiment_id,
+        "candidate_count": 2,
+        "dataset_item_count": 1,
+        "model_invocation_count": 2,
+        "evaluation_item_count": 2,
+        "active_run": {
+            "run_id": "running-run",
+            "candidate_id": first_candidate_id,
+            "candidate_name": "candidate-a",
+            "candidate_position": 1,
+            "total_item_count": 1,
+            "completed_item_count": 1,
+            "evaluated_item_count": 0,
+        },
+    }
+
+
+def test_failed_evaluation_run_exposes_a_safe_failure_reason() -> None:
+    client, provider, _evaluation_repository = _client()
+    experiment_id = _create_experiment(client)
+    _add_candidate(client, experiment_id)
+    provider.should_fail = True
+
+    response = client.post(
+        f"/api/v1/experiments/{experiment_id}/run",
+        json={"metric_specs": [{"name": "answer_relevance"}]},
+    )
+    listed = client.get(f"/api/v1/experiments/{experiment_id}/runs")
+
+    assert response.status_code == 200
+    assert response.json()["runs"][0]["status"] == "FAILED"
+    assert response.json()["runs"][0]["failure_reason"] == (
+        "Evaluation provider execution failed (RuntimeError). "
+        "Inspect the API or worker logs for operational detail."
+    )
+    assert listed.status_code == 200
+    assert listed.json()[0]["failure_reason"] == response.json()["runs"][0]["failure_reason"]
+    assert "should-not-be-disclosed" not in listed.text
+
+
+def test_get_experiment_reconciles_runs_interrupted_by_a_restart() -> None:
+    client, _provider, _evaluation_repository = _client()
+    experiment_id = _create_experiment(client)
+    candidate_id = _add_candidate(client, experiment_id)
+    experiment_repository = client.app.state.test_experiment_repository
+    evaluation_run_repository = client.app.state.test_evaluation_run_repository
+    experiment = experiment_repository.find_by_id(experiment_id)
+    assert experiment is not None
+    experiment_repository.save(replace(experiment, status=ExperimentStatus.RUNNING))
+    evaluation_run_repository.save(
+        EvaluationRun(
+            run_id="interrupted-run",
+            experiment_id=experiment_id,
+            candidate_id=candidate_id,
+            dataset_version="dataset:v1",
+            evaluation_provider="fake",
+            evaluation_result_id=None,
+            started_at=datetime(2000, 1, 1, tzinfo=UTC),
+            completed_at=None,
+            status=EvaluationRunStatus.RUNNING,
+        )
+    )
+
+    response = client.get(f"/api/v1/experiments/{experiment_id}")
+    runs = client.get(f"/api/v1/experiments/{experiment_id}/runs")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "FAILED"
+    assert runs.status_code == 200
+    assert runs.json()[0]["status"] == "EXECUTION_FAILED"
+    assert runs.json()[0]["failure_reason"] == (
+        "Evaluation run was interrupted by a control-plane restart."
+    )
+
+
+def test_cancel_running_experiment_retains_cancelled_run_evidence() -> None:
+    client, _provider, _evaluation_repository = _client()
+    experiment_id = _create_experiment(client)
+    candidate_id = _add_candidate(client, experiment_id)
+    experiment_repository = client.app.state.test_experiment_repository
+    evaluation_run_repository = client.app.state.test_evaluation_run_repository
+    experiment = experiment_repository.find_by_id(experiment_id)
+    assert experiment is not None
+    experiment_repository.save(replace(experiment, status=ExperimentStatus.RUNNING))
+    evaluation_run_repository.save(
+        EvaluationRun(
+            run_id="running-run",
+            experiment_id=experiment_id,
+            candidate_id=candidate_id,
+            dataset_version="dataset:v1",
+            evaluation_provider="fake",
+            evaluation_result_id=None,
+            started_at=datetime.now(UTC),
+            completed_at=None,
+            status=EvaluationRunStatus.RUNNING,
+        )
+    )
+
+    response = client.post(f"/api/v1/experiments/{experiment_id}/cancel")
+    retry = client.post(f"/api/v1/experiments/{experiment_id}/cancel")
+    runs = client.get(f"/api/v1/experiments/{experiment_id}/runs")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "CANCELLED"
+    assert retry.status_code == 200
+    assert retry.json()["status"] == "CANCELLED"
+    assert runs.status_code == 200
+    assert runs.json()[0]["status"] == "CANCELLED"
+    assert runs.json()[0]["failure_reason"] == "Experiment cancellation requested."
 
 
 def test_compare_candidates_returns_configuration_and_backend_metrics() -> None:

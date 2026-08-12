@@ -4,6 +4,8 @@ from datetime import UTC, datetime
 
 import pytest
 
+from ai_governance.providers.trulens import adapter as trulens_adapter_module
+
 from ai_governance.domain.evaluation_dataset import EvaluationDataset
 from ai_governance.domain.workflow_execution import WorkflowExecution
 from ai_governance.evaluation.evaluation_metrics import (
@@ -20,6 +22,7 @@ from ai_governance.providers.trulens import (
     TruLensResultMapper,
     UnsupportedTruLensMetricError,
 )
+from ai_governance.providers.trulens.errors import TruLensProviderError
 
 
 def test_trulens_descriptor_links_to_official_setup_documentation() -> None:
@@ -158,6 +161,42 @@ def test_trulens_adapter_falls_back_to_enabled_metrics_when_specs_empty() -> Non
     ] == [ANSWER_RELEVANCE]
 
 
+def test_trulens_adapter_supports_score_and_reason_results() -> None:
+    adapter = TruLensAdapter(
+        llm_provider=_TupleResultTruLensProvider(),  # type: ignore[arg-type]
+        config=TruLensConfig(
+            model="judge-model",
+            enabled_metrics=[ANSWER_RELEVANCE],
+        ),
+    )
+
+    result = adapter.evaluate(
+        _evaluation_request(metric_specs=[EvaluationMetricSpec(ANSWER_RELEVANCE)])
+    )
+
+    assert result.metrics[0].metric_value == 0.91
+    assert result.metrics[0].explanation == "structured reason"
+
+
+def test_trulens_adapter_rejects_pre_fix_openai_score_parser_versions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        trulens_adapter_module,
+        "version",
+        lambda package_name: (
+            "2.9.0" if package_name == "trulens-providers-openai" else "2.10.0"
+        ),
+    )
+    adapter = TruLensAdapter(config=TruLensConfig(model="judge-model"))
+
+    with pytest.raises(
+        TruLensProviderError,
+        match="unsupported for OpenAI Responses API scoring",
+    ):
+        adapter.validate_configuration({})
+
+
 def test_trulens_result_mapper_scrubs_sensitive_metadata() -> None:
     request = _evaluation_request(
         metric_specs=[EvaluationMetricSpec(ANSWER_RELEVANCE)],
@@ -250,3 +289,8 @@ class _RecordingTruLensProvider:
     ) -> tuple[float, dict[str, str]]:
         self.calls.append(GROUNDEDNESS)
         return 0.86, {"reason": "grounded"}
+
+
+class _TupleResultTruLensProvider:
+    def relevance(self, prompt: str, response: str) -> tuple[float, str]:
+        return 0.91, "structured reason"

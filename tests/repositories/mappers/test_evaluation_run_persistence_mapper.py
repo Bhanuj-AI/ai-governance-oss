@@ -20,6 +20,9 @@ def test_evaluation_run_persistence_mapper_round_trips_run() -> None:
         started_at=datetime(2026, 6, 26, tzinfo=UTC),
         completed_at=datetime(2026, 6, 26, 0, 1, tzinfo=UTC),
         status=EvaluationRunStatus.COMPLETED,
+        total_item_count=10,
+        completed_item_count=10,
+        evaluated_item_count=10,
     )
 
     record = EvaluationRunPersistenceMapper.to_persistence_record(run)

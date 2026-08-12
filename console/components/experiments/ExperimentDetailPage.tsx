@@ -13,7 +13,12 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import {
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 
 import { ExperimentStatusBadge } from "@/components/experiments/ExperimentStatusBadge";
 import { ExperimentLifecycle } from "@/components/experiments/ExperimentLifecycle";
@@ -29,10 +34,13 @@ import {
 import { Input } from "@/components/ui/input";
 import {
   addCandidate,
+  cancelExperiment,
   getCandidateComparison,
   getExperiment,
   getLeaderboard,
+  getRunPlan,
   listCandidates,
+  listRunEvaluations,
   listRuns,
   runExperiment,
 } from "@/lib/api/experiments";
@@ -47,6 +55,7 @@ import {
   listPromptAssets,
   listProviderInstallations,
 } from "@/lib/api/registries";
+import { listRuntimeConnections } from "@/lib/api/runtime-connections";
 
 const TABS = [
   "Overview",
@@ -63,6 +72,7 @@ type CandidateDraft = {
   dataset_version: string;
   provider_name: string;
   provider_installation_id: string;
+  runtime_connection_id: string;
   runtime_parameters: Record<string, unknown>;
 };
 
@@ -73,8 +83,74 @@ const INITIAL_CANDIDATE: CandidateDraft = {
   dataset_version: "",
   provider_name: "",
   provider_installation_id: "",
+  runtime_connection_id: "",
   runtime_parameters: {},
 };
+
+const DEFAULT_RUN_COLUMN_WIDTHS = {
+  runId: 250,
+  candidate: 300,
+  status: 135,
+  started: 190,
+  duration: 105,
+  progress: 205,
+  failureReason: 340,
+} as const;
+
+type RunColumnKey = keyof typeof DEFAULT_RUN_COLUMN_WIDTHS;
+
+const MIN_RUN_COLUMN_WIDTHS: Record<RunColumnKey, number> = {
+  runId: 160,
+  candidate: 180,
+  status: 110,
+  started: 150,
+  duration: 90,
+  progress: 160,
+  failureReason: 240,
+};
+
+function ResizableRunColumnHeader({
+  column,
+  children,
+  width,
+  onResizeStart,
+  onResizeBy,
+}: {
+  column: RunColumnKey;
+  children: ReactNode;
+  width: number;
+  onResizeStart: (
+    event: ReactPointerEvent<HTMLDivElement>,
+    column: RunColumnKey,
+  ) => void;
+  onResizeBy: (column: RunColumnKey, amount: number) => void;
+}) {
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
+      return;
+    }
+
+    event.preventDefault();
+    onResizeBy(column, event.key === "ArrowLeft" ? -20 : 20);
+  };
+
+  return (
+    <th className="relative px-2 py-2 font-medium" style={{ width }}>
+      {children}
+      <div
+        aria-label={`Resize ${String(children)} column`}
+        aria-orientation="vertical"
+        aria-valuemin={MIN_RUN_COLUMN_WIDTHS[column]}
+        aria-valuenow={width}
+        className="absolute inset-y-0 right-0 z-10 w-3 cursor-col-resize touch-none border-r border-transparent hover:border-primary focus-visible:border-primary focus-visible:outline-none"
+        onKeyDown={handleKeyDown}
+        onPointerDown={(event) => onResizeStart(event, column)}
+        role="separator"
+        tabIndex={0}
+      />
+    </th>
+  );
+}
 
 export function ExperimentDetailPage({
   experimentId,
@@ -88,13 +164,60 @@ export function ExperimentDetailPage({
   );
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [runSubmitted, setRunSubmitted] = useState(false);
+  const [refreshInterval, setRefreshInterval] = useState<"5" | "10" | "never">("5");
+  const [selectedRunId, setSelectedRunId] = useState("");
+  const [evaluationPage, setEvaluationPage] = useState(1);
+  const [runColumnWidths, setRunColumnWidths] = useState<
+    Record<RunColumnKey, number>
+  >({ ...DEFAULT_RUN_COLUMN_WIDTHS });
   const [baselineCandidateId, setBaselineCandidateId] = useState("");
   const [comparisonCandidateId, setComparisonCandidateId] = useState("");
+
+  const resizeRunColumn = (column: RunColumnKey, amount: number) => {
+    setRunColumnWidths((current) => ({
+      ...current,
+      [column]: Math.max(
+        MIN_RUN_COLUMN_WIDTHS[column],
+        current[column] + amount,
+      ),
+    }));
+  };
+
+  const startRunColumnResize = (
+    event: ReactPointerEvent<HTMLDivElement>,
+    column: RunColumnKey,
+  ) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = runColumnWidths[column];
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      setRunColumnWidths((current) => ({
+        ...current,
+        [column]: Math.max(
+          MIN_RUN_COLUMN_WIDTHS[column],
+          startWidth + moveEvent.clientX - startX,
+        ),
+      }));
+    };
+    const onPointerUp = () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+  };
+  const runTableWidth = Object.values(runColumnWidths).reduce(
+    (total, width) => total + width,
+    0,
+  );
 
   const experiment = useQuery({
     queryKey: ["experiment", experimentId],
     queryFn: () => getExperiment(experimentId),
   });
+  const autoRefreshMs = refreshInterval === "never" ? false : Number(refreshInterval) * 1000;
   const candidates = useQuery({
     queryKey: ["candidates", experimentId],
     queryFn: () => listCandidates(experimentId),
@@ -103,7 +226,15 @@ export function ExperimentDetailPage({
   const runs = useQuery({
     queryKey: ["runs", experimentId],
     queryFn: () => listRuns(experimentId),
-    enabled: tab === "Evaluation Runs" || tab === "Overview",
+    enabled: tab === "Evaluation Runs" || tab === "Overview" || runSubmitted,
+    refetchInterval:
+      experiment.data?.status === "RUNNING" || runSubmitted ? autoRefreshMs : false,
+  });
+  const runPlan = useQuery({
+    queryKey: ["experiment-run-plan", experimentId],
+    queryFn: () => getRunPlan(experimentId),
+    refetchInterval:
+      experiment.data?.status === "RUNNING" || runSubmitted ? autoRefreshMs : false,
   });
   const leaderboard = useQuery({
     queryKey: ["leaderboard", experimentId],
@@ -129,6 +260,14 @@ export function ExperimentDetailPage({
       ),
     enabled: tab === "Comparison" && comparisonReady,
   });
+  const activeResultRunId = selectedRunId || runs.data?.[0]?.run_id || "";
+  const runEvaluations = useQuery({
+    queryKey: ["run-evaluations", experimentId, activeResultRunId, evaluationPage],
+    queryFn: () => listRunEvaluations(experimentId, activeResultRunId, evaluationPage),
+    enabled: tab === "Evaluation Runs" && Boolean(activeResultRunId),
+    refetchInterval: tab === "Evaluation Runs" ? autoRefreshMs : false,
+  });
+  const evaluationResults = runEvaluations.data;
 
   const prompts = useQuery({
     queryKey: ["prompt-assets"],
@@ -150,6 +289,35 @@ export function ExperimentDetailPage({
     queryFn: listProviderInstallations,
     enabled: tab === "Candidates" && experiment.data?.status === "DRAFT",
   });
+  const runtimeConnections = useQuery({
+    queryKey: ["runtime-connections"],
+    queryFn: listRuntimeConnections,
+    enabled: tab === "Candidates" && experiment.data?.status === "DRAFT",
+  });
+  const activePrompts = (prompts.data ?? []).filter(
+    (item) => item.status === "ACTIVE",
+  );
+  const activeModels = (models.data ?? []).filter(
+    (item) => item.status === "ACTIVE",
+  );
+  const eligibleDatasets = (datasets.data ?? []).filter(
+    (item) => item.status === "ACTIVE" || item.status === "FROZEN",
+  );
+  const selectedModel = activeModels.find(
+    (item) => `${item.model_id}:${item.version}` === candidate.model_version,
+  );
+  const selectedModelProvider = selectedModel
+    ? runtimeProviderKey(selectedModel.provider)
+    : null;
+  const requiresCandidateRuntimeConnection = ["openai", "anthropic", "custom"].includes(
+    selectedModelProvider ?? "",
+  );
+  const compatibleRuntimeConnections = selectedModelProvider
+    ? (runtimeConnections.data ?? []).filter(
+        (item) =>
+          item.enabled && runtimeProviderKey(item.provider) === selectedModelProvider,
+      )
+    : [];
 
   const add = useMutation({
     mutationFn: () => addCandidate(experimentId, candidate),
@@ -171,6 +339,10 @@ export function ExperimentDetailPage({
 
   const run = useMutation({
     mutationFn: () => runExperiment(experimentId),
+    onMutate: () => {
+      setRunSubmitted(true);
+      setError(null);
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ["experiment", experimentId],
@@ -188,9 +360,33 @@ export function ExperimentDetailPage({
         queryKey: ["candidate-comparison", experimentId],
       });
     },
+    onSettled: async () => {
+      setRunSubmitted(false);
+      await queryClient.invalidateQueries({
+        queryKey: ["experiment-run-plan", experimentId],
+      });
+    },
     onError: (cause) =>
       setError(
         cause instanceof Error ? cause.message : "Unable to run experiment.",
+      ),
+  });
+
+  const cancel = useMutation({
+    mutationFn: () => cancelExperiment(experimentId),
+    onSuccess: async () => {
+      setRunSubmitted(false);
+      setError(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["experiment", experimentId] }),
+        queryClient.invalidateQueries({ queryKey: ["runs", experimentId] }),
+        queryClient.invalidateQueries({ queryKey: ["leaderboard", experimentId] }),
+        queryClient.invalidateQueries({ queryKey: ["candidate-comparison", experimentId] }),
+      ]);
+    },
+    onError: (cause) =>
+      setError(
+        cause instanceof Error ? cause.message : "Unable to cancel experiment.",
       ),
   });
 
@@ -212,11 +408,19 @@ export function ExperimentDetailPage({
   const completedRuns =
     runs.data?.filter((item) => item.status === "COMPLETED").length ?? 0;
   const failedRuns =
-    runs.data?.filter((item) => item.status === "FAILED").length ?? 0;
+    runs.data?.filter(
+      (item) =>
+        item.status === "FAILED" || item.status === "EXECUTION_FAILED",
+    ).length ?? 0;
   const successRate = totalRuns
     ? Math.round((completedRuns / totalRuns) * 100)
     : null;
   const topEntry = leaderboard.data?.entries[0];
+  const activeRun = runPlan.data?.active_run;
+  const activeRunTotal = activeRun?.total_item_count ?? runPlan.data?.dataset_item_count ?? 0;
+  const activeRunProgress = activeRun && activeRunTotal
+    ? Math.round((activeRun.completed_item_count / activeRunTotal) * 100)
+    : 0;
   const metadataEntries = Object.entries(experimentData.metadata ?? {});
 
   async function refreshExperiment() {
@@ -241,6 +445,14 @@ export function ExperimentDetailPage({
       }),
       queryClient.refetchQueries({
         queryKey: ["candidate-comparison", experimentId],
+        type: "all",
+      }),
+      queryClient.refetchQueries({
+        queryKey: ["experiment-run-plan", experimentId],
+        type: "all",
+      }),
+      queryClient.refetchQueries({
+        queryKey: ["run-evaluations", experimentId],
         type: "all",
       }),
     ]);
@@ -289,9 +501,34 @@ export function ExperimentDetailPage({
             {refreshing ? "Refreshing…" : "Refresh"}
           </Button>
           {experimentData.status === "DRAFT" && (
-            <Button disabled={run.isPending} onClick={() => run.mutate()}>
+            <Button
+              disabled={
+                run.isPending || candidates.isLoading || runPlan.isLoading || (totalCandidates ?? 0) === 0
+              }
+              title={(totalCandidates ?? 0) === 0 ? "Add at least one candidate before starting this experiment." : undefined}
+              onClick={() => {
+                const plan = runPlan.data;
+                if (!plan) return;
+                const message = `This experiment will make ${plan.model_invocation_count} model invocation${plan.model_invocation_count === 1 ? "" : "s"} (${plan.candidate_count} candidate${plan.candidate_count === 1 ? "" : "s"} × ${plan.dataset_item_count} dataset item${plan.dataset_item_count === 1 ? "" : "s"}). Each output will also be sent to the configured evaluator. Provider charges may apply. Continue?`;
+                if (window.confirm(message)) run.mutate();
+              }}
+            >
               <Play className="h-4 w-4" />
               {run.isPending ? "Running…" : "Start Experiment"}
+            </Button>
+          )}
+          {experimentData.status === "RUNNING" && (
+            <Button
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={cancel.isPending}
+              onClick={() => {
+                if (window.confirm("Cancel this experiment? Any evidence already captured will be retained, but no further candidate or evaluator calls will be started.")) {
+                  cancel.mutate();
+                }
+              }}
+            >
+              <CircleX className="h-4 w-4" />
+              {cancel.isPending ? "Cancelling…" : "Cancel Experiment"}
             </Button>
           )}
         </div>
@@ -360,6 +597,50 @@ export function ExperimentDetailPage({
             leaderboard={leaderboard.data}
             leaderboardLoading={leaderboard.isLoading}
           />
+
+          {runPlan.data && (
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {activeRun ? "Live Execution Progress" : "Run Plan"}
+                </CardTitle>
+                <CardDescription>
+                  {activeRun
+                    ? `Candidate ${activeRun.candidate_position} of ${runPlan.data.candidate_count}: ${activeRun.candidate_name}`
+                    : "The declared workload is calculated from the immutable dataset version."}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {activeRun ? (
+                  <>
+                    <div className="flex flex-wrap justify-between gap-2 text-sm">
+                      <span>
+                        Model execution: {activeRun.completed_item_count} of {activeRunTotal} dataset items
+                      </span>
+                      <span className="text-muted-foreground">
+                        Evaluation evidence: {activeRun.evaluated_item_count} of {activeRunTotal}
+                      </span>
+                    </div>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{ width: `${activeRunProgress}%` }}
+                      />
+                    </div>
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      Progress is persisted after every model invocation and is refreshed automatically while the experiment is running.
+                    </p>
+                  </>
+                ) : (
+                  <div className="grid gap-3 text-sm sm:grid-cols-3">
+                    <DetailItem label="Dataset items" value={runPlan.data.dataset_item_count} />
+                    <DetailItem label="Model invocations" value={runPlan.data.model_invocation_count} />
+                    <DetailItem label="Evaluation items" value={runPlan.data.evaluation_item_count} />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <div className="grid gap-4">
             <Card>
@@ -489,7 +770,7 @@ export function ExperimentDetailPage({
                   label="Prompt version"
                   value={candidate.prompt_version}
                   loading={prompts.isLoading}
-                  options={(prompts.data ?? []).map((item) => ({
+                  options={activePrompts.map((item) => ({
                     value: `${item.prompt_id}:${item.version}`,
                     label: `${item.name} · ${item.version}`,
                   }))}
@@ -501,19 +782,24 @@ export function ExperimentDetailPage({
                   label="Model version"
                   value={candidate.model_version}
                   loading={models.isLoading}
-                  options={(models.data ?? []).map((item) => ({
+                  options={activeModels.map((item) => ({
                     value: `${item.model_id}:${item.version}`,
                     label: `${item.provider} / ${item.model_name} · ${item.version}`,
                   }))}
                   onChange={(value) =>
-                    setCandidate({ ...candidate, model_version: value })
+                    setCandidate({
+                      ...candidate,
+                      model_version: value,
+                      runtime_connection_id: "",
+                      runtime_parameters: {},
+                    })
                   }
                 />
                 <AssetSelect
                   label="Dataset version"
                   value={candidate.dataset_version}
                   loading={datasets.isLoading}
-                  options={(datasets.data ?? []).map((item) => ({
+                  options={eligibleDatasets.map((item) => ({
                     value: `${item.dataset_id}:${item.version}`,
                     label: `${item.name} · ${item.version}`,
                   }))}
@@ -528,6 +814,72 @@ export function ExperimentDetailPage({
                   options={(providerInstallations.data ?? []).filter((item) => item.enabled).map((item) => ({ value: item.installation_id, label: `${item.display_name} · ${item.provider_type}` }))}
                   onChange={(value) => setCandidate({ ...candidate, provider_installation_id: value, provider_name: "" })}
                 />
+                <AssetSelect
+                  label={requiresCandidateRuntimeConnection ? "Runtime connection (required, matching provider only)" : "Runtime connection (matching provider only)"}
+                  value={candidate.runtime_connection_id}
+                  loading={runtimeConnections.isLoading}
+                  emptyOptionLabel={
+                    selectedModel
+                      ? `No active connection for ${selectedModel.provider}`
+                      : "Select a model version first"
+                  }
+                  options={compatibleRuntimeConnections
+                    .map((item) => ({
+                      value: item.runtime_connection_id,
+                      label: `${item.display_name} · ${item.provider}`,
+                    }))}
+                  onChange={(value) =>
+                    setCandidate({ ...candidate, runtime_connection_id: value })
+                  }
+                />
+                {selectedModel?.runtime_capabilities ? (
+                  <div className="rounded-md border p-3 text-xs">
+                    <p className="font-medium">Candidate runtime controls</p>
+                    <p className="mt-1 text-muted-foreground">
+                      {selectedModel.runtime_capabilities.invocation_contract} · {selectedModel.runtime_capabilities.verification.toLowerCase()}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {selectedModel.runtime_capabilities.parameters.map((parameter) => (
+                        <span key={parameter.name} className="rounded bg-muted px-2 py-1">
+                          {parameter.name.replaceAll("_", " ")}: {parameter.supported ? "supported" : "provider default"}
+                        </span>
+                      ))}
+                    </div>
+                    {selectedModel.runtime_capabilities.parameters
+                      .filter((parameter) => parameter.supported)
+                      .map((parameter) => (
+                        <label key={parameter.name} className="mt-3 grid gap-1 text-sm">
+                          {parameter.name.replaceAll("_", " ")}
+                          <Input
+                            type="number"
+                            min={parameter.minimum ?? undefined}
+                            max={parameter.maximum ?? undefined}
+                            step={parameter.value_type === "integer" ? 1 : "any"}
+                            value={String(candidate.runtime_parameters[parameter.name] ?? "")}
+                            placeholder={parameter.default == null ? "Provider default" : String(parameter.default)}
+                            onChange={(event) => {
+                              const runtimeParameters = { ...candidate.runtime_parameters };
+                              if (!event.target.value) delete runtimeParameters[parameter.name];
+                              else runtimeParameters[parameter.name] = Number(event.target.value);
+                              setCandidate({ ...candidate, runtime_parameters: runtimeParameters });
+                            }}
+                          />
+                        </label>
+                      ))}
+                  </div>
+                ) : null}
+                <p className="text-xs text-muted-foreground">
+                  {selectedModelProvider === "mock"
+                    ? "Mock models do not use Runtime Connections."
+                    : <>
+                        Required for candidate execution. Select a compatible, active
+                        model runtime configured in{" "}
+                        <Link className="text-primary underline" href="/settings">
+                          Settings → Runtime Connections
+                        </Link>
+                        .
+                      </>}
+                </p>
                 {!providerInstallations.isLoading && !(providerInstallations.data ?? []).some((item) => item.enabled) ? <p className="text-sm text-muted-foreground">Create and enable a provider installation in <Link className="text-primary underline" href="/assets/providers">Evaluation Providers</Link> before adding a candidate.</p> : null}
                 <Button
                   className="w-full"
@@ -537,7 +889,8 @@ export function ExperimentDetailPage({
                     !candidate.prompt_version ||
                     !candidate.model_version ||
                     !candidate.dataset_version ||
-                    !candidate.provider_installation_id
+                    !candidate.provider_installation_id ||
+                    (requiresCandidateRuntimeConnection && !candidate.runtime_connection_id)
                   }
                   onClick={() => add.mutate()}
                 >
@@ -550,39 +903,126 @@ export function ExperimentDetailPage({
       )}
 
       {tab === "Evaluation Runs" && (
+        <div className="space-y-4">
         <Card>
-          <CardHeader>
-            <CardTitle>Evaluation Runs</CardTitle>
+          <CardHeader className="flex-row items-center justify-between gap-4">
+            <div>
+              <CardTitle>Evaluation Runs</CardTitle>
+              <CardDescription>
+                Run state and durable execution progress. Drag a column divider
+                to resize it.
+              </CardDescription>
+            </div>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              Refresh
+              <select
+                aria-label="Evaluation result refresh interval"
+                className="h-9 rounded-md border bg-background px-2 text-foreground"
+                value={refreshInterval}
+                onChange={(event) => setRefreshInterval(event.target.value as "5" | "10" | "never")}
+              >
+                <option value="5">Every 5 seconds</option>
+                <option value="10">Every 10 seconds</option>
+                <option value="never">Never</option>
+              </select>
+            </label>
           </CardHeader>
           <CardContent>
             {runs.isLoading ? (
               <p className="text-sm text-muted-foreground">Loading runs…</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
+              <div className="overflow-x-auto pb-2">
+                <table
+                  className="table-fixed text-left text-sm"
+                  style={{ width: runTableWidth }}
+                >
+                  <colgroup>
+                    <col style={{ width: runColumnWidths.runId }} />
+                    <col style={{ width: runColumnWidths.candidate }} />
+                    <col style={{ width: runColumnWidths.status }} />
+                    <col style={{ width: runColumnWidths.started }} />
+                    <col style={{ width: runColumnWidths.duration }} />
+                    <col style={{ width: runColumnWidths.progress }} />
+                    <col style={{ width: runColumnWidths.failureReason }} />
+                  </colgroup>
                   <thead>
                     <tr className="border-b text-muted-foreground">
-                      <th className="p-2">Run ID</th>
-                      <th>Candidate</th>
-                      <th>Status</th>
-                      <th>Started</th>
-                      <th>Duration</th>
+                      <ResizableRunColumnHeader
+                        column="runId"
+                        onResizeBy={resizeRunColumn}
+                        onResizeStart={startRunColumnResize}
+                        width={runColumnWidths.runId}
+                      >
+                        Run ID
+                      </ResizableRunColumnHeader>
+                      <ResizableRunColumnHeader
+                        column="candidate"
+                        onResizeBy={resizeRunColumn}
+                        onResizeStart={startRunColumnResize}
+                        width={runColumnWidths.candidate}
+                      >
+                        Candidate
+                      </ResizableRunColumnHeader>
+                      <ResizableRunColumnHeader
+                        column="status"
+                        onResizeBy={resizeRunColumn}
+                        onResizeStart={startRunColumnResize}
+                        width={runColumnWidths.status}
+                      >
+                        Status
+                      </ResizableRunColumnHeader>
+                      <ResizableRunColumnHeader
+                        column="started"
+                        onResizeBy={resizeRunColumn}
+                        onResizeStart={startRunColumnResize}
+                        width={runColumnWidths.started}
+                      >
+                        Started
+                      </ResizableRunColumnHeader>
+                      <ResizableRunColumnHeader
+                        column="duration"
+                        onResizeBy={resizeRunColumn}
+                        onResizeStart={startRunColumnResize}
+                        width={runColumnWidths.duration}
+                      >
+                        Duration
+                      </ResizableRunColumnHeader>
+                      <ResizableRunColumnHeader
+                        column="progress"
+                        onResizeBy={resizeRunColumn}
+                        onResizeStart={startRunColumnResize}
+                        width={runColumnWidths.progress}
+                      >
+                        Progress
+                      </ResizableRunColumnHeader>
+                      <ResizableRunColumnHeader
+                        column="failureReason"
+                        onResizeBy={resizeRunColumn}
+                        onResizeStart={startRunColumnResize}
+                        width={runColumnWidths.failureReason}
+                      >
+                        Failure reason
+                      </ResizableRunColumnHeader>
                     </tr>
                   </thead>
                   <tbody>
                     {(runs.data ?? []).map((item) => (
-                      <tr key={item.run_id} className="border-b">
-                        <td className="p-2 font-mono text-xs">{item.run_id}</td>
-                        <td>{item.candidate_id}</td>
-                        <td>
+                      <tr key={item.run_id} className="border-b align-top">
+                        <td className="break-all px-2 py-3 font-mono text-xs">
+                          {item.run_id}
+                        </td>
+                        <td className="break-all px-2 py-3 font-mono text-xs">
+                          {item.candidate_id}
+                        </td>
+                        <td className="px-2 py-3">
                           <ExperimentStatusBadge status={item.status} />
                         </td>
-                        <td>
+                        <td className="px-2 py-3 text-xs">
                           {item.started_at
                             ? new Date(item.started_at).toLocaleString()
                             : "—"}
                         </td>
-                        <td>
+                        <td className="px-2 py-3 text-xs">
                           {item.started_at && item.completed_at
                             ? `${Math.round(
                                 (new Date(item.completed_at).getTime() -
@@ -590,6 +1030,14 @@ export function ExperimentDetailPage({
                                   1000,
                               )}s`
                             : "—"}
+                        </td>
+                        <td className="px-2 py-3 text-xs text-muted-foreground">
+                          {item.total_item_count
+                            ? `${item.completed_item_count}/${item.total_item_count} executed · ${item.evaluated_item_count} evaluated`
+                            : "—"}
+                        </td>
+                        <td className="break-words px-2 py-3 text-xs text-muted-foreground">
+                          {item.failure_reason ?? "—"}
                         </td>
                       </tr>
                     ))}
@@ -599,6 +1047,87 @@ export function ExperimentDetailPage({
             )}
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader className="flex-row items-center justify-between gap-4">
+            <div>
+              <CardTitle>Item Evaluation Results</CardTitle>
+              <CardDescription>
+                Completed scores are retained and visible even when a run fails or is cancelled.
+              </CardDescription>
+            </div>
+            {(runs.data?.length ?? 0) > 1 && (
+              <select
+                aria-label="Evaluation run results"
+                className="h-9 max-w-64 rounded-md border bg-background px-2 text-sm text-foreground"
+                value={activeResultRunId}
+                onChange={(event) => {
+                  setSelectedRunId(event.target.value);
+                  setEvaluationPage(1);
+                }}
+              >
+                {(runs.data ?? []).map((run) => (
+                  <option key={run.run_id} value={run.run_id}>
+                    {run.candidate_id} · {run.status}
+                  </option>
+                ))}
+              </select>
+            )}
+          </CardHeader>
+          <CardContent>
+            {runEvaluations.isLoading ? (
+              <p className="text-sm text-muted-foreground">Loading item results…</p>
+            ) : !activeResultRunId ? (
+              <p className="text-sm text-muted-foreground">Start a run to collect item-level evaluation results.</p>
+            ) : !evaluationResults || evaluationResults.items.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No item evaluations have completed for this run yet.</p>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b text-muted-foreground">
+                        <th className="p-2">Item</th>
+                        <th>Evaluator</th>
+                        <th>Model API latency</th>
+                        <th>Scores</th>
+                        <th>Completed</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {evaluationResults.items.map((item) => (
+                        <tr key={item.evaluation_id} className="border-b align-top">
+                          <td className="p-2 font-mono text-xs">{item.execution_id.split(":").slice(-2).join(":")}</td>
+                          <td>{item.evaluator_type}</td>
+                          <td className="whitespace-nowrap text-xs text-muted-foreground">
+                            {item.model_latency_ms == null ? "—" : `${item.model_latency_ms} ms`}
+                          </td>
+                          <td className="space-y-1">
+                            {item.metrics.map((metric) => (
+                              <span key={metric.name} className="mr-1 inline-block rounded bg-muted px-2 py-1 text-xs">
+                                {metric.name}: {metric.score.toFixed(3)}
+                              </span>
+                            ))}
+                          </td>
+                          <td className="text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+                  <span>
+                    Showing {((evaluationResults.page - 1) * evaluationResults.page_size) + 1}–{Math.min(evaluationResults.page * evaluationResults.page_size, evaluationResults.total_items)} of {evaluationResults.total_items}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" disabled={evaluationPage === 1} onClick={() => setEvaluationPage((current) => current - 1)}>Previous</Button>
+                    <Button variant="outline" size="sm" disabled={evaluationPage * evaluationResults.page_size >= evaluationResults.total_items} onClick={() => setEvaluationPage((current) => current + 1)}>Next</Button>
+                  </div>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+        </div>
       )}
 
       {tab === "Leaderboard" && (
@@ -769,6 +1298,15 @@ function CandidateCard({ candidate }: { candidate: Candidate }) {
           version={candidate.dataset_version}
         />
       </div>
+
+      {candidate.runtime_connection_id ? (
+        <div className="mt-5 border-t pt-4">
+          <CandidateField
+            label="Runtime connection"
+            value={candidate.runtime_connection_id}
+          />
+        </div>
+      ) : null}
 
       <div className="mt-5 border-t pt-4">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -1189,12 +1727,14 @@ function AssetSelect({
   value,
   loading,
   options,
+  emptyOptionLabel,
   onChange,
 }: {
   label: string;
   value: string;
   loading: boolean;
   options: { value: string; label: string }[];
+  emptyOptionLabel?: string;
   onChange: (value: string) => void;
 }) {
   return (
@@ -1210,7 +1750,7 @@ function AssetSelect({
           {loading
             ? "Loading…"
             : options.length === 0
-              ? "No governed assets available"
+              ? emptyOptionLabel ?? "No governed assets available"
               : "Select a version"}
         </option>
         {options.map((option) => (
@@ -1221,4 +1761,22 @@ function AssetSelect({
       </select>
     </label>
   );
+}
+
+function runtimeProviderKey(provider: string): string {
+  const normalized = provider
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  if (normalized.startsWith("custom_")) {
+    return "custom";
+  }
+  const aliases: Record<string, string> = {
+      open_ai: "openai",
+      anthropic_ai: "anthropic",
+      openai_compatible: "custom",
+      other: "custom",
+  };
+  return aliases[normalized] ?? normalized;
 }

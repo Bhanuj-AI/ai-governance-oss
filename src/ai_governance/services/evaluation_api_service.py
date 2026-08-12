@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 
 from ai_governance.domain.evaluation_result import EvaluationResult
@@ -135,6 +135,9 @@ class EvaluationApiService:
             provider_config=effective_provider_config,
             metric_specs=metric_specs,
         )
+        model_latency_ms = _model_latency_ms(execution)
+        if model_latency_ms is not None:
+            result.metadata["model_latency_ms"] = model_latency_ms
         if context is not None:
             result.organization_id = context.organization_id
             result.project_id = context.project_id or ""
@@ -292,3 +295,14 @@ def _evaluation_in_context(
         result.organization_id == context.organization_id
         and result.project_id == context.project_id
     )
+
+
+def _model_latency_ms(execution: WorkflowExecution) -> int | None:
+    """Extract the safe model invocation latency from candidate evidence."""
+    runtime_evidence = execution.metadata.get("runtime_evidence")
+    if not isinstance(runtime_evidence, Mapping):
+        return None
+    value = runtime_evidence.get("latency_ms")
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
