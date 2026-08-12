@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
+import logging
 from pathlib import Path
 
+import pytest
 from fastapi import Depends, FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
@@ -9,7 +12,7 @@ from pydantic import BaseModel, ValidationError
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from ai_governance import __version__
-from ai_governance.api.app import create_app
+from ai_governance.api.app import _configure_application_logging, create_app
 from ai_governance.api.dependencies import (
     get_api_settings,
     get_governance_decision_repository,
@@ -20,7 +23,11 @@ from ai_governance.api.dependencies import (
     get_policy_administration_repository,
     get_prompt_registry_service,
 )
-from ai_governance.api.logging import request_logging_middleware
+from ai_governance.api.logging import (
+    ControlPlaneJsonFormatter,
+    configure_sensitive_third_party_logging,
+    request_logging_middleware,
+)
 from ai_governance.ontology import (
     InMemoryOntologyGraphQueryRepository,
     InMemoryOntologyGraphRepository,
@@ -204,6 +211,50 @@ def test_request_logging_middleware_is_registered() -> None:
     )
 
 
+def test_application_logging_routes_service_events_to_stderr() -> None:
+    _configure_application_logging("debug", "json")
+
+    application_logger = logging.getLogger("ai_governance")
+
+    assert application_logger.level == logging.DEBUG
+    assert application_logger.handlers
+    assert application_logger.propagate is False
+
+
+def test_application_json_logging_extracts_event_fields() -> None:
+    record = logging.LogRecord(
+        "ai_governance.services.candidate_execution_runtime",
+        logging.INFO,
+        __file__,
+        1,
+        "candidate_execution_completed run_id=%s latency_ms=%s",
+        ("run-1", 2076),
+        None,
+    )
+
+    payload = json.loads(ControlPlaneJsonFormatter().format(record))
+
+    assert payload["event"] == "candidate_execution_completed"
+    assert payload["component"] == "services.candidate_execution_runtime"
+    assert payload["fields"] == {"latency_ms": "2076", "run_id": "run-1"}
+
+
+def test_trulens_raw_response_warning_is_redacted(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    configure_sensitive_third_party_logging()
+    logger = logging.getLogger("trulens.feedback.generated")
+
+    with caplog.at_level(logging.WARNING, logger=logger.name):
+        logger.warning(
+            "Multiple valid rating values found in the string: %s",
+            '{"output":"protected provider response"}',
+        )
+
+    assert "trulens_ambiguous_score_response" in caplog.text
+    assert "protected provider response" not in caplog.text
+
+
 def test_request_logging_adds_request_id_header() -> None:
     client = TestClient(create_app())
 
@@ -219,6 +270,7 @@ def test_api_settings_use_environment_defaults_and_overrides(
     monkeypatch.delenv("AI_GOVERNANCE_API_HOST", raising=False)
     monkeypatch.delenv("AI_GOVERNANCE_API_PORT", raising=False)
     monkeypatch.delenv("AI_GOVERNANCE_API_LOG_LEVEL", raising=False)
+    monkeypatch.delenv("AI_GOVERNANCE_API_LOG_FORMAT", raising=False)
     monkeypatch.delenv("AI_GOVERNANCE_AUTO_SEED_DEMO_DATA", raising=False)
 
     # Set explicit values for the "defaults" test
@@ -232,11 +284,13 @@ def test_api_settings_use_environment_defaults_and_overrides(
     assert defaults.host == "127.0.0.1"
     assert defaults.port == 8000
     assert defaults.log_level == "INFO"
+    assert defaults.log_format == "json"
     assert defaults.auto_seed_demo_data is False
 
     monkeypatch.setenv("AI_GOVERNANCE_API_HOST", "0.0.0.0")
     monkeypatch.setenv("AI_GOVERNANCE_API_PORT", "9000")
     monkeypatch.setenv("AI_GOVERNANCE_API_LOG_LEVEL", "debug")
+    monkeypatch.setenv("AI_GOVERNANCE_API_LOG_FORMAT", "text")
     monkeypatch.setenv("AI_GOVERNANCE_AUTO_SEED_DEMO_DATA", "true")
 
     overridden = get_api_settings()
@@ -244,6 +298,7 @@ def test_api_settings_use_environment_defaults_and_overrides(
     assert overridden.host == "0.0.0.0"
     assert overridden.port == 9000
     assert overridden.log_level == "debug"
+    assert overridden.log_format == "text"
     assert overridden.auto_seed_demo_data is True
 
 

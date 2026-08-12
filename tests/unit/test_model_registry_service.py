@@ -9,9 +9,29 @@ from ai_governance.repositories.in_memory_model_repository import (
 )
 from ai_governance.services.models import (
     ModelLifecycleError,
+    ModelProviderNotAllowedError,
     ModelRegistryService,
+    ModelRuntimeParameterError,
     ModelVersionConflictError,
 )
+from ai_governance.tenancy.domain import TenantContext
+
+
+_CONTEXT = TenantContext("org_default", "project_default", "governance-admin", "test-request")
+
+
+class _TenantScopedService:
+    def __init__(self, service: ModelRegistryService) -> None:
+        self._service = service
+
+    def __getattr__(self, name: str):
+        target = getattr(self._service, name)
+        if not callable(target):
+            return target
+        def scoped(*args, **kwargs):
+            kwargs.setdefault("context", _CONTEXT)
+            return target(*args, **kwargs)
+        return scoped
 
 
 def test_model_registry_registers_model() -> None:
@@ -43,6 +63,63 @@ def test_model_registry_registers_model() -> None:
     assert model.creator == "governance-admin"
     assert model.created_at == datetime(2026, 6, 25, tzinfo=UTC)
     assert model.status == ModelStatus.DRAFT
+    assert model.runtime_capabilities.profile_id == "openai-chat-completions-standard"
+    assert model.runtime_capabilities.supports("temperature") is True
+
+
+def test_model_registry_persists_reasoning_model_capability_contract() -> None:
+    model = _create_service().register_model(
+        provider="openai",
+        model_name="gpt-5.5",
+        version="v1",
+        parameters={},
+        context_window=128000,
+        creator="governance-admin",
+    )
+
+    assert model.runtime_capabilities.supports("max_output_tokens") is True
+    assert model.runtime_capabilities.supports("temperature") is False
+
+
+def test_model_registry_rejects_unsupported_reasoning_model_runtime_defaults() -> None:
+    with pytest.raises(ModelRuntimeParameterError, match="temperature.*not supported"):
+        _create_service().register_model(
+            provider="openai",
+            model_name="gpt-5.5",
+            version="v1",
+            parameters={"temperature": 0.2},
+            context_window=128000,
+            creator="governance-admin",
+        )
+
+
+def test_model_registry_accepts_canonical_reasoning_model_output_limit() -> None:
+    model = _create_service().register_model(
+        provider="openai",
+        model_name="gpt-5.5",
+        version="v1",
+        parameters={"max_output_tokens": 4096},
+        context_window=128000,
+        creator="governance-admin",
+    )
+
+    assert model.parameters == {"max_output_tokens": 4096}
+
+
+def test_model_registry_keeps_governed_name_separate_from_provider_model_id() -> None:
+    model = _create_service().register_model(
+        provider="openai",
+        model_name="claims-assistant",
+        provider_model_id="gpt-5.5",
+        version="v1",
+        parameters={"max_output_tokens": 4096},
+        context_window=128000,
+        creator="governance-admin",
+    )
+
+    assert model.model_name == "claims-assistant"
+    assert model.runtime_model_identifier == "gpt-5.5"
+    assert model.runtime_capabilities.supports("temperature") is False
 
 
 def test_model_registry_rejects_duplicate_model_version() -> None:
@@ -94,6 +171,7 @@ def test_model_registry_creates_new_version() -> None:
         "temperature": 0.2,
         "reasoning": "medium",
     }
+    assert versioned.runtime_capabilities.profile_id == "openai-chat-completions-standard"
     assert versioned.context_window == 256000
     assert versioned.status == ModelStatus.DRAFT
 
@@ -170,6 +248,30 @@ def test_model_registry_rejects_activation_of_archived_model() -> None:
 
     with pytest.raises(ModelLifecycleError):
         service.activate_model_version(model.model_id)
+
+
+def test_model_registry_does_not_transition_observed_runtime_evidence() -> None:
+    service = _create_service()
+    observed = service.observe_model(
+        provider="OpenAI",
+        model_name="gpt-5",
+        version="2026-06",
+        source_system="evaluation-sdk",
+        source_reference="run-123",
+        parameters={"temperature": 0.2},
+        context_window=128000,
+        observed_by="runtime-agent",
+    )
+
+    with pytest.raises(ModelLifecycleError, match="Observed model evidence"):
+        service.activate_model_version(observed.model_id)
+
+    with pytest.raises(ModelLifecycleError, match="Observed model evidence"):
+        service.create_model_version(
+            model_id=observed.model_id,
+            version="2026-07",
+            creator="governance-admin",
+        )
 
 
 def test_model_registry_retrieves_specific_version_and_lists_versions() -> None:
@@ -265,6 +367,37 @@ def test_model_registry_rejects_conflicting_observed_evidence() -> None:
         )
 
 
+def test_model_registry_rejects_disallowed_managed_runtime_provider() -> None:
+    service = _create_service(allowed_runtime_providers=("aws_bedrock",))
+
+    with pytest.raises(ModelProviderNotAllowedError):
+        service.register_model(
+            provider="OpenAI",
+            model_name="GPT-4.1",
+            version="2026-06-25",
+            parameters={},
+            context_window=128000,
+            creator="governance-admin",
+        )
+
+
+def test_model_registry_retains_unknown_observed_runtime_provider() -> None:
+    service = _create_service(allowed_runtime_providers=("openai",))
+
+    observed = service.observe_model(
+        provider="private-runtime",
+        model_name="governed-model",
+        version="v1",
+        source_system="runtime-agent",
+        source_reference="run-123",
+        parameters={},
+        context_window=4096,
+        observed_by="runtime-agent",
+    )
+
+    assert observed.provider == "private-runtime"
+
+
 def test_model_registry_compares_model_versions() -> None:
     service = _create_service()
     original = service.register_model(
@@ -307,11 +440,18 @@ def test_model_registry_compares_model_versions() -> None:
     assert diff.has_changes is True
 
 
-def _create_service() -> ModelRegistryService:
+def _create_service(
+    allowed_runtime_providers: tuple[str, ...] | None = None,
+) -> _TenantScopedService:
     ids = iter(["model-1", "model-2", "model-3"])
 
-    return ModelRegistryService(
+    return _TenantScopedService(ModelRegistryService(
         model_repository=InMemoryModelRepository(),
         id_generator=lambda: next(ids),
         clock=lambda: datetime(2026, 6, 25, tzinfo=UTC),
-    )
+        allowed_runtime_providers=(
+            (lambda _context: allowed_runtime_providers)
+            if allowed_runtime_providers is not None
+            else None
+        ),
+    ))

@@ -64,7 +64,7 @@ type Journey = {
   steps: JourneyStep[];
 };
 
-const docs = "https://ai_governance.bhanuj.app/docs";
+const docs = "https://ai-governance.bhanuj.app/docs";
 
 const JOURNEYS: Journey[] = [
   {
@@ -247,7 +247,7 @@ export function OnboardingJourney({ onOpenDashboard }: { onOpenDashboard?: () =>
             <p className="mt-5 text-sm font-semibold text-primary">Local Studio setup</p>
             <h1 className="mt-2 text-2xl font-semibold">Seed demo data before starting a journey.</h1>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">The mentor uses a representative end-to-end workflow—assets, evaluations, decisions, replays, and ontology lineage. Your running stack does not have that seed yet.</p>
-            <div className="mt-6 border bg-muted/40 p-4 text-left"><p className="font-mono text-xs text-muted-foreground">Run from your AI Governance Control Plane checkout</p><code className="mt-2 block font-mono text-sm">./ai_governance.sh</code></div>
+            <div className="mt-6 border bg-muted/40 p-4 text-left"><p className="font-mono text-xs text-muted-foreground">Run from your AI Governance Control Plane checkout</p><code className="mt-2 block font-mono text-sm">./servers.sh</code></div>
             <p className="mt-4 text-xs leading-5 text-muted-foreground">For a clean local stack, keep <code>AI_GOVERNANCE_AUTO_SEED_DEMO_DATA</code> enabled. The normal launcher performs the complete, idempotent demo seed.</p>
             {seedDemoData.isError ? <p role="alert" className="mt-4 text-sm text-destructive">{seedDemoData.error instanceof Error ? seedDemoData.error.message : "The demo data could not be seeded. Check the local API and try again."}</p> : null}
             <div className="mt-6 flex flex-wrap justify-center gap-3"><Button onClick={() => seedDemoData.mutate()} disabled={seedDemoData.isPending}>{seedDemoData.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}{seedDemoData.isPending ? "Seeding demo data…" : "Seed demo data"}</Button><Button variant="outline" onClick={refreshSeedStatus} disabled={seedDemoData.isPending}>Refresh status</Button><a href={`${docs}/getting-started`} target="_blank" rel="noreferrer"><Button variant="outline">Open setup guide <ExternalLink className="h-4 w-4" /></Button></a></div>
@@ -320,7 +320,7 @@ export function OnboardingJourney({ onOpenDashboard }: { onOpenDashboard?: () =>
             </ol>
             {!baseline ? <div className="border-t p-5"><Button onClick={beginJourney} disabled={loading}><Play className="h-4 w-4" />Start {journey.title}</Button></div> : null}
           </CardContent></Card></section>
-          <aside className="space-y-4"><Card className="journey-panel"><CardContent className="p-5"><p className="text-sm font-semibold">Capabilities in this journey</p><div className="mt-4 space-y-3">{journey.unlocks.map(capability => <div key={capability} className="flex items-center gap-2 text-sm">{finished ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <Circle className="h-4 w-4 text-muted-foreground" />}<span className={finished ? "text-foreground" : "text-muted-foreground"}>{capability}</span></div>)}</div></CardContent></Card><Card className="journey-panel"><CardContent className="p-5"><p className="text-sm font-semibold">Need more context?</p><p className="mt-2 text-sm leading-5 text-muted-foreground">Mentor guidance stays in Studio. The detailed reference remains one click away.</p><a href={docs} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">Read documentation <ExternalLink className="h-3.5 w-3.5" /></a></CardContent></Card></aside>
+          <aside className="space-y-4"><Card className="journey-panel"><CardContent className="p-5"><p className="text-sm font-semibold">Journey Capabilities</p><div className="mt-4 space-y-3">{journey.unlocks.map(capability => <div key={capability} className="flex items-center gap-2 text-sm">{finished ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <Circle className="h-4 w-4 text-muted-foreground" />}<span className={finished ? "text-foreground" : "text-muted-foreground"}>{capability}</span></div>)}</div></CardContent></Card><Card className="journey-panel"><CardContent className="p-5"><p className="text-sm font-semibold">Need more context?</p><p className="mt-2 text-sm leading-5 text-muted-foreground">Mentor guidance stays in Studio. The detailed reference remains one click away.</p><a href={docs} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">Read documentation <ExternalLink className="h-3.5 w-3.5" /></a></CardContent></Card></aside>
         </div>
         <div className="border-t pt-5"><label className="flex items-center gap-2 text-sm text-muted-foreground"><input type="checkbox" checked={hideOnStartup} onChange={event => setStartupPreference(event.target.checked)} /> Don&apos;t show journeys on startup</label></div>
       </div>

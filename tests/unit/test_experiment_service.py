@@ -152,6 +152,21 @@ def test_experiment_service_fails_running_experiment() -> None:
     assert failed.status == ExperimentStatus.FAILED
 
 
+def test_experiment_service_cancels_running_experiment_idempotently() -> None:
+    service = _create_service()
+    experiment = service.create_experiment(
+        name="support-prompt-benchmark",
+        description="Compare support prompt revisions.",
+        owner="governance-team",
+    )
+    service.start_experiment(experiment.experiment_id)
+
+    cancelled = service.cancel_experiment(experiment.experiment_id)
+
+    assert cancelled.status == ExperimentStatus.CANCELLED
+    assert service.cancel_experiment(experiment.experiment_id) == cancelled
+
+
 def test_experiment_service_rejects_start_after_completion() -> None:
     service = _create_service()
     experiment = service.create_experiment(

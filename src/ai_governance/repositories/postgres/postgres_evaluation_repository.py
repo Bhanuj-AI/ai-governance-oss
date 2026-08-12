@@ -5,10 +5,12 @@ from typing import final
 from ai_governance.databases.postgres.database import PostgresDatabase
 from ai_governance.domain.evaluation_result import EvaluationResult
 from ai_governance.repositories.evaluation_repository import EvaluationRepository
+from ai_governance.repositories.evaluation_repository import EvaluationResultPage
 from ai_governance.repositories.mappers.evaluation_persistence_mapper import (
     EvaluationPersistenceMapper,
 )
 from ai_governance.repositories.postgres._record_adapter import with_jsonb_fields
+from ai_governance.tenancy.domain import TenantContext
 
 
 @final
@@ -108,6 +110,37 @@ class PostgresEvaluationRepository(EvaluationRepository):
     ORDER BY metric_name
     """
 
+    _COUNT_BY_EXECUTION_PREFIX_SQL = """
+    SELECT COUNT(DISTINCT evaluation_id)
+    FROM agent_evaluation
+    WHERE execution_id LIKE %(execution_id_prefix)s
+      AND organization_id = %(organization_id)s
+      AND project_id = %(project_id)s
+    """
+
+    _FIND_PAGE_BY_EXECUTION_PREFIX_SQL = """
+    WITH selected AS (
+        SELECT evaluation_id
+        FROM agent_evaluation
+        WHERE execution_id LIKE %(execution_id_prefix)s
+          AND organization_id = %(organization_id)s
+          AND project_id = %(project_id)s
+        GROUP BY evaluation_id, execution_id, created_at
+        ORDER BY created_at ASC, execution_id ASC, evaluation_id ASC
+        LIMIT %(limit)s OFFSET %(offset)s
+    )
+    SELECT
+        evaluation_id, execution_id, evaluator_type, evaluator_version,
+        metric_name, metric_score, explanation, metadata_json::text AS metadata_json,
+        provider_metadata_json::text AS provider_metadata_json,
+        provider_descriptor_snapshot_json::text AS provider_descriptor_snapshot_json,
+        artifacts_json::text AS artifacts_json, created_at::text AS created_at,
+        organization_id, project_id
+    FROM agent_evaluation
+    WHERE evaluation_id IN (SELECT evaluation_id FROM selected)
+    ORDER BY created_at ASC, execution_id ASC, evaluation_id ASC, metric_name ASC
+    """
+
     def __init__(
         self,
         database: PostgresDatabase,
@@ -170,3 +203,32 @@ class PostgresEvaluationRepository(EvaluationRepository):
             return []
 
         return EvaluationPersistenceMapper.from_persistence_records(rows)
+
+    def find_page_by_execution_id_prefix(
+        self,
+        execution_id_prefix: str,
+        context: TenantContext,
+        *,
+        offset: int,
+        limit: int,
+    ) -> EvaluationResultPage:
+        parameters = {
+            "execution_id_prefix": f"{execution_id_prefix}%",
+            "organization_id": context.organization_id,
+            "project_id": context.project_id or "",
+            "offset": offset,
+            "limit": limit,
+        }
+        with self._database.connect() as connection:
+            total_count = connection.execute(
+                self._COUNT_BY_EXECUTION_PREFIX_SQL,
+                parameters,
+            ).fetchone()[0]
+            rows = connection.execute(
+                self._FIND_PAGE_BY_EXECUTION_PREFIX_SQL,
+                parameters,
+            ).fetchall()
+        return EvaluationResultPage(
+            items=tuple(EvaluationPersistenceMapper.from_persistence_records(rows)),
+            total_count=total_count,
+        )

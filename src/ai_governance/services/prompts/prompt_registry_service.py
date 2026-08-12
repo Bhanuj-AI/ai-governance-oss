@@ -18,6 +18,7 @@ from ai_governance.ontology.synchronization import (
     OntologySyncEventPublisherProtocol,
 )
 from ai_governance.repositories.prompt_repository import PromptRepository
+from ai_governance.tenancy.domain import TenantContext
 
 
 class PromptNotFoundError(Exception):
@@ -69,6 +70,7 @@ class PromptRegistryService:
         template: str,
         variables: Iterable[str],
         created_by: str,
+        context: TenantContext,
     ) -> Prompt:
         """
         Register a new prompt version in DRAFT status.
@@ -77,6 +79,7 @@ class PromptRegistryService:
         self._ensure_version_available(
             name=name,
             version=version,
+            context=context,
         )
 
         prompt = Prompt(
@@ -88,6 +91,9 @@ class PromptRegistryService:
             created_at=self._clock(),
             created_by=created_by,
             status=PromptStatus.DRAFT,
+            tenant_id=context.organization_id,
+            organization_id=context.organization_id,
+            project_id=self._project_id(context),
         )
 
         self._prompt_repository.save(prompt)
@@ -100,6 +106,7 @@ class PromptRegistryService:
         prompt_id: str,
         version: str,
         created_by: str,
+        context: TenantContext,
         template: str | None = None,
         variables: Iterable[str] | None = None,
     ) -> Prompt:
@@ -110,10 +117,11 @@ class PromptRegistryService:
         from the source prompt.
         """
 
-        source = self._get_prompt(prompt_id)
+        source = self._get_prompt(prompt_id, context)
         self._ensure_version_available(
             name=source.name,
             version=version,
+            context=context,
         )
 
         prompt = Prompt(
@@ -129,6 +137,9 @@ class PromptRegistryService:
             created_at=self._clock(),
             created_by=created_by,
             status=PromptStatus.DRAFT,
+            tenant_id=context.organization_id,
+            organization_id=context.organization_id,
+            project_id=self._project_id(context),
         )
 
         self._prompt_repository.save(prompt)
@@ -147,6 +158,7 @@ class PromptRegistryService:
         content_hash: str | None,
         variables: Iterable[str],
         observed_by: str,
+        context: TenantContext,
     ) -> Prompt:
         """Record runtime evidence without claiming authorship of a prompt.
 
@@ -161,7 +173,9 @@ class PromptRegistryService:
         if resolved_hash is None:
             raise ValueError("Observed prompts require content or content_hash.")
 
-        existing = self._prompt_repository.find_by_name_and_version(name, version)
+        existing = self._prompt_repository.find_by_name_and_version(
+            name, version, context.organization_id, self._project_id(context)
+        )
         if existing is not None:
             if (
                 existing.provenance == AssetProvenance.OBSERVED
@@ -174,9 +188,7 @@ class PromptRegistryService:
                 f"Prompt '{name}' version '{version}' is already recorded with different evidence."
             )
 
-        identity = "|".join(
-            (source_system, source_reference or "", name, version, resolved_hash)
-        )
+        identity = "|".join((context.organization_id, self._project_id(context), source_system, source_reference or "", name, version, resolved_hash))
         prompt = Prompt(
             prompt_id=str(uuid5(NAMESPACE_URL, f"ai-governance:observed-prompt:{identity}")),
             name=name,
@@ -191,6 +203,9 @@ class PromptRegistryService:
             source_reference=source_reference,
             content_hash=resolved_hash,
             content_available=template is not None,
+            tenant_id=context.organization_id,
+            organization_id=context.organization_id,
+            project_id=self._project_id(context),
         )
         self._prompt_repository.save(prompt)
         self._publish_prompt_event("PromptVersionObserved", prompt)
@@ -200,13 +215,14 @@ class PromptRegistryService:
         self,
         baseline_prompt_id: str,
         candidate_prompt_id: str,
+        context: TenantContext,
     ) -> PromptDiff:
         """
         Compare two prompt versions by template and variables.
         """
 
-        baseline = self._get_prompt(baseline_prompt_id)
-        candidate = self._get_prompt(candidate_prompt_id)
+        baseline = self._get_prompt(baseline_prompt_id, context)
+        candidate = self._get_prompt(candidate_prompt_id, context)
 
         baseline_variables = set(baseline.variables)
         candidate_variables = set(candidate.variables)
@@ -235,19 +251,22 @@ class PromptRegistryService:
     def activate_prompt(
         self,
         prompt_id: str,
+        context: TenantContext,
     ) -> Prompt:
         """
         Activate one prompt version and deprecate other active versions.
         """
 
-        prompt = self._get_prompt(prompt_id)
+        prompt = self._get_prompt(prompt_id, context)
 
         if prompt.status == PromptStatus.ARCHIVED:
             raise PromptLifecycleError(
                 "Archived prompts cannot be activated."
             )
 
-        for existing in self._prompt_repository.find_by_name(prompt.name):
+        for existing in self._prompt_repository.find_by_name(
+            prompt.name, context.organization_id, self._project_id(context)
+        ):
             if (
                 existing.prompt_id != prompt.prompt_id
                 and existing.status == PromptStatus.ACTIVE
@@ -274,12 +293,13 @@ class PromptRegistryService:
     def archive_prompt(
         self,
         prompt_id: str,
+        context: TenantContext,
     ) -> Prompt:
         """
         Archive a prompt version so it is no longer deployable.
         """
 
-        prompt = self._get_prompt(prompt_id)
+        prompt = self._get_prompt(prompt_id, context)
 
         if prompt.status == PromptStatus.ARCHIVED:
             return prompt
@@ -296,34 +316,38 @@ class PromptRegistryService:
     def get_prompt(
         self,
         prompt_id: str,
+        context: TenantContext,
     ) -> Prompt:
         """
         Return a prompt by ID.
         """
 
-        return self._get_prompt(prompt_id)
+        return self._get_prompt(prompt_id, context)
 
-    def list_prompts(self) -> list[Prompt]:
+    def list_prompts(self, context: TenantContext) -> list[Prompt]:
         """
         Return every prompt version in the registry.
         """
 
-        return self._prompt_repository.find_all()
+        return self._prompt_repository.find_all(
+            context.organization_id, self._project_id(context)
+        )
 
-    def list_visible_prompts(self) -> list[Prompt]:
+    def list_visible_prompts(self, context: TenantContext) -> list[Prompt]:
         """
         Return prompt versions visible through read-only discovery APIs.
         """
 
         return [
             prompt
-            for prompt in self.list_prompts()
+            for prompt in self.list_prompts(context)
             if prompt.status != PromptStatus.ARCHIVED
         ]
 
     def list_prompt_versions(
         self,
         name: str,
+        context: TenantContext,
     ) -> list[Prompt]:
         """
         Return non-archived versions for one logical prompt name.
@@ -331,7 +355,9 @@ class PromptRegistryService:
 
         prompts = [
             prompt
-            for prompt in self._prompt_repository.find_by_name(name)
+            for prompt in self._prompt_repository.find_by_name(
+                name, context.organization_id, self._project_id(context)
+            )
             if prompt.status != PromptStatus.ARCHIVED
         ]
 
@@ -345,8 +371,11 @@ class PromptRegistryService:
     def _get_prompt(
         self,
         prompt_id: str,
+        context: TenantContext,
     ) -> Prompt:
-        prompt = self._prompt_repository.find_by_id(prompt_id)
+        prompt = self._prompt_repository.find_by_id(
+            prompt_id, context.organization_id, self._project_id(context)
+        )
 
         if prompt is None:
             raise PromptNotFoundError(
@@ -359,17 +388,26 @@ class PromptRegistryService:
         self,
         name: str,
         version: str,
+        context: TenantContext,
     ) -> None:
         if (
             self._prompt_repository.find_by_name_and_version(
                 name=name,
                 version=version,
+                organization_id=context.organization_id,
+                project_id=self._project_id(context),
             )
             is not None
         ):
             raise PromptVersionConflictError(
                 f"Prompt '{name}' version '{version}' already exists."
             )
+
+    @staticmethod
+    def _project_id(context: TenantContext) -> str:
+        if context.project_id is None:
+            raise ValueError("Prompt registry operations require project scope.")
+        return context.project_id
 
     def _publish_prompt_event(
         self,

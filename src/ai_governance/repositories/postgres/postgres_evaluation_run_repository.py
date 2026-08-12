@@ -28,7 +28,11 @@ class PostgresEvaluationRunRepository(EvaluationRunRepository):
         evaluation_result_id,
         started_at,
         completed_at,
-        status
+        status,
+        failure_reason,
+        total_item_count,
+        completed_item_count,
+        evaluated_item_count
     )
     VALUES (
         %(run_id)s,
@@ -39,7 +43,11 @@ class PostgresEvaluationRunRepository(EvaluationRunRepository):
         %(evaluation_result_id)s,
         %(started_at)s,
         %(completed_at)s,
-        %(status)s
+        %(status)s,
+        %(failure_reason)s,
+        %(total_item_count)s,
+        %(completed_item_count)s,
+        %(evaluated_item_count)s
     )
     ON CONFLICT (run_id)
     DO UPDATE SET
@@ -50,7 +58,11 @@ class PostgresEvaluationRunRepository(EvaluationRunRepository):
         evaluation_result_id = EXCLUDED.evaluation_result_id,
         started_at = EXCLUDED.started_at,
         completed_at = EXCLUDED.completed_at,
-        status = EXCLUDED.status
+        status = EXCLUDED.status,
+        failure_reason = EXCLUDED.failure_reason,
+        total_item_count = EXCLUDED.total_item_count,
+        completed_item_count = EXCLUDED.completed_item_count,
+        evaluated_item_count = EXCLUDED.evaluated_item_count
     """
 
     _SELECT_RUN_COLUMNS = """
@@ -63,7 +75,11 @@ class PostgresEvaluationRunRepository(EvaluationRunRepository):
         evaluation_result_id,
         started_at::text AS started_at,
         completed_at::text AS completed_at,
-        status
+        status,
+        failure_reason,
+        total_item_count,
+        completed_item_count,
+        evaluated_item_count
     FROM evaluation_run
     """
 

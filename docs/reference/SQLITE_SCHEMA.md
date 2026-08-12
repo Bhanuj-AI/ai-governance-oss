@@ -118,11 +118,14 @@ Current schema summary:
 - `artifacts_json`
 - `created_at`
 - `explanation`
+- `organization_id`
+- `project_id`
 
 Notes:
 
 - primary key is `(evaluation_id, metric_name)`
 - indexed by execution, metric, and evaluator
+- item-evaluation listing is scoped by organization and project
 - provider descriptor snapshots and runtime metadata are stored as generic JSON
   text, not provider-specific columns
 
@@ -234,6 +237,10 @@ Current schema summary:
 - `started_at`
 - `completed_at`
 - `status`
+- `failure_reason`
+- `total_item_count`
+- `completed_item_count`
+- `evaluated_item_count`
 
 ### leaderboard
 

@@ -118,14 +118,18 @@ function mapRelationship(dto: GraphRelationshipDto): GraphRelationship {
 }
 
 export function mapSubgraph(dto: GraphSubgraphDto): GraphSubgraph {
+  const edgesByRelationshipId = new Map<string, { relationship: GraphRelationship }>();
+  for (const edge of dto.edges) {
+    const relationship = mapRelationship(edge.relationship);
+    edgesByRelationshipId.set(relationship.relationshipId, { relationship });
+  }
+
   return {
     nodes: dto.nodes.map((node) => ({
       entity: mapEntity(node.entity),
       depth: node.depth,
     })),
-    edges: dto.edges.map((edge) => ({
-      relationship: mapRelationship(edge.relationship),
-    })),
+    edges: [...edgesByRelationshipId.values()],
   };
 }
 

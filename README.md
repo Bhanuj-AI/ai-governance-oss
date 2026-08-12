@@ -280,7 +280,7 @@ The local stack starts with representative demo data, so you can follow the
 full governance flow immediately:
 
 1. Open **Assets** to explore versioned prompts, models, datasets, and their history.
-2. Open **Experiments**, choose a seeded draft experiment, and select **Start Experiment** to run a governed evaluation.
+2. Open **Experiments**, choose a seeded draft experiment, inspect the displayed run plan, and select **Start Experiment** to run a governed evaluation. The confirmation shows the candidate × dataset-item model invocation count; use **Cancel Experiment** to stop further calls while retaining captured evidence.
 3. Inspect the resulting **Governance Decision** and its policy outcome, explanation, and evidence.
 4. Open **Ontology** to view the lineage and knowledge graph behind the decision.
 5. Open **Replay** to inspect a seeded replay or create and submit a replay from an execution.
@@ -353,16 +353,18 @@ Set `AI_GOVERNANCE_AUTO_SEED_DEMO_DATA=false` to disable startup demo seeding.
 The demo seed uses stable identifiers, so normal restarts refresh the demo
 records rather than accumulating duplicates.
 
-The local seeded evaluation dataset is stored in SeaweedFS through the
-standard S3 API; its registry record points to an `s3://` URI. Production uses
-the same adapter with AWS S3: set `AI_GOVERNANCE_DATASET_OBJECT_STORE_BACKEND=s3`,
+The Docker stack stores the seeded evaluation dataset in SeaweedFS through the
+standard S3 API; its registry record points to an `s3://` URI. The non-Docker
+local workflow uses the checked-in filesystem configuration and records a
+root-confined `file://` URI under `.ai-governance/datasets`. Production uses
+AWS S3: set `AI_GOVERNANCE_DATASET_OBJECT_STORE_BACKEND=s3`,
 `AI_GOVERNANCE_DATASET_S3_BUCKET`, and AWS credentials/region. Leave
 `AI_GOVERNANCE_DATASET_S3_ENDPOINT_URL` unset for AWS S3; set it only for an
 S3-compatible endpoint such as SeaweedFS.
 
 The Dataset Registry also supports direct CSV and JSONL upload from Studio.
 AI Governance Control Plane validates and writes immutable dataset bytes to the configured object
-store, then registers a DRAFT version with its `s3://` URI and SHA-256 checksum.
+store, then registers a DRAFT version with its immutable URI and SHA-256 checksum.
 
 For a guided first run through Assets, SeaweedFS dataset storage, ontology
 lineage, experiments, and governance decisions, see the

@@ -14,6 +14,7 @@ class ExperimentStatus(str, Enum):
     RUNNING = "RUNNING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
     ARCHIVED = "ARCHIVED"
 
 

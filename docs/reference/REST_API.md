@@ -85,12 +85,26 @@ POST /api/v1/provider-installations
 POST /api/v1/provider-installations/validate
 PATCH /api/v1/provider-installations/{installation_id}
 
+GET /api/v1/runtime-connections
+GET /api/v1/runtime-connections/providers
+POST /api/v1/runtime-connections/validate
+POST /api/v1/runtime-connections
+PATCH /api/v1/runtime-connections/{runtime_connection_id}
+POST /api/v1/runtime-connections/{runtime_connection_id}/test
+GET /api/v1/runtime-connections/{runtime_connection_id}/models
+
 GET /api/v1/prompts
 GET /api/v1/prompts/{prompt_name}
 GET /api/v1/prompts/versions/{prompt_id}
 
 GET /api/v1/models
 GET /api/v1/models/{model_id}
+GET /api/v1/models/runtime-providers
+POST /api/v1/models
+POST /api/v1/models/{model_id}/versions
+POST /api/v1/models/{model_id}/activate
+POST /api/v1/models/{model_id}/deprecate
+POST /api/v1/models/{model_id}/archive
 
 GET /api/v1/datasets
 GET /api/v1/datasets/{dataset_id}
@@ -121,6 +135,26 @@ An enabled installation is validated server-side on creation and update. Submit
 an evaluation, evaluation job, experiment candidate, or replay evaluation with
 `provider_installation_id` to resolve that configuration at execution time.
 
+Runtime connections are separate tenant-owned resources for model-runtime
+invocation. They contain a provider, non-sensitive endpoint configuration, an
+organization or project scope, and secret references only. They are not model
+version fields: a key rotation or endpoint change updates the connection rather
+than creating a new governed model version. In OSS, OpenAI, Anthropic, and
+OpenAI-compatible custom connections are supported; `POST .../test` validates
+configuration and resolves secret references without returning their values.
+`OPENAI_API_KEY` under deployment integrations remains a platform credential
+and is not a tenant runtime connection.
+
+An experiment candidate may reference a compatible connection using its
+`runtime_connection_id`. Candidate creation verifies tenant visibility,
+enabled state, and model-provider compatibility; execution resolves the
+current secret reference only in memory. The resolved value is never included
+in the candidate, evaluation run, API response, or job payload.
+
+See [Configure Runtime Connections](../tutorials/configure-runtime-connections.md)
+for the complete Studio workflow, request examples, secret-reference rules,
+and the current OSS boundary for model invocation.
+
 `POST /api/v1/prompts/observations` and `POST /api/v1/models/observations`
 are the vendor-neutral OSS ingestion boundary for runtime or evaluation
 evidence. They create immutable **OBSERVED** catalog records rather than
@@ -131,6 +165,24 @@ identity and evidence is idempotent. A conflicting payload for the same
 logical name/version returns `409` rather than overwriting history.
 The [producer integration guide](../tutorials/producer-integration.md) includes
 copy-paste curl, Python, and Node.js examples.
+
+Managed models are explicitly registered as immutable **DRAFT** versions. At
+registration, the control plane resolves and stores a provider-neutral runtime
+capability snapshot for that exact model version. Studio and candidate creation
+use the snapshot to expose only supported controls; execution adapters translate
+generic controls such as `max_output_tokens` to the provider request contract.
+`POST /api/v1/models/runtime-capabilities/resolve` previews the snapshot before
+registration. Existing model records without a snapshot remain explicitly
+`UNVERIFIED` for compatibility and are never silently rewritten. A
+managed model keeps its governed `model_name` separate from its immutable
+`provider_model_id`, which is the exact identifier sent at execution time.
+For supported providers, Studio discovers that identifier from the selected
+tenant runtime connection through `GET /api/v1/runtime-connections/{id}/models`;
+credential values are never returned. A
+governance administrator can activate a managed version, which automatically
+deprecates another active version of the same provider/model identity, or
+deprecate and archive it explicitly. Archived versions cannot be reactivated.
+Observed runtime evidence never accepts these managed lifecycle transitions.
 
 Example observed prompt with protected content:
 
@@ -186,14 +238,40 @@ POST /api/v1/experiments
 GET /api/v1/experiments
 GET /api/v1/experiments/{experiment_id}
 POST /api/v1/experiments/{experiment_id}/candidates
+GET /api/v1/experiments/{experiment_id}/run-plan
+GET /api/v1/experiments/{experiment_id}/runs/{run_id}/evaluations?page=1&page_size=25
 POST /api/v1/experiments/{experiment_id}/run
+POST /api/v1/experiments/{experiment_id}/cancel
 GET /api/v1/experiments/{experiment_id}/leaderboard
 GET /api/v1/experiments/{experiment_id}/comparison
 ```
 
 Experiment APIs create and list experiments, register candidates that reference
-governed prompt/model/dataset versions, execute candidates synchronously,
-persist evaluation runs, compare candidates, and return leaderboards.
+governed prompt/model/dataset versions, execute candidate models against each
+immutable dataset item through their tenant-scoped runtime connection, persist
+the resulting workflow execution evidence, evaluate that evidence, compare
+candidates, and return leaderboards. Evaluators never recreate candidate
+configuration or invoke the candidate model. A run fails with
+`EXECUTION_FAILED` when model execution cannot produce evidence.
+
+`GET /api/v1/experiments/{experiment_id}/runs/{run_id}/evaluations` returns
+tenant-scoped, item-level evaluator evidence for one run. It is paginated with
+`page` and `page_size` (default `25`, maximum `100`) and retains results that
+were successfully persisted before a later failure or cancellation. The
+response exposes evaluator identity, completion time, metric scores, and the
+captured model API latency when available; it
+does not expose protected prompt content, dataset content, model outputs, or
+provider explanations.
+
+Before starting a run, clients can call `GET /api/v1/experiments/{experiment_id}/run-plan`.
+It returns the immutable dataset's declared item count, the candidate count,
+and the resulting model-invocation and evaluation-item counts. While a run is
+active, the same response contains the persisted active candidate, its position,
+and completed model/evaluation item counts. This is a workload estimate, not a
+price quote: evaluator implementations may make a provider-specific number of
+additional external calls. `POST /api/v1/experiments/{experiment_id}/cancel`
+retains evidence already captured and stops future candidate/evaluator calls at
+the next safe item boundary.
 
 Candidate comparison requires two different candidates from the same
 experiment:
@@ -212,7 +290,8 @@ of the two evaluation results are returned; missing values remain `null` and
 are not synthesized in the Studio frontend.
 
 The endpoint returns a validation error when both selectors identify the same
-candidate or when either candidate has no completed evaluation run. A
+candidate, the candidates do not use the same immutable dataset version, or
+when either candidate has no completed evaluation run. A
 candidate ID that is missing or belongs to another experiment returns the
 standard candidate-not-found response.
 

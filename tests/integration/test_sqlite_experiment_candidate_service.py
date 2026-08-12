@@ -24,6 +24,10 @@ from ai_governance.services.experiments import (
 )
 from ai_governance.services.models import ModelRegistryService
 from ai_governance.services.prompts import PromptRegistryService
+from ai_governance.tenancy.domain import TenantContext
+
+
+_CONTEXT = TenantContext("org_default", "project_default", "governance-admin", "test-request")
 
 
 def test_sqlite_experiment_candidate_service_persists_candidate(
@@ -79,7 +83,9 @@ def test_sqlite_experiment_candidate_service_persists_candidate(
         template="Answer the claim question.",
         variables=("question",),
         created_by="prompt-owner",
+        context=_CONTEXT,
     )
+    prompt = prompt_service.activate_prompt(prompt.prompt_id, _CONTEXT)
     model = model_service.register_model(
         provider="OpenAI",
         model_name="GPT-4.1",
@@ -87,7 +93,9 @@ def test_sqlite_experiment_candidate_service_persists_candidate(
         parameters={"temperature": 0.0},
         context_window=128000,
         creator="model-owner",
+        context=_CONTEXT,
     )
+    model = model_service.activate_model_version(model.model_id, _CONTEXT)
     dataset = dataset_service.register_dataset(
         name="claims-benchmark",
         version="2026-06-26",
@@ -99,6 +107,7 @@ def test_sqlite_experiment_candidate_service_persists_candidate(
         checksum="sha256:claims-v1",
         creator="data-owner",
     )
+    dataset = dataset_service.promote_dataset(dataset.dataset_id)
 
     candidate = candidate_service.create_candidate(
         experiment_id=experiment.experiment_id,

@@ -219,9 +219,9 @@ class ExperimentCandidateService:
             raise ExperimentCandidateReferenceError(
                 "Candidate references an unknown prompt version."
             )
-        if prompt.status == PromptStatus.ARCHIVED:
+        if prompt.status != PromptStatus.ACTIVE:
             raise ExperimentCandidateReferenceError(
-                "Candidate references an archived prompt."
+                "Candidate references a prompt version that is not ACTIVE."
             )
 
         model = self._model_repository.find_by_id(candidate.model_id)
@@ -229,9 +229,9 @@ class ExperimentCandidateService:
             raise ExperimentCandidateReferenceError(
                 "Candidate references an unknown model version."
             )
-        if model.status == ModelStatus.ARCHIVED:
+        if model.status != ModelStatus.ACTIVE:
             raise ExperimentCandidateReferenceError(
-                "Candidate references an archived model."
+                "Candidate references a model version that is not ACTIVE."
             )
 
         dataset = self._dataset_repository.find_by_id(candidate.dataset_id)
@@ -242,9 +242,9 @@ class ExperimentCandidateService:
             raise ExperimentCandidateReferenceError(
                 "Candidate references an unknown dataset version."
             )
-        if dataset.status == DatasetStatus.ARCHIVED:
+        if dataset.status not in {DatasetStatus.ACTIVE, DatasetStatus.FROZEN}:
             raise ExperimentCandidateReferenceError(
-                "Candidate references an archived dataset."
+                "Candidate references a dataset version that is not ACTIVE or FROZEN."
             )
 
     def _get_experiment(

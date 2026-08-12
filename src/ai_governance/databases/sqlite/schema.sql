@@ -99,6 +99,9 @@ CREATE TABLE IF NOT EXISTS agent_evaluation (
     artifacts_json TEXT,
     created_at TEXT,
     explanation TEXT,
+    organization_id TEXT NOT NULL DEFAULT 'org_default',
+    project_id TEXT NOT NULL DEFAULT 'project_default',
+    tenant_id TEXT NOT NULL DEFAULT 'org_default',
 
     PRIMARY KEY (
         evaluation_id,
@@ -378,7 +381,11 @@ CREATE TABLE IF NOT EXISTS evaluation_run (
     evaluation_result_id TEXT,
     started_at TEXT,
     completed_at TEXT,
-    status TEXT NOT NULL
+    status TEXT NOT NULL,
+    failure_reason TEXT,
+    total_item_count INTEGER,
+    completed_item_count INTEGER NOT NULL DEFAULT 0,
+    evaluated_item_count INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_evaluation_run_experiment_id

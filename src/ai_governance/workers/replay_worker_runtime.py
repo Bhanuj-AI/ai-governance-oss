@@ -120,8 +120,13 @@ def create_replay_worker_runtime(
 ) -> ReplayWorkerRuntime:
     """Build runtime dependencies using the same durable factories as the API."""
     from ai_governance.api.dependencies.evaluation import get_evaluation_api_service
-    from ai_governance.api.dependencies.provider_installations import get_provider_installation_service
+    from ai_governance.api.dependencies.provider_installations import (
+        get_provider_installation_service,
+    )
     from ai_governance.api.dependencies.providers import get_provider_registry
+    from ai_governance.api.dependencies.runtime_connections import (
+        get_runtime_connection_service,
+    )
     from ai_governance.api.dependencies.repositories import (
         get_dataset_repository,
         get_evaluation_repository,
@@ -136,9 +141,35 @@ def create_replay_worker_runtime(
         get_replay_result_repository,
     )
     from ai_governance.api.dependencies.replay import get_replay_source_resolver
+    from ai_governance.api.dependencies.settings_control import (
+        get_configuration_service,
+        get_provider_installation_repository,
+        get_runtime_connection_repository,
+    )
     from ai_governance.services.evaluation_api_service import EvaluationApiService
     from ai_governance.services.experiment_api_service import ExperimentApiService
     from ai_governance.services.job_api_service import JobApiService
+    from ai_governance.services.candidate_execution_runtime import (
+        CandidateExecutionRuntime,
+        ModelRuntimeAdapterRegistry,
+        OpenAIModelRuntimeAdapter,
+    )
+    from ai_governance.services.dataset_item_reader import S3DatasetItemReader
+    from ai_governance.datasets import dataset_object_store_from_environment
+
+    provider_registry = get_provider_registry()
+    configuration_service = get_configuration_service(
+        request=None,
+        event_publisher=None,
+    )
+    provider_installation_service = get_provider_installation_service(
+        repository=get_provider_installation_repository(),
+        provider_registry=provider_registry,
+    )
+    runtime_connection_service = get_runtime_connection_service(
+        repository=get_runtime_connection_repository(),
+        configuration_service=configuration_service,
+    )
 
     job_repository = get_job_repository()
     replay_repository = get_replay_repository()
@@ -150,11 +181,11 @@ def create_replay_worker_runtime(
         source_resolver=source_store,
         job_service=job_service,
         result_repository=results,
-        provider_installation_service=get_provider_installation_service(),
+        provider_installation_service=provider_installation_service,
     )
     evaluations: EvaluationApiService = get_evaluation_api_service(
-        provider_registry=get_provider_registry(),
-        provider_installation_service=get_provider_installation_service(),
+        provider_registry=provider_registry,
+        provider_installation_service=provider_installation_service,
         evaluation_repository=get_evaluation_repository(),
         ontology_event_publisher=None,
         configuration_service=None,
@@ -168,8 +199,19 @@ def create_replay_worker_runtime(
         prompt_repository=get_prompt_repository(),
         model_repository=get_model_repository(),
         dataset_repository=get_dataset_repository(),
-        provider_registry=get_provider_registry(),
-        provider_installation_service=get_provider_installation_service(),
+        provider_registry=provider_registry,
+        provider_installation_service=provider_installation_service,
+        runtime_connection_service=runtime_connection_service,
+        candidate_execution_runtime=CandidateExecutionRuntime(
+            prompt_repository=get_prompt_repository(),
+            model_repository=get_model_repository(),
+            dataset_repository=get_dataset_repository(),
+            runtime_connection_service=runtime_connection_service,
+            dataset_item_reader=S3DatasetItemReader(dataset_object_store_from_environment()),
+            adapter_registry=ModelRuntimeAdapterRegistry((OpenAIModelRuntimeAdapter(),)),
+            execution_store=source_store,
+            event_publisher=event_publisher,
+        ),
     )
     registry = ReplayExecutionAdapterRegistry()
     registry.register(HistoricalReplayExecutionAdapter())
@@ -199,7 +241,7 @@ def create_replay_worker_runtime(
                 result_repository=results,
                 source_resolver=source_store,
             evaluation_api_service=evaluations,
-            provider_installation_service=get_provider_installation_service(),
+            provider_installation_service=provider_installation_service,
             ),
         }
     )

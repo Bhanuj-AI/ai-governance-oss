@@ -1,7 +1,17 @@
 from abc import ABC
 from abc import abstractmethod
+from dataclasses import dataclass
 
 from ai_governance.domain.evaluation_result import EvaluationResult
+from ai_governance.tenancy.domain import TenantContext
+
+
+@dataclass(frozen=True)
+class EvaluationResultPage:
+    """Tenant-scoped page of item-level evaluation results."""
+
+    items: tuple[EvaluationResult, ...]
+    total_count: int
 
 
 class EvaluationRepository(ABC):
@@ -21,4 +31,16 @@ class EvaluationRepository(ABC):
         self,
         execution_id: str,
     ) -> list[EvaluationResult]:
+        pass
+
+    @abstractmethod
+    def find_page_by_execution_id_prefix(
+        self,
+        execution_id_prefix: str,
+        context: TenantContext,
+        *,
+        offset: int,
+        limit: int,
+    ) -> EvaluationResultPage:
+        """Return ordered evaluation results belonging to one execution family."""
         pass

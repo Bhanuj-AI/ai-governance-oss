@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from importlib.metadata import PackageNotFoundError, version
 from typing import Any
 
+from packaging.version import InvalidVersion, Version
 from trulens.providers.openai import OpenAI  # type: ignore
 
 from ai_governance.domain.evaluation_dataset import EvaluationDataset
@@ -131,19 +132,17 @@ class TruLensAdapter(EvaluationProvider):
             started_at = time.perf_counter()
 
             if metric_name == ANSWER_RELEVANCE:
-                value = provider.relevance(
+                value, explanation = _score_and_explanation(provider.relevance(
                     prompt=dataset.input_text,
                     response=dataset.output_text,
-                )
-                explanation = None
+                ))
             elif metric_name == CONTEXT_RELEVANCE:
-                value = provider.context_relevance(
+                value, explanation = _score_and_explanation(provider.context_relevance(
                     question=dataset.input_text,
                     context=dataset.context_text,
-                )
-                explanation = None
+                ))
             elif metric_name == GROUNDEDNESS:
-                value, explanation = (
+                value, explanation = _score_and_explanation(
                     provider.groundedness_measure_with_cot_reasons(
                         source=dataset.context_text,
                         statement=dataset.output_text,
@@ -200,6 +199,8 @@ class TruLensAdapter(EvaluationProvider):
         if self._explicit_provider is not None:
             return self._explicit_provider
 
+        self._require_supported_openai_provider_version()
+
         if config.model is None:
             raise TruLensProviderError(
                 "TruLens requires a model via TruLensConfig, "
@@ -211,6 +212,35 @@ class TruLensAdapter(EvaluationProvider):
             api_key=config.openai_api_key,
             max_retries=0,
         )
+
+    @staticmethod
+    def _require_supported_openai_provider_version() -> None:
+        """Reject the known-bad OpenAI Responses API score parser early.
+
+        TruLens 2.8.1 serializes a ``custom_tool_call`` response and then
+        extracts a score by scanning that entire JSON payload. This can record
+        an unrelated number as the evaluator score and logs the protected raw
+        response. TruLens 2.10.0 fixes extraction from the tool-call input.
+        """
+        try:
+            installed_version = Version(version("trulens-providers-openai"))
+        except PackageNotFoundError as exc:
+            raise TruLensProviderError(
+                "TruLens OpenAI provider is not installed. Install "
+                "trulens-providers-openai>=2.10.0."
+            ) from exc
+        except InvalidVersion as exc:
+            raise TruLensProviderError(
+                "TruLens OpenAI provider has an invalid installed version. "
+                "Install trulens-providers-openai>=2.10.0."
+            ) from exc
+
+        if installed_version < Version("2.10.0"):
+            raise TruLensProviderError(
+                "TruLens OpenAI provider "
+                f"{installed_version} is unsupported for OpenAI Responses API scoring. "
+                "Upgrade trulens and trulens-providers-openai to >=2.10.0."
+            )
 
     def _metadata_for_config(
         self,
@@ -256,3 +286,14 @@ class TruLensAdapter(EvaluationProvider):
             dataset=request,
             provider_config={},
         )
+
+
+def _score_and_explanation(value: Any) -> tuple[float, Any | None]:
+    """Normalize TruLens scalar and ``(score, reason)`` feedback results."""
+
+    if isinstance(value, tuple):
+        if not value:
+            raise TruLensProviderError("TruLens returned an empty feedback result.")
+        score, *details = value
+        return float(score), details[0] if details else None
+    return float(value), None

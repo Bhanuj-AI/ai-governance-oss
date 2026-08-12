@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from ai_governance.domain.experiments import EvaluationRunStatus
+from ai_governance.domain.experiments import EvaluationRunStatus, ExperimentStatus
 from ai_governance.domain.jobs import Job, JobResult, JobStatus
 from ai_governance.domain.workflow_execution import WorkflowExecution
 from ai_governance.evaluation.evaluation_metrics import EvaluationMetricSpec
@@ -61,13 +61,34 @@ class ExperimentJobHandler:
         """Run captured experiment inputs and retain the generated leaderboard."""
         refs = job.input_refs
         experiment_id = _required(refs, "experiment_id")
+        if self._experiments.get_experiment(
+            experiment_id, context=_context(job)
+        ).status == ExperimentStatus.CANCELLED:
+            return JobResult(
+                job.job_id,
+                JobStatus.CANCELLED,
+                None,
+                "Experiment cancellation requested.",
+            )
         runs, leaderboard = self._experiments.run_experiment(
             experiment_id,
             metric_specs=_metric_specs(refs.get("metric_specs")),
             provider_config=dict(refs.get("provider_config") or {}),
             context=_context(job),
         )
-        if any(run.status is EvaluationRunStatus.FAILED for run in runs):
+        if self._experiments.get_experiment(
+            experiment_id, context=_context(job)
+        ).status == ExperimentStatus.CANCELLED:
+            return JobResult(
+                job.job_id,
+                JobStatus.CANCELLED,
+                None,
+                "Experiment cancellation requested.",
+            )
+        if any(
+            run.status in (EvaluationRunStatus.FAILED, EvaluationRunStatus.EXECUTION_FAILED)
+            for run in runs
+        ):
             return JobResult(
                 job.job_id,
                 JobStatus.FAILED,

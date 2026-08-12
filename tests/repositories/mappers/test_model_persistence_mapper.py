@@ -27,6 +27,7 @@ def test_model_persistence_mapper_round_trips_model() -> None:
         creator="governance-admin",
         created_at=datetime(2026, 6, 25, tzinfo=UTC),
         status=ModelStatus.DRAFT,
+        provider_model_id="gpt-4.1",
     )
 
     record = ModelPersistenceMapper.to_persistence_record(original)

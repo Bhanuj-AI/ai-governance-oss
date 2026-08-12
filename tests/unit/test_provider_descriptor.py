@@ -77,3 +77,24 @@ def test_provider_descriptor_does_not_contain_resolved_at() -> None:
     )
 
     assert "resolved_at" not in descriptor.to_dict()
+
+
+def test_provider_descriptor_serialization_excludes_secret_reference_schema() -> None:
+    descriptor = ProviderDescriptor(
+        name="mock",
+        display_name="Mock",
+        version="1.0.0",
+        adapter_version="1.0.0",
+        capabilities=ProviderCapabilities(supported_metrics=("quality",)),
+        configuration_schema={
+            "settings": {"properties": {"region": {"type": "string"}}},
+            "secret_refs": {
+                "properties": {"api_key": {"type": "string"}},
+            },
+        },
+    )
+
+    serialized = descriptor.to_dict()
+
+    assert "settings" in serialized["configuration_schema"]
+    assert "secret_refs" not in serialized["configuration_schema"]

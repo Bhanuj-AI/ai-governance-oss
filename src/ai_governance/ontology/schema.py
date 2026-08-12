@@ -8,6 +8,11 @@ ONTOLOGY_SCHEMA_CYPHER = (
     REQUIRE (e.organization_id, e.project_id, e.entity_type, e.entity_id) IS UNIQUE
     """,
     """
+    CREATE CONSTRAINT ontology_relationship_unique IF NOT EXISTS
+    FOR ()-[r]-()
+    REQUIRE (r.organization_id, r.project_id, r.relationship_id) IS UNIQUE
+    """,
+    """
     CREATE INDEX ontology_entity_type IF NOT EXISTS
     FOR (e:OntologyEntity)
     ON (e.entity_type)

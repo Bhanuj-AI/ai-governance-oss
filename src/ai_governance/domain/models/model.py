@@ -6,6 +6,10 @@ from enum import Enum
 from typing import Any
 
 from ai_governance.domain.assets import AssetProvenance
+from ai_governance.domain.models.runtime_capabilities import (
+    ModelRuntimeCapabilitySnapshot,
+    legacy_runtime_capability_snapshot,
+)
 
 
 class ModelStatus(str, Enum):
@@ -46,6 +50,8 @@ class Model:
     tenant_id: str = "org_default"
     organization_id: str = "org_default"
     project_id: str = "project_default"
+    runtime_capabilities: ModelRuntimeCapabilitySnapshot | None = None
+    provider_model_id: str | None = None
 
     def __post_init__(self) -> None:
         self._require_non_empty("model_id", self.model_id)
@@ -56,6 +62,8 @@ class Model:
         self._require_non_empty("tenant_id", self.tenant_id)
         self._require_non_empty("organization_id", self.organization_id)
         self._require_non_empty("project_id", self.project_id)
+        if self.provider_model_id is not None:
+            self._require_non_empty("provider_model_id", self.provider_model_id)
 
         if self.context_window <= 0:
             raise ValueError("Model context_window must be greater than zero.")
@@ -71,12 +79,23 @@ class Model:
                     raise ValueError("Model cost values must not be negative.")
 
         object.__setattr__(self, "parameters", dict(self.parameters))
+        object.__setattr__(
+            self,
+            "runtime_capabilities",
+            self.runtime_capabilities or legacy_runtime_capability_snapshot(),
+        )
 
         if self.cost is not None:
             object.__setattr__(self, "cost", dict(self.cost))
 
         if self.provenance != AssetProvenance.MANAGED:
             self._require_non_empty("source_system", self.source_system or "")
+
+    @property
+    def runtime_model_identifier(self) -> str:
+        """Return the exact identifier sent to the configured model provider."""
+
+        return self.provider_model_id or self.model_name
 
     @staticmethod
     def _require_non_empty(

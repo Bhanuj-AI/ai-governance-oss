@@ -85,6 +85,48 @@ def test_experiment_api_service_lists_candidates_and_runs_with_tenant_guard() ->
         )
 
 
+def test_list_evaluation_runs_reconciles_a_stale_run_after_cancellation() -> None:
+    created_at = datetime(2026, 7, 1, tzinfo=UTC)
+    experiment_repository = InMemoryExperimentRepository()
+    run_repository = InMemoryEvaluationRunRepository()
+    experiment_repository.save(
+        Experiment(
+            experiment_id="experiment-1",
+            name="Experiment",
+            description="Test experiment",
+            owner="owner",
+            created_at=created_at,
+            status=ExperimentStatus.CANCELLED,
+            organization_id="org-1",
+            project_id="project-1",
+        )
+    )
+    run_repository.save(
+        EvaluationRun(
+            run_id="run-1",
+            experiment_id="experiment-1",
+            candidate_id="candidate-1",
+            dataset_version="v1",
+            evaluation_provider="mock",
+            evaluation_result_id=None,
+            started_at=created_at,
+            completed_at=None,
+            status=EvaluationRunStatus.RUNNING,
+        )
+    )
+    service = _service(
+        experiment_repository=experiment_repository,
+        evaluation_run_repository=run_repository,
+    )
+    context = TenantContext("org-1", "project-1", "actor", "request")
+
+    runs = service.list_evaluation_runs("experiment-1", context)
+
+    assert runs[0].status == EvaluationRunStatus.CANCELLED
+    assert runs[0].failure_reason == "Experiment cancellation requested."
+    assert run_repository.find_by_id("run-1") == runs[0]
+
+
 def test_get_leaderboard_publishes_a_targeted_ontology_projection_event() -> None:
     created_at = datetime(2026, 7, 1, tzinfo=UTC)
     experiment_repository = InMemoryExperimentRepository()

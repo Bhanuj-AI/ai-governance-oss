@@ -3,10 +3,17 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from ai_governance.api.models.evaluation import EvaluationMetricSpecRequest
+from ai_governance.api.models.evaluation import (
+    EvaluationMetricResponse,
+    EvaluationMetricSpecRequest,
+)
 from ai_governance.api.models.governance import EvaluationMetricComparisonResponse
 from ai_governance.api.models.experiment import (
     EvaluationRunResponse,
+    EvaluationRunItemResultResponse,
+    EvaluationRunResultPageResponse,
+    ExperimentRunPlanResponse,
+    ExperimentRunProgressResponse,
     ExperimentCandidateComparisonResponse,
     ExperimentCandidateCreateRequest,
     ExperimentCandidateResponse,
@@ -22,6 +29,10 @@ from ai_governance.domain.experiments import (
     Experiment,
     ExperimentCandidate,
     Leaderboard,
+)
+from ai_governance.services.experiment_api_service import (
+    ExperimentRunEvaluationPage,
+    ExperimentRunPlan,
 )
 from ai_governance.domain.jobs import JobSubmission, JobType
 from ai_governance.evaluation.evaluation_metrics import EvaluationMetricSpec
@@ -75,11 +86,12 @@ class ExperimentApiMapper:
                 if candidate.metadata.get("provider_installation_id")
                 else None
             ),
-            runtime_parameters={
-                "temperature": candidate.temperature,
-                "top_p": candidate.top_p,
-                "max_tokens": candidate.max_tokens,
-            },
+            runtime_connection_id=(
+                str(candidate.metadata["runtime_connection_id"])
+                if candidate.metadata.get("runtime_connection_id")
+                else None
+            ),
+            runtime_parameters=_candidate_runtime_parameters(candidate),
             metadata=_scrub_metadata(candidate.metadata),
             created_at=candidate.created_at,
         )
@@ -127,6 +139,34 @@ class ExperimentApiMapper:
             started_at=run.started_at,
             completed_at=run.completed_at,
             status=run.status.value,
+            failure_reason=run.failure_reason,
+            total_item_count=run.total_item_count,
+            completed_item_count=run.completed_item_count,
+            evaluated_item_count=run.evaluated_item_count,
+        )
+
+    @staticmethod
+    def to_run_plan_response(plan: ExperimentRunPlan) -> ExperimentRunPlanResponse:
+        """Convert the service-level run plan into its stable REST DTO."""
+        return ExperimentRunPlanResponse(
+            experiment_id=plan.experiment_id,
+            candidate_count=plan.candidate_count,
+            dataset_item_count=plan.dataset_item_count,
+            model_invocation_count=plan.model_invocation_count,
+            evaluation_item_count=plan.evaluation_item_count,
+            active_run=(
+                ExperimentRunProgressResponse(
+                    run_id=plan.active_run.run_id,
+                    candidate_id=plan.active_run.candidate_id,
+                    candidate_name=plan.active_run.candidate_name,
+                    candidate_position=plan.active_run.candidate_position,
+                    total_item_count=plan.active_run.total_item_count,
+                    completed_item_count=plan.active_run.completed_item_count,
+                    evaluated_item_count=plan.active_run.evaluated_item_count,
+                )
+                if plan.active_run is not None
+                else None
+            ),
         )
 
     @staticmethod
@@ -154,11 +194,31 @@ class ExperimentApiMapper:
         """
         Return candidate runtime parameters with stable defaults.
         """
-        return {
+        parameters = {
             "temperature": float(request.runtime_parameters.get("temperature", 0.0)),
             "top_p": float(request.runtime_parameters.get("top_p", 1.0)),
-            "max_tokens": int(request.runtime_parameters.get("max_tokens", 1024)),
+            "max_tokens": int(
+                request.runtime_parameters.get(
+                    "max_output_tokens", request.runtime_parameters.get("max_tokens", 1024)
+                )
+            ),
         }
+        return parameters
+
+    @staticmethod
+    def candidate_runtime_parameter_overrides(
+        request: ExperimentCandidateCreateRequest,
+    ) -> tuple[str, ...]:
+        """Return the user-supplied controls without leaking them into payloads."""
+        return tuple(
+            sorted(
+                {
+                    "max_tokens" if name == "max_output_tokens" else name
+                    for name in request.runtime_parameters
+                    if name in {"temperature", "top_p", "max_tokens", "max_output_tokens"}
+                }
+            )
+        )
 
     @staticmethod
     def to_run_response(
@@ -182,6 +242,10 @@ class ExperimentApiMapper:
                     started_at=run.started_at,
                     completed_at=run.completed_at,
                     status=run.status.value,
+                    failure_reason=run.failure_reason,
+                    total_item_count=run.total_item_count,
+                    completed_item_count=run.completed_item_count,
+                    evaluated_item_count=run.evaluated_item_count,
                 )
                 for run in runs
             ],
@@ -190,6 +254,37 @@ class ExperimentApiMapper:
                 if leaderboard is not None
                 else None
             ),
+        )
+
+    @staticmethod
+    def to_run_evaluation_page_response(
+        result_page: ExperimentRunEvaluationPage,
+    ) -> EvaluationRunResultPageResponse:
+        """Map persisted item results without exposing execution payloads."""
+        return EvaluationRunResultPageResponse(
+            run_id=result_page.run_id,
+            page=result_page.page,
+            page_size=result_page.page_size,
+            total_items=result_page.total_items,
+            items=[
+                EvaluationRunItemResultResponse(
+                    evaluation_id=result.evaluation_id,
+                    execution_id=result.execution_id,
+                    evaluator_type=result.evaluator_type,
+                    evaluator_version=result.evaluator_version,
+                    created_at=result.created_at,
+                    model_latency_ms=_model_latency_ms(result.metadata),
+                    metrics=[
+                        EvaluationMetricResponse(
+                            name=metric.metric_name,
+                            score=metric.metric_value,
+                            explanation=None,
+                        )
+                        for metric in result.metrics
+                    ],
+                )
+                for result in result_page.items
+            ],
         )
 
     @staticmethod
@@ -258,3 +353,26 @@ def _scrub_metadata(
     metadata: Mapping[str, Any],
 ) -> dict[str, Any]:
     return scrub_sensitive_metadata(dict(metadata))
+
+
+def _candidate_runtime_parameters(candidate: ExperimentCandidate) -> dict[str, Any]:
+    overrides = candidate.metadata.get("runtime_parameter_overrides")
+    if not isinstance(overrides, list):
+        return {
+            "temperature": candidate.temperature,
+            "top_p": candidate.top_p,
+            "max_tokens": candidate.max_tokens,
+        }
+    values = {
+        "temperature": candidate.temperature,
+        "top_p": candidate.top_p,
+        "max_tokens": candidate.max_tokens,
+    }
+    return {name: values[name] for name in overrides if name in values}
+
+
+def _model_latency_ms(metadata: Mapping[str, Any]) -> int | None:
+    value = metadata.get("model_latency_ms")
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value

@@ -44,6 +44,10 @@ from ai_governance.services.experiments import (
 )
 from ai_governance.services.models import ModelRegistryService
 from ai_governance.services.prompts import PromptRegistryService
+from ai_governance.tenancy.domain import TenantContext
+
+
+_CONTEXT = TenantContext("org_default", "project_default", "governance-admin", "test-request")
 
 
 def test_sqlite_experiment_evaluation_service_executes_complete_experiment(
@@ -118,7 +122,9 @@ def test_sqlite_experiment_evaluation_service_executes_complete_experiment(
         template="Answer the claim question.",
         variables=("question",),
         created_by="prompt-owner",
+        context=_CONTEXT,
     )
+    prompt = prompt_service.activate_prompt(prompt.prompt_id, _CONTEXT)
     model_a = model_service.register_model(
         provider="OpenAI",
         model_name="GPT-4.1",
@@ -128,13 +134,16 @@ def test_sqlite_experiment_evaluation_service_executes_complete_experiment(
         latency=0.4,
         context_window=128000,
         creator="model-owner",
+        context=_CONTEXT,
     )
+    model_a = model_service.activate_model_version(model_a.model_id, _CONTEXT)
     model_b = model_service.create_model_version(
         model_id=model_a.model_id,
         version="2026-07-01",
         creator="model-owner",
         cost={"input_per_1k": 0.02},
         latency=0.55,
+        context=_CONTEXT,
     )
     dataset = dataset_service.register_dataset(
         name="claims-benchmark",
@@ -147,6 +156,7 @@ def test_sqlite_experiment_evaluation_service_executes_complete_experiment(
         checksum="sha256:claims-v1",
         creator="data-owner",
     )
+    dataset = dataset_service.promote_dataset(dataset.dataset_id)
 
     candidate_service.create_candidate(
         experiment_id=experiment.experiment_id,
@@ -162,6 +172,7 @@ def test_sqlite_experiment_evaluation_service_executes_complete_experiment(
         top_p=1.0,
         max_tokens=4096,
     )
+    model_b = model_service.activate_model_version(model_b.model_id, _CONTEXT)
     improved = candidate_service.create_candidate(
         experiment_id=experiment.experiment_id,
         name="Improved",

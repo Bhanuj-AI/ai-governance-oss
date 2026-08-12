@@ -224,6 +224,13 @@ default. Environment-controlled and deployment settings remain read-only.
 | `AI_GOVERNANCE_SETTINGS_SQLITE_PATH` | - | SQLite database path when the settings backend is `sqlite`. |
 | `AI_GOVERNANCE_SETTINGS_POSTGRES_DSN` | - | PostgreSQL DSN when the settings backend is `postgres`. |
 
+`model_registry.allowed_runtime_providers` is a live, tenant-scoped JSON
+setting that controls which built-in runtime providers can be used for managed
+model registration. The default allows the complete built-in vocabulary,
+including `custom`; project or organization administrators can restrict it to
+their approved runtimes. Observed model evidence is never rejected by this
+policy, because it records runtime reality rather than a declaration.
+
 The local Compose stack uses the shared durable SQLite database. Runtime
 updates are validated, versioned, and recorded in `setting_audit` with actor,
 reason, old value, and new value. Static deployment architecture—including
@@ -370,6 +377,31 @@ registers `trulens` when both an OpenAI API key and judge model are configured.
 Use `AI_GOVERNANCE_TRULENS_MODEL` to override `OPENAI_DEFAULT_JUDGE_MODEL` for
 TruLens. Mock remains the default for a fully offline local stack.
 
+OpenAI-backed TruLens evaluations require `trulens-providers-openai>=2.10.0`.
+The locked OSS environment supplies this version or newer; do not downgrade it,
+because earlier releases can misread OpenAI Responses API custom tool-call
+scores.
+
+### Runtime connections
+
+`OPENAI_API_KEY` is a deployment-owned platform credential for internal
+capabilities such as OpenAI-backed evaluation or judge flows. It is not a
+tenant or project runtime credential.
+
+Create tenant-owned **Runtime Connections** from **Settings → Runtime
+Connections** when a registered model must be invoked. A connection holds a
+provider, optional endpoint/organization metadata, scope, enablement state,
+and a secret reference such as `env://OPENAI_DEVELOPMENT_API_KEY`; no raw key
+is persisted or returned. Connections can be updated as credentials rotate,
+without creating a new managed model version. The initial OSS connection types cover
+OpenAI, Anthropic, and OpenAI-compatible custom endpoints. The allowed managed
+model-provider setting controls which of these connection providers may be
+created in each tenant scope.
+
+See [Configure Runtime Connections](../tutorials/configure-runtime-connections.md)
+for Studio and REST workflows, credential rotation, scope semantics, and the
+current OSS invocation boundary.
+
 ## Test Backends
 
 Some repository integration tests require additional backend-specific
@@ -426,7 +458,8 @@ configured because `AI_GOVERNANCE_ONTOLOGY_REPOSITORY=sqlite` is not implemented
 | `AI_GOVERNANCE_DATASET_REPOSITORY` | `inmemory` | Dataset artifact backend. Options: `inmemory`, `sqlite`, `postgres`. |
 | `AI_GOVERNANCE_DATASET_SQLITE_PATH` | - | SQLite path (required when `sqlite`). |
 | `AI_GOVERNANCE_DATASET_POSTGRES_DSN` | - | PostgreSQL DSN (required when `postgres`). |
-| `AI_GOVERNANCE_DATASET_OBJECT_STORE_BACKEND` | `none` | Dataset content store. Options: `none`, `s3`. The registry metadata remains in the dataset repository. |
+| `AI_GOVERNANCE_DATASET_OBJECT_STORE_BACKEND` | `none` | Dataset content store. Options: `none`, `filesystem`, `s3`. The registry metadata remains in the dataset repository. |
+| `AI_GOVERNANCE_DATASET_FILESYSTEM_ROOT` | `.ai-governance/datasets` | Root for immutable dataset objects when the backend is `filesystem`; intended for the non-Docker local workflow. |
 | `AI_GOVERNANCE_DATASET_S3_BUCKET` | `ai-governance-datasets` | Bucket for dataset content when the object-store backend is `s3`. |
 | `AI_GOVERNANCE_DATASET_S3_ENDPOINT_URL` | - | Optional S3-compatible endpoint. Leave unset for AWS S3; set for SeaweedFS or another compatible service. |
 | `AI_GOVERNANCE_DATASET_S3_REGION` | `us-east-1` | S3 region. |

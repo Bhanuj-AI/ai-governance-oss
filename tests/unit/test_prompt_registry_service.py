@@ -12,6 +12,24 @@ from ai_governance.services.prompts import (
     PromptRegistryService,
     PromptVersionConflictError,
 )
+from ai_governance.tenancy.domain import TenantContext
+
+
+_CONTEXT = TenantContext("org_default", "project_default", "governance-admin", "test-request")
+
+
+class _TenantScopedService:
+    def __init__(self, service: PromptRegistryService) -> None:
+        self._service = service
+
+    def __getattr__(self, name: str):
+        target = getattr(self._service, name)
+        if not callable(target):
+            return target
+        def scoped(*args, **kwargs):
+            kwargs.setdefault("context", _CONTEXT)
+            return target(*args, **kwargs)
+        return scoped
 
 
 def test_prompt_registry_creates_prompt() -> None:
@@ -224,11 +242,11 @@ def test_prompt_registry_rejects_conflicting_observed_evidence() -> None:
         )
 
 
-def _create_service() -> PromptRegistryService:
+def _create_service() -> _TenantScopedService:
     ids = iter(["prompt-1", "prompt-2", "prompt-3"])
 
-    return PromptRegistryService(
+    return _TenantScopedService(PromptRegistryService(
         prompt_repository=InMemoryPromptRepository(),
         id_generator=lambda: next(ids),
         clock=lambda: datetime(2026, 6, 25, tzinfo=UTC),
-    )
+    ))

@@ -15,7 +15,9 @@ class EvaluationRunStatus(str, Enum):
     PENDING = "PENDING"
     RUNNING = "RUNNING"
     COMPLETED = "COMPLETED"
+    EXECUTION_FAILED = "EXECUTION_FAILED"
     FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
 
 
 @dataclass(frozen=True)
@@ -36,6 +38,10 @@ class EvaluationRun:
     started_at: datetime | None
     completed_at: datetime | None
     status: EvaluationRunStatus
+    failure_reason: str | None = None
+    total_item_count: int | None = None
+    completed_item_count: int = 0
+    evaluated_item_count: int = 0
 
     def __post_init__(self) -> None:
         self._require_non_empty("run_id", self.run_id)
@@ -52,7 +58,9 @@ class EvaluationRun:
 
         if self.status in (
             EvaluationRunStatus.COMPLETED,
+            EvaluationRunStatus.EXECUTION_FAILED,
             EvaluationRunStatus.FAILED,
+            EvaluationRunStatus.CANCELLED,
         ):
             if self.started_at is None or self.completed_at is None:
                 raise ValueError(
@@ -66,6 +74,32 @@ class EvaluationRun:
         ):
             raise ValueError(
                 "EvaluationRun completed_at must not be before started_at."
+            )
+
+        if self.failure_reason is not None:
+            reason = self.failure_reason.strip()
+            if not reason:
+                raise ValueError("EvaluationRun failure_reason must not be blank.")
+            if len(reason) > 500:
+                raise ValueError("EvaluationRun failure_reason must be at most 500 characters.")
+            object.__setattr__(self, "failure_reason", reason)
+
+        if self.total_item_count is not None and self.total_item_count < 0:
+            raise ValueError("EvaluationRun total_item_count must not be negative.")
+        if self.completed_item_count < 0:
+            raise ValueError("EvaluationRun completed_item_count must not be negative.")
+        if self.evaluated_item_count < 0:
+            raise ValueError("EvaluationRun evaluated_item_count must not be negative.")
+        if (
+            self.total_item_count is not None
+            and self.completed_item_count > self.total_item_count
+        ):
+            raise ValueError(
+                "EvaluationRun completed_item_count must not exceed total_item_count."
+            )
+        if self.evaluated_item_count > self.completed_item_count:
+            raise ValueError(
+                "EvaluationRun evaluated_item_count must not exceed completed_item_count."
             )
 
         if (

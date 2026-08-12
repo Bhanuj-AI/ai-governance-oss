@@ -90,10 +90,13 @@ Columns:
 - `artifacts_json`
 - `created_at`
 - `explanation`
+- `organization_id`
+- `project_id`
 
 Notes:
 
 - primary key is `(evaluation_id, metric_name)`
+- result-listing operations are scoped by `(organization_id, project_id)`
 - `metadata_json` is stored as `VARIANT`
 - provider descriptor snapshots and runtime metadata are stored as generic
   `VARIANT`, not provider-specific columns
@@ -199,6 +202,11 @@ Columns:
 - `evaluation_result_id`
 - `started_at`
 - `completed_at`
+- `status`
+- `failure_reason`
+- `total_item_count`
+- `completed_item_count`
+- `evaluated_item_count`
 
 ### worker_heartbeat
 

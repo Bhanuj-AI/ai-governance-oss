@@ -18,8 +18,10 @@ from ai_governance.api.models import (
     ExperimentCreateRequest,
     ExperimentResponse,
     ExperimentRunRequest,
+    ExperimentRunPlanResponse,
     ExperimentRunResponse,
     EvaluationRunResponse,
+    EvaluationRunResultPageResponse,
     GovernanceInsightResponse,
     JobResponse,
     LeaderboardResponse,
@@ -96,6 +98,35 @@ def list_experiments(
     ]
 
 
+@router.post(
+    "/{experiment_id}/cancel",
+    response_model=ExperimentResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
+        status.HTTP_404_NOT_FOUND: {"model": ErrorResponse},
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": ErrorResponse},
+    },
+    summary="Cancel experiment",
+    description=(
+        "Cancel a running experiment. Existing execution evidence is retained, "
+        "and active evaluation runs are terminally recorded as cancelled."
+    ),
+)
+def cancel_experiment(
+    experiment_id: str,
+    experiment_api_service: Annotated[
+        object,
+        Depends(get_experiment_api_service),
+    ],
+    context=Depends(get_compatible_tenant_context),
+) -> ExperimentResponse:
+    """Cancel a running experiment through the tenant-scoped control plane."""
+    return ExperimentApiMapper.to_experiment_response(
+        experiment_api_service.cancel_experiment(experiment_id, context)
+    )
+
+
 @router.get(
     "/{experiment_id}",
     response_model=ExperimentResponse,
@@ -153,6 +184,65 @@ def list_runs(
         ExperimentApiMapper.to_evaluation_run_response(run)
         for run in experiment_api_service.list_evaluation_runs(experiment_id, context)
     ]
+
+
+@router.get(
+    "/{experiment_id}/runs/{run_id}/evaluations",
+    response_model=EvaluationRunResultPageResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
+        status.HTTP_404_NOT_FOUND: {"model": ErrorResponse},
+    },
+    summary="List persisted item evaluations for a run",
+    description=(
+        "Return a tenant-scoped, paginated inventory of evaluator scores. "
+        "Partial and cancelled runs retain completed item evidence."
+    ),
+)
+def list_run_evaluations(
+    experiment_id: str,
+    run_id: str,
+    experiment_api_service: Annotated[object, Depends(get_experiment_api_service)],
+    context=Depends(get_compatible_tenant_context),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=100),
+) -> EvaluationRunResultPageResponse:
+    """Return safe per-item score evidence for one selected evaluation run."""
+    return ExperimentApiMapper.to_run_evaluation_page_response(
+        experiment_api_service.list_run_evaluations(
+            experiment_id,
+            run_id,
+            page=page,
+            page_size=page_size,
+            context=context,
+        )
+    )
+
+
+@router.get(
+    "/{experiment_id}/run-plan",
+    response_model=ExperimentRunPlanResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
+        status.HTTP_404_NOT_FOUND: {"model": ErrorResponse},
+    },
+    summary="Get experiment run plan",
+    description=(
+        "Return the declared candidate and dataset execution volume, plus "
+        "persisted progress for any active candidate run."
+    ),
+)
+def get_run_plan(
+    experiment_id: str,
+    experiment_api_service: Annotated[object, Depends(get_experiment_api_service)],
+    context=Depends(get_compatible_tenant_context),
+) -> ExperimentRunPlanResponse:
+    """Return the tenant-scoped plan before, during, or after an experiment run."""
+    return ExperimentApiMapper.to_run_plan_response(
+        experiment_api_service.get_run_plan(experiment_id, context)
+    )
 
 
 @router.get(
@@ -311,7 +401,11 @@ def add_candidate(
         dataset_reference=request.dataset_version,
         provider_name=request.provider_name,
         provider_installation_id=request.provider_installation_id,
+        runtime_connection_id=request.runtime_connection_id,
         runtime_parameters=(ExperimentApiMapper.candidate_runtime_parameters(request)),
+        runtime_parameter_overrides=(
+            ExperimentApiMapper.candidate_runtime_parameter_overrides(request)
+        ),
         metadata=request.metadata,
         context=context,
     )

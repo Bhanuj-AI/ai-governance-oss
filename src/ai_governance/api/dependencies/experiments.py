@@ -20,7 +20,10 @@ from ai_governance.api.dependencies.repositories import (
     get_prompt_repository,
 )
 from ai_governance.api.dependencies.ontology import get_ontology_sync_event_publisher
+from ai_governance.api.dependencies.events import get_event_publisher
 from ai_governance.api.dependencies.provider_installations import get_provider_installation_service
+from ai_governance.api.dependencies.runtime_connections import get_runtime_connection_service
+from ai_governance.api.dependencies.replay import get_replay_source_resolver
 
 
 def get_experiment_api_service(
@@ -34,13 +37,23 @@ def get_experiment_api_service(
     dataset_repository: Any = Depends(get_dataset_repository),
     provider_registry: Any = Depends(get_provider_registry),
     provider_installation_service: Any = Depends(get_provider_installation_service),
+    runtime_connection_service: Any = Depends(get_runtime_connection_service),
+    execution_store: Any = Depends(get_replay_source_resolver),
     ontology_event_publisher: Any = Depends(get_ontology_sync_event_publisher),
+    event_publisher: Any = Depends(get_event_publisher),
 ) -> Any:
     """
     Create the REST experiment facade through dependency injection.
     """
 
     from ai_governance.services.experiment_api_service import ExperimentApiService
+    from ai_governance.services.candidate_execution_runtime import (
+        CandidateExecutionRuntime,
+        ModelRuntimeAdapterRegistry,
+        OpenAIModelRuntimeAdapter,
+    )
+    from ai_governance.services.dataset_item_reader import S3DatasetItemReader
+    from ai_governance.datasets import dataset_object_store_from_environment
 
     return ExperimentApiService(
         experiment_repository=experiment_repository,
@@ -53,5 +66,17 @@ def get_experiment_api_service(
         dataset_repository=dataset_repository,
         provider_registry=provider_registry,
         provider_installation_service=provider_installation_service,
+        runtime_connection_service=runtime_connection_service,
+        execution_store=execution_store,
+        candidate_execution_runtime=CandidateExecutionRuntime(
+            prompt_repository=prompt_repository,
+            model_repository=model_repository,
+            dataset_repository=dataset_repository,
+            runtime_connection_service=runtime_connection_service,
+            dataset_item_reader=S3DatasetItemReader(dataset_object_store_from_environment()),
+            adapter_registry=ModelRuntimeAdapterRegistry((OpenAIModelRuntimeAdapter(),)),
+            execution_store=execution_store,
+            event_publisher=event_publisher,
+        ),
         ontology_event_publisher=ontology_event_publisher,
     )

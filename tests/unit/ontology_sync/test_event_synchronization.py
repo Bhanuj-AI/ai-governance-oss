@@ -31,6 +31,7 @@ from ai_governance.repositories.in_memory_prompt_repository import (
     InMemoryPromptRepository,
 )
 from ai_governance.services.prompts import PromptRegistryService
+from ai_governance.tenancy.domain import TenantContext
 
 
 def test_event_publisher_records_pending_entity_event() -> None:
@@ -232,6 +233,7 @@ def test_prompt_registry_service_publishes_sync_event() -> None:
         template="Hello",
         variables=(),
         created_by="owner",
+        context=TenantContext("org_default", "project_default", "owner", "test-request"),
     )
     events = event_repository.list_events(
         OntologySyncEventFilter(entity_id=prompt.prompt_id)

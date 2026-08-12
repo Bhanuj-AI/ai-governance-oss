@@ -15,6 +15,9 @@ from ai_governance.repositories.job_repository import JobRepository
 from ai_governance.repositories.policy_administration_repository import (
     PolicyAdministrationRepository,
 )
+from ai_governance.repositories.runtime_connection_repository import (
+    RuntimeConnectionRepository,
+)
 from ai_governance.repositories.postgres.postgres_governance_decision_repository import (
     PostgresGovernanceDecisionRepository,
 )
@@ -40,6 +43,7 @@ __all__ = [
     "InMemoryPolicyAdministrationRepository",
     "JobRepository",
     "PolicyAdministrationRepository",
+    "RuntimeConnectionRepository",
     "PostgresGovernanceDecisionRepository",
     "PostgresPolicyAdministrationRepository",
     "SQLiteGovernanceDecisionRepository",

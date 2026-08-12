@@ -95,6 +95,22 @@ class SnowflakeDatabase:
                 with connection.cursor() as cursor:
                     for statement in self._schema_statements(schema):
                         cursor.execute(statement)
+                    cursor.execute(
+                        "ALTER TABLE evaluation_run "
+                        "ADD COLUMN IF NOT EXISTS failure_reason VARCHAR"
+                    )
+                    cursor.execute(
+                        "ALTER TABLE evaluation_run "
+                        "ADD COLUMN IF NOT EXISTS total_item_count NUMBER"
+                    )
+                    cursor.execute(
+                        "ALTER TABLE evaluation_run "
+                        "ADD COLUMN IF NOT EXISTS completed_item_count NUMBER NOT NULL DEFAULT 0"
+                    )
+                    cursor.execute(
+                        "ALTER TABLE evaluation_run "
+                        "ADD COLUMN IF NOT EXISTS evaluated_item_count NUMBER NOT NULL DEFAULT 0"
+                    )
                 connection.commit()
             except Exception:
                 connection.rollback()

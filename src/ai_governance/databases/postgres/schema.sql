@@ -404,7 +404,11 @@ CREATE TABLE IF NOT EXISTS evaluation_run (
     evaluation_result_id TEXT,
     started_at TIMESTAMPTZ,
     completed_at TIMESTAMPTZ,
-    status TEXT NOT NULL
+    status TEXT NOT NULL,
+    failure_reason TEXT,
+    total_item_count INTEGER,
+    completed_item_count INTEGER NOT NULL DEFAULT 0,
+    evaluated_item_count INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_evaluation_run_experiment_id
@@ -742,6 +746,9 @@ ALTER TABLE experiment_candidate ADD COLUMN IF NOT EXISTS organization_id TEXT N
 ALTER TABLE experiment_candidate ADD COLUMN IF NOT EXISTS project_id TEXT NOT NULL DEFAULT 'project_default';
 ALTER TABLE evaluation_run ADD COLUMN IF NOT EXISTS organization_id TEXT NOT NULL DEFAULT 'org_default';
 ALTER TABLE evaluation_run ADD COLUMN IF NOT EXISTS project_id TEXT NOT NULL DEFAULT 'project_default';
+ALTER TABLE evaluation_run ADD COLUMN IF NOT EXISTS total_item_count INTEGER;
+ALTER TABLE evaluation_run ADD COLUMN IF NOT EXISTS completed_item_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE evaluation_run ADD COLUMN IF NOT EXISTS evaluated_item_count INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE leaderboard ADD COLUMN IF NOT EXISTS organization_id TEXT NOT NULL DEFAULT 'org_default';
 ALTER TABLE leaderboard ADD COLUMN IF NOT EXISTS project_id TEXT NOT NULL DEFAULT 'project_default';
 ALTER TABLE mcp_execution_audit ADD COLUMN IF NOT EXISTS organization_id TEXT NOT NULL DEFAULT 'org_default';

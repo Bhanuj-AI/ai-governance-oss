@@ -73,5 +73,5 @@ def test_mcp_tool_invokes_rest_api_experiment_list() -> None:
     result = server.call_tool("experiment.list")
 
     assert result.status == "ok"
-    assert result.data[0]["name"] == "claim-validation"
-    assert result.data[0]["owner"] == "mcp-test"
+    created = next(item for item in result.data if item["name"] == "claim-validation")
+    assert created["owner"] == "mcp-test"

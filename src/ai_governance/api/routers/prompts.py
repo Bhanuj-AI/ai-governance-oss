@@ -9,8 +9,10 @@ from ai_governance.api.dependencies.tenancy import get_compatible_tenant_context
 from ai_governance.api.models import (
     ErrorResponse,
     PromptDetailResponse,
+    PromptCreateRequest,
     PromptObservationRequest,
     PromptResponse,
+    PromptVersionCreateRequest,
 )
 from ai_governance.tenancy.domain import TenantContext
 
@@ -47,6 +49,54 @@ def observe_prompt(
         content_hash=request.content_hash,
         variables=request.variables,
         observed_by=tenant_context.actor_id,
+        context=tenant_context,
+    )
+    return PromptResponse.from_domain(prompt)
+
+
+@router.post(
+    "",
+    response_model=PromptResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a managed prompt",
+    description="Create the first immutable managed prompt version in DRAFT status.",
+)
+def create_prompt(
+    request: PromptCreateRequest,
+    prompt_registry_service: Annotated[object, Depends(get_prompt_registry_service)],
+    tenant_context: Annotated[TenantContext, Depends(get_compatible_tenant_context)],
+) -> PromptResponse:
+    prompt = prompt_registry_service.create_prompt(
+        name=request.name,
+        version=request.version,
+        template=request.template,
+        variables=request.variables,
+        created_by=tenant_context.actor_id,
+        context=tenant_context,
+    )
+    return PromptResponse.from_domain(prompt)
+
+
+@router.post(
+    "/{prompt_id}/versions",
+    response_model=PromptResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a managed prompt version",
+    description="Create an immutable DRAFT version from a managed prompt version.",
+)
+def create_prompt_version(
+    prompt_id: str,
+    request: PromptVersionCreateRequest,
+    prompt_registry_service: Annotated[object, Depends(get_prompt_registry_service)],
+    tenant_context: Annotated[TenantContext, Depends(get_compatible_tenant_context)],
+) -> PromptResponse:
+    prompt = prompt_registry_service.version_prompt(
+        prompt_id=prompt_id,
+        version=request.version,
+        template=request.template,
+        variables=request.variables,
+        created_by=tenant_context.actor_id,
+        context=tenant_context,
     )
     return PromptResponse.from_domain(prompt)
 
@@ -69,6 +119,7 @@ def list_prompts(
         object,
         Depends(get_prompt_registry_service),
     ],
+    tenant_context: Annotated[TenantContext, Depends(get_compatible_tenant_context)],
 ) -> list[PromptResponse]:
     """
     Return visible prompt metadata.
@@ -76,7 +127,7 @@ def list_prompts(
 
     return [
         PromptResponse.from_domain(prompt)
-        for prompt in prompt_registry_service.list_visible_prompts()
+        for prompt in prompt_registry_service.list_visible_prompts(tenant_context)
     ]
 
 
@@ -103,11 +154,12 @@ def get_prompt_version(
         object,
         Depends(get_prompt_registry_service),
     ],
+    tenant_context: Annotated[TenantContext, Depends(get_compatible_tenant_context)],
 ) -> PromptDetailResponse:
     """Return the complete registry representation for one prompt version."""
 
     return PromptDetailResponse.from_domain(
-        prompt_registry_service.get_prompt(prompt_id)
+        prompt_registry_service.get_prompt(prompt_id, tenant_context)
     )
 
 
@@ -134,6 +186,7 @@ def list_prompt_versions(
         object,
         Depends(get_prompt_registry_service),
     ],
+    tenant_context: Annotated[TenantContext, Depends(get_compatible_tenant_context)],
 ) -> list[PromptResponse]:
     """
     Return visible versions for one prompt name.
@@ -141,5 +194,5 @@ def list_prompt_versions(
 
     return [
         PromptResponse.from_domain(prompt)
-        for prompt in prompt_registry_service.list_prompt_versions(name)
+        for prompt in prompt_registry_service.list_prompt_versions(name, tenant_context)
     ]

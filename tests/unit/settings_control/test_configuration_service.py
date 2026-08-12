@@ -84,6 +84,36 @@ def test_validation_static_and_runtime_consumer_contract() -> None:
     )
 
 
+def test_runtime_model_provider_allow_list_is_validated() -> None:
+    service = ConfigurationService(InMemorySettingsRepository(), {})
+    context = SettingContext("org-1", "project-1")
+
+    assert service.validate(
+        "model_registry.allowed_runtime_providers",
+        ["openai", "aws_bedrock", "custom"],
+    ) == ["openai", "aws_bedrock", "custom"]
+
+    with pytest.raises(SettingValidationError):
+        service.validate(
+            "model_registry.allowed_runtime_providers",
+            ["OpenAI"],
+        )
+
+    service.update(
+        "model_registry.allowed_runtime_providers",
+        ["aws_bedrock", "custom"],
+        "actor-1",
+        "Restrict managed registrations to approved runtimes",
+        0,
+        SettingScope.PROJECT,
+        context,
+    )
+    assert service.get("model_registry.allowed_runtime_providers", context) == [
+        "aws_bedrock",
+        "custom",
+    ]
+
+
 def test_compare_and_set_rejects_stale_writer() -> None:
     service = ConfigurationService(InMemorySettingsRepository(), {})
     service.update("mcp.dry_run_default", True, "actor-1", "First", 0)

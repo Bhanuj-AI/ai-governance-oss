@@ -2,8 +2,10 @@
 
 from ai_governance.datasets.object_store import (
     DatasetObjectStore,
+    FilesystemDatasetObjectStore,
     ObjectWriteResult,
     S3DatasetObjectStore,
+    dataset_object_uri,
     dataset_object_store_from_environment,
 )
 from ai_governance.datasets.ingestion import (
@@ -17,8 +19,10 @@ from ai_governance.datasets.ingestion import (
 
 __all__ = [
     "DatasetObjectStore",
+    "FilesystemDatasetObjectStore",
     "ObjectWriteResult",
     "S3DatasetObjectStore",
+    "dataset_object_uri",
     "dataset_object_store_from_environment",
     "DatasetUploadValidationError",
     "UploadedDatasetContent",

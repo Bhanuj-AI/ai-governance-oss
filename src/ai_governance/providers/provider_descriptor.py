@@ -119,7 +119,9 @@ class ProviderDescriptor:
             "adapter_version": self.adapter_version,
             "capabilities": self.capabilities.to_dict(),
             "config_schema_version": self.config_schema_version,
-            "configuration_schema": dict(self.configuration_schema),
+            "configuration_schema": scrub_sensitive_metadata(
+                self.configuration_schema
+            ),
             "metadata": dict(self.metadata),
         }
 

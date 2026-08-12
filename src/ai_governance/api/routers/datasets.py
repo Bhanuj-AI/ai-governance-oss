@@ -11,6 +11,7 @@ from ai_governance.api.models import DatasetResponse, ErrorResponse
 from ai_governance.api.dependencies.tenancy import get_compatible_tenant_context
 from ai_governance.datasets import (
     dataset_object_store_from_environment,
+    dataset_object_uri,
     dataset_id_for_upload,
     inspect_uploaded_dataset_stream,
     object_key_for_upload,
@@ -38,7 +39,7 @@ router = APIRouter(
     },
     summary="Upload and register a dataset version",
     description=(
-        "Store one CSV or JSONL dataset in the configured S3-compatible object "
+        "Store one CSV or JSONL dataset in the configured immutable object "
         "store and register an immutable DRAFT dataset version."
     ),
 )
@@ -106,10 +107,12 @@ async def upload_dataset(
         metadata={"dataset_id": dataset_id, "version": version, "checksum": content.checksum},
         if_absent=True,
     )
+    storage_uri = dataset_object_uri(object_store, bucket=bucket, key=key)
     try:
         dataset = dataset_registry_service.register_dataset(
             name=name, version=version, description=description,
-            storage_uri=f"s3://{bucket}/{key}", storage_type="S3",
+            storage_uri=storage_uri,
+            storage_type="S3" if storage_uri.startswith("s3://") else "filesystem",
             schema_version=schema_version, record_count=content.record_count,
             checksum=content.checksum, creator=context.actor_id,
             organization_id=context.organization_id, project_id=context.project_id,

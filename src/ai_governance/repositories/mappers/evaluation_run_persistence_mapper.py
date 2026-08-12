@@ -33,6 +33,10 @@ class EvaluationRunPersistenceMapper:
             if run.completed_at is not None
             else None,
             "status": run.status.value,
+            "failure_reason": run.failure_reason,
+            "total_item_count": run.total_item_count,
+            "completed_item_count": run.completed_item_count,
+            "evaluated_item_count": run.evaluated_item_count,
         }
 
     @staticmethod
@@ -53,6 +57,10 @@ class EvaluationRunPersistenceMapper:
             if record["completed_at"] is not None
             else None,
             status=EvaluationRunStatus(record["status"]),
+            failure_reason=record["failure_reason"],
+            total_item_count=record["total_item_count"],
+            completed_item_count=record["completed_item_count"] or 0,
+            evaluated_item_count=record["evaluated_item_count"] or 0,
         )
 
     @classmethod

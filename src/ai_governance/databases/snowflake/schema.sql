@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS agent_evaluation (
     artifacts_json VARIANT,
     created_at TIMESTAMP_TZ,
     explanation VARCHAR,
+    organization_id VARCHAR NOT NULL DEFAULT 'org_default',
+    project_id VARCHAR NOT NULL DEFAULT 'project_default',
 
     PRIMARY KEY (
         evaluation_id,
@@ -152,7 +154,11 @@ CREATE TABLE IF NOT EXISTS evaluation_run (
     evaluation_result_id VARCHAR,
     started_at TIMESTAMP_TZ,
     completed_at TIMESTAMP_TZ,
-    status VARCHAR NOT NULL
+    status VARCHAR NOT NULL,
+    failure_reason VARCHAR,
+    total_item_count NUMBER,
+    completed_item_count NUMBER NOT NULL DEFAULT 0,
+    evaluated_item_count NUMBER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS leaderboard (
@@ -259,3 +265,8 @@ ALTER TABLE model_registry ADD COLUMN IF NOT EXISTS source_reference VARCHAR;
 ALTER TABLE dataset_registry ADD COLUMN IF NOT EXISTS provenance VARCHAR NOT NULL DEFAULT 'MANAGED';
 ALTER TABLE dataset_registry ADD COLUMN IF NOT EXISTS source_system VARCHAR;
 ALTER TABLE dataset_registry ADD COLUMN IF NOT EXISTS source_reference VARCHAR;
+ALTER TABLE evaluation_run ADD COLUMN IF NOT EXISTS total_item_count NUMBER;
+ALTER TABLE evaluation_run ADD COLUMN IF NOT EXISTS completed_item_count NUMBER NOT NULL DEFAULT 0;
+ALTER TABLE evaluation_run ADD COLUMN IF NOT EXISTS evaluated_item_count NUMBER NOT NULL DEFAULT 0;
+ALTER TABLE agent_evaluation ADD COLUMN IF NOT EXISTS organization_id VARCHAR NOT NULL DEFAULT 'org_default';
+ALTER TABLE agent_evaluation ADD COLUMN IF NOT EXISTS project_id VARCHAR NOT NULL DEFAULT 'project_default';
