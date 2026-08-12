@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import BinaryIO
 from typing import Any, Protocol
 
@@ -247,7 +247,7 @@ class FilesystemDatasetObjectStore:
         return ObjectWriteResult(created=True)
 
     def _path(self, bucket: str, key: str) -> Path:
-        path = (self._root / bucket / key).resolve()
+        path = self._root.joinpath(*_filesystem_object_path_parts(bucket, key)).resolve()
         try:
             path.relative_to(self._root)
         except ValueError as exc:
@@ -289,3 +289,34 @@ def _boolean_environment(name: str, *, default: bool) -> bool:
     if value is None:
         return default
     return value.lower() in {"1", "true", "yes", "on"}
+
+
+def _filesystem_object_path_parts(bucket: str, key: str) -> tuple[str, ...]:
+    """Return validated relative path components for the local object-store adapter."""
+
+    return _safe_filesystem_path_parts(bucket, "bucket", allow_nested=False) + _safe_filesystem_path_parts(
+        key,
+        "key",
+        allow_nested=True,
+    )
+
+
+def _safe_filesystem_path_parts(
+    value: str,
+    label: str,
+    *,
+    allow_nested: bool,
+) -> tuple[str, ...]:
+    """Reject absolute or traversal path syntax before joining filesystem paths."""
+
+    if not value or "\x00" in value or "\\" in value or PureWindowsPath(value).is_absolute():
+        raise ValueError(f"Dataset object {label} must be a non-empty relative path.")
+    parts = tuple(value.split("/"))
+    if (
+        value.startswith("/")
+        or value.endswith("/")
+        or (not allow_nested and len(parts) != 1)
+        or any(part in {"", ".", ".."} for part in parts)
+    ):
+        raise ValueError(f"Dataset object {label} contains unsafe path syntax.")
+    return parts

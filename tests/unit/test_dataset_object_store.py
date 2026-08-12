@@ -131,6 +131,47 @@ def test_filesystem_dataset_object_store_preserves_immutable_content(
     ).created is False
 
 
+@pytest.mark.parametrize(
+    ("bucket", "key"),
+    [
+        ("../datasets", "support/v1.jsonl"),
+        ("datasets", "../outside.jsonl"),
+        ("datasets", "support/../../outside.jsonl"),
+        ("datasets", "/outside.jsonl"),
+        ("datasets/other", "support/v1.jsonl"),
+        ("datasets", "C:/outside.jsonl"),
+        ("datasets", "support\\outside.jsonl"),
+    ],
+)
+def test_filesystem_dataset_object_store_rejects_unsafe_object_paths(
+    tmp_path,
+    bucket: str,
+    key: str,
+) -> None:
+    store = FilesystemDatasetObjectStore(tmp_path)
+
+    with pytest.raises(ValueError, match="unsafe path|relative path"):
+        store.put_bytes(
+            bucket=bucket,
+            key=key,
+            body=b'{"question":"Example"}\n',
+            content_type="application/x-ndjson",
+        )
+
+
+def test_filesystem_dataset_object_store_rejects_symlink_escape(tmp_path) -> None:
+    store = FilesystemDatasetObjectStore(tmp_path)
+    (tmp_path / "datasets").symlink_to(tmp_path.parent, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="escapes the configured filesystem root"):
+        store.put_bytes(
+            bucket="datasets",
+            key="outside.jsonl",
+            body=b'{"question":"Example"}\n',
+            content_type="application/x-ndjson",
+        )
+
+
 def test_dataset_object_store_rejects_unknown_backend(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
