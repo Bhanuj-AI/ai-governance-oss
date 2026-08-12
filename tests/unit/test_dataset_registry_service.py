@@ -8,9 +8,14 @@ from ai_governance.repositories.in_memory_dataset_repository import (
 )
 from ai_governance.services.datasets import (
     DatasetLifecycleError,
+    DatasetNotFoundError,
     DatasetRegistryService,
     DatasetVersionConflictError,
 )
+from ai_governance.tenancy.domain import TenantContext
+
+
+_TENANT = TenantContext("org_default", "project_default", "dataset-owner", "request-1")
 
 
 def test_dataset_registry_registers_dataset() -> None:
@@ -169,9 +174,29 @@ def test_dataset_registry_freezes_dataset() -> None:
         creator="dataset-owner",
     )
 
-    frozen = service.freeze_dataset(dataset.dataset_id)
+    frozen = service.freeze_dataset(dataset.dataset_id, _TENANT)
 
     assert frozen.status == DatasetStatus.FROZEN
+
+
+def test_dataset_registry_lifecycle_transition_does_not_cross_tenant_scope() -> None:
+    service = _create_service()
+    dataset = service.register_dataset(
+        name="tenant-evaluation-set",
+        version="v1.0",
+        description="Tenant-scoped evaluation dataset",
+        storage_uri="s3://datasets/tenant-evaluation-set/v1.0.jsonl",
+        storage_type="S3",
+        schema_version="1.0",
+        record_count=1,
+        checksum="sha256:abc123",
+        creator="dataset-owner",
+        organization_id="org-acme",
+        project_id="project-risk",
+    )
+
+    with pytest.raises(DatasetNotFoundError, match="does not exist"):
+        service.freeze_dataset(dataset.dataset_id, _TENANT)
 
 
 def test_dataset_registry_deprecates_dataset() -> None:

@@ -154,12 +154,13 @@ class DatasetRegistryService:
     def freeze_dataset(
         self,
         dataset_id: str,
+        context: TenantContext | None = None,
     ) -> Dataset:
         """
         Mark a dataset version as frozen for benchmark evaluations.
         """
 
-        dataset = self._get_dataset(dataset_id)
+        dataset = self._get_dataset(dataset_id, context)
 
         if dataset.status == DatasetStatus.ARCHIVED:
             raise DatasetLifecycleError("Archived datasets cannot be frozen.")
@@ -173,17 +174,18 @@ class DatasetRegistryService:
     def promote_dataset(
         self,
         dataset_id: str,
+        context: TenantContext | None = None,
     ) -> Dataset:
         """
         Activate one dataset version and deprecate the previous active version.
         """
 
-        dataset = self._get_dataset(dataset_id)
+        dataset = self._get_dataset(dataset_id, context)
 
         if dataset.status == DatasetStatus.ARCHIVED:
             raise DatasetLifecycleError("Archived datasets cannot be promoted.")
 
-        for existing in self.list_versions(name=dataset.name):
+        for existing in self.list_versions(name=dataset.name, context=context):
             if (
                 existing.dataset_id != dataset.dataset_id
                 and existing.status == DatasetStatus.ACTIVE
@@ -207,12 +209,13 @@ class DatasetRegistryService:
     def deprecate_dataset(
         self,
         dataset_id: str,
+        context: TenantContext | None = None,
     ) -> Dataset:
         """
         Mark a dataset version as deprecated while preserving history.
         """
 
-        dataset = self._get_dataset(dataset_id)
+        dataset = self._get_dataset(dataset_id, context)
 
         if dataset.status == DatasetStatus.ARCHIVED:
             raise DatasetLifecycleError("Archived datasets cannot be deprecated.")
@@ -226,12 +229,13 @@ class DatasetRegistryService:
     def archive_dataset(
         self,
         dataset_id: str,
+        context: TenantContext | None = None,
     ) -> Dataset:
         """
         Archive a dataset version so it is no longer available for active use.
         """
 
-        dataset = self._get_dataset(dataset_id)
+        dataset = self._get_dataset(dataset_id, context)
 
         if dataset.status == DatasetStatus.ARCHIVED:
             return dataset
@@ -298,12 +302,21 @@ class DatasetRegistryService:
     def list_versions(
         self,
         name: str,
+        context: TenantContext | None = None,
     ) -> list[Dataset]:
         """
         Return every version for one logical dataset.
         """
 
-        return self._dataset_repository.find_by_name(name)
+        return [
+            dataset
+            for dataset in self._dataset_repository.find_by_name(name)
+            if context is None
+            or (
+                dataset.organization_id == context.organization_id
+                and dataset.project_id == context.project_id
+            )
+        ]
 
     def compare_dataset_versions(
         self,
@@ -335,10 +348,17 @@ class DatasetRegistryService:
     def _get_dataset(
         self,
         dataset_id: str,
+        context: TenantContext | None = None,
     ) -> Dataset:
         dataset = self._dataset_repository.find_by_id(dataset_id)
 
-        if dataset is None:
+        if dataset is None or (
+            context is not None
+            and (
+                dataset.organization_id != context.organization_id
+                or dataset.project_id != context.project_id
+            )
+        ):
             raise DatasetNotFoundError(f"Dataset '{dataset_id}' does not exist.")
 
         return dataset

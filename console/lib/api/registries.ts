@@ -133,6 +133,10 @@ export const archiveModelAsset = (modelId: string) => aiGovernanceJsonRequest<Mo
 export const listDatasetAssets = () => aiGovernanceRequest<DatasetAsset[]>("/api/v1/datasets");
 export const uploadDatasetAsset = (form: FormData) =>
   aiGovernanceFormRequest<DatasetAsset>("/api/v1/datasets/upload", form);
+export const freezeDatasetAsset = (datasetId: string) => aiGovernanceJsonRequest<DatasetAsset, undefined>(`/api/v1/datasets/${encodeURIComponent(datasetId)}/freeze`, { method: "POST" });
+export const activateDatasetAsset = (datasetId: string) => aiGovernanceJsonRequest<DatasetAsset, undefined>(`/api/v1/datasets/${encodeURIComponent(datasetId)}/activate`, { method: "POST" });
+export const deprecateDatasetAsset = (datasetId: string) => aiGovernanceJsonRequest<DatasetAsset, undefined>(`/api/v1/datasets/${encodeURIComponent(datasetId)}/deprecate`, { method: "POST" });
+export const archiveDatasetAsset = (datasetId: string) => aiGovernanceJsonRequest<DatasetAsset, undefined>(`/api/v1/datasets/${encodeURIComponent(datasetId)}/archive`, { method: "POST" });
 export const listProviderAssets = () => aiGovernanceRequest<ProviderAsset[]>("/api/v1/providers");
 export const listProviderInstallations = () => aiGovernanceRequest<ProviderInstallation[]>("/api/v1/provider-installations");
 export const createProviderInstallation = (payload: Pick<ProviderInstallation, "provider_type" | "display_name" | "settings" | "secret_refs" | "enabled" | "scope">) =>

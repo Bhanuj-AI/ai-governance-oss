@@ -13,8 +13,12 @@ import { getNeighbourhood, getRelationships } from "@/lib/api/graph";
 import { listOntologySyncEvents } from "@/lib/api/ontology-sync";
 import {
   activateModelAsset,
+  activateDatasetAsset,
+  archiveDatasetAsset,
   archiveModelAsset,
+  deprecateDatasetAsset,
   deprecateModelAsset,
+  freezeDatasetAsset,
   getPromptVersion,
   listDatasetAssets,
   listModelAssets,
@@ -83,7 +87,7 @@ export function AssetDetailPage({ kind, assetId }: { kind: string; assetId: stri
           <p className="mt-1 text-sm text-muted-foreground">{assetSubtitle(registryKind, asset)}</p>
           <code className="mt-2 block text-xs text-muted-foreground">{entityId}</code>
         </div>
-        <div className="flex flex-wrap gap-2">{registryKind === "prompts" && assetProvenance(registryKind, selected) === "MANAGED" ? <PromptVersionForm promptId={(selected as PromptAsset).prompt_id} /> : null}{registryKind === "models" && assetProvenance(registryKind, selected) === "MANAGED" ? <><ModelVersionForm model={selected as ModelAsset} /><ModelLifecycleControls model={selected as ModelAsset} /></> : null}<Link href={`/graph?entityType=${encodeURIComponent(entityType)}&entityId=${encodeURIComponent(entityId)}&depth=3`} className="inline-flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-sm font-medium shadow-sm hover:bg-accent"><Network className="h-4 w-4" />Open Ontology</Link></div>
+        <div className="flex flex-wrap gap-2">{registryKind === "prompts" && assetProvenance(registryKind, selected) === "MANAGED" ? <PromptVersionForm promptId={(selected as PromptAsset).prompt_id} /> : null}{registryKind === "models" && assetProvenance(registryKind, selected) === "MANAGED" ? <><ModelVersionForm model={selected as ModelAsset} /><ModelLifecycleControls model={selected as ModelAsset} /></> : null}{registryKind === "datasets" && assetProvenance(registryKind, selected) === "MANAGED" ? <DatasetLifecycleControls dataset={selected as DatasetAsset} /> : null}<Link href={`/graph?entityType=${encodeURIComponent(entityType)}&entityId=${encodeURIComponent(entityId)}&depth=3`} className="inline-flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-sm font-medium shadow-sm hover:bg-accent"><Network className="h-4 w-4" />Open Ontology</Link></div>
       </header>
       <div className="flex gap-1 overflow-x-auto border-b">
         {TABS.map((item) => <button key={item} className={`shrink-0 px-3 py-2 text-sm ${tab === item ? "border-b-2 border-primary font-medium" : "text-muted-foreground hover:text-foreground"}`} onClick={() => setTab(item)}>{item}</button>)}
@@ -102,6 +106,13 @@ function ModelLifecycleControls({ model }: { model: ModelAsset }) {
   const transition = useMutation({ mutationFn: (action: "activate" | "deprecate" | "archive") => action === "activate" ? activateModelAsset(model.model_id) : action === "deprecate" ? deprecateModelAsset(model.model_id) : archiveModelAsset(model.model_id), onSuccess: async () => { await client.invalidateQueries({ queryKey: ["asset-registry", "models"] }); }, });
   if (model.status === "ARCHIVED") return null;
   return <div className="flex flex-wrap gap-2">{model.status !== "ACTIVE" ? <Button size="sm" onClick={() => transition.mutate("activate")} disabled={transition.isPending}>{transition.isPending ? "Updating…" : "Activate"}</Button> : <Button size="sm" variant="outline" onClick={() => transition.mutate("deprecate")} disabled={transition.isPending}>{transition.isPending ? "Updating…" : "Deprecate"}</Button>}<Button size="sm" variant="outline" onClick={() => transition.mutate("archive")} disabled={transition.isPending}>Archive</Button>{transition.error ? <span className="self-center text-xs text-destructive">{transition.error.message}</span> : null}</div>;
+}
+
+function DatasetLifecycleControls({ dataset }: { dataset: DatasetAsset }) {
+  const client = useQueryClient();
+  const transition = useMutation({ mutationFn: (action: "freeze" | "activate" | "deprecate" | "archive") => action === "freeze" ? freezeDatasetAsset(dataset.dataset_id) : action === "activate" ? activateDatasetAsset(dataset.dataset_id) : action === "deprecate" ? deprecateDatasetAsset(dataset.dataset_id) : archiveDatasetAsset(dataset.dataset_id), onSuccess: async () => { await client.invalidateQueries({ queryKey: ["asset-registry", "datasets"] }); }, });
+  if (dataset.status === "ARCHIVED") return null;
+  return <div className="flex flex-wrap gap-2">{dataset.status === "DRAFT" ? <><Button size="sm" onClick={() => transition.mutate("freeze")} disabled={transition.isPending}>{transition.isPending ? "Updating…" : "Freeze for Evaluation"}</Button><Button size="sm" variant="outline" onClick={() => transition.mutate("activate")} disabled={transition.isPending}>Activate</Button></> : null}{dataset.status === "FROZEN" ? <><Button size="sm" variant="outline" onClick={() => transition.mutate("activate")} disabled={transition.isPending}>Activate</Button><Button size="sm" variant="outline" onClick={() => transition.mutate("deprecate")} disabled={transition.isPending}>Deprecate</Button></> : null}{dataset.status === "ACTIVE" ? <Button size="sm" variant="outline" onClick={() => transition.mutate("deprecate")} disabled={transition.isPending}>{transition.isPending ? "Updating…" : "Deprecate"}</Button> : null}{dataset.status === "DEPRECATED" ? <><Button size="sm" onClick={() => transition.mutate("freeze")} disabled={transition.isPending}>Freeze for Evaluation</Button><Button size="sm" variant="outline" onClick={() => transition.mutate("activate")} disabled={transition.isPending}>Activate</Button></> : null}<Button size="sm" variant="outline" onClick={() => transition.mutate("archive")} disabled={transition.isPending}>Archive</Button>{transition.error ? <span className="self-center text-xs text-destructive">{transition.error.message}</span> : null}</div>;
 }
 
 function Overview({ kind, asset, promptTemplate }: { kind: AssetKind; asset: PromptAsset | ModelAsset | DatasetAsset | ProviderAsset; promptTemplate?: string | null }) {

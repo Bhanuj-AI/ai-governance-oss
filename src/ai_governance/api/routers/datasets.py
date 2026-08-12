@@ -7,6 +7,7 @@ import os
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 
 from ai_governance.api.dependencies import get_dataset_registry_service
+from ai_governance.api.dependencies.authorization import enforce_permission
 from ai_governance.api.models import DatasetResponse, ErrorResponse
 from ai_governance.api.dependencies.tenancy import get_compatible_tenant_context
 from ai_governance.datasets import (
@@ -17,10 +18,13 @@ from ai_governance.datasets import (
     object_key_for_upload,
 )
 from ai_governance.services.datasets import (
+    DatasetLifecycleError,
     DatasetNotFoundError,
     DatasetDuplicateContentError,
     DatasetVersionConflictError,
 )
+from ai_governance.tenancy.domain import TenantContext
+from ai_governance.tenancy.permissions import Permission
 
 router = APIRouter(
     prefix="/api/v1/datasets",
@@ -63,9 +67,7 @@ async def upload_dataset(
             detail="Dataset object storage is not configured.",
         )
     versions = [
-        item for item in dataset_registry_service.list_versions(name)
-        if getattr(item, "organization_id", "org_default") == context.organization_id
-        and getattr(item, "project_id", "project_default") == context.project_id
+        item for item in dataset_registry_service.list_versions(name, context)
     ]
     if any(item.version == version for item in versions):
         raise DatasetVersionConflictError(
@@ -151,9 +153,7 @@ def list_datasets(
 
     return [
         DatasetResponse.from_domain(dataset)
-        for dataset in dataset_registry_service.list_datasets()
-        if getattr(dataset, "organization_id", "org_default") == context.organization_id
-        and getattr(dataset, "project_id", "project_default") == context.project_id
+        for dataset in dataset_registry_service.list_datasets(context)
     ]
 
 
@@ -186,10 +186,97 @@ def get_dataset(
     Return dataset metadata by ID.
     """
 
-    dataset = dataset_registry_service.get_dataset(dataset_id)
-    if (
-        getattr(dataset, "organization_id", "org_default") != context.organization_id
-        or getattr(dataset, "project_id", "project_default") != context.project_id
-    ):
-        raise DatasetNotFoundError(f"Dataset '{dataset_id}' does not exist.")
-    return DatasetResponse.from_domain(dataset)
+    return DatasetResponse.from_domain(dataset_registry_service.get_dataset(dataset_id, context))
+
+
+@router.post(
+    "/{dataset_id}/freeze",
+    response_model=DatasetResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(enforce_permission(Permission.ASSET_MANAGE))],
+    summary="Freeze a dataset version for evaluation",
+    description=(
+        "Transition one managed dataset version to FROZEN. The recorded artifact "
+        "and checksum remain immutable and the version becomes eligible for governed experiments."
+    ),
+)
+def freeze_dataset(
+    dataset_id: str,
+    dataset_registry_service: Annotated[object, Depends(get_dataset_registry_service)],
+    context: Annotated[TenantContext, Depends(get_compatible_tenant_context)],
+) -> DatasetResponse:
+    return DatasetResponse.from_domain(
+        _transition_dataset(dataset_registry_service.freeze_dataset, dataset_id, context)
+    )
+
+
+@router.post(
+    "/{dataset_id}/activate",
+    response_model=DatasetResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(enforce_permission(Permission.ASSET_MANAGE))],
+    summary="Activate a dataset version",
+    description=(
+        "Activate one managed dataset version and deprecate any other active "
+        "version of the same logical dataset in the selected tenant scope."
+    ),
+)
+def activate_dataset(
+    dataset_id: str,
+    dataset_registry_service: Annotated[object, Depends(get_dataset_registry_service)],
+    context: Annotated[TenantContext, Depends(get_compatible_tenant_context)],
+) -> DatasetResponse:
+    return DatasetResponse.from_domain(
+        _transition_dataset(dataset_registry_service.promote_dataset, dataset_id, context)
+    )
+
+
+@router.post(
+    "/{dataset_id}/deprecate",
+    response_model=DatasetResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(enforce_permission(Permission.ASSET_MANAGE))],
+    summary="Deprecate a dataset version",
+    description="Mark a dataset version as deprecated while preserving historical evidence.",
+)
+def deprecate_dataset(
+    dataset_id: str,
+    dataset_registry_service: Annotated[object, Depends(get_dataset_registry_service)],
+    context: Annotated[TenantContext, Depends(get_compatible_tenant_context)],
+) -> DatasetResponse:
+    return DatasetResponse.from_domain(
+        _transition_dataset(dataset_registry_service.deprecate_dataset, dataset_id, context)
+    )
+
+
+@router.post(
+    "/{dataset_id}/archive",
+    response_model=DatasetResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(enforce_permission(Permission.ASSET_MANAGE))],
+    summary="Archive a dataset version",
+    description="Archive a dataset version so it is no longer available for governed use.",
+)
+def archive_dataset(
+    dataset_id: str,
+    dataset_registry_service: Annotated[object, Depends(get_dataset_registry_service)],
+    context: Annotated[TenantContext, Depends(get_compatible_tenant_context)],
+) -> DatasetResponse:
+    return DatasetResponse.from_domain(
+        _transition_dataset(dataset_registry_service.archive_dataset, dataset_id, context)
+    )
+
+
+def _transition_dataset(operation, dataset_id: str, context: TenantContext):
+    try:
+        return operation(dataset_id, context)
+    except DatasetNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Dataset '{dataset_id}' was not found.",
+        ) from exc
+    except DatasetLifecycleError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc

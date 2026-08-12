@@ -109,6 +109,10 @@ POST /api/v1/models/{model_id}/archive
 GET /api/v1/datasets
 GET /api/v1/datasets/{dataset_id}
 POST /api/v1/datasets/upload
+POST /api/v1/datasets/{dataset_id}/freeze
+POST /api/v1/datasets/{dataset_id}/activate
+POST /api/v1/datasets/{dataset_id}/deprecate
+POST /api/v1/datasets/{dataset_id}/archive
 POST /api/v1/prompts/observations
 POST /api/v1/models/observations
 ```
@@ -211,6 +215,14 @@ returned by the registry API. An existing name/version returns `409`; the same
 checksum under a different version of the same logical dataset also returns
 `409`. Object keys are tenant-scoped and content-addressed, and a registry
 failure after a successful write triggers compensating object deletion.
+
+Dataset bytes and their checksum are never edited in place. After upload,
+`POST /api/v1/datasets/{dataset_id}/freeze` transitions `DRAFT` to `FROZEN`,
+making that exact version eligible for experiment candidates. Use `activate`
+only when the version should be the logical current dataset; it deprecates any
+other active version of the same dataset in the selected tenant scope.
+`deprecate` and `archive` preserve historical evidence while removing a version
+from normal governed use. Dataset lifecycle writes require `asset.manage`.
 
 ## Evaluation APIs
 
