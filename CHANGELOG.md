@@ -7,6 +7,23 @@ This project follows Semantic Versioning.
 
 ---
 
+## [1.0.2] - 2026-08-13
+
+### Added
+
+- dded a privacy-preserving OSS telemetry foundation for anonymous product and workload insights.
+- Added provider-neutral, versioned telemetry contracts with persistent anonymous installation identity.
+- Added bounded local aggregation for product usage and performance research metrics.
+- Added `ESSENTIAL`, `PRODUCT_ANALYTICS`, and `PERFORMANCE_RESEARCH` telemetry categories with configurable collection policies.
+- Added privacy allow-list enforcement preventing prompts, responses, identities, tenant/project information, policies, evidence, secrets, and customer content from being exported.
+- Added pluggable telemetry exporters with `None` and PostHog implementations.
+- Added asynchronous delivery, bounded retries, and failure isolation so telemetry availability cannot affect platform workflows.
+- Added system telemetry settings with HTTPS validation and `env://` secret references.
+- Added read-only `/api/v1/telemetry/status` and `/api/v1/telemetry/preview` endpoints for operator transparency.
+- Added evaluation and lifecycle-derived aggregate usage instrumentation.
+- Added telemetry subsystem operational metrics for export health, failures, pending snapshots, and dropped snapshots.
+- Added operator documentation covering configuration, privacy guarantees, transmitted fields, PostHog integration, and telemetry controls.
+
 ## [1.0.1] - 2026-08-12
 
 ### Added

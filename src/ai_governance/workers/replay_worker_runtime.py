@@ -145,8 +145,11 @@ def create_replay_worker_runtime(
         get_configuration_service,
         get_provider_installation_repository,
         get_runtime_connection_repository,
+        get_settings_repository,
     )
     from ai_governance.services.evaluation_api_service import EvaluationApiService
+    from ai_governance.services.telemetry_service import TelemetryService
+    from ai_governance.telemetry.repository import SettingsTelemetryStateRepository
     from ai_governance.services.experiment_api_service import ExperimentApiService
     from ai_governance.services.job_api_service import JobApiService
     from ai_governance.services.candidate_execution_runtime import (
@@ -161,6 +164,10 @@ def create_replay_worker_runtime(
     configuration_service = get_configuration_service(
         request=None,
         event_publisher=None,
+    )
+    telemetry_service = TelemetryService(
+        SettingsTelemetryStateRepository(get_settings_repository()),
+        configuration_service,
     )
     provider_installation_service = get_provider_installation_service(
         repository=get_provider_installation_repository(),
@@ -189,6 +196,7 @@ def create_replay_worker_runtime(
         evaluation_repository=get_evaluation_repository(),
         ontology_event_publisher=None,
         configuration_service=None,
+        telemetry_collector=telemetry_service,
     )
     experiments = ExperimentApiService(
         experiment_repository=get_experiment_repository(),

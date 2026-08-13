@@ -24,6 +24,7 @@ from ai_governance.api.routers.replays import router as replays_router
 from ai_governance.api.routers.runtime_connections import router as runtime_connections_router
 from ai_governance.api.routers.replay_executions import router as replay_executions_router
 from ai_governance.api.routers.tenancy import router as tenancy_router
+from ai_governance.api.routers.telemetry import router as telemetry_router
 from ai_governance.api.routers.settings_control import router as settings_router
 
 __all__ = [
@@ -53,5 +54,6 @@ __all__ = [
     "runtime_connections_router",
     "replay_executions_router",
     "tenancy_router",
+    "telemetry_router",
     "settings_router",
 ]
