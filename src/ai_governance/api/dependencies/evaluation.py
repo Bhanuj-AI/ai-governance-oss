@@ -13,6 +13,7 @@ from ai_governance.api.dependencies.provider_installations import get_provider_i
 from ai_governance.api.dependencies.repositories import get_evaluation_repository
 from ai_governance.api.dependencies.ontology import get_ontology_sync_event_publisher
 from ai_governance.api.dependencies.settings_control import get_configuration_service
+from ai_governance.api.dependencies.telemetry import get_telemetry_service
 
 
 def get_evaluation_service(
@@ -51,6 +52,7 @@ def get_evaluation_api_service(
     ontology_event_publisher: Any = Depends(get_ontology_sync_event_publisher),
     configuration_service: Any = Depends(get_configuration_service),
     provider_installation_service: Any = Depends(get_provider_installation_service),
+    telemetry_collector: Any = Depends(get_telemetry_service),
 ) -> Any:
     """
     Create the REST evaluation facade through dependency injection.
@@ -64,4 +66,5 @@ def get_evaluation_api_service(
         ontology_event_publisher=ontology_event_publisher,
         configuration_service=configuration_service,
         provider_installation_service=provider_installation_service,
+        telemetry_collector=telemetry_collector,
     )

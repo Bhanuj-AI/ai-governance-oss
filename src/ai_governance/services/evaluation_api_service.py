@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from time import monotonic
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 
@@ -19,6 +20,8 @@ from ai_governance.repositories.evaluation_repository import EvaluationRepositor
 from ai_governance.services.provider_installation_service import ProviderInstallationService
 from ai_governance.services.dataset_builder import EvaluationDatasetBuilder
 from ai_governance.tenancy.domain import TenantContext
+from ai_governance.domain.telemetry import TelemetryMetric
+from ai_governance.telemetry.contracts import TelemetryCollector
 from ai_governance.settings_control.operational import (
     duration_seconds,
     evaluate_thresholds,
@@ -92,6 +95,7 @@ class EvaluationApiService:
         ontology_event_publisher: OntologySyncEventPublisherProtocol | None = None,
         configuration_service=None,
         provider_installation_service: ProviderInstallationService | None = None,
+        telemetry_collector: TelemetryCollector | None = None,
     ) -> None:
         self._provider_registry = provider_registry
         self._evaluation_repository = evaluation_repository
@@ -99,6 +103,7 @@ class EvaluationApiService:
         self._ontology_event_publisher = ontology_event_publisher
         self._configuration_service = configuration_service
         self._provider_installations = provider_installation_service
+        self._telemetry_collector = telemetry_collector
 
     def submit_evaluation(
         self,
@@ -130,6 +135,7 @@ class EvaluationApiService:
             provider_name=provider_name,
             dataset_builder=self._dataset_builder,
         )
+        started = monotonic()
         result = service.evaluate(
             execution,
             provider_config=effective_provider_config,
@@ -162,6 +168,12 @@ class EvaluationApiService:
                 "failures": list(outcome.failures),
             }
         self._evaluation_repository.save(result)
+        record_telemetry = getattr(self._telemetry_collector, "record", None)
+        if callable(record_telemetry):
+            record_telemetry(
+                TelemetryMetric.EVALUATION_RUNS,
+                duration_ms=round((monotonic() - started) * 1000),
+            )
         self._publish_evaluation_event(result)
         return result
 

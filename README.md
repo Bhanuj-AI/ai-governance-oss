@@ -1,27 +1,48 @@
-# AI Governance Control Plane
+# BHANUJ
 
-> **AI Governance Control Plane**
->
-> Govern prompts, models, agents, evaluations, policies, and decisions with
-> deterministic evidence, replayability and lineage.
+## AI Governance Control Plane
 
-**Modern AI frameworks help build agents. AI Governance Control Plane governs them.**
+> **Know why an AI action happened, what changed, and whether it is safe to proceed.**
+
+BHANUJ is an open-source control plane around AI systems. It records versioned
+assets and runtime evidence, evaluates behaviour, applies deterministic policy,
+and preserves the decision and its lineage—without owning your AI runtime,
+application, or deployment system.
+
+```text
+Your AI systems → assets + runtime evidence → evaluate → policy → decision + audit trail
+```
+
+### Understand BHANUJ - AI Governance Control Plane in 20 seconds
+
+Use when your team needs reliable answers to questions such as:
+
+- **Which prompt, model, or configuration behaves better?** Run an experiment
+  and retain item-level evaluation evidence.
+- **Why was this AI action approved, rejected, or blocked?** Inspect the
+  policy, evidence, and deterministic decision path.
+- **What changed and what does it affect?** Follow the lineage between assets,
+  evaluations, and decisions; use replay to examine historical evidence.
+- **Can we govern AI without replacing our stack?** Connect the runtime and
+  keep applications, frameworks, model providers, and deployments under your
+  ownership.
+
+It is **not** model serving, an agent framework, a workflow orchestrator,
+or a generic GRC system. It is the governance layer that makes AI activity
+reviewable, explainable, and auditable.
+
+**Modern AI frameworks help build agents. BHANUJ - AI Governance Control Plane governs the evidence and decisions around them.**
 
 > **Enterprise capabilities are under active development. Commercial offerings
 > will be announced as they mature.**
 
-![AI Governance Control Plane logo](assets/Hero.png)
-
-AI Governance Control Plane is an open-source governance control plane for AI systems. Rather than
-focusing solely on model evaluation, it establishes a semantic governance layer
-that models AI assets, evidence, policies and governance decisions as
-first-class domain objects.
-
-It enables organizations to govern AI systems through deterministic decision-making, versioned assets, explainable reasoning, auditability, replayability, and framework-independent integrations.
+![BHANUJ AI Governance Control Plane](assets/Hero.png)
 
 - [Website](https://ai-governance.bhanuj.app)
 - [Documentation](https://ai-governance.bhanuj.app/docs)
 - [Tutorials](https://ai-governance.bhanuj.app/tutorials)
+- [Start with the governed replay walkthrough](docs/tutorials/governed-replay-walkthrough.md)
+- [Understand the platform boundary](docs/architecture/ARCHITECTURE.md)
 - [Roadmap](docs/roadmap/ROADMAP.md)
 
 ---

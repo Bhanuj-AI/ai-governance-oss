@@ -1,6 +1,6 @@
 [project]
 name = "ai-governance"
-version = "1.0.0"
+version = "1.0.2"
 description = "Open-source AI governance control plane for governed AI assets, evaluations, replay, audit, and deterministic governance."
 readme = "README.md"
 requires-python = ">=3.12"

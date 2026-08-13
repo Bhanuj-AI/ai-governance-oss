@@ -36,6 +36,7 @@ from ai_governance.spi.recommendations import (
 )
 from ai_governance.spi.search import SearchProvider, SearchRequest, SearchResult
 from ai_governance.spi.storage import StorageProvider
+from ai_governance.spi.telemetry import TelemetryExporter
 
 __all__ = [
     "Advisor",
@@ -62,6 +63,7 @@ __all__ = [
     "SearchResult",
     "StorageProvider",
     "TenantContext",
+    "TelemetryExporter",
     "RecommendationAction",
     "RecommendationActionType",
     "RecommendationCandidate",

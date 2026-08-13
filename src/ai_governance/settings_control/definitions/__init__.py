@@ -1,0 +1,17 @@
+"""Built-in settings grouped by the capability that owns their semantics."""
+
+from .evaluation import EVALUATION_ONTOLOGY_DEFINITIONS
+from .general import GENERAL_OPERATIONAL_DEFINITIONS
+from .governance import GOVERNANCE_DEFINITIONS
+from .operations import OPERATIONS_DEFINITIONS
+from .telemetry import TELEMETRY_DEFINITIONS
+
+CORE_SETTING_DEFINITION_SETS = (
+    GENERAL_OPERATIONAL_DEFINITIONS,
+    GOVERNANCE_DEFINITIONS,
+    EVALUATION_ONTOLOGY_DEFINITIONS,
+    OPERATIONS_DEFINITIONS,
+    TELEMETRY_DEFINITIONS,
+)
+
+__all__ = ["CORE_SETTING_DEFINITION_SETS"]

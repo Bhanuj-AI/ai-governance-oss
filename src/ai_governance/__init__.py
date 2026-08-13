@@ -161,6 +161,15 @@ from ai_governance.domain.replay import (
     ReplayStatus,
 )
 from ai_governance.domain.workflow_execution import WorkflowExecution
+from ai_governance.domain.telemetry import (
+    DurationHistogram,
+    TelemetryCategory,
+    TelemetryExportResult,
+    TelemetryMetric,
+    TelemetryMode,
+    TelemetryPolicy,
+    TelemetrySnapshot,
+)
 from ai_governance.repositories import (
     GovernanceDecisionRepository,
     InMemoryGovernanceDecisionRepository,
@@ -346,4 +355,11 @@ __all__ = [
     "ROLE_PERMISSIONS",
     "RoleAssignment",
     "TenantContext",
+    "DurationHistogram",
+    "TelemetryCategory",
+    "TelemetryExportResult",
+    "TelemetryMetric",
+    "TelemetryMode",
+    "TelemetryPolicy",
+    "TelemetrySnapshot",
 ]

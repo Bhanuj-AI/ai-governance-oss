@@ -23,6 +23,7 @@ from ai_governance.services.replay_execution import (
     ReplayJobHandler,
 )
 from ai_governance.services.replay_execution_discovery import InMemoryReplaySourceResolver
+from ai_governance.services.telemetry_service import TelemetryService
 from ai_governance.tenancy.domain import TenantContext
 from ai_governance.workers import JobWorker
 from ai_governance.workers import replay_worker_runtime
@@ -112,6 +113,16 @@ def test_worker_wires_runtime_connections_into_async_experiments() -> None:
     experiment_handler = runtime._worker._executor._handlers[JobType.EXPERIMENT]
 
     assert experiment_handler._experiments._runtime_connection_service is not None
+
+
+def test_worker_wires_a_real_telemetry_collector_into_async_evaluations() -> None:
+    """Standalone workers must never receive a FastAPI ``Depends`` sentinel."""
+    runtime = replay_worker_runtime.create_replay_worker_runtime(
+        worker_id="telemetry-collector-test-worker"
+    )
+    evaluation_handler = runtime._worker._executor._handlers[JobType.EVALUATION]
+
+    assert isinstance(evaluation_handler._evaluations._telemetry_collector, TelemetryService)
 
 
 def test_worker_dispatches_replay_then_automatically_consumes_evaluation() -> None:

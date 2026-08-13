@@ -13,6 +13,7 @@ from ai_governance.settings_control.domain import (
 )
 from ai_governance.settings_control.repository import InMemorySettingsRepository
 from ai_governance.settings_control.registry import SETTINGS_REGISTRY
+from ai_governance.settings_control.registry import _compose_definitions
 from ai_governance.settings_control.service import ConfigurationService
 from ai_governance.authorization.contracts import AuthorizationEnforcementDecision
 from ai_governance.tenancy.domain import TenantContext
@@ -82,6 +83,23 @@ def test_validation_static_and_runtime_consumer_contract() -> None:
         not definition.mutable or definition.runtime_applied
         for definition in SETTINGS_REGISTRY.values()
     )
+
+
+def test_telemetry_exporter_configuration_requires_https_and_secret_reference() -> None:
+    service = ConfigurationService(InMemorySettingsRepository(), {})
+
+    with pytest.raises(SettingValidationError):
+        service.validate("telemetry.exporter.posthog_endpoint", "http://example.test")
+    with pytest.raises(SettingValidationError):
+        service.validate("telemetry.exporter.posthog_api_key_ref", "plaintext-key")
+    assert service.validate("telemetry.exporter.posthog_api_key_ref", "env://POSTHOG_API_KEY") == "env://POSTHOG_API_KEY"
+
+
+def test_registry_composition_rejects_duplicate_builtin_keys() -> None:
+    definition = SETTINGS_REGISTRY["telemetry.mode"]
+
+    with pytest.raises(ValueError, match="Duplicate built-in setting definition"):
+        _compose_definitions(((definition,), (definition,)))
 
 
 def test_runtime_model_provider_allow_list_is_validated() -> None:

@@ -52,9 +52,12 @@ from ai_governance.api.routers import (
     replays_router,
     runtime_connections_router,
     settings_router,
+    telemetry_router,
     tenancy_router,
 )
 from ai_governance.plugins import AIGovernancePlugin, PluginRegistry, create_plugin_registry
+from ai_governance.api.dependencies.telemetry import install_telemetry
+from ai_governance.services.telemetry_service import TelemetryDeliveryWorker
 
 
 def _configure_application_logging(log_level: str, log_format: str = "json") -> None:
@@ -95,6 +98,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     extension_registry.start()
     replay_worker = None
     worker_thread = None
+    telemetry_worker = TelemetryDeliveryWorker(app.state.telemetry_service)
+    telemetry_thread = Thread(
+        target=telemetry_worker.run_forever,
+        name="ai-governance-telemetry-worker",
+        daemon=True,
+    )
+    telemetry_thread.start()
     if os.getenv("AI_GOVERNANCE_RUN_REPLAY_WORKER", "false").lower() == "true":
         from ai_governance.workers.replay_worker_runtime import create_replay_worker_runtime
 
@@ -116,6 +126,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         if worker_thread is not None:
             with suppress(RuntimeError):
                 worker_thread.join(timeout=5)
+        telemetry_worker.stop()
+        with suppress(RuntimeError):
+            telemetry_thread.join(timeout=5)
 
 
 def create_app(*, plugins: Iterable[AIGovernancePlugin] = ()) -> FastAPI:
@@ -145,6 +158,7 @@ def create_app(*, plugins: Iterable[AIGovernancePlugin] = ()) -> FastAPI:
     app.state.extension_registry = extension_registry
     app.state.plugin_metrics = {}
     extension_registry.contributions.install(app)
+    install_telemetry(app)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(settings.cors_allow_origins),
@@ -299,6 +313,10 @@ def create_app(*, plugins: Iterable[AIGovernancePlugin] = ()) -> FastAPI:
                 enforce_read_write(Permission.SETTINGS_READ, Permission.SETTINGS_MANAGE)
             )
         ],
+    )
+    app.include_router(
+        telemetry_router,
+        dependencies=[Depends(enforce_permission(Permission.SETTINGS_READ))],
     )
 
     # Contributions are installed only after core routes have claimed their

@@ -27,6 +27,13 @@ evidence, policy, audit, replay and persistence contracts.
   point rather than OSS environment switches. Do not add dependencies on an
   Enterprise distribution from OSS.
 
+## Naming
+
+- Core modules, service names, schema fields, and internal identifiers use the
+  `ai_governance` prefix. Do not introduce `bhanuj` as a code, service, or
+  schema prefix.
+- When an external wire identifier needs a compact prefix, use `ai_governance_`.
+
 ## Core / Enterprise Extension Boundary
 
 AI Governance Control Plane Core owns stable, generic contracts. Enterprise owns its business
