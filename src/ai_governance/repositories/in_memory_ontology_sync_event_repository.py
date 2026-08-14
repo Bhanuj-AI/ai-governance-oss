@@ -34,15 +34,17 @@ class InMemoryOntologySyncEventRepository(OntologySyncEventRepository):
         filters: OntologySyncEventFilter | None = None,
         *,
         limit: int = 100,
+        offset: int = 0,
     ) -> list[OntologySyncEvent]:
         with self._lock:
             events = sorted(
                 self._events.values(),
                 key=lambda event: (event.created_at, event.event_id),
+                reverse=True,
             )
             if filters is not None:
                 events = [event for event in events if _matches_filter(event, filters)]
-            return events[:limit]
+            return events[offset : offset + limit]
 
     def acquire_next(
         self,

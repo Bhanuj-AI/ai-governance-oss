@@ -133,6 +133,7 @@ class OntologySyncEventRepository(Protocol):
         filters: OntologySyncEventFilter | None = None,
         *,
         limit: int = 100,
+        offset: int = 0,
     ) -> list[OntologySyncEvent]: ...
 
     def acquire_next(
@@ -486,8 +487,9 @@ class OntologySyncEventService:
         filters: OntologySyncEventFilter | None = None,
         *,
         limit: int = 100,
+        offset: int = 0,
     ) -> list[OntologySyncEvent]:
-        return self._repository.list_events(filters, limit=limit)
+        return self._repository.list_events(filters, limit=limit, offset=offset)
 
     def get_event(
         self,

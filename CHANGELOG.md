@@ -7,6 +7,19 @@ This project follows Semantic Versioning.
 
 ---
 
+## Unreleased
+
+
+## [1.0.3] - 2026-08-14
+
+### Changed
+
+- Places Runtime Connections directly below General in Settings.
+- Defines an explicit priority order for all Settings categories.
+- Displays Sync Events newest-first.
+- Adds bounded API pagination and Studio Previous/Next controls.
+- Covers pagination, ordering, tenant scope, and validation with tests.
+
 ## [1.0.2] - 2026-08-13
 
 ### Added

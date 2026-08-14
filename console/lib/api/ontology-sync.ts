@@ -6,6 +6,7 @@ import type {
   OntologySyncEvent,
   OntologySyncEventDto,
   OntologySyncEventListDto,
+  OntologySyncEventPage,
   OntologySyncEventStatus,
   OntologySyncMetrics,
   OntologySyncMetricsDto,
@@ -13,20 +14,36 @@ import type {
 
 const EVENTS_PATH = "/api/v1/ontology/synchronization/events";
 
-export async function listOntologySyncEvents(
-  filters: {
-    status?: OntologySyncEventStatus;
-    entityType?: string;
-    entityId?: string;
-  } = {},
+type OntologySyncEventListFilters = {
+  status?: OntologySyncEventStatus;
+  entityType?: string;
+  entityId?: string;
+  limit?: number;
+  offset?: number;
+};
+
+export async function listOntologySyncEventPage(
+  filters: OntologySyncEventListFilters = {},
 ) {
   const dto = await aiGovernanceRequest<OntologySyncEventListDto>(EVENTS_PATH, {
     status: filters.status,
     entity_type: filters.entityType,
     entity_id: filters.entityId,
-    limit: 100,
+    limit: filters.limit ?? 25,
+    offset: filters.offset ?? 0,
   });
-  return dto.events.map(mapEvent);
+  return {
+    events: dto.events.map(mapEvent),
+    limit: dto.limit,
+    offset: dto.offset,
+    hasMore: dto.has_more,
+  };
+}
+
+export async function listOntologySyncEvents(
+  filters: OntologySyncEventListFilters = {},
+) {
+  return (await listOntologySyncEventPage(filters)).events;
 }
 
 export async function getOntologySyncEvent(eventId: string) {

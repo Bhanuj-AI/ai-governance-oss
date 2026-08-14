@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Database, LockKeyhole, RefreshCw, Save, Settings2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,12 +11,31 @@ import { RuntimeConnectionsPanel } from "@/components/settings/RuntimeConnection
 import { listSettingCategories, listSettings, updateSetting } from "@/lib/api/settings";
 import type { PlatformSetting, SettingScope } from "@/types/settings";
 
+// Keep the navigation aligned to the order in which an operator typically
+// configures a deployment: platform basics, model access, then governance and
+// operational controls. Categories returned by the API are intentionally not
+// relied on for presentation order.
+const SETTING_CATEGORY_ORDER = [
+  "General",
+  "Integrations",
+  "Repositories",
+  "Governance",
+  "Evaluation",
+  "Jobs",
+  "Observability",
+  "Audit",
+  "Ontology",
+  "MCP",
+  "System",
+];
+
 export function SettingsPage() {
   const [category, setCategory] = useState("General");
   const [scope, setScope] = useState<SettingScope>("SYSTEM");
   const categories = useQuery({ queryKey: ["setting-categories"], queryFn: listSettingCategories });
   const isRuntimeConnections = category === "__runtime_connections__";
   const settings = useQuery({ queryKey: ["settings", category, scope], queryFn: () => listSettings(category, scope), enabled: !isRuntimeConnections });
+  const orderedCategories = useMemo(() => [...(categories.data || [])].sort((left, right) => categoryPosition(left.name) - categoryPosition(right.name)), [categories.data]);
 
   return <div className="mx-auto max-w-7xl space-y-6 p-6 lg:p-10">
     <div className="flex flex-wrap items-end justify-between gap-4">
@@ -26,12 +45,14 @@ export function SettingsPage() {
       <div className="flex gap-2"><select aria-label="Settings scope" value={scope} onChange={event => setScope(event.target.value as SettingScope)} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="SYSTEM">System</option><option value="ORGANIZATION">Organization</option><option value="PROJECT">Project</option></select>
       <Button variant="outline" onClick={() => settings.refetch()}><RefreshCw className="mr-2 h-4 w-4" />Refresh</Button></div>
     </div>
-    <div className="grid gap-6 lg:grid-cols-[230px_minmax(0,1fr)]">
-      <nav className="space-y-1 rounded-xl border bg-card p-2 lg:sticky lg:top-4 lg:self-start">
-        {(categories.data || []).map(item => <button key={item.key} onClick={() => setCategory(item.name)} className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition ${category === item.name ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}>
-          <span>{item.name}</span><span className={`text-xs ${category === item.name ? "text-primary-foreground/70" : "text-muted-foreground"}`}>{item.setting_count}</span>
-        </button>)}
-        <button onClick={() => setCategory("__runtime_connections__")} className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition ${isRuntimeConnections ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}><span>Runtime Connections</span><span className={`text-xs ${isRuntimeConnections ? "text-primary-foreground/70" : "text-muted-foreground"}`}>Tenant</span></button>
+      <div className="grid gap-6 lg:grid-cols-[230px_minmax(0,1fr)]">
+        <nav className="space-y-1 rounded-xl border bg-card p-2 lg:sticky lg:top-4 lg:self-start">
+        {orderedCategories.map(item => <Fragment key={item.key}>
+          <button onClick={() => setCategory(item.name)} className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition ${category === item.name ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}>
+            <span>{item.name}</span><span className={`text-xs ${category === item.name ? "text-primary-foreground/70" : "text-muted-foreground"}`}>{item.setting_count}</span>
+          </button>
+          {item.name === "General" ? <button onClick={() => setCategory("__runtime_connections__")} className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition ${isRuntimeConnections ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}><span>Runtime Connections</span><span className={`text-xs ${isRuntimeConnections ? "text-primary-foreground/70" : "text-muted-foreground"}`}>Tenant</span></button> : null}
+        </Fragment>)}
       </nav>
       {isRuntimeConnections ? <RuntimeConnectionsPanel /> : <section className="min-w-0 space-y-4">
         <div><h2 className="text-2xl font-semibold">{category}</h2><p className="mt-1 text-sm text-muted-foreground">Effective values follow Environment → Runtime → Default precedence.</p></div>
@@ -41,6 +62,11 @@ export function SettingsPage() {
       </section>}
     </div>
   </div>;
+}
+
+function categoryPosition(category: string): number {
+  const position = SETTING_CATEGORY_ORDER.indexOf(category);
+  return position === -1 ? SETTING_CATEGORY_ORDER.length : position;
 }
 
 function SettingCard({ setting }: { setting: PlatformSetting }) {

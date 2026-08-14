@@ -32,7 +32,7 @@ router = APIRouter(
     status_code=status.HTTP_200_OK,
     responses={status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": ErrorResponse}},
     summary="List ontology sync events",
-    description="List ontology synchronization events with optional filters.",
+    description="List newest-first ontology synchronization events with bounded pagination and optional filters.",
 )
 def list_events(
     service: Annotated[
@@ -48,6 +48,7 @@ def list_events(
     correlation_id: str | None = None,
     event_type: str | None = None,
     limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     context=Depends(get_compatible_tenant_context),
 ) -> OntologySyncEventListResponse:
     events = service.list_events(
@@ -60,10 +61,14 @@ def list_events(
             organization_id=context.organization_id,
             project_id=context.project_id,
         ),
-        limit=limit,
+        limit=limit + 1,
+        offset=offset,
     )
     return OntologySyncEventListResponse(
-        events=[_to_response(event) for event in events]
+        events=[_to_response(event) for event in events[:limit]],
+        limit=limit,
+        offset=offset,
+        has_more=len(events) > limit,
     )
 
 

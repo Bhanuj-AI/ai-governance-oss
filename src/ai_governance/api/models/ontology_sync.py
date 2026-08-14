@@ -40,6 +40,9 @@ class OntologySyncEventListResponse(BaseModel):
     """
 
     events: list[OntologySyncEventResponse]
+    limit: int = Field(ge=1)
+    offset: int = Field(ge=0)
+    has_more: bool
 
 
 class OntologySyncMetricsResponse(BaseModel):
