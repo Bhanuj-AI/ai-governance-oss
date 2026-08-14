@@ -18,7 +18,7 @@ import { AIGovernanceApiError } from "@/lib/api/client";
 import {
   getOntologySyncEvent,
   getOntologySyncMetrics,
-  listOntologySyncEvents,
+  listOntologySyncEventPage,
   retryOntologySyncEvent,
 } from "@/lib/api/ontology-sync";
 import type {
@@ -29,6 +29,8 @@ import type {
 
 type EventFilter = "DEAD_LETTER" | "FAILED" | "ALL";
 
+const EVENT_PAGE_SIZE = 25;
+
 const FILTERS: Array<{ value: EventFilter; label: string }> = [
   { value: "ALL", label: "All events" },
   { value: "DEAD_LETTER", label: "Dead letters" },
@@ -38,6 +40,7 @@ const FILTERS: Array<{ value: EventFilter; label: string }> = [
 export function OntologySyncEventsPage() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<EventFilter>("DEAD_LETTER");
+  const [offset, setOffset] = useState(0);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
   const metricsQuery = useQuery({
@@ -46,14 +49,19 @@ export function OntologySyncEventsPage() {
     refetchInterval: 10_000,
   });
   const eventsQuery = useQuery({
-    queryKey: ["ontology-sync-events", filter],
+    queryKey: ["ontology-sync-events", filter, offset],
     queryFn: () =>
-      listOntologySyncEvents(
-        { status: filter === "ALL" ? undefined : (filter as OntologySyncEventStatus) },
+      listOntologySyncEventPage(
+        {
+          status: filter === "ALL" ? undefined : (filter as OntologySyncEventStatus),
+          limit: EVENT_PAGE_SIZE,
+          offset,
+        },
       ),
     refetchInterval: 10_000,
   });
-  const events = eventsQuery.data ?? [];
+  const eventPage = eventsQuery.data;
+  const events = eventPage?.events ?? [];
   const resolvedSelectedEventId = selectedEventId ?? events[0]?.eventId ?? null;
   const selectedEventQuery = useQuery({
     queryKey: ["ontology-sync-event", resolvedSelectedEventId],
@@ -129,6 +137,7 @@ export function OntologySyncEventsPage() {
                     value={filter}
                     onChange={(event) => {
                       setSelectedEventId(null);
+                      setOffset(0);
                       setFilter(event.target.value as EventFilter);
                     }}
                     className="h-8 rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -164,6 +173,13 @@ export function OntologySyncEventsPage() {
                   ))}
                 </div>
               ) : null}
+              {events.length ? <div className="mt-4 flex items-center justify-between gap-3">
+                <span className="text-sm text-muted-foreground">Page {Math.floor(offset / EVENT_PAGE_SIZE) + 1}</span>
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" variant="outline" disabled={offset === 0 || eventsQuery.isFetching} onClick={() => { setSelectedEventId(null); setOffset((current) => Math.max(0, current - EVENT_PAGE_SIZE)); }}>Previous</Button>
+                  <Button type="button" size="sm" variant="outline" disabled={!eventPage?.hasMore || eventsQuery.isFetching} onClick={() => { setSelectedEventId(null); setOffset((current) => current + EVENT_PAGE_SIZE); }}>Next</Button>
+                </div>
+              </div> : null}
             </CardContent>
           </Card>
 

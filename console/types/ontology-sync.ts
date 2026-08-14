@@ -28,6 +28,9 @@ export type OntologySyncEventDto = {
 
 export type OntologySyncEventListDto = {
   events: OntologySyncEventDto[];
+  limit: number;
+  offset: number;
+  has_more: boolean;
 };
 
 export type OntologySyncMetricsDto = {
@@ -58,6 +61,13 @@ export type OntologySyncEvent = {
   lastError: string | null;
   failedAt: string | null;
   reconciliationReport: Record<string, unknown> | null;
+};
+
+export type OntologySyncEventPage = {
+  events: OntologySyncEvent[];
+  limit: number;
+  offset: number;
+  hasMore: boolean;
 };
 
 export type OntologySyncMetrics = {

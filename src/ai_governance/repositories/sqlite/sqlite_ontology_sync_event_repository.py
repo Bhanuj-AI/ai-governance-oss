@@ -120,6 +120,7 @@ class SQLiteOntologySyncEventRepository(OntologySyncEventRepository):
         filters: OntologySyncEventFilter | None = None,
         *,
         limit: int = 100,
+        offset: int = 0,
     ) -> list[OntologySyncEvent]:
         where: list[str] = []
         values: list[Any] = []
@@ -147,13 +148,13 @@ class SQLiteOntologySyncEventRepository(OntologySyncEventRepository):
                 values.append(filters.project_id)
 
         where_clause = f"WHERE {' AND '.join(where)} " if where else ""
-        values.append(limit)
+        values.extend((limit, offset))
         with self._database.connect() as connection:
             rows = connection.execute(
                 f"{self._SELECT_COLUMNS} "
                 f"{where_clause}"
-                "ORDER BY created_at, event_id "
-                "LIMIT ?",
+                "ORDER BY created_at DESC, event_id DESC "
+                "LIMIT ? OFFSET ?",
                 values,
             ).fetchall()
         return [_from_record(row) for row in rows]

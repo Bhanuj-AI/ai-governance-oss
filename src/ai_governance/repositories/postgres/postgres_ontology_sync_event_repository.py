@@ -81,10 +81,14 @@ class PostgresOntologySyncEventRepository(OntologySyncEventRepository):
         return _from_record(row) if row else None
 
     def list_events(
-        self, filters: OntologySyncEventFilter | None = None, *, limit: int = 100
+        self,
+        filters: OntologySyncEventFilter | None = None,
+        *,
+        limit: int = 100,
+        offset: int = 0,
     ) -> list[OntologySyncEvent]:
         clauses: list[str] = []
-        parameters: dict[str, object] = {"limit": limit}
+        parameters: dict[str, object] = {"limit": limit, "offset": offset}
         if filters:
             for name, value in (
                 ("status", filters.status.value if filters.status else None),
@@ -101,7 +105,9 @@ class PostgresOntologySyncEventRepository(OntologySyncEventRepository):
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         with self._database.connect() as connection:
             rows = connection.execute(
-                f"{self._SELECT_COLUMNS} {where} ORDER BY created_at, event_id LIMIT %(limit)s",
+                f"{self._SELECT_COLUMNS} {where} "
+                "ORDER BY created_at DESC, event_id DESC "
+                "LIMIT %(limit)s OFFSET %(offset)s",
                 parameters,
             ).fetchall()
         return [_from_record(row) for row in rows]

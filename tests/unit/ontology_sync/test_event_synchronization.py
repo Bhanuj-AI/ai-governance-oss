@@ -160,6 +160,37 @@ def test_sqlite_event_repository_persists_events(tmp_path: Path) -> None:
     assert stored.payload == {"source": "sqlite"}
 
 
+def test_event_repositories_list_newest_first_with_offset(tmp_path: Path) -> None:
+    now = _now()
+    events = [
+        OntologySyncEvent(
+            event_id=f"event-{index}",
+            event_type="PromptVersionRegistered",
+            entity_type="PromptVersion",
+            entity_id=f"prompt-{index}",
+            correlation_id=f"correlation-{index}",
+            created_at=now + timedelta(minutes=index),
+            updated_at=now + timedelta(minutes=index),
+        )
+        for index in range(3)
+    ]
+    repositories = (
+        InMemoryOntologySyncEventRepository(),
+        SQLiteOntologySyncEventRepository(_initialized_database(tmp_path)),
+    )
+
+    for repository in repositories:
+        for event in events:
+            repository.save(event)
+        assert [event.event_id for event in repository.list_events(limit=2)] == [
+            "event-2",
+            "event-1",
+        ]
+        assert [event.event_id for event in repository.list_events(limit=2, offset=2)] == [
+            "event-0"
+        ]
+
+
 def test_rest_event_status_api_lists_retries_cancels_and_reports_metrics() -> None:
     repository = InMemoryOntologySyncEventRepository()
     service = OntologySyncEventService(repository, clock=lambda: _now())
@@ -205,12 +236,73 @@ def test_rest_event_status_api_lists_retries_cancels_and_reports_metrics() -> No
 
     assert listed.status_code == 200
     assert listed.json()["events"][0]["event_id"] == "pending-event"
+    assert listed.json()["limit"] == 100
+    assert listed.json()["offset"] == 0
+    assert listed.json()["has_more"] is False
     assert metrics.status_code == 200
     assert metrics.json()["failed_events"] == 1
     assert retried.status_code == 200
     assert retried.json()["status"] == "PENDING"
     assert cancelled.status_code == 200
     assert cancelled.json()["status"] == "CANCELLED"
+
+
+def test_rest_event_status_api_returns_newest_first_pages() -> None:
+    repository = InMemoryOntologySyncEventRepository()
+    service = OntologySyncEventService(repository, clock=lambda: _now())
+    for index in range(3):
+        created_at = _now() + timedelta(minutes=index)
+        repository.save(
+            OntologySyncEvent(
+                event_id=f"event-{index}",
+                event_type="PromptVersionRegistered",
+                entity_type="PromptVersion",
+                entity_id=f"prompt-{index}",
+                correlation_id=f"correlation-{index}",
+                created_at=created_at,
+                updated_at=created_at,
+            )
+        )
+    repository.save(
+        OntologySyncEvent(
+            event_id="foreign-event",
+            event_type="PromptVersionRegistered",
+            entity_type="PromptVersion",
+            entity_id="foreign-prompt",
+            correlation_id="foreign-correlation",
+            created_at=_now() + timedelta(hours=1),
+            updated_at=_now() + timedelta(hours=1),
+            organization_id="org_other",
+            project_id="project_other",
+        )
+    )
+    app = create_app()
+    app.dependency_overrides[get_ontology_sync_event_service] = lambda: service
+    client = TestClient(app)
+
+    first_page = client.get(
+        "/api/v1/ontology/synchronization/events", params={"limit": 2}
+    )
+    second_page = client.get(
+        "/api/v1/ontology/synchronization/events",
+        params={"limit": 2, "offset": 2},
+    )
+    invalid_page = client.get(
+        "/api/v1/ontology/synchronization/events", params={"offset": -1}
+    )
+
+    assert first_page.status_code == 200
+    assert [event["event_id"] for event in first_page.json()["events"]] == [
+        "event-2",
+        "event-1",
+    ]
+    assert first_page.json()["has_more"] is True
+    assert second_page.status_code == 200
+    assert [event["event_id"] for event in second_page.json()["events"]] == [
+        "event-0"
+    ]
+    assert second_page.json()["has_more"] is False
+    assert invalid_page.status_code == 422
 
 
 def test_prompt_registry_service_publishes_sync_event() -> None:
@@ -289,6 +381,12 @@ def _prompt_reconciler(
 
 def _now() -> datetime:
     return datetime(2026, 6, 30, tzinfo=UTC)
+
+
+def _initialized_database(tmp_path: Path) -> SQLiteDatabase:
+    database = SQLiteDatabase(tmp_path / "pagination.db")
+    database.initialize()
+    return database
 
 
 def _sequence(*values: str):
