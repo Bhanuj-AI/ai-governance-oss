@@ -42,7 +42,7 @@ ai-governance-graph = "ai_governance.ontology.cli:main"
 dev = [
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
-    "ruff>=0.15.19",
+    "ruff>=0.16.2",
 ]
 
 [build-system]
