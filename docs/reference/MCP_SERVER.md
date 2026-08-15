@@ -1,5 +1,22 @@
 # MCP Server
 
+> This page is the detailed server reference. For a first connection and a
+> copy-paste test, start with [MCP Usage](./MCP_USAGE.md). The recommended
+> remote endpoint is `http://localhost:8002/mcp`; port `8001` is MCPO, not the
+> native MCP server.
+
+## In plain language
+
+The MCP server lets an AI client use AI Governance Control Plane capabilities
+as tools. It does not create a second governance system: each tool forwards
+the request to the existing REST control plane, which remains responsible for
+identity, tenant scope, permissions, persistence, and audit.
+
+The preferred HTTP protocol is MCP `2026-07-28`. It is stateless at the
+transport layer, so every request can be processed by any server replica.
+Older MCP clients continue to work through the same tool path while they
+migrate.
+
 ## Multi-organization context
 
 Control-plane tools accept a required `context` object containing
@@ -46,9 +63,9 @@ The request-local credential is never stored in an environment variable or a
 global client token, so concurrent callers cannot exchange identities.
 
 For a macOS local smoke test, use
-`uv run python scripts/oauth/fetch-access-token.py --clipboard`. It exchanges
-the configured generic OAuth client credentials (or local MCP compatibility
-credentials) for a short-lived token and copies that token to the clipboard
+`uv run python scripts/mcp/fetch-access-token.py`. It exchanges
+the dedicated local MCP client credentials for a short-lived token carrying
+the native MCP resource audience, then copies that token to the clipboard
 without printing it. This helper is for local testing only;
 remote clients should use their own user or workload identity as described in
 [MCP Usage](./MCP_USAGE.md#authentication-tokens--identity).
@@ -77,6 +94,38 @@ Native Streamable HTTP additionally uses `AI_GOVERNANCE_MCP_TRANSPORT`,
 
 ## Native Streamable HTTP
 
+The native endpoint supports both MCP protocol eras through one transport
+boundary. MCP `2026-07-28` is the preferred stateless path; see [the official
+specification announcement](https://blog.modelcontextprotocol.io/posts/2026-07-28/)
+for the protocol-level changes.
+
+| Protocol era | Lifecycle at `/mcp` | Deployment consequence |
+| --- | --- | --- |
+| `2026-07-28` | Every request carries its protocol version, client metadata, and capabilities in `_meta`, with `Mcp-Method` and (where applicable) `Mcp-Name` headers. There is no `initialize` or `Mcp-Session-Id`. | Any request can land on any replica; ordinary round-robin load balancing needs no session affinity or shared MCP session store. |
+| Legacy handshake revisions | The SDK retains the `initialize` lifecycle and session behavior for compatible clients. | Retained only as a migration path; monitor per-era request telemetry before retirement. |
+
+The boundary normalizes both protocol forms before a tool is invoked:
+
+```text
+legacy handshake request ──┐
+                            ├── SDK negotiation ──► request-local identity
+2026 self-contained request ┘                         │
+                                                      ▼
+                                  canonical tool registry → audit → REST control plane
+```
+
+Earlier handshake/session clients remain supported for compatibility during
+the migration window. Both eras invoke the same canonical MCP tool registry,
+authorization forwarding, audit path, idempotency behavior and REST-backed
+application services. The server records anonymous per-era request counts in
+its in-process MCP metrics to guide eventual legacy retirement.
+
+Stateless MCP does not make governance data ephemeral. Replay executions,
+jobs, decisions, evaluations, and audit records remain durable resources. A
+workflow that needs state passes its explicit resource identifier (for example
+an execution or job ID) in a later tool call; it must not rely on hidden MCP
+session state.
+
 Start the remote MCP service separately from stdio and MCPO:
 
 ```bash
@@ -94,10 +143,11 @@ In Keycloak mode, an unauthenticated request receives an RFC 9728 challenge
 pointing to `/.well-known/oauth-protected-resource/mcp`. That metadata
 advertises the Keycloak issuer and the canonical resource
 `AI_GOVERNANCE_MCP_PUBLIC_URL/mcp`. The server accepts a token only when its verified
-`aud` claim includes that exact resource. The local realm contains the public
-PKCE client `ai-governance-mcp-vscode` and maps `http://localhost:8002/mcp` into its
-access-token audience; change the mapper together with `AI_GOVERNANCE_MCP_PUBLIC_URL`
-when using another public origin.
+`aud` claim includes that exact resource. The local realm maps
+`http://localhost:8002/mcp` into tokens issued to the confidential
+`ai-governance-mcp` service client for smoke tests and the public PKCE
+`ai-governance-mcp-vscode` client for user sign-in. Change the mappers together
+with `AI_GOVERNANCE_MCP_PUBLIC_URL` when using another public origin.
 
 Defaults:
 

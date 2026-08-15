@@ -204,6 +204,18 @@
               "id.token.claim": "false",
               "userinfo.token.claim": "false"
             }
+          },
+          {
+            "name": "mcp-resource-audience",
+            "protocol": "openid-connect",
+            "protocolMapper": "oidc-audience-mapper",
+            "consentRequired": false,
+            "config": {
+              "included.custom.audience": "http://localhost:8002/mcp",
+              "access.token.claim": "true",
+              "id.token.claim": "false",
+              "introspection.token.claim": "true"
+            }
           }
       ]
     },

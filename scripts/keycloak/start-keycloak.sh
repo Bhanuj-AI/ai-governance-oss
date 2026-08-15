@@ -28,5 +28,6 @@ for attempt in $(seq 1 60); do
 done
 
 "$ROOT_DIR/scripts/keycloak/provision-mcp-vscode-client-scopes.sh"
+"$ROOT_DIR/scripts/keycloak/reconcile-mcp-resource-audience.sh"
 
 docker compose --env-file .env.keycloak ps
