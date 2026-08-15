@@ -38,10 +38,18 @@ class ModelCatalogDiscoveryService:
         _, config = self._runtime_connection_service.resolve_runtime_config(
             runtime_connection_id, connection.provider, context
         )
-        if provider != "openai":
-            raise ModelCatalogDiscoveryError(
-                "This runtime provider does not support model-catalog discovery in OSS yet."
-            )
+        if provider == "openai":
+            return self._discover_openai_models(config, provider)
+        if provider == "anthropic":
+            return self._discover_anthropic_models(config, provider)
+        raise ModelCatalogDiscoveryError(
+            "This runtime provider does not support model-catalog discovery in OSS yet."
+        )
+
+    @staticmethod
+    def _discover_openai_models(
+        config: dict[str, Any], provider: str
+    ) -> tuple[DiscoveredRuntimeModel, ...]:
         try:
             from openai import OpenAI
 
@@ -52,25 +60,50 @@ class ModelCatalogDiscoveryService:
             )
             response = client.models.list()
             values = getattr(response, "data", response)
-            identifiers = sorted(
-                {
-                    identifier
-                    for item in values
-                    if isinstance((identifier := getattr(item, "id", None)), str)
-                    and identifier.strip()
-                }
-            )
         except Exception as exc:
-            LOGGER.warning(
-                "runtime_model_catalog_discovery_failed provider=%s error_type=%s",
-                provider,
-                type(exc).__name__,
+            _raise_discovery_error(provider, exc)
+        return _discovered_model_identifiers(values)
+
+    @staticmethod
+    def _discover_anthropic_models(
+        config: dict[str, Any], provider: str
+    ) -> tuple[DiscoveredRuntimeModel, ...]:
+        try:
+            from anthropic import Anthropic
+
+            client = Anthropic(
+                api_key=str(config["api_key"]),
+                base_url=_optional_string(config.get("base_url")),
             )
-            raise ModelCatalogDiscoveryError(
-                "The runtime provider model catalog could not be discovered. "
-                "Confirm the runtime connection and its provider access."
-            ) from exc
-        return tuple(DiscoveredRuntimeModel(provider_model_id=value) for value in identifiers)
+            response = client.models.list(limit=1000)
+            values = getattr(response, "data", response)
+        except Exception as exc:
+            _raise_discovery_error(provider, exc)
+        return _discovered_model_identifiers(values)
+
+
+def _discovered_model_identifiers(values: Any) -> tuple[DiscoveredRuntimeModel, ...]:
+    identifiers = sorted(
+        {
+            identifier
+            for item in values
+            if isinstance((identifier := getattr(item, "id", None)), str)
+            and identifier.strip()
+        }
+    )
+    return tuple(DiscoveredRuntimeModel(provider_model_id=value) for value in identifiers)
+
+
+def _raise_discovery_error(provider: str, exc: Exception) -> None:
+    LOGGER.warning(
+        "runtime_model_catalog_discovery_failed provider=%s error_type=%s",
+        provider,
+        type(exc).__name__,
+    )
+    raise ModelCatalogDiscoveryError(
+        "The runtime provider model catalog could not be discovered. "
+        "Confirm the runtime connection and its provider access."
+    ) from exc
 
 
 def _optional_string(value: Any) -> str | None:

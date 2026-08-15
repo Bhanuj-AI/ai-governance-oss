@@ -5,6 +5,7 @@ from ai_governance.services.audit_service import (
 from ai_governance.services.datasets import DatasetRegistryService
 from ai_governance.services.dataset_builder import EvaluationDatasetBuilder
 from ai_governance.services.candidate_execution_runtime import (
+    AnthropicModelRuntimeAdapter,
     CandidateExecutionError,
     CandidateExecutionRuntime,
     ModelRuntimeAdapter,
@@ -119,6 +120,7 @@ __all__ = [
     "EvaluationProviderNotFoundError",
     "ExperimentApiService",
     "AnswerRelevanceRanking",
+    "AnthropicModelRuntimeAdapter",
     "ExperimentCandidateService",
     "ExperimentEvaluationService",
     "ExperimentService",

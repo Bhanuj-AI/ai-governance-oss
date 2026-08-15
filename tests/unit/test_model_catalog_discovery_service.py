@@ -21,6 +21,18 @@ class _RuntimeConnections:
         return object(), {"api_key": "secret"}
 
 
+class _AnthropicRuntimeConnections:
+    def get(self, connection_id: str, context: TenantContext) -> SimpleNamespace:
+        assert connection_id == "connection-1"
+        return SimpleNamespace(provider="anthropic")
+
+    def resolve_runtime_config(
+        self, connection_id: str, provider: str, context: TenantContext
+    ) -> tuple[object, dict[str, str]]:
+        assert (connection_id, provider) == ("connection-1", "anthropic")
+        return object(), {"api_key": "secret", "base_url": "https://api.anthropic.com"}
+
+
 def test_discovers_openai_model_ids_from_the_selected_runtime_connection(
     monkeypatch,
 ) -> None:
@@ -39,3 +51,35 @@ def test_discovers_openai_model_ids_from_the_selected_runtime_connection(
     )
 
     assert [model.provider_model_id for model in models] == ["gpt-4.1-mini", "gpt-5"]
+
+
+def test_discovers_anthropic_model_ids_from_the_selected_runtime_connection(
+    monkeypatch,
+) -> None:
+    client_options: dict[str, object] = {}
+    list_options: dict[str, object] = {}
+
+    class _Anthropic:
+        def __init__(self, **kwargs: object) -> None:
+            client_options.update(kwargs)
+            self.models = SimpleNamespace(
+                list=lambda **kwargs: (
+                    list_options.update(kwargs)
+                    or SimpleNamespace(
+                        data=[
+                            SimpleNamespace(id="claude-haiku-4-5"),
+                            SimpleNamespace(id="claude-sonnet-4-5"),
+                        ]
+                    )
+                )
+            )
+
+    monkeypatch.setitem(sys.modules, "anthropic", SimpleNamespace(Anthropic=_Anthropic))
+
+    models = ModelCatalogDiscoveryService(_AnthropicRuntimeConnections()).discover(
+        "connection-1", TenantContext("org", "project", "actor", "request")
+    )
+
+    assert [model.provider_model_id for model in models] == ["claude-haiku-4-5", "claude-sonnet-4-5"]
+    assert client_options == {"api_key": "secret", "base_url": "https://api.anthropic.com"}
+    assert list_options == {"limit": 1000}

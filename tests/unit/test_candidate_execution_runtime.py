@@ -16,6 +16,7 @@ from ai_governance.repositories.in_memory_dataset_repository import InMemoryData
 from ai_governance.repositories.in_memory_model_repository import InMemoryModelRepository
 from ai_governance.repositories.in_memory_prompt_repository import InMemoryPromptRepository
 from ai_governance.services.candidate_execution_runtime import (
+    AnthropicModelRuntimeAdapter,
     CandidateExecutionError,
     CandidateExecutionRuntime,
     ModelRuntimeAdapterRegistry,
@@ -297,6 +298,66 @@ def test_openai_runtime_logs_safe_provider_parameter_diagnostics(
     assert "provider_parameter=max_completion_tokens" in caplog.text
     assert "Protected prompt content" not in caplog.text
     assert "secret" not in caplog.text
+
+
+def test_anthropic_runtime_translates_governed_parameters_to_messages_api(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+    client_options: dict[str, object] = {}
+
+    class _Messages:
+        def create(self, **kwargs: object) -> SimpleNamespace:
+            captured.update(kwargs)
+            return SimpleNamespace(
+                content=[SimpleNamespace(type="text", text="Answer")],
+                usage=SimpleNamespace(input_tokens=4, output_tokens=2),
+                model="claude-sonnet-4-5",
+                stop_reason="end_turn",
+                _request_id="req-anthropic",
+            )
+
+    class _Anthropic:
+        def __init__(self, **kwargs: object) -> None:
+            client_options.update(kwargs)
+            self.messages = _Messages()
+
+    monkeypatch.setitem(sys.modules, "anthropic", SimpleNamespace(Anthropic=_Anthropic))
+
+    result = AnthropicModelRuntimeAdapter().invoke(
+        ModelRuntimeRequest(
+            provider="anthropic",
+            model_identifier="claude-sonnet-4-5",
+            prompt="Protected prompt content",
+            parameters={"max_output_tokens": 1024, "temperature": 0.2, "top_p": 0.9},
+            connection_config={"api_key": "secret"},
+        )
+    )
+
+    assert result.output == "Answer"
+    assert result.total_tokens == 6
+    assert captured == {
+        "model": "claude-sonnet-4-5",
+        "max_tokens": 1024,
+        "messages": [{"role": "user", "content": "Protected prompt content"}],
+        "temperature": 0.2,
+        "top_p": 0.9,
+    }
+    assert client_options["timeout"] == 60.0
+    assert client_options["max_retries"] == 0
+
+
+def test_anthropic_runtime_requires_governed_max_output_tokens() -> None:
+    with pytest.raises(CandidateExecutionError, match="requires max output tokens"):
+        AnthropicModelRuntimeAdapter().invoke(
+            ModelRuntimeRequest(
+                provider="anthropic",
+                model_identifier="claude-sonnet-4-5",
+                prompt="Protected prompt content",
+                parameters={},
+                connection_config={"api_key": "secret"},
+            )
+        )
 
 
 def _runtime(

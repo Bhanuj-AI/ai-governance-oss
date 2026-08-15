@@ -81,6 +81,22 @@ def test_model_registry_persists_reasoning_model_capability_contract() -> None:
     assert model.runtime_capabilities.supports("temperature") is False
 
 
+def test_model_registry_persists_anthropic_messages_capability_contract() -> None:
+    model = _create_service().register_model(
+        provider="anthropic",
+        model_name="claims-assistant",
+        provider_model_id="claude-sonnet-4-5",
+        version="v1",
+        parameters={"max_output_tokens": 1024},
+        context_window=200000,
+        creator="governance-admin",
+    )
+
+    assert model.runtime_capabilities.profile_id == "anthropic-messages-standard"
+    assert model.runtime_capabilities.invocation_contract == "anthropic-messages"
+    assert model.runtime_capabilities.supports("max_output_tokens") is True
+
+
 def test_model_registry_rejects_unsupported_reasoning_model_runtime_defaults() -> None:
     with pytest.raises(ModelRuntimeParameterError, match="temperature.*not supported"):
         _create_service().register_model(

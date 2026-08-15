@@ -48,6 +48,7 @@ def get_experiment_api_service(
 
     from ai_governance.services.experiment_api_service import ExperimentApiService
     from ai_governance.services.candidate_execution_runtime import (
+        AnthropicModelRuntimeAdapter,
         CandidateExecutionRuntime,
         ModelRuntimeAdapterRegistry,
         OpenAIModelRuntimeAdapter,
@@ -74,7 +75,7 @@ def get_experiment_api_service(
             dataset_repository=dataset_repository,
             runtime_connection_service=runtime_connection_service,
             dataset_item_reader=S3DatasetItemReader(dataset_object_store_from_environment()),
-            adapter_registry=ModelRuntimeAdapterRegistry((OpenAIModelRuntimeAdapter(),)),
+            adapter_registry=ModelRuntimeAdapterRegistry((OpenAIModelRuntimeAdapter(), AnthropicModelRuntimeAdapter())),
             execution_store=execution_store,
             event_publisher=event_publisher,
         ),

@@ -25,6 +25,7 @@ For example, set a tenant runtime credential with a purpose-specific variable:
 
 ```bash
 export OPENAI_DEVELOPMENT_API_KEY='…'
+export ANTHROPIC_DEVELOPMENT_API_KEY='…'
 ```
 
 Do not reuse `OPENAI_API_KEY` merely because it exists. That variable is a
@@ -36,9 +37,11 @@ judge flows; it is not a tenant Runtime Connection.
 1. Open **Settings → Runtime Connections**.
 2. Select **New Runtime Connection**.
 3. Enter an operator-facing name, such as `OpenAI Development`.
-4. Select the runtime provider. OSS currently supports **OpenAI**,
-   **Anthropic**, and **OpenAI-compatible custom** endpoints. A provider shown
-   as unavailable is blocked by the allowed-managed-model-provider policy.
+4. Select the runtime provider. OSS provides native model discovery and
+   candidate execution for **OpenAI** and **Anthropic**. An
+   **OpenAI-compatible custom** endpoint can execute an operator-supplied
+   registered model identifier. A provider shown as unavailable is blocked by
+   the allowed-managed-model-provider policy.
 5. Set the provider configuration:
 
    | Provider | API key reference | Base URL | Organization |
@@ -48,8 +51,9 @@ judge flows; it is not a tenant Runtime Connection.
    | OpenAI-compatible custom | Optional | Required | Optional |
 
    For an OpenAI development connection, use
-   `env://OPENAI_DEVELOPMENT_API_KEY` as the API key reference. Never paste an
-   API key into this form.
+   `env://OPENAI_DEVELOPMENT_API_KEY`; for Anthropic, use a purpose-specific
+   reference such as `env://ANTHROPIC_DEVELOPMENT_API_KEY`. Never paste an API
+   key into this form.
 6. Choose a scope:
    - **Organization**: shared by projects in the organization.
    - **Current project**: visible only in the selected project.
@@ -185,24 +189,25 @@ secret-free and contains only stable IDs and runtime telemetry.
 
 ## Current OSS Boundary
 
-This feature establishes the governed connection lifecycle and secure runtime
-configuration resolution point. In Studio, a draft experiment candidate may
-select an optional Runtime Connection. Candidate creation verifies the selected
-connection is tenant-visible, active, and compatible with the registered model
-provider. Before the candidate is evaluated, the experiment run resolves the
-current secret reference and validates the same contract; no resolved value is
-persisted in the candidate, run, API response, or job.
+Runtime Connections are the governed execution path for native OpenAI and
+Anthropic models. Candidate creation verifies the selected connection is
+tenant-visible, active, and compatible with the registered model provider.
+During experiment execution, the runtime resolves the current secret reference
+only in memory, invokes the registered provider model, and writes secret-free
+execution evidence. No resolved value is persisted in a candidate, run, API
+response, job payload, or log.
 
-The current experiment and replay flows still evaluate already-recorded
-executions—they do not yet invoke a registered model through that connection.
-A future model-invocation adapter will consume this already-validated runtime
-configuration immediately before provider use.
+For a provider that is not OpenAI-compatible, implement and test a native
+runtime adapter, model-catalog discovery path, and immutable capability profile
+in an OSS contribution or a maintained fork. Adding a value to
+`model_registry.allowed_runtime_providers` changes tenant policy only; it does
+not add a provider implementation.
 
 ## Troubleshooting
 
 | Symptom | Check |
 | --- | --- |
-| Provider is absent or unavailable | Check `model_registry.allowed_runtime_providers` for the selected tenant scope. OSS exposes only OpenAI, Anthropic, and custom connection types. |
+| Provider is absent or unavailable | Check `model_registry.allowed_runtime_providers` for the selected tenant scope. OSS exposes only OpenAI, Anthropic, and OpenAI-compatible custom connection types. |
 | Test fails | Confirm the API process—not only your shell—has the referenced environment variable. The response intentionally does not reveal a secret or its value. |
 | OpenAI/Anthropic cannot be saved as Active | Supply an `api_key` secret reference using an allowed scheme such as `env://NAME`. |
 | Custom connection cannot be saved | Supply an absolute `http://` or `https://` `base_url`. |

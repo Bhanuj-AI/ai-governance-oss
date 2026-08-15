@@ -186,6 +186,8 @@ AI Governance Control Plane currently includes:
 - Generic in-memory OAuth client-credentials support for local workloads and
   CI, with no token persistence
 - Experiment lifecycle management, candidates, evaluation runs, rankings, and leaderboards
+- Tenant-owned Runtime Connections with native OpenAI and Anthropic execution,
+  plus OpenAI-compatible custom endpoints
 - Pluggable evaluation provider contracts with TruLens support
 - Execution audit, workflow replay, evaluation history, comparison, and drift analysis
 - Async governance job submission, status lookup, cancellation, retry, leases, and worker execution

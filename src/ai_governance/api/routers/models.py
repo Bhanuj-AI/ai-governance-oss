@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from ai_governance.api.dependencies import get_model_registry_service
 from ai_governance.api.dependencies.authorization import enforce_permission
+from ai_governance.api.dependencies.runtime_connections import get_runtime_connection_service
 from ai_governance.api.dependencies.settings_control import get_configuration_service
 from ai_governance.api.dependencies.tenancy import get_compatible_tenant_context
 from ai_governance.api.models import (
@@ -18,10 +19,7 @@ from ai_governance.api.models import (
     ModelVersionCreateRequest,
     RuntimeModelProviderResponse,
 )
-from ai_governance.domain.models import (
-    RuntimeModelProvider,
-    runtime_model_provider_display_name,
-)
+from ai_governance.domain.models import runtime_model_provider_display_name
 from ai_governance.services.models import (
     ModelLifecycleError,
     ModelNotFoundError,
@@ -47,8 +45,8 @@ router = APIRouter(
     status_code=status.HTTP_200_OK,
     summary="List managed model runtime providers",
     description=(
-        "Return the built-in runtime-provider vocabulary and the providers "
-        "currently allowed for managed model registration in this tenant scope."
+        "Return OSS providers with runtime-connection and candidate-execution "
+        "adapters, together with their tenant policy status."
     ),
 )
 def list_runtime_providers(
@@ -56,6 +54,7 @@ def list_runtime_providers(
     configuration_service: Annotated[
         ConfigurationService, Depends(get_configuration_service)
     ],
+    runtime_connection_service: Annotated[object, Depends(get_runtime_connection_service)],
 ) -> list[RuntimeModelProviderResponse]:
     allowed = set(
         configuration_service.get(
@@ -68,11 +67,11 @@ def list_runtime_providers(
     )
     return [
         RuntimeModelProviderResponse(
-            key=provider.value,
-            display_name=runtime_model_provider_display_name(provider.value),
-            allowed=provider.value in allowed,
+            key=provider,
+            display_name=runtime_model_provider_display_name(provider),
+            allowed=provider in allowed,
         )
-        for provider in RuntimeModelProvider
+        for provider in runtime_connection_service.supported_provider_keys()
     ]
 
 
