@@ -4,7 +4,7 @@
 
 > **Know why an AI action happened, what changed, and whether it is safe to proceed.**
 
-BHANUJ is an open-source control plane around AI systems. It records versioned
+It is an open-source control plane around AI systems. It records versioned
 assets and runtime evidence, evaluates behaviour, applies deterministic policy,
 and preserves the decision and its lineage—without owning your AI runtime,
 application, or deployment system.
