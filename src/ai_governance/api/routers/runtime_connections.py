@@ -122,7 +122,7 @@ def discover_runtime_connection_models(
     "",
     response_model=RuntimeConnectionResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Create runtime connection",
+    summary="Create Runtime Connection",
     description="Create a tenant-owned model runtime connection. Credentials are secret references only.",
 )
 def create_runtime_connection(

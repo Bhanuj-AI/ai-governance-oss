@@ -541,7 +541,9 @@ def test_list_managed_model_runtime_providers() -> None:
         "display_name": "OpenAI",
         "allowed": True,
     }
+    assert providers["anthropic"]["allowed"] is True
     assert providers["custom"]["allowed"] is True
+    assert set(providers) == {"openai", "anthropic", "custom"}
 
 
 def test_model_not_found_returns_404() -> None:

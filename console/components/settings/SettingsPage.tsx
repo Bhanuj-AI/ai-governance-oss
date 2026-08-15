@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Database, LockKeyhole, RefreshCw, Save, Settings2 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { Fragment, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,8 @@ const SETTING_CATEGORY_ORDER = [
 ];
 
 export function SettingsPage() {
-  const [category, setCategory] = useState("General");
+  const searchParams = useSearchParams();
+  const [category, setCategory] = useState(() => searchParams.get("section") === "runtime-connections" ? "__runtime_connections__" : "General");
   const [scope, setScope] = useState<SettingScope>("SYSTEM");
   const categories = useQuery({ queryKey: ["setting-categories"], queryFn: listSettingCategories });
   const isRuntimeConnections = category === "__runtime_connections__";

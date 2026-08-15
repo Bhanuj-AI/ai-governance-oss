@@ -124,9 +124,10 @@ registered models. They are separate from deployment-level integration
 environment variables and from evaluation-provider installations: a model
 version remains immutable while a connection's secret reference or endpoint may
 rotate. Connection records carry only provider identity, non-sensitive
-configuration, scope, status, and secret references. OSS validates OpenAI,
-Anthropic, and OpenAI-compatible custom connection configuration; provider
-invocation adapters consume a resolved connection only at execution time.
+configuration, scope, status, and secret references. OSS provides native
+discovery and invocation adapters for OpenAI and Anthropic; OpenAI-compatible
+custom connections invoke an operator-supplied model identifier. Provider
+adapters consume a resolved connection only at execution time.
 
 ### Job Execution Plane
 

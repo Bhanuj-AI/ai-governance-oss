@@ -393,10 +393,11 @@ Connections** when a registered model must be invoked. A connection holds a
 provider, optional endpoint/organization metadata, scope, enablement state,
 and a secret reference such as `env://OPENAI_DEVELOPMENT_API_KEY`; no raw key
 is persisted or returned. Connections can be updated as credentials rotate,
-without creating a new managed model version. The initial OSS connection types cover
-OpenAI, Anthropic, and OpenAI-compatible custom endpoints. The allowed managed
-model-provider setting controls which of these connection providers may be
-created in each tenant scope.
+without creating a new managed model version. OSS ships native model discovery
+and invocation for OpenAI and Anthropic. OpenAI-compatible custom endpoints can
+be invoked with an operator-supplied registered model identifier. The allowed
+managed model-provider setting is a tenant policy; it does not install an
+adapter for another provider.
 
 See [Configure Runtime Connections](../tutorials/configure-runtime-connections.md)
 for Studio and REST workflows, credential rotation, scope semantics, and the

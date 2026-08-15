@@ -70,6 +70,37 @@ def resolve_runtime_capabilities(
                 RuntimeParameterCapability("top_p", True, "number", minimum=0, maximum=1),
             ),
         )
+    if provider_key == "anthropic":
+        supports_sampling = not model_key.startswith("claude-opus-4-6")
+        return ModelRuntimeCapabilitySnapshot(
+            profile_id=(
+                "anthropic-messages-standard"
+                if supports_sampling
+                else "anthropic-messages-opus-4-6"
+            ),
+            profile_version="1",
+            invocation_contract="anthropic-messages",
+            verification=RuntimeCapabilityVerification.DECLARED,
+            parameters=(
+                RuntimeParameterCapability("max_output_tokens", True, "integer", minimum=1),
+                RuntimeParameterCapability(
+                    "temperature",
+                    supports_sampling,
+                    "number",
+                    minimum=0,
+                    maximum=1,
+                    default=1,
+                ),
+                RuntimeParameterCapability(
+                    "top_p",
+                    supports_sampling,
+                    "number",
+                    minimum=0,
+                    maximum=1,
+                    default=1,
+                ),
+            ),
+        )
     return ModelRuntimeCapabilitySnapshot(
         profile_id=f"{provider_key}-unverified",
         profile_version="1",

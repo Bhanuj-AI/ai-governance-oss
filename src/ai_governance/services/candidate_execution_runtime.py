@@ -175,6 +175,80 @@ class OpenAIModelRuntimeAdapter:
         )
 
 
+class AnthropicModelRuntimeAdapter:
+    """OSS adapter for Anthropic Messages API runtime connections."""
+
+    def supports(self, provider: str) -> bool:
+        return runtime_model_provider_key(provider) == "anthropic"
+
+    def invoke(self, request: ModelRuntimeRequest) -> RuntimeExecutionResult:
+        api_key = str(request.connection_config.get("api_key") or "").strip()
+        if not api_key:
+            raise CandidateExecutionError(
+                "The runtime connection does not resolve an API key for candidate execution."
+            )
+        try:
+            from anthropic import Anthropic
+
+            client = Anthropic(
+                api_key=api_key,
+                base_url=_optional_string(request.connection_config.get("base_url")),
+                timeout=_DEFAULT_MODEL_RUNTIME_TIMEOUT_SECONDS,
+                max_retries=0,
+            )
+            LOGGER.info(
+                "model_runtime_provider_invocation_started provider=%s model_identifier=%s timeout_seconds=%s",
+                request.provider,
+                request.model_identifier,
+                _DEFAULT_MODEL_RUNTIME_TIMEOUT_SECONDS,
+            )
+            started = perf_counter()
+            response = client.messages.create(**_anthropic_request_arguments(request))
+            latency_ms = int((perf_counter() - started) * 1000)
+        except CandidateExecutionError:
+            raise
+        except Exception as exc:
+            details = _safe_provider_error_details(exc)
+            LOGGER.warning(
+                "candidate_model_invocation_failed provider=%s model_identifier=%s "
+                "error_type=%s provider_status_code=%s provider_error_code=%s "
+                "provider_error_type=%s provider_parameter=%s provider_request_id=%s",
+                request.provider,
+                request.model_identifier,
+                type(exc).__name__,
+                details["status_code"],
+                details["code"],
+                details["type"],
+                details["parameter"],
+                details["request_id"],
+            )
+            raise CandidateExecutionError(_safe_provider_failure_reason(details)) from exc
+
+        LOGGER.info(
+            "model_runtime_provider_invocation_completed provider=%s model_identifier=%s latency_ms=%s",
+            request.provider,
+            request.model_identifier,
+            latency_ms,
+        )
+        output = _anthropic_output_text(getattr(response, "content", ()))
+        if not output.strip():
+            raise CandidateExecutionError("The model runtime returned no candidate output.")
+        usage = getattr(response, "usage", None)
+        input_tokens = getattr(usage, "input_tokens", None)
+        output_tokens = getattr(usage, "output_tokens", None)
+        return RuntimeExecutionResult(
+            output=output,
+            provider_request_id=_optional_string(getattr(response, "_request_id", None)),
+            model_identifier=str(getattr(response, "model", None) or request.model_identifier),
+            resolved_parameters=dict(request.parameters),
+            latency_ms=latency_ms,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            total_tokens=(input_tokens + output_tokens if isinstance(input_tokens, int) and isinstance(output_tokens, int) else None),
+            finish_reason=_optional_string(getattr(response, "stop_reason", None)),
+        )
+
+
 class CandidateExecutionRuntime:
     """Resolve and invoke a candidate over its immutable dataset records."""
 
@@ -586,6 +660,38 @@ def _openai_request_arguments(request: ModelRuntimeRequest) -> dict[str, Any]:
         )
         arguments[key] = max_tokens
     return arguments
+
+
+def _anthropic_request_arguments(request: ModelRuntimeRequest) -> dict[str, Any]:
+    """Translate portable controls to the Anthropic Messages API contract."""
+
+    max_tokens = _integer(
+        request.parameters.get("max_output_tokens", request.parameters.get("max_tokens"))
+    )
+    if max_tokens is None:
+        raise CandidateExecutionError(
+            "The Anthropic runtime requires max output tokens in the managed model or candidate configuration."
+        )
+    arguments: dict[str, Any] = {
+        "model": request.model_identifier,
+        "max_tokens": max_tokens,
+        "messages": [{"role": "user", "content": request.prompt}],
+    }
+    for name, value in (
+        ("temperature", _number(request.parameters.get("temperature"))),
+        ("top_p", _number(request.parameters.get("top_p"))),
+    ):
+        if value is not None:
+            arguments[name] = value
+    return arguments
+
+
+def _anthropic_output_text(content: Any) -> str:
+    return "".join(
+        str(getattr(block, "text", ""))
+        for block in content
+        if getattr(block, "type", None) == "text"
+    )
 
 
 _SAFE_PROVIDER_PARAMETERS = frozenset(

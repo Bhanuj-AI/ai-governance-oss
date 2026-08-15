@@ -97,6 +97,22 @@ Three working rules apply across extensions:
 - keep REST routers thin and delegate business behavior to API services
 - keep MCP tools thin and delegate every operation to one REST endpoint
 
+## Model Runtime Providers
+
+OSS includes native Runtime Connection adapters for OpenAI and Anthropic, and
+OpenAI-compatible custom endpoints. The allowed-provider setting is an
+authorization policy, not a provider installation mechanism: adding a provider
+name to that setting cannot make the platform discover models or invoke a
+provider it does not implement.
+
+To add a non-compatible native runtime, contribute or maintain a fork that
+adds all three provider-owned pieces: a `ModelRuntimeAdapter` for candidate
+execution, a model-catalog discovery implementation, and a deterministic
+runtime capability profile. The adapter must be wired into both API and worker
+composition, preserve tenant-scoped Runtime Connection resolution, and never
+persist or log credential values. Do not present an unimplemented provider as
+an OSS Runtime Connection option.
+
 ## EvaluationProvider
 
 Responsibility:

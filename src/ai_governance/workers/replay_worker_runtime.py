@@ -153,6 +153,7 @@ def create_replay_worker_runtime(
     from ai_governance.services.experiment_api_service import ExperimentApiService
     from ai_governance.services.job_api_service import JobApiService
     from ai_governance.services.candidate_execution_runtime import (
+        AnthropicModelRuntimeAdapter,
         CandidateExecutionRuntime,
         ModelRuntimeAdapterRegistry,
         OpenAIModelRuntimeAdapter,
@@ -216,7 +217,7 @@ def create_replay_worker_runtime(
             dataset_repository=get_dataset_repository(),
             runtime_connection_service=runtime_connection_service,
             dataset_item_reader=S3DatasetItemReader(dataset_object_store_from_environment()),
-            adapter_registry=ModelRuntimeAdapterRegistry((OpenAIModelRuntimeAdapter(),)),
+            adapter_registry=ModelRuntimeAdapterRegistry((OpenAIModelRuntimeAdapter(), AnthropicModelRuntimeAdapter())),
             execution_store=source_store,
             event_publisher=event_publisher,
         ),
