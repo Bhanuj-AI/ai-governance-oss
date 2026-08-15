@@ -16,6 +16,7 @@ class MCPMetrics:
     rest_failures: int = 0
     tool_latency_ms: list[float] = field(default_factory=list)
     transport: str = "stdio"
+    protocol_era_requests: dict[str, int] = field(default_factory=dict)
 
     def begin_tool(self) -> None:
         self.tool_invocations_total += 1
@@ -36,6 +37,10 @@ class MCPMetrics:
     def record_rest_failure(self) -> None:
         self.rest_failures += 1
 
+    def record_protocol_era(self, era: str) -> None:
+        """Record protocol-era adoption without retaining client request data."""
+        self.protocol_era_requests[era] = self.protocol_era_requests.get(era, 0) + 1
+
     def snapshot(self) -> dict[str, object]:
         return {
             "tool_invocations_total": self.tool_invocations_total,
@@ -45,4 +50,5 @@ class MCPMetrics:
             "rest_failures": self.rest_failures,
             "tool_latency_ms": list(self.tool_latency_ms),
             "transport": self.transport,
+            "protocol_era_requests": dict(self.protocol_era_requests),
         }

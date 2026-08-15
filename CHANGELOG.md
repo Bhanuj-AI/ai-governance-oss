@@ -9,6 +9,28 @@ This project follows Semantic Versioning.
 
 ## Unreleased
 
+## [1.0.4] - 2026-08-15
+
+### Added
+
+- Native Streamable HTTP MCP support for the stateless `2026-07-28` protocol,
+  including `server/discover`, per-request protocol metadata, and validated
+  `Mcp-Method` / `Mcp-Name` routing headers.
+- Per-protocol-era MCP request telemetry to inform retirement of legacy clients.
+- A local Keycloak reconciliation step that grants the confidential
+  `ai-governance-mcp` smoke-test client the native MCP resource audience.
+- A dedicated local MCP access-token helper and an authenticated
+  `2026-07-28` curl smoke test in the MCP documentation.
+
+### Changed
+
+- Upgraded the MCP Python SDK to v2. The native endpoint on port `8002` now
+  serves both stateless `2026-07-28` requests and compatible legacy
+  handshake/session clients through the same canonical tool, authorization,
+  audit, and REST-control-plane path.
+- Simplified MCP documentation to lead with endpoint selection, protocol
+  behavior, and a copy-paste local test before detailed operational reference.
+
 
 ## [1.0.3] - 2026-08-14
 

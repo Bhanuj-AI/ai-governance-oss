@@ -18,6 +18,25 @@ from ai_governance.mcp.transports.streamable_http import create_mcp_http_app
 from ai_governance.tenancy.domain import ActorType, AuthenticatedPrincipal
 
 
+_MODERN_META = {
+    "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+    "io.modelcontextprotocol/clientInfo": {"name": "pytest", "version": "1"},
+    "io.modelcontextprotocol/clientCapabilities": {},
+}
+
+
+def _modern_headers(method: str, name: str | None = None) -> dict[str, str]:
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "MCP-Protocol-Version": "2026-07-28",
+        "MCP-Method": method,
+    }
+    if name is not None:
+        headers["MCP-Name"] = name
+    return headers
+
+
 def test_streamable_http_settings_defaults(monkeypatch) -> None:
     for name in (
         "AI_GOVERNANCE_MCP_TRANSPORT",
@@ -105,6 +124,73 @@ def test_streamable_http_uses_canonical_tools_and_health(monkeypatch) -> None:
     assert result["isError"] is False
 
 
+def test_streamable_http_serves_stateless_2026_requests_without_initialize(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("AI_GOVERNANCE_AUTH_MODE", "development")
+    monkeypatch.setenv("AI_GOVERNANCE_MCP_HTTP_ALLOWED_HOSTS", "testserver")
+    server = create_server(
+        RestClient("http://control-plane", transport=lambda *_: {"ok": True}),
+        audit_log=MCPExecutionAuditLog.in_memory(),
+    )
+
+    with TestClient(create_mcp_http_app(server=server)) as http:
+        discovery = http.post(
+            "/mcp",
+            headers=_modern_headers("server/discover"),
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "server/discover",
+                "params": {"_meta": _MODERN_META},
+            },
+        )
+        call = http.post(
+            "/mcp",
+            headers=_modern_headers("tools/call", "provider_list"),
+            json={
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/call",
+                "params": {
+                    "name": "provider_list",
+                    "arguments": {},
+                    "_meta": _MODERN_META,
+                },
+            },
+        )
+
+    assert discovery.status_code == 200
+    assert discovery.json()["result"]["capabilities"]["tools"]["listChanged"] is True
+    assert call.status_code == 200
+    assert call.json()["result"]["structuredContent"]["status"] == "ok"
+    assert server.metrics.snapshot()["protocol_era_requests"] == {"2026-07-28": 2}
+
+
+def test_streamable_http_rejects_mismatched_2026_routing_headers(monkeypatch) -> None:
+    monkeypatch.setenv("AI_GOVERNANCE_AUTH_MODE", "development")
+    monkeypatch.setenv("AI_GOVERNANCE_MCP_HTTP_ALLOWED_HOSTS", "testserver")
+
+    with TestClient(create_mcp_http_app()) as http:
+        response = http.post(
+            "/mcp",
+            headers=_modern_headers("tools/list"),
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {
+                    "name": "provider_list",
+                    "arguments": {},
+                    "_meta": _MODERN_META,
+                },
+            },
+        )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == -32020
+
+
 def test_streamable_http_requires_bearer_token_in_keycloak_mode(monkeypatch) -> None:
     monkeypatch.setenv("AI_GOVERNANCE_AUTH_MODE", "keycloak")
     monkeypatch.setenv(
@@ -172,6 +258,8 @@ def test_streamable_http_allows_configured_browser_preflight(monkeypatch) -> Non
     assert "mcp-protocol-version" in response.headers[
         "access-control-allow-headers"
     ].lower()
+    assert "mcp-method" in response.headers["access-control-allow-headers"].lower()
+    assert "mcp-name" in response.headers["access-control-allow-headers"].lower()
 
 
 def test_streamable_http_forwards_authenticated_tenant_request_context(monkeypatch) -> None:

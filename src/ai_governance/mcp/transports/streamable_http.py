@@ -1,4 +1,9 @@
-"""Official-SDK Streamable HTTP transport for the canonical AI Governance Control Plane tools."""
+"""Dual-era Streamable HTTP transport over the canonical tool registry.
+
+The official MCP SDK performs protocol negotiation at this boundary: legacy
+handshake/session requests and 2026-07-28 self-contained requests converge on
+the same registered tools.  Nothing below this adapter is protocol-era aware.
+"""
 
 from __future__ import annotations
 
@@ -9,9 +14,9 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 from uuid import uuid4
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
-from mcp.types import CallToolResult, TextContent
+from mcp_types import CallToolResult, TextContent
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -30,9 +35,10 @@ from ai_governance.mcp.runtime_context import (
 from ai_governance.mcp.server import AIGovernanceMCPServer, MCPSettings, create_server, get_mcp_settings
 from ai_governance.tenancy.authentication import AuthenticationError
 from ai_governance.tenancy.domain import AuthenticatedPrincipal
+from ai_governance.version import __version__
 
 
-class _AIGovernanceFastMCP(FastMCP):
+class _AIGovernanceMCPServerAdapter(MCPServer):
     """SDK protocol implementation backed by the existing canonical registry."""
 
     def __init__(
@@ -46,8 +52,12 @@ class _AIGovernanceFastMCP(FastMCP):
         super().__init__(**kwargs)
 
     async def call_tool(
-        self, name: str, arguments: dict[str, Any]
+        self,
+        name: str,
+        arguments: dict[str, Any],
+        context: Any = None,
     ) -> CallToolResult:
+        del context
         result = self._ai_governance_server.call_tool(
             self._canonical_tool_names.get(name, name), arguments
         )
@@ -66,10 +76,12 @@ class _McpRequestAuthenticationMiddleware(BaseHTTPMiddleware):
         *,
         auth_mode: str,
         protected_resource_url: str,
+        canonical_server: AIGovernanceMCPServer,
     ) -> None:
         super().__init__(app)
         self._auth_mode = auth_mode
         self._protected_resource_url = protected_resource_url
+        self._canonical_server = canonical_server
 
     async def dispatch(
         self,
@@ -82,6 +94,18 @@ class _McpRequestAuthenticationMiddleware(BaseHTTPMiddleware):
             _protected_resource_metadata_path_from_url(self._protected_resource_url),
         }:
             return await call_next(request)
+
+        # The SDK owns wire validation and version negotiation. We only record
+        # anonymous adoption telemetry here so the legacy path can be retired
+        # from evidence rather than assumption. Modern requests must identify
+        # their version in this header; every other request is legacy-era.
+        protocol_version = request.headers.get("mcp-protocol-version")
+        protocol_era = (
+            "2026-07-28"
+            if protocol_version == "2026-07-28"
+            else "legacy"
+        )
+        self._canonical_server.metrics.record_protocol_era(protocol_era)
 
         principal: AuthenticatedPrincipal | None = None
         authorization = request.headers.get("authorization")
@@ -164,20 +188,11 @@ def create_mcp_http_app(
                 f"{existing_name!r} and {description.name!r}."
             )
 
-    mcp = _AIGovernanceFastMCP(
+    mcp = _AIGovernanceMCPServerAdapter(
         canonical_server,
         canonical_tool_names=canonical_tool_names,
         name="ai-governance",
-        host=settings.http_host,
-        port=settings.http_port,
-        streamable_http_path=settings.http_path,
-        stateless_http=settings.http_stateless,
-        json_response=settings.http_json_response,
-        transport_security=TransportSecuritySettings(
-            enable_dns_rebinding_protection=True,
-            allowed_hosts=_host_patterns(settings.http_allowed_hosts),
-            allowed_origins=list(settings.http_allowed_origins),
-        ),
+        version=__version__,
     )
     for description in canonical_server.list_tools():
         _register_tool_schema(
@@ -210,11 +225,22 @@ def create_mcp_http_app(
             }
         )
 
-    app = mcp.streamable_http_app()
+    app = mcp.streamable_http_app(
+        streamable_http_path=settings.http_path,
+        stateless_http=settings.http_stateless,
+        json_response=settings.http_json_response,
+        host=settings.http_host,
+        transport_security=TransportSecuritySettings(
+            enable_dns_rebinding_protection=True,
+            allowed_hosts=_host_patterns(settings.http_allowed_hosts),
+            allowed_origins=list(settings.http_allowed_origins),
+        ),
+    )
     app.add_middleware(
         _McpRequestAuthenticationMiddleware,
         auth_mode=os.getenv("AI_GOVERNANCE_AUTH_MODE", "development").strip().lower(),
         protected_resource_url=settings.protected_resource_url,
+        canonical_server=canonical_server,
     )
     if settings.http_allowed_origins:
         # Browser tools such as the local MCP Inspector need a CORS preflight
@@ -230,6 +256,8 @@ def create_mcp_http_app(
                 "Content-Type",
                 "Accept",
                 "MCP-Protocol-Version",
+                "MCP-Method",
+                "MCP-Name",
                 "MCP-Session-Id",
                 "Last-Event-ID",
             ],
@@ -238,7 +266,7 @@ def create_mcp_http_app(
 
 
 def _register_tool_schema(
-    mcp: FastMCP,
+    mcp: MCPServer,
     name: str,
     description: str,
     input_schema: dict[str, Any],

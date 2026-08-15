@@ -1,6 +1,43 @@
 # MCP Usage and MCPO
 
-## What MCP is
+> Start with native MCP at `http://localhost:8002/mcp`. It is the recommended
+> endpoint for MCP-aware clients and supports both the new stateless protocol
+> and compatible older clients. Use `8001` only when an HTTP/OpenAPI-only tool
+> needs MCPO.
+
+## Start here
+
+| Your goal | Use this |
+| --- | --- |
+| Connect an MCP-aware desktop app, agent, or gateway | Native MCP: `http://localhost:8002/mcp` |
+| Test the new stateless protocol locally | The [authenticated smoke test](#testing-levels) below |
+| Use a conventional HTTP/OpenAPI client | MCPO: `http://localhost:8001` |
+| Integrate application code directly | The REST API |
+
+For a local smoke test, start the stack, obtain a short-lived MCP token, and
+run the documented curl request:
+
+```bash
+./servers.sh up
+( unset VIRTUAL_ENV; uv run python scripts/mcp/fetch-access-token.py )
+```
+
+The token is copied to the macOS clipboard. The complete request, including
+the modern MCP headers, appears in [Testing levels](#testing-levels).
+
+## What changed in MCP `2026-07-28`
+
+MCP used to begin with `initialize` and use a server-issued session ID. The
+new protocol makes each HTTP request self-contained instead. In practice this
+means the native endpoint can run behind ordinary load balancing without sticky
+sessions or a shared MCP session store.
+
+This does **not** change the governance product model. Jobs, replay
+executions, decisions, evaluations, and audit records remain durable resources;
+later calls use their explicit IDs. Both protocol eras use the same tool,
+authorization, audit, and REST-control-plane path.
+
+## How MCP fits the control plane
 
 The Model Context Protocol (MCP) is a standard way for an AI client to
 discover and call tools exposed by an application. An MCP server publishes
@@ -11,51 +48,48 @@ In AI Governance Control Plane, MCP is an adapter over the REST control plane. I
 second copy of policy, tenancy or governance logic:
 
 ```text
-AI client
-   │ MCP tool call
-   ▼
-MCPO (optional HTTP/OpenAPI adapter)
-   │ stdio JSON-RPC
-   ▼
-AI Governance Control Plane MCP server
-   │ REST request with tenant context and bearer token
-   ▼
-AI Governance Control Plane REST API
-   │ authorization, persistence, governance rules
-   ▼
-SQLite / PostgreSQL / other configured backends
+MCP-aware client ──────────────► Native MCP server (`8002`)
+HTTP/OpenAPI-only client ──────► MCPO (`8001`) ─► MCP server
+                                                     │
+                                                     ▼
+                           REST control plane: identity, permissions, audit, persistence
 ```
 
-The MCP server maps each tool to the existing REST API. Therefore REST remains
-the source of truth for authentication, Keycloak subject identity, tenant
-scope, memberships, roles, permissions, audit records, and persistence.
-
-## Choose Local/Remote/MCPO Integration
-
-| Client type | Recommended interface |
-| --- | --- |
-| Local MCP-aware AI client | MCP over stdio |
-| Remote MCP-aware AI client | Native Streamable HTTP at `http://localhost:8002/mcp` |
-| HTTP/OpenAPI-only client | MCPO at `http://localhost:8001` |
-| Traditional application integration | AI Governance Control Plane REST API |
+The MCP server maps each tool to the existing REST API. REST remains the
+source of truth for identity, tenant scope, permissions, audit records, and
+persistence.
 
 Native Streamable HTTP is MCP, not a conventional REST endpoint; use an MCP
-client library for `initialize`, `tools/list`, and `tools/call`. In Keycloak
-mode supply the caller's bearer token to the MCP client. AI Governance Control Plane forwards that
+client library for discovery and tool calls. The supported MCP Python v2 client
+automatically prefers `2026-07-28` and falls back to `initialize` for an older
+server. In Keycloak mode supply the caller's bearer token to the MCP client. AI Governance Control Plane forwards that
 same token to REST, so tenant membership and roles are evaluated for the user
 rather than the MCPO service account.
 
 ```python
-from mcp import ClientSession
-from mcp.client.streamable_http import streamablehttp_client
+import httpx2
+from mcp.client import Client
+from mcp.client.streamable_http import streamable_http_client
 
 headers = {"Authorization": "Bearer <access-token>"}
-async with streamablehttp_client("http://localhost:8002/mcp", headers=headers) as streams:
-    read_stream, write_stream, _get_session_id = streams
-    async with ClientSession(read_stream, write_stream) as session:
-        await session.initialize()
-        tools = await session.list_tools()
+async with httpx2.AsyncClient(headers=headers) as http:
+    async with Client(
+        streamable_http_client("http://localhost:8002/mcp", http_client=http)
+    ) as client:
+        tools = await client.list_tools()
 ```
+
+### Protocol-era Compatibility
+
+The native endpoint at `8002` supports the stateless `2026-07-28` revision and
+legacy handshake clients through the same canonical tool registry. Port `8001`
+is MCPO's compatibility/OpenAPI wrapper, not the native stateless endpoint.
+
+For `2026-07-28`, the caller sends `MCP-Protocol-Version`, `Mcp-Method`, and
+for tool calls `Mcp-Name`, on every request. The matching protocol version,
+client information, and capabilities also appear in `params._meta`. Servers
+reject mismatched routing headers and request bodies. No `initialize` request
+or `Mcp-Session-Id` is sent on this path.
 
 ## Authentication, Tokens & Identity
 
@@ -114,13 +148,13 @@ MCP connection. This represents the MCP service account; production remote
 clients should instead send the individual caller's access token.
 
 ```bash
-uv run python scripts/oauth/fetch-access-token.py --clipboard
+uv run python scripts/mcp/fetch-access-token.py
 ```
 
-On macOS, the generic helper obtains a short-lived token from the configured
-Keycloak client and copies it to the clipboard without printing or saving the
-token. The legacy `scripts/mcp/fetch-access-token.py` wrapper remains available
-for existing local workflows.
+On macOS, this helper obtains a short-lived token from the dedicated
+`ai-governance-mcp` Keycloak client and copies it to the clipboard without
+printing or saving the token. The local Keycloak configuration grants that
+client the native MCP resource audience, `http://localhost:8002/mcp`.
 Paste it into a client as `Bearer <token>`. Clear the clipboard when finished.
 
 This is the right option when validating a local installation. It is not a
@@ -139,13 +173,11 @@ do not give it a client secret.
 # access_token is obtained by the application's existing OIDC login flow.
 headers = {"Authorization": f"Bearer {access_token}"}
 
-async with streamablehttp_client(
-    "https://mcp.example.com/mcp", headers=headers
-) as streams:
-    read_stream, write_stream, _get_session_id = streams
-    async with ClientSession(read_stream, write_stream) as session:
-        await session.initialize()
-        result = await session.call_tool(
+async with httpx2.AsyncClient(headers=headers) as http:
+    async with Client(
+        streamable_http_client("https://mcp.example.com/mcp", http_client=http)
+    ) as client:
+        result = await client.call_tool(
             "context.current",
             {
                 "context": {
@@ -155,6 +187,11 @@ async with streamablehttp_client(
             },
         )
 ```
+
+`Client` uses `server/discover` and selects the stateless `2026-07-28`
+protocol when the server supports it. It falls back to the legacy
+`initialize` handshake for an older endpoint, so callers should not issue the
+handshake themselves.
 
 AI Governance Control Plane records the user's Keycloak subject as the actor. If that user lacks a
 membership, role, or permission, the tool returns an authorization error even
@@ -239,8 +276,10 @@ Authorization: Bearer <access-token>
 }
 ```
 
-Paste the access token only; never paste `AI_GOVERNANCE_MCP_CLIENT_SECRET` into a
-browser UI. The Inspector can then initialize the connection, browse the
+The local helper obtains the `ai-governance-mcp` service-account token and
+copies it to the clipboard. Its audience is the native MCP resource
+`http://localhost:8002/mcp`; do not paste `AI_GOVERNANCE_MCP_CLIENT_SECRET`
+into a browser UI. The Inspector can then initialize the connection, browse the
 tools, inspect schemas, and invoke the selected tool.
 
 The local `.env.local` permits the Inspector browser origins on port `6274`.
@@ -460,7 +499,7 @@ MCPO may wrap REST `401`/`403` responses as HTTP `500`; inspect the nested
 
 ## Testing levels
 
-You can test MCP at 4 levels.
+You can test MCP at 5 levels.
 
 **1. Automated tests**
 
@@ -468,7 +507,58 @@ You can test MCP at 4 levels.
 uv run pytest tests/mcp
 ```
 
-**2. In Python, without running REST separately**
+**2. Native `2026-07-28` authenticated smoke test**
+
+Start the full local stack and wait for the native endpoint:
+
+```bash
+./servers.sh up
+until curl -fsS http://127.0.0.1:8002/health; do sleep 2; done
+```
+
+Fetch a short-lived local MCP service-account token. The helper copies it to
+the macOS clipboard without printing it:
+
+```bash
+( unset VIRTUAL_ENV; uv run python scripts/mcp/fetch-access-token.py )
+TOKEN="$(pbpaste)"
+```
+
+Then make a self-contained tool call. This test exercises Keycloak audience
+validation, the stateless protocol envelope and headers, the canonical tool
+registry, and the downstream REST control plane:
+
+```bash
+curl -sS http://127.0.0.1:8002/mcp \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -H 'MCP-Protocol-Version: 2026-07-28' \
+  -H 'Mcp-Method: tools/call' \
+  -H 'Mcp-Name: provider_list' \
+  --data '{
+    "jsonrpc":"2.0",
+    "id":1,
+    "method":"tools/call",
+    "params":{
+      "name":"provider_list",
+      "arguments":{},
+      "_meta":{
+        "io.modelcontextprotocol/protocolVersion":"2026-07-28",
+        "io.modelcontextprotocol/clientInfo":{"name":"manual-curl-test","version":"1.0"},
+        "io.modelcontextprotocol/clientCapabilities":{}
+      }
+    }
+  }' | jq '{isError: .result.isError, status: .result.structuredContent.status}'
+```
+
+Expected output:
+
+```json
+{"isError": false, "status": "ok"}
+```
+
+**3. In Python, without running REST separately**
 
 This uses the MCP server object directly with its configured REST client.
 
@@ -489,7 +579,7 @@ This expects `AI_GOVERNANCE_API_URL` to point to a running AI Governance Control
 http://127.0.0.1:8000
 ```
 
-**3. With the REST API running**
+**4. With the REST API running**
 
 Start REST:
 
@@ -553,7 +643,9 @@ server.handle_json_rpc({
 })
 ```
 
-4. You can test `run_stdio()` by piping line-delimited JSON-RPC messages into a tiny Python runner.
+**5. Legacy stdio compatibility**
+
+You can test `run_stdio()` by piping line-delimited JSON-RPC messages into a tiny Python runner.
 
 **List tools, no REST required:**
 
