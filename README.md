@@ -418,6 +418,7 @@ graph explorer, or governance decision index.
 - [MCP Usage and MCPO](docs/reference/MCP_USAGE.md)
 - [Ontology Foundation](docs/ontology/ontology-foundation.md)
 - [Neo4j Operations Guide](docs/ontology/neo4j-operations-guide.md)
+- [Dependency Management](docs/maintenance/DEPENDENCY_MANAGEMENT.md)
 - [Graph Query APIs](docs/ontology/graph-query-apis.md)
 - [AI Governance Control Plane Studio](docs/ontology/governance-graph-console.md)
 - [End-to-End Local Tutorial](docs/tutorials/end-to-end-local.md)

@@ -111,6 +111,21 @@ Use judgement for behavior-preserving internal refactors, documentation
 organisation, test helpers, and developer tooling that do not alter the
 contracts above.
 
+## Dependency Upgrades
+
+- Treat `pyproject.toml`/`uv.lock` as the source of truth for Python packages
+  and Compose files as the source of truth for local service-image pins.
+- Use GitHub Issues or Projects for active dependency and migration backlog
+  items. Do not maintain a second mutable task list in `AGENTS.md`.
+- For a dependency change that establishes a cross-component compatibility,
+  migration, or operational-support decision, update
+  `docs/maintenance/DEPENDENCY_MANAGEMENT.md` and link the affected operations
+  documentation. Record released behavior in `CHANGELOG.md`.
+- Do not upgrade a Docker service image merely to match a client-library
+  version. Major database or infrastructure-image upgrades require a dedicated
+  migration issue/PR, vendor migration review, backup/restore rehearsal, and
+  integration validation against the upgraded service.
+
 ## Repository Skills
 
 Use skills for repeatable task workflows; they do not replace these

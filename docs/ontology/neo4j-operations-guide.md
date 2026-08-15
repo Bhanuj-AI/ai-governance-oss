@@ -5,6 +5,8 @@ Neo4j-backed ontology projection. It is intended for local operators and
 platform engineers. For the ontology contract, see
 [Governance Ontology](../architecture/GOVERNANCE_ONTOLOGY.md); for the
 synchronizer design, see [Ontology Synchronization](./ontology-synchronization.md).
+For driver/server compatibility and database-image migration policy, see
+[Dependency Management](../maintenance/DEPENDENCY_MANAGEMENT.md).
 
 ## What Neo4j Stores
 
