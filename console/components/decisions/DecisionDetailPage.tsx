@@ -13,7 +13,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { DecisionFlowGraph } from "@/components/decisions/DecisionFlowGraph";
 import { DecisionStatusBadge } from "@/components/decisions/DecisionStatusBadge";
 import {
@@ -21,6 +21,7 @@ import {
   type GovernedFlowStep,
 } from "@/components/governance/GovernedEventFlow";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   getDecisionDetail,
@@ -32,6 +33,7 @@ import { AIGovernanceApiError } from "@/lib/api/client";
 import {
   evidenceGraphToFlow,
   lineageToFlow,
+  type DecisionLineageLayout,
 } from "@/lib/decisions/flow";
 import type {
   DecisionAuditRecord,
@@ -487,7 +489,8 @@ function LineageSection({ state }: { state: SectionState<DecisionLineage> }) {
 }
 
 function LineageContent({ lineage }: { lineage: DecisionLineage }) {
-  const flow = useMemo(() => lineageToFlow(lineage), [lineage]);
+  const [layout, setLayout] = useState<DecisionLineageLayout>("sequence");
+  const flow = useMemo(() => lineageToFlow(lineage, layout), [lineage, layout]);
 
   if (!lineage.subgraph.nodes.length) {
     return (
@@ -500,8 +503,25 @@ function LineageContent({ lineage }: { lineage: DecisionLineage }) {
   }
 
   return (
-    <div className="h-[420px] overflow-hidden rounded-md border bg-background">
-      <DecisionFlowGraph nodes={flow.nodes} edges={flow.edges} />
+    <div className="space-y-3">
+      <div className="flex flex-col justify-between gap-3 rounded-md border bg-muted/30 p-3 sm:flex-row sm:items-center">
+        <p className="text-sm text-muted-foreground">
+          {layout === "sequence"
+            ? "Sequenced: Inputs → Evaluation → Governance → Decision."
+            : "Depth: records are grouped by their graph distance from this decision."}
+        </p>
+        <div className="flex items-center gap-2" role="group" aria-label="Lineage layout">
+          <Button type="button" size="sm" variant={layout === "sequence" ? "default" : "outline"} onClick={() => setLayout("sequence")}>
+            Sequenced
+          </Button>
+          <Button type="button" size="sm" variant={layout === "depth" ? "default" : "outline"} onClick={() => setLayout("depth")}>
+            By depth
+          </Button>
+        </div>
+      </div>
+      <div className="h-[380px] overflow-hidden rounded-md border bg-background">
+        <DecisionFlowGraph nodes={flow.nodes} edges={flow.edges} title="Decision Lineage" />
+      </div>
     </div>
   );
 }

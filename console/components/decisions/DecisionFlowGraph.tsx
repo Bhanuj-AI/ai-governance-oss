@@ -19,8 +19,9 @@ import {
   type EdgeProps,
   type NodeProps,
 } from "@xyflow/react";
-import { RotateCcw } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { Maximize2, RotateCcw, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type {
@@ -39,10 +40,13 @@ const edgeTypes = {
 export function DecisionFlowGraph({
   nodes,
   edges,
+  title,
 }: {
   nodes: DecisionFlowNode[];
   edges: DecisionFlowEdge[];
+  title?: string;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const initialEdges = useMemo(
     () =>
       edges.map((edge) => ({
@@ -75,30 +79,45 @@ export function DecisionFlowGraph({
     setEdges(initialEdges);
   }
 
-  return (
+  const graph = (isExpanded: boolean) => (
     <ReactFlow
       nodes={flowNodes}
       edges={flowEdges}
       nodeTypes={nodeTypes}
       edgeTypes={edgeTypes}
       fitView
-      fitViewOptions={{ padding: 0.18, maxZoom: 1 }}
+      fitViewOptions={{ padding: isExpanded ? 0.1 : 0.18, maxZoom: 1 }}
       minZoom={0.25}
       maxZoom={1.6}
       nodesDraggable
+      nodesConnectable={false}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
     >
       <Panel position="top-right">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={handleResetLayout}
-        >
-          <RotateCcw className="h-4 w-4" />
-          Reset
-        </Button>
+        <div className="flex items-center gap-2">
+          {title && !isExpanded ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setExpanded(true)}
+              aria-label={`Expand ${title}`}
+            >
+              <Maximize2 className="h-4 w-4" />
+              Expand
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleResetLayout}
+          >
+            <RotateCcw className="h-4 w-4" />
+            Reset
+          </Button>
+        </div>
       </Panel>
       <Background gap={18} size={1} />
       <Controls />
@@ -109,8 +128,8 @@ export function DecisionFlowGraph({
         nodeStrokeWidth={2}
         className="opacity-45 transition-opacity hover:opacity-85"
         style={{
-          width: 110,
-          height: 78,
+          width: isExpanded ? 150 : 110,
+          height: isExpanded ? 106 : 78,
           background: "rgb(255 255 255 / 0.76)",
           border: "1px solid hsl(220 13% 88%)",
           borderRadius: 8,
@@ -118,6 +137,39 @@ export function DecisionFlowGraph({
         }}
       />
     </ReactFlow>
+  );
+
+  return (
+    <>
+      {graph(false)}
+      {title ? (
+        <Dialog.Root open={expanded} onOpenChange={setExpanded}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm" />
+            <Dialog.Content className="fixed inset-4 z-50 flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-lg border bg-background p-4 shadow-2xl focus:outline-none">
+              <div className="flex items-start justify-between gap-4 border-b pb-3">
+                <div>
+                  <Dialog.Title className="text-base font-semibold">
+                    {title}
+                  </Dialog.Title>
+                  <Dialog.Description className="mt-1 text-sm text-muted-foreground">
+                    Explore the full relationship graph. Select an edge to reveal its relationship label.
+                  </Dialog.Description>
+                </div>
+                <Dialog.Close asChild>
+                  <Button type="button" variant="ghost" size="icon" aria-label="Close expanded graph">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </Dialog.Close>
+              </div>
+              <div className="min-h-0 flex-1 pt-4">
+                {graph(true)}
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+      ) : null}
+    </>
   );
 }
 
@@ -226,17 +278,19 @@ function DecisionEdge({
           strokeWidth: selected ? 2.2 : 1.2,
         }}
       />
-      <EdgeLabelRenderer>
-        <div
-          className="pointer-events-none absolute max-w-32 truncate rounded-md border bg-white/90 px-1.5 py-px text-[8px] font-medium text-slate-700 shadow-sm"
-          style={{
-            borderColor: selected ? "#0f766e" : "#d1d5db",
-            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-          }}
-        >
-          {data?.label}
-        </div>
-      </EdgeLabelRenderer>
+      {selected ? (
+        <EdgeLabelRenderer>
+          <div
+            className="pointer-events-none absolute max-w-32 truncate rounded-md border bg-white/90 px-1.5 py-px text-[8px] font-medium text-slate-700 shadow-sm"
+            style={{
+              borderColor: "#0f766e",
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+            }}
+          >
+            {data?.label}
+          </div>
+        </EdgeLabelRenderer>
+      ) : null}
     </>
   );
 }
