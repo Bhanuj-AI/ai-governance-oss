@@ -21,6 +21,15 @@ export type DecisionFlowEdgeData = {
 };
 
 export type DecisionFlowEdge = Edge<DecisionFlowEdgeData, "decisionEdge">;
+export type DecisionLineageLayout = "sequence" | "depth";
+
+type LayoutNode = {
+  id: string;
+  depth: number;
+  entityType: string;
+  weight: number;
+};
+type LayoutRelationship = { source: string; target: string };
 
 export function evidenceGraphToFlow(
   graph: DecisionEvidenceGraph,
@@ -31,7 +40,12 @@ export function evidenceGraphToFlow(
     graph.nodes.map((node) => ({
       id: nodeKey(node.entityType, node.entityId),
       depth: depths.get(nodeKey(node.entityType, node.entityId)) ?? 1,
+      entityType: node.entityType,
       weight: nodeWeight(node.entityType),
+    })),
+    graph.edges.map((edge) => ({
+      source: nodeKey(edge.sourceType, edge.sourceId),
+      target: nodeKey(edge.targetType, edge.targetId),
     })),
   );
 
@@ -69,15 +83,28 @@ export function evidenceGraphToFlow(
 
 export function lineageToFlow(
   lineage: DecisionLineage,
+  layout: DecisionLineageLayout = "sequence",
 ): { nodes: DecisionFlowNode[]; edges: DecisionFlowEdge[] } {
   const rootId = nodeKey("GovernanceDecision", lineage.decision.decisionId);
-  const positions = layoutByDepth(
-    lineage.subgraph.nodes.map((node) => ({
-      id: nodeKey(node.entity.entityType, node.entity.entityId),
-      depth: node.depth,
-      weight: nodeWeight(node.entity.entityType),
-    })),
-  );
+  const layoutNodes = lineage.subgraph.nodes.map((node) => ({
+    id: nodeKey(node.entity.entityType, node.entity.entityId),
+    depth: node.depth,
+    entityType: node.entity.entityType,
+    weight: nodeWeight(node.entity.entityType),
+  }));
+  const relationships = lineage.subgraph.edges.map((edge) => ({
+    source: nodeKey(
+      edge.relationship.sourceEntityType,
+      edge.relationship.sourceEntityId,
+    ),
+    target: nodeKey(
+      edge.relationship.targetEntityType,
+      edge.relationship.targetEntityId,
+    ),
+  }));
+  const positions = layout === "sequence"
+    ? layoutBySequence(layoutNodes, relationships, rootId)
+    : layoutByDepth(layoutNodes, relationships);
 
   return {
     nodes: lineage.subgraph.nodes.map((node) => {
@@ -143,22 +170,44 @@ function evidenceDepths(graph: DecisionEvidenceGraph, rootId: string) {
   return depths;
 }
 
-function layoutByDepth(
-  nodes: { id: string; depth: number; weight: number }[],
-) {
+function layoutByDepth(nodes: LayoutNode[], relationships: LayoutRelationship[]) {
   const byDepth = new Map<number, typeof nodes>();
   nodes.forEach((node) => {
     byDepth.set(node.depth, [...(byDepth.get(node.depth) ?? []), node]);
   });
 
+  const sortedDepths = [...byDepth.keys()].sort((left, right) => left - right);
+  const orderedByDepth = new Map<number, LayoutNode[]>();
+  const depthByNodeId = new Map(nodes.map((node) => [node.id, node.depth]));
+  const connectedNodeIds = new Map<string, Set<string>>();
+
+  for (const relationship of relationships) {
+    connectedNodeIds.set(
+      relationship.source,
+      new Set([...(connectedNodeIds.get(relationship.source) ?? []), relationship.target]),
+    );
+    connectedNodeIds.set(
+      relationship.target,
+      new Set([...(connectedNodeIds.get(relationship.target) ?? []), relationship.source]),
+    );
+  }
+
+  for (const depth of sortedDepths) {
+    orderedByDepth.set(depth, [...(byDepth.get(depth) ?? [])].sort(compareLayoutNodes));
+  }
+
+  for (let pass = 0; pass < 3; pass += 1) {
+    for (let index = 1; index < sortedDepths.length; index += 1) {
+      orderLayerByNeighbours(sortedDepths[index], sortedDepths[index - 1], orderedByDepth, depthByNodeId, connectedNodeIds);
+    }
+    for (let index = sortedDepths.length - 2; index > 0; index -= 1) {
+      orderLayerByNeighbours(sortedDepths[index], sortedDepths[index + 1], orderedByDepth, depthByNodeId, connectedNodeIds);
+    }
+  }
+
   const positions = new Map<string, { x: number; y: number }>();
-  [...byDepth.keys()].sort((left, right) => left - right).forEach((depth) => {
-    const group = [...(byDepth.get(depth) ?? [])].sort((left, right) => {
-      if (left.weight !== right.weight) {
-        return left.weight - right.weight;
-      }
-      return left.id.localeCompare(right.id);
-    });
+  sortedDepths.forEach((depth) => {
+    const group = orderedByDepth.get(depth) ?? [];
     const totalHeight = Math.max(0, (group.length - 1) * 118);
     group.forEach((node, index) => {
       positions.set(node.id, {
@@ -169,6 +218,66 @@ function layoutByDepth(
   });
 
   return positions;
+}
+
+function layoutBySequence(nodes: LayoutNode[], relationships: LayoutRelationship[], rootId: string) {
+  return layoutByDepth(
+    nodes.map((node) => ({ ...node, depth: sequenceForLineageNode(node, rootId) })),
+    relationships,
+  );
+}
+
+function sequenceForLineageNode(node: LayoutNode, rootId: string) {
+  if (node.id === rootId) return 4;
+  if (["PromptVersion", "ModelVersion", "DatasetVersion", "EvaluationProvider"].includes(node.entityType)) return 0;
+  if (["Experiment", "Candidate"].includes(node.entityType)) return 1;
+  if (["Job", "EvaluationRun", "EvaluationResult", "Metric", "DriftAnalysis", "Leaderboard"].includes(node.entityType)) return 2;
+  if (["Policy", "Actor", "MCPAudit"].includes(node.entityType)) return 3;
+  if (node.entityType === "GovernanceDecision") return 5;
+  return 3;
+}
+
+function orderLayerByNeighbours(
+  depth: number,
+  neighbourDepth: number,
+  orderedByDepth: Map<number, LayoutNode[]>,
+  depthByNodeId: Map<string, number>,
+  connectedNodeIds: Map<string, Set<string>>,
+) {
+  const layer = orderedByDepth.get(depth);
+  const neighbourLayer = orderedByDepth.get(neighbourDepth);
+  if (!layer || !neighbourLayer || layer.length < 2) return;
+
+  const neighbourOrder = new Map(neighbourLayer.map((node, index) => [node.id, index]));
+  const baseOrder = new Map(layer.map((node, index) => [node.id, index]));
+  layer.sort((left, right) => {
+    const leftRank = averageConnectedRank(left.id, neighbourDepth, depthByNodeId, connectedNodeIds, neighbourOrder);
+    const rightRank = averageConnectedRank(right.id, neighbourDepth, depthByNodeId, connectedNodeIds, neighbourOrder);
+    if (leftRank !== undefined && rightRank !== undefined && leftRank !== rightRank) return leftRank - rightRank;
+    if (leftRank !== undefined && rightRank === undefined) return -1;
+    if (leftRank === undefined && rightRank !== undefined) return 1;
+    return (baseOrder.get(left.id) ?? 0) - (baseOrder.get(right.id) ?? 0);
+  });
+}
+
+function averageConnectedRank(
+  nodeId: string,
+  neighbourDepth: number,
+  depthByNodeId: Map<string, number>,
+  connectedNodeIds: Map<string, Set<string>>,
+  neighbourOrder: Map<string, number>,
+) {
+  const ranks = [...(connectedNodeIds.get(nodeId) ?? [])]
+    .filter((connectedId) => depthByNodeId.get(connectedId) === neighbourDepth)
+    .map((connectedId) => neighbourOrder.get(connectedId))
+    .filter((rank): rank is number => rank !== undefined);
+  if (!ranks.length) return undefined;
+  return ranks.reduce((total, rank) => total + rank, 0) / ranks.length;
+}
+
+function compareLayoutNodes(left: LayoutNode, right: LayoutNode) {
+  if (left.weight !== right.weight) return left.weight - right.weight;
+  return left.id.localeCompare(right.id);
 }
 
 function nodeKey(entityType: string, entityId: string) {
