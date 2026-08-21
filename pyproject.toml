@@ -31,7 +31,7 @@ dependencies = [
 Homepage = "https://ai-governance.bhanuj.app"
 Documentation = "https://ai-governance.bhanuj.app/docs"
 Tutorials = "https://ai-governance.bhanuj.app/tutorials"
-Repository = "https://github.com/Bhanuj-AI/ai-governance-oss.git"
+Repository = "https://gitlab.com/bhanuj-ai/ai-governance-oss.git"
 
 [project.scripts]
 ai-governance = "ai_governance.cli:main"
