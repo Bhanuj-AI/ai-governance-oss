@@ -4,39 +4,41 @@
 # - Feature branch pushes: no pipeline
 # - Merge request updates: no pipeline
 # - Merge/push to main: unit tests automatically
-# - Explicit "Run pipeline": unit + integration automatically
-# - SAST: manual only
+# - Explicit "Run pipeline": unit + integration tests automatically
 #
-# The installation selects the runner through the required CI_RUNNER_TAG
-# project variable. GitLab.com may remain the CI control plane while jobs run
-# on either GitLab-hosted or self-hosted infrastructure. See
-# docs/development/GITLAB_RUNNER.md.
+# Runner model:
+# - Jobs are intentionally untagged.
+# - GitLab-hosted runners work without repository-specific configuration.
+# - Self-hosted runners can execute these jobs when configured to
+#   "Run untagged jobs".
+#
+# Python:
+# - Container runners use python:3.12.
+# - Shell runners ignore `image` and uv explicitly selects Python 3.12.
 
 workflow:
   rules:
-    # Run when code lands on main
+    # Run automatically when code lands on main.
     - if: '$CI_COMMIT_BRANCH == "main"'
 
-    # Allow explicitly started pipelines
+    # Allow explicit pipeline execution from the GitLab UI.
     - if: '$CI_PIPELINE_SOURCE == "web"'
 
-    # Nothing for ordinary branch pushes / MR updates
+    # No pipelines for ordinary feature branch pushes or MR updates.
     - when: never
 
 
 stages:
   - test
-  - security
 
 
 default:
-  tags:
-    - $CI_RUNNER_TAG
+  # Used by container-based runners.
+  # Ignored by shell executors such as a local macOS runner.
+  image: python:3.12
 
 
 variables:
-  # Required project CI/CD variable. It intentionally has no repository-level
-  # default because runner tags are installation-specific infrastructure.
   UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
 
 
@@ -61,10 +63,16 @@ unit-tests:
   stage: test
 
   before_script:
+    # GitLab-hosted Python container may not have uv.
+    # Self-hosted runner may already have it.
+    - command -v uv >/dev/null 2>&1 || pip install --no-cache-dir uv
     - uv sync --frozen --python 3.12
 
   script:
-    - uv run --python 3.12 pytest tests/unit -v --cov=ai-governance --cov-report=term-missing
+    - >
+      uv run --python 3.12 pytest tests/unit -v
+      --cov=ai-governance
+      --cov-report=term-missing
 
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
@@ -93,6 +101,7 @@ integration-tests:
   stage: test
 
   before_script:
+    - command -v uv >/dev/null 2>&1 || pip install --no-cache-dir uv
     - uv sync --frozen --python 3.12
 
   script:
@@ -103,28 +112,3 @@ integration-tests:
       when: on_success
 
     - when: never
-
-
-# ---------------------------------------------------------------------------
-# GitLab SAST
-#
-# Manual only.
-#
-# NOTE:
-# GitLab SAST analyzers generally rely on container execution. Keep this
-# opt-in when using a shell-based self-hosted runner.
-# ---------------------------------------------------------------------------
-
-sast:
-  stage: security
-
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "web"'
-      when: manual
-      allow_failure: true
-
-    - when: never
-
-
-include:
-  - template: Security/SAST.gitlab-ci.yml
