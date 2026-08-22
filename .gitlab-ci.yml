@@ -1,52 +1,88 @@
-# You can override the included template(s) by including variable overrides
-# SAST customization: https://docs.gitlab.com/user/application_security/sast/#available-cicd-variables
-# Secret Detection customization: https://docs.gitlab.com/user/application_security/secret_detection/pipeline/configure/
-# Dependency Scanning customization: https://docs.gitlab.com/user/application_security/dependency_scanning/dependency_scanning_sbom/#customizing-analyzer-behavior
-# Container Scanning customization: https://docs.gitlab.com/user/application_security/container_scanning/#customizing-analyzer-behavior
-# Note that environment variables can be set in several places
-# See https://docs.gitlab.com/ci/variables/#cicd-variable-precedence
-
 # GitLab CI/CD pipeline for OSS
+#
+# Execution model:
+# - Feature branch pushes: no pipeline
+# - Merge request updates: no pipeline
+# - Merge/push to main: unit tests automatically
+# - Explicit "Run pipeline": unit + integration automatically
+# - SAST: manual only
+#
+# The installation selects the runner through the required CI_RUNNER_TAG
+# project variable. GitLab.com may remain the CI control plane while jobs run
+# on either GitLab-hosted or self-hosted infrastructure. See
+# docs/development/GITLAB_RUNNER.md.
+
+workflow:
+  rules:
+    # Run when code lands on main
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+    # Allow explicitly started pipelines
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+
+    # Nothing for ordinary branch pushes / MR updates
+    - when: never
+
 
 stages:
   - test
   - security
 
+
 default:
-  image: python:3.12
+  tags:
+    - $CI_RUNNER_TAG
+
 
 variables:
+  # Required project CI/CD variable. It intentionally has no repository-level
+  # default because runner tags are installation-specific infrastructure.
   UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
 
+
 cache:
-  key: "uv-$CI_COMMIT_REF_SLUG"
+  key:
+    files:
+      - uv.lock
   paths:
     - .cache/uv/
+  policy: pull-push
 
 
 # ---------------------------------------------------------------------------
 # Unit Tests
-# Runs automatically for merge requests and pushes to main.
+#
+# Automatic:
+#   - Merge/push to main
+#   - Explicit UI pipeline
 # ---------------------------------------------------------------------------
 
 unit-tests:
   stage: test
 
   before_script:
-    - pip install --no-cache-dir uv
-    - uv sync --frozen
+    - uv sync --frozen --python 3.12
 
   script:
-    - uv run pytest tests/unit -v --cov=ai-governance --cov-report=term-missing
+    - uv run --python 3.12 pytest tests/unit -v --cov=ai-governance --cov-report=term-missing
 
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == "main"'
+      when: on_success
+
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: on_success
+
+    - when: never
 
 
 # ---------------------------------------------------------------------------
 # Integration Tests
-# Manual because these tests consume external provider credentials.
+#
+# Provider-dependent and potentially expensive.
+#
+# Automatic:
+#   - Explicit UI pipeline only
 #
 # Required CI/CD variables:
 #   OPENAI_API_KEY
@@ -57,31 +93,38 @@ integration-tests:
   stage: test
 
   before_script:
-    - pip install --no-cache-dir uv
-    - uv sync --frozen
+    - uv sync --frozen --python 3.12
 
   script:
-    - uv run pytest tests/integration -v
+    - uv run --python 3.12 pytest tests/integration -v
 
   rules:
-    # Explicitly started pipeline: run integration tests automatically.
     - if: '$CI_PIPELINE_SOURCE == "web"'
       when: on_success
 
-    # Merge request: available on demand, but does not block merge.
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - when: never
+
+
+# ---------------------------------------------------------------------------
+# GitLab SAST
+#
+# Manual only.
+#
+# NOTE:
+# GitLab SAST analyzers generally rely on container execution. Keep this
+# opt-in when using a shell-based self-hosted runner.
+# ---------------------------------------------------------------------------
+
+sast:
+  stage: security
+
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
       when: manual
       allow_failure: true
 
     - when: never
 
 
-# ---------------------------------------------------------------------------
-# GitLab Security
-# ---------------------------------------------------------------------------
-
-sast:
-  stage: security
-
 include:
-- template: Security/SAST.gitlab-ci.yml
+  - template: Security/SAST.gitlab-ci.yml
