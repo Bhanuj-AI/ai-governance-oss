@@ -1,5 +1,6 @@
 import ai_governance
 from ai_governance import (
+    AIGovernanceMCPServer,
     AnswerRelevanceRanking,
     CandidateComparison,
     CandidateRanking,
@@ -9,8 +10,8 @@ from ai_governance import (
     DatasetStatus,
     DecisionAuditAction,
     DecisionAuditRecord,
-    DecisionEvaluateCommand,
     DecisionConfidenceLevel,
+    DecisionEvaluateCommand,
     DecisionEvidenceBuilder,
     DecisionEvidenceGraph,
     DecisionEvidenceReference,
@@ -25,12 +26,10 @@ from ai_governance import (
     DecisionTargetType,
     DecisionType,
     DecisionValidationError,
-    EvidenceEdge,
-    EvidenceNode,
     DriftAnalyzer,
     DriftSeverity,
-    EvaluationComparison,
     EvaluationArtifact,
+    EvaluationComparison,
     EvaluationDrift,
     EvaluationHistory,
     EvaluationHistoryMetric,
@@ -45,15 +44,14 @@ from ai_governance import (
     EvaluationRunStatus,
     EvaluationSummary,
     EvaluationWorker,
+    EvidenceEdge,
+    EvidenceNode,
     Experiment,
     ExperimentCandidate,
     ExperimentCandidateService,
     ExperimentEvaluationService,
     ExperimentService,
     ExperimentStatus,
-    GroundednessRanking,
-    HighestOverallScoreSelectionStrategy,
-    HallucinationRanking,
     GovernanceDecision,
     GovernanceDecisionApplicationService,
     GovernanceDecisionRepository,
@@ -63,6 +61,9 @@ from ai_governance import (
     GovernanceReasoningEngine,
     GovernanceReasoningOutcome,
     GovernanceReasoningRequest,
+    GroundednessRanking,
+    HallucinationRanking,
+    HighestOverallScoreSelectionStrategy,
     IdempotencyConflictError,
     InMemoryGovernanceDecisionRepository,
     InMemoryGovernancePolicyProvider,
@@ -77,21 +78,19 @@ from ai_governance import (
     JobSubmissionService,
     JobType,
     JobWorker,
-    AIGovernanceMCPServer,
     Leaderboard,
     LeaderboardAPI,
     LeaderboardEntry,
     LeaderboardRoute,
     LowestCostRanking,
     LowestLatencyRanking,
+    MissingEvidence,
     Model,
     ModelDiff,
     ModelParameterChange,
     ModelRegistryService,
     ModelStatus,
-    MissingEvidence,
     OverallScoreRanking,
-    PostgresGovernanceDecisionRepository,
     PolicyCondition,
     PolicyConditionOperator,
     PolicyEffect,
@@ -99,8 +98,7 @@ from ai_governance import (
     PolicyEvaluationOutcome,
     PolicyRule,
     PolicyStatus,
-    ReasoningEvidenceSummarizer,
-    ReasoningEvidenceSummary,
+    PostgresGovernanceDecisionRepository,
     Prompt,
     PromptDiff,
     PromptRegistryService,
@@ -108,6 +106,8 @@ from ai_governance import (
     RankingError,
     RankingService,
     RankingStrategy,
+    ReasoningEvidenceSummarizer,
+    ReasoningEvidenceSummary,
     ReplayEvaluationHistory,
     ReplayRequest,
     SQLiteGovernanceDecisionRepository,
@@ -119,28 +119,31 @@ from ai_governance.api import GovernanceAPI as ApiGovernanceAPI
 from ai_governance.api import LeaderboardAPI as ApiLeaderboardAPI
 from ai_governance.domain import Dataset as DomainDataset
 from ai_governance.domain import DecisionAuditAction as DomainDecisionAuditAction
-from ai_governance.domain import DecisionEvidenceBuilder as DomainDecisionEvidenceBuilder
-from ai_governance.domain import GovernanceDecision as DomainGovernanceDecision
-from ai_governance.domain import GovernancePolicy as DomainGovernancePolicy
-from ai_governance.domain import GovernanceReasoningEngine as DomainReasoningEngine
+from ai_governance.domain import (
+    DecisionEvidenceBuilder as DomainDecisionEvidenceBuilder,
+)
 from ai_governance.domain import EvaluationHistory as DomainEvaluationHistory
 from ai_governance.domain import EvaluationMetric as DomainEvaluationMetric
 from ai_governance.domain import EvaluationRun as DomainEvaluationRun
 from ai_governance.domain import Experiment as DomainExperiment
 from ai_governance.domain import ExperimentCandidate as DomainExperimentCandidate
+from ai_governance.domain import GovernanceDecision as DomainGovernanceDecision
+from ai_governance.domain import GovernancePolicy as DomainGovernancePolicy
+from ai_governance.domain import GovernanceReasoningEngine as DomainReasoningEngine
 from ai_governance.domain import Job as DomainJob
 from ai_governance.domain import Leaderboard as DomainLeaderboard
 from ai_governance.domain import Model as DomainModel
 from ai_governance.domain import Prompt as DomainPrompt
 from ai_governance.domain import ReplayRequest as DomainReplayRequest
 from ai_governance.governance import DriftAnalyzer as GovernanceDriftAnalyzer
+from ai_governance.mcp import AIGovernanceMCPServer as MCPServer
+from ai_governance.mcp import create_server as create_mcp_server_impl
 from ai_governance.services import (
     AnswerRelevanceRanking as ServicesAnswerRelevanceRanking,
 )
 from ai_governance.services import (
-    GovernanceDecisionApplicationService as ServicesDecisionApplicationService,
+    DatasetRegistryService as ServicesDatasetRegistryService,
 )
-from ai_governance.services import DatasetRegistryService as ServicesDatasetRegistryService
 from ai_governance.services import EvaluationHistoryService as ServicesHistoryService
 from ai_governance.services import (
     ExperimentCandidateService as ServicesExperimentCandidateService,
@@ -149,19 +152,22 @@ from ai_governance.services import (
     ExperimentEvaluationService as ServicesExperimentEvaluationService,
 )
 from ai_governance.services import ExperimentService as ServicesExperimentService
+from ai_governance.services import (
+    GovernanceDecisionApplicationService as ServicesDecisionApplicationService,
+)
 from ai_governance.services import GroundednessRanking as ServicesGroundednessRanking
 from ai_governance.services import HallucinationRanking as ServicesHallucinationRanking
+from ai_governance.services import JobApiService as ServicesJobApiService
+from ai_governance.services import JobExecutor as ServicesJobExecutor
+from ai_governance.services import JobSubmissionService as ServicesJobSubmissionService
 from ai_governance.services import LowestCostRanking as ServicesLowestCostRanking
 from ai_governance.services import LowestLatencyRanking as ServicesLowestLatencyRanking
 from ai_governance.services import ModelRegistryService as ServicesModelRegistryService
 from ai_governance.services import OverallScoreRanking as ServicesOverallScoreRanking
-from ai_governance.services import PromptRegistryService as ServicesPromptRegistryService
+from ai_governance.services import (
+    PromptRegistryService as ServicesPromptRegistryService,
+)
 from ai_governance.services import RankingService as ServicesRankingService
-from ai_governance.services import JobExecutor as ServicesJobExecutor
-from ai_governance.services import JobApiService as ServicesJobApiService
-from ai_governance.services import JobSubmissionService as ServicesJobSubmissionService
-from ai_governance.mcp import AIGovernanceMCPServer as MCPServer
-from ai_governance.mcp import create_server as create_mcp_server_impl
 
 
 def test_history_api_is_exported_from_public_modules() -> None:

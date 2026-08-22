@@ -12,7 +12,6 @@ from ai_governance.oauth import (
     fetch_access_token,
 )
 
-
 ROOT_DIR = Path(__file__).resolve().parents[2]
 OAUTH_ENV = ROOT_DIR / ".env.oauth.generated"
 

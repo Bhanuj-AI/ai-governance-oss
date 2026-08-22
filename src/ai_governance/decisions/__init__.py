@@ -14,8 +14,8 @@ from ai_governance.decisions.evidence import (
     MissingEvidence,
 )
 from ai_governance.decisions.evidence_builder import DecisionEvidenceBuilder
-from ai_governance.decisions.explanation import DecisionExplanation
 from ai_governance.decisions.exceptions import DecisionValidationError
+from ai_governance.decisions.explanation import DecisionExplanation
 from ai_governance.decisions.models import (
     DecisionEvidenceReference,
     DecisionPolicyReference,
@@ -58,16 +58,14 @@ from ai_governance.decisions.reasoning_models import (
 )
 
 __all__ = [
-    "DecisionConfidenceLevel",
     "DecisionAuditAction",
     "DecisionAuditRecord",
+    "DecisionConfidenceLevel",
     "DecisionEvidenceBuilder",
     "DecisionEvidenceGraph",
     "DecisionEvidenceReference",
     "DecisionEvidenceSummary",
     "DecisionExplanation",
-    "EvidenceEdge",
-    "EvidenceNode",
     "DecisionPolicyReference",
     "DecisionProducerType",
     "DecisionProvenance",
@@ -77,17 +75,19 @@ __all__ = [
     "DecisionTargetType",
     "DecisionType",
     "DecisionValidationError",
+    "EvidenceEdge",
+    "EvidenceNode",
     "GovernanceDecision",
     "GovernancePolicy",
-    "GovernancePolicyProvider",
     "GovernancePolicyEvaluator",
+    "GovernancePolicyProvider",
     "GovernanceReasoningEngine",
     "GovernanceReasoningOutcome",
     "GovernanceReasoningRequest",
     "InMemoryGovernancePolicyProvider",
     "MissingEvidence",
-    "PolicyCondition",
     "PolicyCategory",
+    "PolicyCondition",
     "PolicyConditionOperator",
     "PolicyDefinition",
     "PolicyEffect",

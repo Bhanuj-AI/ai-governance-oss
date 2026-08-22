@@ -28,19 +28,21 @@ from ai_governance.api.logging import (
     configure_sensitive_third_party_logging,
     request_logging_middleware,
 )
+from ai_governance.mcp.audit import MCPExecutionAuditLog
 from ai_governance.ontology import (
     InMemoryOntologyGraphQueryRepository,
     InMemoryOntologyGraphRepository,
     OntologyGraphQueryService,
 )
-from ai_governance.mcp.audit import MCPExecutionAuditLog
 from ai_governance.providers.errors import (
     ProviderContractError,
     ProviderRegistryError,
 )
-from ai_governance.repositories.in_memory import InMemoryGovernanceDecisionRepository
-from ai_governance.repositories.in_memory import InMemoryJobRepository
 from ai_governance.repositories import InMemoryPolicyAdministrationRepository
+from ai_governance.repositories.in_memory import (
+    InMemoryGovernanceDecisionRepository,
+    InMemoryJobRepository,
+)
 
 
 def test_rest_app_starts_with_expected_metadata() -> None:

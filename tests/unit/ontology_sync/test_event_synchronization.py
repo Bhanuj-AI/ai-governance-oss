@@ -18,9 +18,9 @@ from ai_governance.ontology.synchronization import (
     OntologySyncEventPublisher,
     OntologySyncEventService,
     OntologySyncEventStatus,
+    OntologySynchronizationWorker,
     OntologySyncProcessingError,
     OntologySyncRetryPolicy,
-    OntologySynchronizationWorker,
     PromptOntologySynchronizer,
 )
 from ai_governance.repositories import (

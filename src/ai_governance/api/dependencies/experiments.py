@@ -8,7 +8,13 @@ from typing import Any
 
 from fastapi import Depends
 
+from ai_governance.api.dependencies.events import get_event_publisher
+from ai_governance.api.dependencies.ontology import get_ontology_sync_event_publisher
+from ai_governance.api.dependencies.provider_installations import (
+    get_provider_installation_service,
+)
 from ai_governance.api.dependencies.providers import get_provider_registry
+from ai_governance.api.dependencies.replay import get_replay_source_resolver
 from ai_governance.api.dependencies.repositories import (
     get_dataset_repository,
     get_evaluation_repository,
@@ -19,11 +25,9 @@ from ai_governance.api.dependencies.repositories import (
     get_model_repository,
     get_prompt_repository,
 )
-from ai_governance.api.dependencies.ontology import get_ontology_sync_event_publisher
-from ai_governance.api.dependencies.events import get_event_publisher
-from ai_governance.api.dependencies.provider_installations import get_provider_installation_service
-from ai_governance.api.dependencies.runtime_connections import get_runtime_connection_service
-from ai_governance.api.dependencies.replay import get_replay_source_resolver
+from ai_governance.api.dependencies.runtime_connections import (
+    get_runtime_connection_service,
+)
 
 
 def get_experiment_api_service(
@@ -46,7 +50,7 @@ def get_experiment_api_service(
     Create the REST experiment facade through dependency injection.
     """
 
-    from ai_governance.services.experiment_api_service import ExperimentApiService
+    from ai_governance.datasets import dataset_object_store_from_environment
     from ai_governance.services.candidate_execution_runtime import (
         AnthropicModelRuntimeAdapter,
         CandidateExecutionRuntime,
@@ -54,7 +58,7 @@ def get_experiment_api_service(
         OpenAIModelRuntimeAdapter,
     )
     from ai_governance.services.dataset_item_reader import S3DatasetItemReader
-    from ai_governance.datasets import dataset_object_store_from_environment
+    from ai_governance.services.experiment_api_service import ExperimentApiService
 
     return ExperimentApiService(
         experiment_repository=experiment_repository,

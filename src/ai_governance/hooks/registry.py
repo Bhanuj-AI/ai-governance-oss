@@ -130,7 +130,7 @@ class HookRegistry:
                     order=definition.order, outcome="succeeded",
                     duration_ms=(time.perf_counter() - started) * 1000,
                 )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - plugin hook failures are captured as execution outcomes.
                 failure = exc
         return HookExecution(
             plugin_name=definition.plugin_name, hook_name=definition.name,

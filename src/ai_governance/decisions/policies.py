@@ -23,7 +23,6 @@ from ai_governance.decisions.validation import (
     require_timezone_aware,
 )
 
-
 _MISSING = object()
 
 

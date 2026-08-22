@@ -6,9 +6,9 @@ they must never be replaced with process-global mutable token state.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from contextvars import ContextVar, Token
 from dataclasses import dataclass, field
-from typing import Mapping
 
 from ai_governance.mcp.authentication import McpAuthenticationContext
 from ai_governance.tenancy.domain import AuthenticatedPrincipal

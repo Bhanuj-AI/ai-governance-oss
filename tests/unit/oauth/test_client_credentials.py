@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import json
 from importlib import import_module
-from typing import Any
+from typing import Any, Self
 
 import pytest
 
 import ai_governance.oauth.client_credentials as oauth
 from ai_governance.cli.main import _resolve_walkthrough_token
-
 
 cli_main_module = import_module("ai_governance.cli.main")
 
@@ -51,10 +50,10 @@ def test_fetch_access_token_posts_client_credentials_without_logging_secret(
         def read(self) -> bytes:
             return json.dumps({"access_token": "short-lived-token"}).encode()
 
-        def __enter__(self) -> Response:
+        def __enter__(self) -> Self:
             return self
 
-        def __exit__(self, *_: Any) -> None:
+        def __exit__(self, *_: object) -> None:
             return None
 
     def fake_urlopen(request, timeout):

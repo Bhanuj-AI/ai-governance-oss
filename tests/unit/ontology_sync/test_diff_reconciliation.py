@@ -7,8 +7,8 @@ from ai_governance.ontology.synchronization import (
     DiffReconciliationEntry,
     DiffReconciliationReport,
     DiffRepositorySynchronizer,
-    PromptOntologySynchronizer,
     ProjectionBuilder,
+    PromptOntologySynchronizer,
     SynchronizationResult,
     SynchronizationStats,
 )

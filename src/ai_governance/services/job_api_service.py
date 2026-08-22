@@ -1,21 +1,21 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 import asyncio
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime
 from typing import final
 from uuid import uuid4
 
 from ai_governance.domain.jobs import Job, JobStatus, JobSubmission, JobType
+from ai_governance.events import EventPublisher, ResourceLifecycleEvent
 from ai_governance.ontology.synchronization import (
     OntologySyncEventPublisherProtocol,
 )
 from ai_governance.repositories.job_repository import JobRepository
 from ai_governance.services.job_submission_service import JobSubmissionService
-from ai_governance.tenancy.domain import TenantContext
 from ai_governance.settings_control.operational import duration_seconds, setting_context
-from ai_governance.events import EventPublisher, ResourceLifecycleEvent
+from ai_governance.tenancy.domain import TenantContext
 
 
 class JobNotFoundError(Exception):

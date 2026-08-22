@@ -8,8 +8,8 @@ from ai_governance.ontology import InMemoryOntologyGraphRepository, OntologyServ
 from ai_governance.ontology.synchronization import (
     DiffBasedOntologyReconciler,
     DiffRepositorySynchronizer,
-    PromptOntologySynchronizer,
     ProjectionBuilder,
+    PromptOntologySynchronizer,
 )
 from ai_governance.ontology.synchronization.synchronizer import stable_relationship_id
 from ai_governance.repositories.in_memory_prompt_repository import (

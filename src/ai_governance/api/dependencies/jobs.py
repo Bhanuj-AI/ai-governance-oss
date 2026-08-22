@@ -8,10 +8,10 @@ from typing import Any
 
 from fastapi import Depends
 
-from ai_governance.api.dependencies.repositories import get_job_repository
-from ai_governance.api.dependencies.ontology import get_ontology_sync_event_publisher
-from ai_governance.api.dependencies.settings_control import get_configuration_service
 from ai_governance.api.dependencies.events import get_event_publisher
+from ai_governance.api.dependencies.ontology import get_ontology_sync_event_publisher
+from ai_governance.api.dependencies.repositories import get_job_repository
+from ai_governance.api.dependencies.settings_control import get_configuration_service
 from ai_governance.events import EventPublisher
 
 

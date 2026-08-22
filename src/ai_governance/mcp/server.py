@@ -36,7 +36,10 @@ from ai_governance.mcp.handlers.registry_tools import register_registry_tools
 from ai_governance.mcp.handlers.replay_tools import register_replay_tools
 from ai_governance.mcp.handlers.settings_tools import register_settings_tools
 from ai_governance.mcp.handlers.write_tools import register_write_tools
-from ai_governance.mcp.invocation_audit import MCPInvocationAuditLog, MCPInvocationAuditRecord
+from ai_governance.mcp.invocation_audit import (
+    MCPInvocationAuditLog,
+    MCPInvocationAuditRecord,
+)
 from ai_governance.mcp.observability import MCPMetrics
 from ai_governance.mcp.plugins import MCPToolPlugin, initialize_mcp_tool_plugins
 from ai_governance.mcp.registry import ToolRegistry
@@ -238,7 +241,7 @@ class AIGovernanceMCPServer:
                 data=data,
                 request_id=request_id,
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - the MCP boundary maps all tool failures to protocol errors.
             duration_ms = (perf_counter() - started_at) * 1000
             error = map_exception(exc)
             self._metrics.fail_tool()
@@ -332,7 +335,7 @@ class AIGovernanceMCPServer:
                 "id": message_id,
                 "result": result,
             }
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - the JSON-RPC boundary maps all handler failures to protocol errors.
             error = map_exception(exc)
             return _json_rpc_error(
                 message_id,

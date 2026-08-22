@@ -25,11 +25,11 @@ from ai_governance.tenancy.domain import (
     ProjectStatus,
     RoleAssignment,
 )
+from ai_governance.tenancy.errors import OrganizationNotFound
 from ai_governance.tenancy.services import (
     _resolve_bootstrap_administrator,
     bootstrap_control_plane,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -38,7 +38,7 @@ from ai_governance.tenancy.services import (
 def _make_repository() -> MagicMock:
     """Create a mock repository that raises on first get_organization call."""
     repo = MagicMock()
-    repo.get_organization.side_effect = Exception("not found")
+    repo.get_organization.side_effect = OrganizationNotFound("not found")
     return repo
 
 

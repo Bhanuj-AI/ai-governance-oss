@@ -15,7 +15,9 @@ from ai_governance.domain.runtime_connection import (
     RuntimeConnection,
     RuntimeConnectionTestStatus,
 )
-from ai_governance.repositories.runtime_connection_repository import RuntimeConnectionRepository
+from ai_governance.repositories.runtime_connection_repository import (
+    RuntimeConnectionRepository,
+)
 from ai_governance.tenancy.domain import TenantContext
 
 

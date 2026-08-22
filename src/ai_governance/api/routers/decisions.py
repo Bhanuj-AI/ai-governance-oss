@@ -3,11 +3,12 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
-from ai_governance.api.dependencies.authorization import enforce_permission
 
 from ai_governance.api.dependencies import (
     get_governance_decision_application_service,
 )
+from ai_governance.api.dependencies.authorization import enforce_permission
+from ai_governance.api.dependencies.tenancy import get_compatible_tenant_context
 from ai_governance.api.mappers import DecisionApiMapper
 from ai_governance.api.models import (
     DecisionDetailResponse,
@@ -24,7 +25,6 @@ from ai_governance.decisions import DecisionStatus, DecisionTargetType
 from ai_governance.services.decision_application_service import (
     DecisionEvaluateCommand,
 )
-from ai_governance.api.dependencies.tenancy import get_compatible_tenant_context
 from ai_governance.tenancy.permissions import Permission
 
 router = APIRouter(

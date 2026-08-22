@@ -1,6 +1,6 @@
 from ai_governance.api.routers.audit import router as audit_router
-from ai_governance.api.routers.datasets import router as datasets_router
 from ai_governance.api.routers.dashboard import router as dashboard_router
+from ai_governance.api.routers.datasets import router as datasets_router
 from ai_governance.api.routers.decisions import router as decisions_router
 from ai_governance.api.routers.evaluations import router as evaluations_router
 from ai_governance.api.routers.experiments import router as experiments_router
@@ -17,20 +17,26 @@ from ai_governance.api.routers.ontology_graph import router as ontology_graph_ro
 from ai_governance.api.routers.ontology_sync import router as ontology_sync_router
 from ai_governance.api.routers.policies import router as policies_router
 from ai_governance.api.routers.prompts import router as prompts_router
+from ai_governance.api.routers.provider_installations import (
+    router as provider_installations_router,
+)
 from ai_governance.api.routers.providers import router as providers_router
-from ai_governance.api.routers.provider_installations import router as provider_installations_router
-from ai_governance.api.routers.reports import router as reports_router
+from ai_governance.api.routers.replay_executions import (
+    router as replay_executions_router,
+)
 from ai_governance.api.routers.replays import router as replays_router
-from ai_governance.api.routers.runtime_connections import router as runtime_connections_router
-from ai_governance.api.routers.replay_executions import router as replay_executions_router
-from ai_governance.api.routers.tenancy import router as tenancy_router
-from ai_governance.api.routers.telemetry import router as telemetry_router
+from ai_governance.api.routers.reports import router as reports_router
+from ai_governance.api.routers.runtime_connections import (
+    router as runtime_connections_router,
+)
 from ai_governance.api.routers.settings_control import router as settings_router
+from ai_governance.api.routers.telemetry import router as telemetry_router
+from ai_governance.api.routers.tenancy import router as tenancy_router
 
 __all__ = [
     "audit_router",
-    "datasets_router",
     "dashboard_router",
+    "datasets_router",
     "decisions_router",
     "evaluations_router",
     "experiments_router",
@@ -47,13 +53,13 @@ __all__ = [
     "ontology_sync_router",
     "policies_router",
     "prompts_router",
-    "providers_router",
     "provider_installations_router",
-    "reports_router",
-    "replays_router",
-    "runtime_connections_router",
+    "providers_router",
     "replay_executions_router",
-    "tenancy_router",
-    "telemetry_router",
+    "replays_router",
+    "reports_router",
+    "runtime_connections_router",
     "settings_router",
+    "telemetry_router",
+    "tenancy_router",
 ]

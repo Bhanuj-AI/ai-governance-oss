@@ -8,6 +8,11 @@ from time import perf_counter
 from typing import Any
 from uuid import uuid4
 
+from ai_governance.domain.evaluation_result import (
+    EvaluationArtifact,
+    EvaluationMetric,
+    EvaluationResult,
+)
 from ai_governance.domain.experiments import (
     CandidateComparison,
     CandidateRanking,
@@ -18,13 +23,8 @@ from ai_governance.domain.experiments import (
     ExperimentStatus,
     Leaderboard,
 )
-from ai_governance.domain.models import runtime_model_provider_key
-from ai_governance.domain.evaluation_result import (
-    EvaluationArtifact,
-    EvaluationMetric,
-    EvaluationResult,
-)
 from ai_governance.domain.history import EvaluationMetricComparison
+from ai_governance.domain.models import runtime_model_provider_key
 from ai_governance.evaluation.evaluation_metrics import (
     EvaluationMetricSpec,
     normalize_metric_name,
@@ -46,32 +46,19 @@ from ai_governance.repositories.experiment_repository import ExperimentRepositor
 from ai_governance.repositories.leaderboard_repository import LeaderboardRepository
 from ai_governance.repositories.model_repository import ModelRepository
 from ai_governance.repositories.prompt_repository import PromptRepository
+from ai_governance.services.candidate_execution_runtime import (
+    CandidateExecutionError,
+    CandidateExecutionRuntime,
+)
 from ai_governance.services.evaluation_api_service import (
     EvaluationApiService,
     EvaluationProviderNotFoundError,
     UnsupportedMetricError,
 )
-from ai_governance.services.provider_installation_service import (
-    ProviderInstallationDisabledError,
-    ProviderInstallationNotFoundError,
-    ProviderInstallationService,
-    ProviderInstallationTypeUnavailableError,
-)
-from ai_governance.services.runtime_connection_service import (
-    RuntimeConnectionDisabledError,
-    RuntimeConnectionNotFoundError,
-    RuntimeConnectionProviderMismatchError,
-    RuntimeConnectionService,
-)
-from ai_governance.services.candidate_execution_runtime import (
-    CandidateExecutionError,
-    CandidateExecutionRuntime,
-)
-from ai_governance.services.replay_execution import ReplayExecutionStore
 from ai_governance.services.experiments import (
+    ExperimentCandidateNotFoundError,
     ExperimentCandidateReferenceError,
     ExperimentCandidateService,
-    ExperimentCandidateNotFoundError,
     ExperimentLifecycleError,
     ExperimentService,
     RankingError,
@@ -81,8 +68,20 @@ from ai_governance.services.experiments.experiment_service import (
     ExperimentConflictError,
     ExperimentNotFoundError,
 )
+from ai_governance.services.provider_installation_service import (
+    ProviderInstallationDisabledError,
+    ProviderInstallationNotFoundError,
+    ProviderInstallationService,
+    ProviderInstallationTypeUnavailableError,
+)
+from ai_governance.services.replay_execution import ReplayExecutionStore
+from ai_governance.services.runtime_connection_service import (
+    RuntimeConnectionDisabledError,
+    RuntimeConnectionNotFoundError,
+    RuntimeConnectionProviderMismatchError,
+    RuntimeConnectionService,
+)
 from ai_governance.tenancy.domain import TenantContext
-
 
 LOGGER = logging.getLogger(__name__)
 _PROCESS_STARTED_AT = datetime.now(UTC)
@@ -612,6 +611,7 @@ class ExperimentApiService:
                 def record_execution_progress(
                     total_item_count: int,
                     completed_item_count: int,
+                    candidate_id: str = candidate.candidate_id,
                 ) -> None:
                     nonlocal running_run
                     current_run = self._evaluation_run_repository.find_by_id(
@@ -630,7 +630,7 @@ class ExperimentApiService:
                     LOGGER.info(
                         "experiment_candidate_execution_progress experiment_id=%s candidate_id=%s run_id=%s completed_item_count=%s total_item_count=%s",
                         experiment_id,
-                        candidate.candidate_id,
+                        candidate_id,
                         running_run.run_id,
                         completed_item_count,
                         total_item_count,
@@ -753,7 +753,7 @@ class ExperimentApiService:
                 self._publish_evaluation_run_event(failed_run, context)
                 runs.append(failed_run)
                 has_failures = True
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - candidate failures must be persisted as failed runs.
                 if self._is_experiment_cancelled(experiment_id):
                     return self._cancelled_run_snapshot(experiment_id)
                 LOGGER.warning(

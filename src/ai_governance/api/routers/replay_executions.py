@@ -13,9 +13,10 @@ from ai_governance.api.models import (
     ReplayExecutionSearchItemResponse,
     ReplayExecutionSearchPageResponse,
 )
-from ai_governance.services.replay_execution_discovery import ReplayExecutionSearchFilters
+from ai_governance.services.replay_execution_discovery import (
+    ReplayExecutionSearchFilters,
+)
 from ai_governance.tenancy.domain import TenantContext
-
 
 router = APIRouter(prefix="/api/v1/replay-executions", tags=["Replay executions"])
 

@@ -1,27 +1,33 @@
+from dataclasses import replace
+
 from ai_governance.api.demo_seed import (
     seed_demo_replay_source_executions,
     seed_demo_replays,
     seed_demo_runnable_jobs,
 )
-from dataclasses import replace
 from ai_governance.domain.evaluation_result import EvaluationMetric, EvaluationResult
 from ai_governance.domain.jobs import JobStatus, JobType
+from ai_governance.domain.replay import ReplayStatus
+from ai_governance.repositories.in_memory import InMemoryJobRepository
+from ai_governance.repositories.in_memory_evaluation_repository import (
+    InMemoryEvaluationRepository,
+)
+from ai_governance.repositories.in_memory_replay_repository import (
+    InMemoryReplayRepository,
+)
+from ai_governance.repositories.in_memory_replay_result_repository import (
+    InMemoryReplayResultRepository,
+)
 from ai_governance.services.replay_execution_discovery import (
     InMemoryReplayExecutionCatalog,
     InMemoryReplaySourceResolver,
     ReplayExecutionSearchFilters,
 )
-from ai_governance.services.replay_governance import BaselineStrategy, ReplayBaselineResolver
+from ai_governance.services.replay_governance import (
+    BaselineStrategy,
+    ReplayBaselineResolver,
+)
 from ai_governance.tenancy.domain import TenantContext
-from ai_governance.domain.replay import ReplayStatus
-from ai_governance.repositories.in_memory_replay_repository import InMemoryReplayRepository
-from ai_governance.repositories.in_memory import InMemoryJobRepository
-from ai_governance.repositories.in_memory_replay_result_repository import (
-    InMemoryReplayResultRepository,
-)
-from ai_governance.repositories.in_memory_evaluation_repository import (
-    InMemoryEvaluationRepository,
-)
 
 
 def test_demo_replays_cover_lifecycle_and_persist_completed_evidence() -> None:

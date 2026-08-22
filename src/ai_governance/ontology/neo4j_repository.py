@@ -36,7 +36,6 @@ from ai_governance.ontology.query import (
 from ai_governance.ontology.repositories import _normalize_direction
 from ai_governance.ontology.schema import ONTOLOGY_SCHEMA_CYPHER
 
-
 _NORMALIZE_RELATIONSHIP_TENANT_SCOPE_CYPHER = """
 MATCH (source:OntologyEntity)-[r]->()
 WHERE r.relationship_id IS NOT NULL

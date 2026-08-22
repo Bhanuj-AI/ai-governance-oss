@@ -1,11 +1,15 @@
 from __future__ import annotations
 
-from urllib.error import HTTPError, URLError
 from datetime import UTC, datetime
+from urllib.error import HTTPError, URLError
 
 import pytest
 
-from ai_governance.domain.telemetry import TelemetryCategory, TelemetryMetric, TelemetrySnapshot
+from ai_governance.domain.telemetry import (
+    TelemetryCategory,
+    TelemetryMetric,
+    TelemetrySnapshot,
+)
 from ai_governance.telemetry.exporters.posthog import PostHogTelemetryExporter
 
 

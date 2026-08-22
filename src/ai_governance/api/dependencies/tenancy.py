@@ -19,6 +19,7 @@ from ai_governance.tenancy.errors import (
     TenantContextMissing,
     TenantScopeMismatch,
 )
+from ai_governance.tenancy.observability import METRICS
 from ai_governance.tenancy.repository import InMemoryControlPlaneRepository
 from ai_governance.tenancy.services import (
     ControlPlaneService,
@@ -26,7 +27,6 @@ from ai_governance.tenancy.services import (
     provision_mcp_service_account,
     provision_walkthrough_service_account,
 )
-from ai_governance.tenancy.observability import METRICS
 
 
 @lru_cache(maxsize=1)
@@ -35,7 +35,9 @@ def get_control_plane_repository():
     if backend == "inmemory":
         repository = InMemoryControlPlaneRepository()
     elif backend == "sqlite":
-        from ai_governance.repositories.factories.sqlite_database import create_sqlite_database
+        from ai_governance.repositories.factories.sqlite_database import (
+            create_sqlite_database,
+        )
         from ai_governance.tenancy.sqlite_repository import SQLiteControlPlaneRepository
 
         path = os.getenv("AI_GOVERNANCE_TENANCY_SQLITE_PATH")
@@ -46,7 +48,9 @@ def get_control_plane_repository():
             )
         repository = SQLiteControlPlaneRepository(create_sqlite_database(path))
     elif backend == "postgres":
-        from ai_governance.tenancy.postgres_repository import PostgresControlPlaneRepository
+        from ai_governance.tenancy.postgres_repository import (
+            PostgresControlPlaneRepository,
+        )
 
         dsn = os.getenv("AI_GOVERNANCE_TENANCY_POSTGRES_DSN")
         if not dsn:

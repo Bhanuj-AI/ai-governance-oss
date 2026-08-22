@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
-from collections.abc import Mapping
 from typing import final
 
 from ai_governance.databases.sqlite.database import SQLiteDatabase

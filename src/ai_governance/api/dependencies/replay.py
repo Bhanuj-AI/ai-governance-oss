@@ -7,17 +7,21 @@ from typing import Any
 
 from fastapi import Depends, Request
 
+from ai_governance.api.dependencies.events import get_event_publisher
+from ai_governance.api.dependencies.jobs import get_job_api_service
+from ai_governance.api.dependencies.provider_installations import (
+    get_provider_installation_service,
+)
 from ai_governance.api.dependencies.repositories import (
     get_job_repository,
     get_replay_repository,
     get_replay_result_repository,
 )
-from ai_governance.api.dependencies.events import get_event_publisher
-from ai_governance.api.dependencies.jobs import get_job_api_service
-from ai_governance.events import EventPublisher
 from ai_governance.api.dependencies.settings_control import get_configuration_service
-from ai_governance.api.dependencies.provider_installations import get_provider_installation_service
-from ai_governance.services.replay_execution_discovery import InMemoryReplayExecutionCatalog
+from ai_governance.events import EventPublisher
+from ai_governance.services.replay_execution_discovery import (
+    InMemoryReplayExecutionCatalog,
+)
 
 
 @lru_cache(maxsize=1)
@@ -62,7 +66,9 @@ def get_replay_application_service(
 ) -> Any:
     """Build the Replay service with its exact source-resolution boundary."""
 
-    from ai_governance.services.replay_application_service import ReplayApplicationService
+    from ai_governance.services.replay_application_service import (
+        ReplayApplicationService,
+    )
 
     return ReplayApplicationService(
         replay_repository=replay_repository,

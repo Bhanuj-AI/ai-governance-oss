@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import hashlib
 import asyncio
+import hashlib
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from typing import Any
@@ -13,6 +13,7 @@ from ai_governance.domain.jobs import (
     JobStatus,
     JobSubmission,
 )
+from ai_governance.events import EventPublisher, ResourceLifecycleEvent
 from ai_governance.ontology.synchronization import (
     OntologySyncEventPublisherProtocol,
 )
@@ -21,7 +22,6 @@ from ai_governance.repositories.mappers.job_persistence_mapper import (
     JobPersistenceMapper,
 )
 from ai_governance.settings_control.operational import setting_context
-from ai_governance.events import EventPublisher, ResourceLifecycleEvent
 
 
 class JobSubmissionValidationError(ValueError):

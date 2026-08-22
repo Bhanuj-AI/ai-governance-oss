@@ -15,7 +15,9 @@ from ai_governance.domain.jobs import (
     WorkerHeartbeat,
 )
 from ai_governance.repositories.job_repository import JobRepository
-from ai_governance.repositories.mappers.job_persistence_mapper import JobPersistenceMapper
+from ai_governance.repositories.mappers.job_persistence_mapper import (
+    JobPersistenceMapper,
+)
 from ai_governance.repositories.postgres._record_adapter import with_jsonb_fields
 
 

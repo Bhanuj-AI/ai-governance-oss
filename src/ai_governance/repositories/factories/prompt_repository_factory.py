@@ -36,10 +36,11 @@ class PromptRepositoryFactory:
                         "AI_GOVERNANCE_PROMPT_REPOSITORY=sqlite"
                     )
                 logger.debug("Selected SQLite prompt repository: %s", path)
-                from ai_governance.repositories.sqlite.sqlite_prompt_repository import SQLitePromptRepository
-
                 from ai_governance.repositories.factories.sqlite_database import (
                     create_sqlite_database,
+                )
+                from ai_governance.repositories.sqlite.sqlite_prompt_repository import (
+                    SQLitePromptRepository,
                 )
 
                 return SQLitePromptRepository(create_sqlite_database(path))

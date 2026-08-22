@@ -16,13 +16,15 @@ from ai_governance.ontology.synchronization import (
     OntologySyncEvent,
     OntologySyncEventService,
     OntologySyncEventStatus,
+    OntologySynchronizationWorker,
     OntologySyncProcessingError,
     OntologySyncRetryPolicy,
-    OntologySynchronizationWorker,
     PromptOntologySynchronizer,
 )
 from ai_governance.repositories import SQLiteOntologySyncEventRepository
-from ai_governance.repositories.in_memory_prompt_repository import InMemoryPromptRepository
+from ai_governance.repositories.in_memory_prompt_repository import (
+    InMemoryPromptRepository,
+)
 
 
 def _neo4j_available() -> bool:

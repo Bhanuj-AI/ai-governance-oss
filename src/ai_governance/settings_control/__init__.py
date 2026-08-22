@@ -5,14 +5,14 @@ from .repository import (
     SettingsRepository,
     SQLiteSettingsRepository,
 )
-from .service import ConfigurationService, METRICS
+from .service import METRICS, ConfigurationService
 
 __all__ = [
+    "METRICS",
+    "SETTINGS_REGISTRY",
     "ConfigurationService",
     "InMemorySettingsRepository",
-    "METRICS",
     "PostgresSettingsRepository",
-    "SETTINGS_REGISTRY",
     "SQLiteSettingsRepository",
     "SettingsRepository",
 ]

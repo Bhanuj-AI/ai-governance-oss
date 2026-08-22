@@ -4,8 +4,6 @@ from datetime import UTC, datetime
 
 import pytest
 
-from ai_governance.providers.trulens import adapter as trulens_adapter_module
-
 from ai_governance.domain.evaluation_dataset import EvaluationDataset
 from ai_governance.domain.workflow_execution import WorkflowExecution
 from ai_governance.evaluation.evaluation_metrics import (
@@ -22,6 +20,7 @@ from ai_governance.providers.trulens import (
     TruLensResultMapper,
     UnsupportedTruLensMetricError,
 )
+from ai_governance.providers.trulens import adapter as trulens_adapter_module
 from ai_governance.providers.trulens.errors import TruLensProviderError
 
 

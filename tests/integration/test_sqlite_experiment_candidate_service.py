@@ -26,7 +26,6 @@ from ai_governance.services.models import ModelRegistryService
 from ai_governance.services.prompts import PromptRegistryService
 from ai_governance.tenancy.domain import TenantContext
 
-
 _CONTEXT = TenantContext("org_default", "project_default", "governance-admin", "test-request")
 
 

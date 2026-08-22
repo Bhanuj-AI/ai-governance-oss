@@ -23,8 +23,8 @@ def get_evaluation_repository() -> Any:
     Create the evaluation repository used by REST request dependencies.
     """
 
-    from ai_governance.settings import load_settings
     from ai_governance.repositories.factories import EvaluationRepositoryFactory
+    from ai_governance.settings import load_settings
 
     return EvaluationRepositoryFactory(load_settings()).create()
 
@@ -53,8 +53,8 @@ def get_experiment_repository() -> Any:
     Create the experiment repository used by REST dependencies.
     """
 
-    from ai_governance.settings import load_settings
     from ai_governance.repositories.factories import ExperimentRepositoryFactory
+    from ai_governance.settings import load_settings
 
     return ExperimentRepositoryFactory(load_settings()).create()
 
@@ -65,10 +65,10 @@ def get_experiment_candidate_repository() -> Any:
     Create the experiment candidate repository used by REST dependencies.
     """
 
-    from ai_governance.settings import load_settings
     from ai_governance.repositories.factories import (
         ExperimentCandidateRepositoryFactory,
     )
+    from ai_governance.settings import load_settings
 
     return ExperimentCandidateRepositoryFactory(load_settings()).create()
 
@@ -79,8 +79,8 @@ def get_evaluation_run_repository() -> Any:
     Create the evaluation run repository used by REST dependencies.
     """
 
-    from ai_governance.settings import load_settings
     from ai_governance.repositories.factories import EvaluationRunRepositoryFactory
+    from ai_governance.settings import load_settings
 
     return EvaluationRunRepositoryFactory(load_settings()).create()
 
@@ -91,8 +91,8 @@ def get_leaderboard_repository() -> Any:
     Create the leaderboard repository used by REST dependencies.
     """
 
-    from ai_governance.settings import load_settings
     from ai_governance.repositories.factories import LeaderboardRepositoryFactory
+    from ai_governance.settings import load_settings
 
     return LeaderboardRepositoryFactory(load_settings()).create()
 
@@ -103,8 +103,8 @@ def get_prompt_repository() -> Any:
     Create the prompt repository used by REST dependencies.
     """
 
-    from ai_governance.settings import load_settings
     from ai_governance.repositories.factories import PromptRepositoryFactory
+    from ai_governance.settings import load_settings
 
     return PromptRepositoryFactory(load_settings()).create()
 
@@ -115,8 +115,8 @@ def get_model_repository() -> Any:
     Create the model repository used by REST dependencies.
     """
 
-    from ai_governance.settings import load_settings
     from ai_governance.repositories.factories import ModelRepositoryFactory
+    from ai_governance.settings import load_settings
 
     return ModelRepositoryFactory(load_settings()).create()
 
@@ -127,8 +127,8 @@ def get_dataset_repository() -> Any:
     Create the dataset repository used by REST dependencies.
     """
 
-    from ai_governance.settings import load_settings
     from ai_governance.repositories.factories import DatasetRepositoryFactory
+    from ai_governance.settings import load_settings
 
     return DatasetRepositoryFactory(load_settings()).create()
 
@@ -139,8 +139,8 @@ def get_job_repository() -> Any:
     Create the job repository used by REST dependencies.
     """
 
-    from ai_governance.settings import load_settings
     from ai_governance.repositories.factories import JobRepositoryFactory
+    from ai_governance.settings import load_settings
 
     return JobRepositoryFactory(load_settings()).create()
 
@@ -155,11 +155,13 @@ def get_governance_decision_repository() -> Any:
     module and passed explicitly to the factory.
     """
 
-    from ai_governance.api.dependencies.ontology import get_ontology_sync_event_publisher
-    from ai_governance.settings import load_settings
+    from ai_governance.api.dependencies.ontology import (
+        get_ontology_sync_event_publisher,
+    )
     from ai_governance.repositories.factories import (
         GovernanceDecisionRepositoryFactory,
     )
+    from ai_governance.settings import load_settings
 
     return GovernanceDecisionRepositoryFactory(load_settings()).create(
         ontology_event_publisher=get_ontology_sync_event_publisher(),
@@ -175,8 +177,8 @@ def get_policy_administration_repository() -> PolicyAdministrationRepository:
     was already config-driven before this refactor.
     """
 
-    from ai_governance.settings import load_settings
     from ai_governance.repositories.factories import PolicyRepositoryFactory
+    from ai_governance.settings import load_settings
 
     settings = load_settings()
 
@@ -189,10 +191,10 @@ def get_ontology_sync_event_repository() -> Any:
     Create the ontology synchronization event repository used by REST.
     """
 
-    from ai_governance.settings import load_settings
     from ai_governance.repositories.factories import (
         OntologySyncEventRepositoryFactory,
     )
+    from ai_governance.settings import load_settings
 
     return OntologySyncEventRepositoryFactory(load_settings()).create()
 
@@ -203,8 +205,8 @@ def get_ontology_graph_repository() -> Any:
     Create the ontology graph repository used by read APIs.
     """
 
-    from ai_governance.settings import load_settings
     from ai_governance.repositories.factories import OntologyGraphRepositoryFactory
+    from ai_governance.settings import load_settings
 
     return OntologyGraphRepositoryFactory(load_settings()).create()
 
@@ -218,7 +220,9 @@ def get_ontology_graph_query_repository() -> Any:
     from ai_governance.settings import load_settings
 
     if load_settings().ontology_repository == "neo4j":
-        from ai_governance.ontology.neo4j_repository import Neo4jOntologyGraphQueryRepository
+        from ai_governance.ontology.neo4j_repository import (
+            Neo4jOntologyGraphQueryRepository,
+        )
 
         return Neo4jOntologyGraphQueryRepository(get_ontology_graph_repository())
 

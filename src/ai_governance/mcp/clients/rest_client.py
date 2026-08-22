@@ -11,7 +11,6 @@ from urllib.request import Request, urlopen
 from ai_governance.mcp.authentication import McpAuthenticationContext
 from ai_governance.mcp.runtime_context import get_runtime_context
 
-
 RestTransport = Callable[
     [str, str, Mapping[str, Any] | None, Mapping[str, Any] | None],
     Any,

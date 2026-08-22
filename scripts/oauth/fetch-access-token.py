@@ -9,8 +9,10 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from ai_governance.oauth import OAuthClientCredentialsError, access_token_from_environment
-
+from ai_governance.oauth import (
+    OAuthClientCredentialsError,
+    access_token_from_environment,
+)
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 

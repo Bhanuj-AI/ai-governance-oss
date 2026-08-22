@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from ai_governance.domain.telemetry import TelemetryMetric
-from ai_governance.events import EvaluationCompleted, ExecutionCompleted, ResourceLifecycleEvent
+from ai_governance.events import (
+    EvaluationCompleted,
+    ExecutionCompleted,
+    ResourceLifecycleEvent,
+)
 from ai_governance.services.telemetry_service import TelemetryService
 
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 import pytest
 
 from ai_governance.databases.sqlite.database import SQLiteDatabase
@@ -19,15 +18,15 @@ def repository(tmp_path):
 
 
 def test_bootstrap_is_idempotent_and_persistent(repository):
-    arguments = dict(
-        organization_id="org_a",
-        organization_name="A",
-        organization_slug="a",
-        project_id="project_a",
-        project_name="A",
-        project_slug="a",
-        administrator_actor_id="admin",
-    )
+    arguments = {
+        "organization_id": "org_a",
+        "organization_name": "A",
+        "organization_slug": "a",
+        "project_id": "project_a",
+        "project_name": "A",
+        "project_slug": "a",
+        "administrator_actor_id": "admin",
+    }
     bootstrap_control_plane(repository, **arguments)
     bootstrap_control_plane(repository, **arguments)
     assert repository.get_organization("org_a").slug == "a"

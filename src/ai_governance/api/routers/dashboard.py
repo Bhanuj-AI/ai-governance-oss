@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status as http_status
+from fastapi import APIRouter, Depends
+from fastapi import status as http_status
 
 from ai_governance.api.dependencies import get_dashboard_read_service
 from ai_governance.api.mappers.dashboard_mapper import DashboardApiMapper

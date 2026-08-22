@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from starlette import status as http_status
 
 from ai_governance.api.dependencies import get_mcp_audit_log
+from ai_governance.api.dependencies.tenancy import get_compatible_tenant_context
 from ai_governance.api.mappers import MCPAuditApiMapper
 from ai_governance.api.models import (
     ErrorResponse,
@@ -13,7 +14,6 @@ from ai_governance.api.models import (
     MCPAuditResponse,
 )
 from ai_governance.mcp.audit import MCPExecutionAuditLog
-from ai_governance.api.dependencies.tenancy import get_compatible_tenant_context
 
 router = APIRouter(
     prefix="/api/v1/mcp/audit",

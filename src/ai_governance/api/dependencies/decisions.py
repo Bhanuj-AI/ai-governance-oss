@@ -8,12 +8,12 @@ from typing import Any
 
 from fastapi import Depends, Request
 
+from ai_governance.api.dependencies.events import get_event_publisher
+from ai_governance.api.dependencies.ontology import get_ontology_graph_query_service
 from ai_governance.api.dependencies.repositories import (
     get_governance_decision_repository,
     get_policy_administration_repository,
 )
-from ai_governance.api.dependencies.ontology import get_ontology_graph_query_service
-from ai_governance.api.dependencies.events import get_event_publisher
 from ai_governance.api.dependencies.settings_control import get_configuration_service
 from ai_governance.events import EventPublisher
 

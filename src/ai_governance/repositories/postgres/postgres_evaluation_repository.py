@@ -4,8 +4,10 @@ from typing import final
 
 from ai_governance.databases.postgres.database import PostgresDatabase
 from ai_governance.domain.evaluation_result import EvaluationResult
-from ai_governance.repositories.evaluation_repository import EvaluationRepository
-from ai_governance.repositories.evaluation_repository import EvaluationResultPage
+from ai_governance.repositories.evaluation_repository import (
+    EvaluationRepository,
+    EvaluationResultPage,
+)
 from ai_governance.repositories.mappers.evaluation_persistence_mapper import (
     EvaluationPersistenceMapper,
 )

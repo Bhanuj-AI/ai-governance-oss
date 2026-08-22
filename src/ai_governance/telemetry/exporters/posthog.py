@@ -8,7 +8,11 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
-from ai_governance.domain.telemetry import TelemetryCategory, TelemetryExportResult, TelemetrySnapshot
+from ai_governance.domain.telemetry import (
+    TelemetryCategory,
+    TelemetryExportResult,
+    TelemetrySnapshot,
+)
 from ai_governance.telemetry.privacy import TelemetryPrivacyGuard
 
 _LOGGER = logging.getLogger(__name__)

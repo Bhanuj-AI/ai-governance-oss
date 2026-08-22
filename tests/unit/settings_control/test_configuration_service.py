@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from ai_governance.authorization.contracts import AuthorizationEnforcementDecision
 from ai_governance.settings_control.domain import (
     SettingContext,
     SettingEnvironmentOverride,
@@ -11,11 +12,12 @@ from ai_governance.settings_control.domain import (
     SettingValidationError,
     SettingVersionConflict,
 )
+from ai_governance.settings_control.registry import (
+    SETTINGS_REGISTRY,
+    _compose_definitions,
+)
 from ai_governance.settings_control.repository import InMemorySettingsRepository
-from ai_governance.settings_control.registry import SETTINGS_REGISTRY
-from ai_governance.settings_control.registry import _compose_definitions
 from ai_governance.settings_control.service import ConfigurationService
-from ai_governance.authorization.contracts import AuthorizationEnforcementDecision
 from ai_governance.tenancy.domain import TenantContext
 from ai_governance.tenancy.errors import AuthorizationDenied
 

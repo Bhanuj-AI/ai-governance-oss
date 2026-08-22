@@ -3,7 +3,9 @@ from datetime import UTC, datetime
 from ai_governance.domain.jobs import Job, JobStatus
 from ai_governance.domain.replay import ReplayStatus
 from ai_governance.domain.workflow_execution import WorkflowExecution
-from ai_governance.repositories.in_memory_replay_repository import InMemoryReplayRepository
+from ai_governance.repositories.in_memory_replay_repository import (
+    InMemoryReplayRepository,
+)
 from ai_governance.repositories.in_memory_replay_result_repository import (
     InMemoryReplayResultRepository,
 )
@@ -31,7 +33,10 @@ class _Evaluations:
         self.replay = None
 
     def submit_evaluation(self, execution, _provider, context=None):
-        from ai_governance.domain.evaluation_result import EvaluationMetric, EvaluationResult
+        from ai_governance.domain.evaluation_result import (
+            EvaluationMetric,
+            EvaluationResult,
+        )
 
         self.replay = EvaluationResult(
             "replay-evaluation-1", execution.execution_id, "provider", "1",
@@ -48,7 +53,10 @@ class _Evaluations:
 
 
 def test_replay_evaluation_job_completes_and_persists_immutable_result() -> None:
-    from ai_governance.domain.evaluation_result import EvaluationMetric, EvaluationResult
+    from ai_governance.domain.evaluation_result import (
+        EvaluationMetric,
+        EvaluationResult,
+    )
 
     now = datetime(2026, 1, 1, tzinfo=UTC)
     context = TenantContext("organization-1", "project-1", "actor-1", "request-1")

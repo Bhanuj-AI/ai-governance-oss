@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, fields, is_dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, ClassVar
 
 from ai_governance.domain.history import EvaluationMetricComparison
 from ai_governance.services.history import EvaluationHistoryService
@@ -31,7 +31,7 @@ class GovernanceAPI:
     serializable payloads that can be mounted later by any transport layer.
     """
 
-    _ROUTES = [
+    _ROUTES: ClassVar = [
         GovernanceRoute(
             method="GET",
             path="/history/{execution}",

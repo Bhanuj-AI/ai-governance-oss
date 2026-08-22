@@ -1,20 +1,30 @@
 from __future__ import annotations
 
 import sys
-from datetime import UTC, datetime
 from dataclasses import replace
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
 
 from ai_governance.domain.datasets import Dataset, DatasetStatus
-from ai_governance.domain.experiments import Experiment, ExperimentCandidate, ExperimentStatus
+from ai_governance.domain.experiments import (
+    Experiment,
+    ExperimentCandidate,
+    ExperimentStatus,
+)
 from ai_governance.domain.models import Model, ModelStatus
 from ai_governance.domain.prompts import Prompt, PromptStatus
 from ai_governance.events import EventPublisher, ResourceLifecycleEvent
-from ai_governance.repositories.in_memory_dataset_repository import InMemoryDatasetRepository
-from ai_governance.repositories.in_memory_model_repository import InMemoryModelRepository
-from ai_governance.repositories.in_memory_prompt_repository import InMemoryPromptRepository
+from ai_governance.repositories.in_memory_dataset_repository import (
+    InMemoryDatasetRepository,
+)
+from ai_governance.repositories.in_memory_model_repository import (
+    InMemoryModelRepository,
+)
+from ai_governance.repositories.in_memory_prompt_repository import (
+    InMemoryPromptRepository,
+)
 from ai_governance.services.candidate_execution_runtime import (
     AnthropicModelRuntimeAdapter,
     CandidateExecutionError,
@@ -25,9 +35,10 @@ from ai_governance.services.candidate_execution_runtime import (
     RuntimeExecutionResult,
 )
 from ai_governance.services.dataset_item_reader import DatasetItem
-from ai_governance.services.replay_execution_discovery import InMemoryReplaySourceResolver
+from ai_governance.services.replay_execution_discovery import (
+    InMemoryReplaySourceResolver,
+)
 from ai_governance.tenancy.domain import TenantContext
-
 
 _NOW = datetime(2026, 8, 11, tzinfo=UTC)
 _CONTEXT = TenantContext("org_default", "project_default", "test-user", "request-1")
@@ -291,9 +302,11 @@ def test_openai_runtime_logs_safe_provider_parameter_diagnostics(
         connection_config={"api_key": "secret"},
     )
 
-    with caplog.at_level("WARNING", logger="ai_governance.services.candidate_execution_runtime"):
-        with pytest.raises(CandidateExecutionError, match="max_completion_tokens"):
-            OpenAIModelRuntimeAdapter().invoke(request)
+    with (
+        caplog.at_level("WARNING", logger="ai_governance.services.candidate_execution_runtime"),
+        pytest.raises(CandidateExecutionError, match="max_completion_tokens"),
+    ):
+        OpenAIModelRuntimeAdapter().invoke(request)
 
     assert "provider_parameter=max_completion_tokens" in caplog.text
     assert "Protected prompt content" not in caplog.text

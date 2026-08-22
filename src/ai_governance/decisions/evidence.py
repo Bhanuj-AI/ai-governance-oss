@@ -5,10 +5,10 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ai_governance.decisions.enums import DecisionTargetType
-from ai_governance.decisions.exceptions import DecisionValidationError
 from ai_governance.decisions.evidence_validation import (
     require_missing_evidence_severity,
 )
+from ai_governance.decisions.exceptions import DecisionValidationError
 from ai_governance.decisions.validation import (
     coerce_enum,
     copy_mapping,

@@ -12,7 +12,9 @@ from uuid import uuid4
 from ai_governance.domain.provider_installation import ProviderInstallation
 from ai_governance.providers.errors import ProviderNotFoundError
 from ai_governance.providers.provider_registry import EvaluationProviderRegistry
-from ai_governance.repositories.provider_installation_repository import ProviderInstallationRepository
+from ai_governance.repositories.provider_installation_repository import (
+    ProviderInstallationRepository,
+)
 from ai_governance.tenancy.domain import TenantContext
 
 

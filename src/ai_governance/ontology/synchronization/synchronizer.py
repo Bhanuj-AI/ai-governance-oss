@@ -6,7 +6,7 @@ import time
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
-from typing import Any, Generic, Protocol, TypeVar
+from typing import Any, Protocol, TypeVar
 
 from ai_governance.ontology import (
     EntityType,
@@ -102,7 +102,7 @@ class ReconciliationResult:
     stats: SynchronizationStats
 
 
-class BaseOntologySynchronizer(Generic[T]):
+class BaseOntologySynchronizer[T]:
     """
     Base class for deterministic ontology synchronizers.
 
@@ -280,7 +280,7 @@ class OntologyReconciler:
 
 
 @dataclass(frozen=True)
-class RepositorySynchronizer(Generic[T]):
+class RepositorySynchronizer[T]:
     """
     Adapter that pairs a synchronizer with a repository listing function.
     """

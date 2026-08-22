@@ -125,9 +125,8 @@ class TruLensAdapter(EvaluationProvider):
         dataset = request.dataset
 
         for metric_name in metric_names:
-            if metric_name in (CONTEXT_RELEVANCE, GROUNDEDNESS):
-                if not dataset.context_text:
-                    continue
+            if metric_name in (CONTEXT_RELEVANCE, GROUNDEDNESS) and not dataset.context_text:
+                continue
 
             started_at = time.perf_counter()
 

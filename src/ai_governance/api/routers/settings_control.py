@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from ai_governance.api.dependencies.authorization import enforce_permission
 
+from ai_governance.api.dependencies.authorization import enforce_permission
 from ai_governance.api.dependencies.settings_control import (
     get_configuration_service,
     get_settings_repository,

@@ -6,8 +6,8 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from ai_governance.decisions import PolicyCondition, PolicyRule
-from ai_governance.decisions.policy_administration import PolicyVersion
 from ai_governance.decisions.policies import PolicyEvaluationTraceItem
+from ai_governance.decisions.policy_administration import PolicyVersion
 from ai_governance.services.policies import (
     PolicyDetail,
     PolicyListItem,

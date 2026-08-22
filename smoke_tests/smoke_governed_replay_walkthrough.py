@@ -15,7 +15,6 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 
-
 REQUIRED_RESOURCES = {
     "prompt_id",
     "model_id",

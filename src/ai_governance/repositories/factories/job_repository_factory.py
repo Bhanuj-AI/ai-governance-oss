@@ -34,10 +34,11 @@ class JobRepositoryFactory:
                         "AI_GOVERNANCE_JOB_REPOSITORY=sqlite"
                     )
                 logger.debug("Selected SQLite job repository: %s", path)
-                from ai_governance.repositories.sqlite.sqlite_job_repository import SQLiteJobRepository
-
                 from ai_governance.repositories.factories.sqlite_database import (
                     create_sqlite_database,
+                )
+                from ai_governance.repositories.sqlite.sqlite_job_repository import (
+                    SQLiteJobRepository,
                 )
 
                 return SQLiteJobRepository(create_sqlite_database(path))

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from builtins import RuntimeError, str
+from builtins import RuntimeError
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from importlib.metadata import entry_points
@@ -54,7 +54,7 @@ class MCPToolPlugin(Protocol):
         """Return immutable identity and OSS compatibility metadata."""
         ...
 
-    def register(self, context: "MCPToolPluginContext") -> None:
+    def register(self, context: MCPToolPluginContext) -> None:
         """Register tools through the supplied context during server startup."""
         ...
 

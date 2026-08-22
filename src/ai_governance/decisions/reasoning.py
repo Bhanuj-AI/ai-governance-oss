@@ -40,7 +40,6 @@ from ai_governance.decisions.reasoning_models import (
 )
 from ai_governance.ontology import EntityType
 
-
 REASONING_CREATED_AT = datetime(1970, 1, 1, tzinfo=UTC)
 
 

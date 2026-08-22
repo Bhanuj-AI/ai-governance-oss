@@ -1,5 +1,6 @@
-from dotenv import load_dotenv  # type: ignore
 import os
+
+from dotenv import load_dotenv  # type: ignore
 
 load_dotenv()
 

@@ -13,10 +13,11 @@ from ai_governance.domain.runtime_connection import (
     RuntimeConnection,
     RuntimeConnectionTestStatus,
 )
-from ai_governance.repositories.runtime_connection_repository import RuntimeConnectionRepository
+from ai_governance.repositories.runtime_connection_repository import (
+    RuntimeConnectionRepository,
+)
 from ai_governance.settings_control.domain import SettingScope
 from ai_governance.settings_control.repository import SettingsRepository
-
 
 _KEY_PREFIX = "runtime_connection."
 
@@ -116,7 +117,7 @@ def _to_value(connection: RuntimeConnection) -> dict[str, Any]:
 
 def _from_value(value: Any, version: int) -> RuntimeConnection:
     if not isinstance(value, dict):
-        raise ValueError("Runtime connection persistence value must be an object.")
+        raise TypeError("Runtime connection persistence value must be an object.")
     last_tested_at = value.get("last_tested_at")
     return RuntimeConnection(
         runtime_connection_id=str(value["runtime_connection_id"]),

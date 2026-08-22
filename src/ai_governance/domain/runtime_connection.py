@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Mapping
+from typing import Any
 
 from ai_governance.domain.models import runtime_model_provider_key
-
 
 _SUPPORTED_SECRET_REFERENCE_SCHEMES = (
     "env://",

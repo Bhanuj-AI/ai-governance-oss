@@ -7,7 +7,11 @@ from ai_governance.hooks.contracts import (
     HookHandler,
     HookInvocation,
 )
-from ai_governance.hooks.registry import HookExecutionError, HookRegistrationError, HookRegistry
+from ai_governance.hooks.registry import (
+    HookExecutionError,
+    HookRegistrationError,
+    HookRegistry,
+)
 
 __all__ = [
     "FailurePolicy", "HookDefinition", "HookExecution", "HookExecutionError",

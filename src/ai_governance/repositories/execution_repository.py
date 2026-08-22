@@ -1,5 +1,4 @@
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 from ai_governance.domain.workflow_execution import WorkflowExecution
 

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
-from collections.abc import Mapping
 from threading import Lock
 
 from ai_governance.domain.jobs import (

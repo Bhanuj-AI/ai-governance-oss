@@ -7,6 +7,8 @@ from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from typing import Any, final
 
+from psycopg.types.json import Jsonb
+
 from ai_governance.databases.postgres.database import PostgresDatabase
 from ai_governance.ontology.synchronization.events import (
     OntologySyncEvent,
@@ -14,7 +16,6 @@ from ai_governance.ontology.synchronization.events import (
     OntologySyncEventRepository,
     OntologySyncEventStatus,
 )
-from psycopg.types.json import Jsonb
 
 
 @final

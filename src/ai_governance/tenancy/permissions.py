@@ -5,7 +5,6 @@ from types import MappingProxyType
 
 from .domain import BuiltInRole
 
-
 PERMISSION_MODEL_VERSION = "1"
 
 

@@ -1,14 +1,20 @@
 from __future__ import annotations
 
+from ai_governance.domain.models import known_runtime_model_provider_keys
 from ai_governance.version import __version__
 
 from .common import (
     Category as C,
+)
+from .common import (
     ValueType as T,
+)
+from .common import (
     definition as _definition,
+)
+from .common import (
     runtime_model_provider_allow_list as _runtime_model_provider_allow_list,
 )
-from ai_governance.domain.models import known_runtime_model_provider_keys
 
 OPERATIONS_DEFINITIONS = (
     _definition(

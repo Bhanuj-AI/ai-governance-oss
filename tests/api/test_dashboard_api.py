@@ -8,7 +8,10 @@ from ai_governance.api.dependencies import (
     get_job_repository,
     get_ontology_sync_event_repository,
 )
-from ai_governance.ontology.synchronization import OntologySyncEvent, OntologySyncEventStatus
+from ai_governance.ontology.synchronization import (
+    OntologySyncEvent,
+    OntologySyncEventStatus,
+)
 from ai_governance.repositories import (
     InMemoryGovernanceDecisionRepository,
     InMemoryJobRepository,

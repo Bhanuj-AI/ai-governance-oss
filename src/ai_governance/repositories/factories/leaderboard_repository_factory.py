@@ -36,10 +36,11 @@ class LeaderboardRepositoryFactory:
                         "AI_GOVERNANCE_LEADERBOARD_REPOSITORY=sqlite"
                     )
                 logger.debug("Selected SQLite leaderboard repository: %s", path)
-                from ai_governance.repositories.sqlite.sqlite_leaderboard_repository import SQLiteLeaderboardRepository
-
                 from ai_governance.repositories.factories.sqlite_database import (
                     create_sqlite_database,
+                )
+                from ai_governance.repositories.sqlite.sqlite_leaderboard_repository import (
+                    SQLiteLeaderboardRepository,
                 )
 
                 return SQLiteLeaderboardRepository(create_sqlite_database(path))
@@ -52,7 +53,9 @@ class LeaderboardRepositoryFactory:
                         "AI_GOVERNANCE_LEADERBOARD_REPOSITORY=postgres"
                     )
                 from ai_governance.databases.postgres.database import PostgresDatabase
-                from ai_governance.repositories.postgres import PostgresLeaderboardRepository
+                from ai_governance.repositories.postgres import (
+                    PostgresLeaderboardRepository,
+                )
 
                 return PostgresLeaderboardRepository(PostgresDatabase(dsn))
 

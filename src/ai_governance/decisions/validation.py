@@ -7,7 +7,6 @@ from typing import Any, TypeVar
 
 from ai_governance.decisions.exceptions import DecisionValidationError
 
-
 TEnum = TypeVar("TEnum", bound=Enum)
 
 
@@ -32,7 +31,7 @@ def copy_mapping(value: Mapping[str, Any]) -> dict[str, Any]:
     return dict(value)
 
 
-def coerce_enum(
+def coerce_enum[TEnum: Enum](
     field_name: str,
     enum_type: type[TEnum],
     value: TEnum | str,

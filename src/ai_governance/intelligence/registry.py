@@ -4,7 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ai_governance.spi.intelligence import Advisor, AdvisorDescriptor, AdvisorFinding, AdvisorRequest, Planner, ReasoningPlan
+from ai_governance.spi.intelligence import (
+    Advisor,
+    AdvisorDescriptor,
+    AdvisorFinding,
+    AdvisorRequest,
+    Planner,
+    ReasoningPlan,
+)
 
 
 class AdvisorRegistrationError(ValueError):

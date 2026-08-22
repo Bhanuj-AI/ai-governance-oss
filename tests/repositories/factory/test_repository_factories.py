@@ -139,7 +139,9 @@ class TestEvaluationRepositoryFactory:
 
     def test_sqlite(self, tmp_path):
         from ai_governance.repositories.factories import EvaluationRepositoryFactory
-        from ai_governance.repositories.sqlite.sqlite_evaluation_repository import SQLiteEvaluationRepository
+        from ai_governance.repositories.sqlite.sqlite_evaluation_repository import (
+            SQLiteEvaluationRepository,
+        )
 
         path = str(tmp_path / "eval.db")
         repo = EvaluationRepositoryFactory(
@@ -186,7 +188,9 @@ class TestExperimentRepositoryFactory:
 
     def test_sqlite(self, tmp_path):
         from ai_governance.repositories.factories import ExperimentRepositoryFactory
-        from ai_governance.repositories.sqlite.sqlite_experiment_repository import SQLiteExperimentRepository
+        from ai_governance.repositories.sqlite.sqlite_experiment_repository import (
+            SQLiteExperimentRepository,
+        )
 
         path = str(tmp_path / "exp.db")
         repo = ExperimentRepositoryFactory(
@@ -197,15 +201,17 @@ class TestExperimentRepositoryFactory:
 
 class TestJobRepositoryFactory:
     def test_inmemory(self):
-        from ai_governance.repositories.factories import JobRepositoryFactory
         from ai_governance.repositories import InMemoryJobRepository
+        from ai_governance.repositories.factories import JobRepositoryFactory
 
         repo = JobRepositoryFactory(_minimal_settings()).create()
         assert isinstance(repo, InMemoryJobRepository)
 
     def test_sqlite(self, tmp_path):
         from ai_governance.repositories.factories import JobRepositoryFactory
-        from ai_governance.repositories.sqlite.sqlite_job_repository import SQLiteJobRepository
+        from ai_governance.repositories.sqlite.sqlite_job_repository import (
+            SQLiteJobRepository,
+        )
 
         path = str(tmp_path / "jobs.db")
         repo = JobRepositoryFactory(
@@ -232,7 +238,9 @@ class TestJobRepositoryFactory:
 class TestReplayExecutionStoreFactory:
     def test_inmemory(self):
         from ai_governance.repositories.factories import ReplayExecutionStoreFactory
-        from ai_governance.services.replay_execution_discovery import InMemoryReplaySourceResolver
+        from ai_governance.services.replay_execution_discovery import (
+            InMemoryReplaySourceResolver,
+        )
 
         store = ReplayExecutionStoreFactory(_minimal_settings()).create()
 
@@ -287,7 +295,9 @@ class TestReplayExecutionStoreFactory:
 
 class TestGovernanceDecisionRepositoryFactory:
     def test_inmemory(self):
-        from ai_governance.repositories.factories import GovernanceDecisionRepositoryFactory
+        from ai_governance.repositories.factories import (
+            GovernanceDecisionRepositoryFactory,
+        )
 
         repo = GovernanceDecisionRepositoryFactory(
             _minimal_settings()
@@ -295,7 +305,9 @@ class TestGovernanceDecisionRepositoryFactory:
         assert repo is not None
 
     def test_inmemory_with_publisher(self):
-        from ai_governance.repositories.factories import GovernanceDecisionRepositoryFactory
+        from ai_governance.repositories.factories import (
+            GovernanceDecisionRepositoryFactory,
+        )
 
         class FakePublisher:
             pass
@@ -308,15 +320,21 @@ class TestGovernanceDecisionRepositoryFactory:
 
 class TestOntologySyncEventRepositoryFactory:
     def test_inmemory(self):
-        from ai_governance.repositories.factories import OntologySyncEventRepositoryFactory
         from ai_governance.repositories import InMemoryOntologySyncEventRepository
+        from ai_governance.repositories.factories import (
+            OntologySyncEventRepositoryFactory,
+        )
 
         repo = OntologySyncEventRepositoryFactory(_minimal_settings()).create()
         assert isinstance(repo, InMemoryOntologySyncEventRepository)
 
     def test_sqlite(self, tmp_path):
-        from ai_governance.repositories.factories import OntologySyncEventRepositoryFactory
-        from ai_governance.repositories.sqlite.sqlite_ontology_sync_event_repository import SQLiteOntologySyncEventRepository
+        from ai_governance.repositories.factories import (
+            OntologySyncEventRepositoryFactory,
+        )
+        from ai_governance.repositories.sqlite.sqlite_ontology_sync_event_repository import (
+            SQLiteOntologySyncEventRepository,
+        )
 
         path = str(tmp_path / "sync.db")
         repo = OntologySyncEventRepositoryFactory(
@@ -329,8 +347,12 @@ class TestOntologySyncEventRepositoryFactory:
 
     def test_postgres(self, monkeypatch):
         from ai_governance.databases.postgres.database import PostgresDatabase
-        from ai_governance.repositories.factories import OntologySyncEventRepositoryFactory
-        from ai_governance.repositories.postgres import PostgresOntologySyncEventRepository
+        from ai_governance.repositories.factories import (
+            OntologySyncEventRepositoryFactory,
+        )
+        from ai_governance.repositories.postgres import (
+            PostgresOntologySyncEventRepository,
+        )
 
         monkeypatch.setattr(PostgresDatabase, "initialize", lambda _database: None)
         repo = OntologySyncEventRepositoryFactory(
@@ -345,8 +367,8 @@ class TestOntologySyncEventRepositoryFactory:
 
 class TestOntologyGraphRepositoryFactory:
     def test_inmemory(self):
-        from ai_governance.repositories.factories import OntologyGraphRepositoryFactory
         from ai_governance.ontology import InMemoryOntologyGraphRepository
+        from ai_governance.repositories.factories import OntologyGraphRepositoryFactory
 
         repo = OntologyGraphRepositoryFactory(_minimal_settings()).create()
         assert isinstance(repo, InMemoryOntologyGraphRepository)
@@ -374,7 +396,9 @@ class TestPromptRepositoryFactory:
 
     def test_sqlite(self, tmp_path):
         from ai_governance.repositories.factories import PromptRepositoryFactory
-        from ai_governance.repositories.sqlite.sqlite_prompt_repository import SQLitePromptRepository
+        from ai_governance.repositories.sqlite.sqlite_prompt_repository import (
+            SQLitePromptRepository,
+        )
 
         path = str(tmp_path / "prompts.db")
         repo = PromptRepositoryFactory(
@@ -395,7 +419,9 @@ class TestModelRepositoryFactory:
 
     def test_sqlite(self, tmp_path):
         from ai_governance.repositories.factories import ModelRepositoryFactory
-        from ai_governance.repositories.sqlite.sqlite_model_repository import SQLiteModelRepository
+        from ai_governance.repositories.sqlite.sqlite_model_repository import (
+            SQLiteModelRepository,
+        )
 
         path = str(tmp_path / "models.db")
         repo = ModelRepositoryFactory(
@@ -416,7 +442,9 @@ class TestDatasetRepositoryFactory:
 
     def test_sqlite(self, tmp_path):
         from ai_governance.repositories.factories import DatasetRepositoryFactory
-        from ai_governance.repositories.sqlite.sqlite_dataset_repository import SQLiteDatasetRepository
+        from ai_governance.repositories.sqlite.sqlite_dataset_repository import (
+            SQLiteDatasetRepository,
+        )
 
         path = str(tmp_path / "datasets.db")
         repo = DatasetRepositoryFactory(
@@ -437,7 +465,9 @@ class TestLeaderboardRepositoryFactory:
 
     def test_sqlite(self, tmp_path):
         from ai_governance.repositories.factories import LeaderboardRepositoryFactory
-        from ai_governance.repositories.sqlite.sqlite_leaderboard_repository import SQLiteLeaderboardRepository
+        from ai_governance.repositories.sqlite.sqlite_leaderboard_repository import (
+            SQLiteLeaderboardRepository,
+        )
 
         path = str(tmp_path / "leaderboard.db")
         repo = LeaderboardRepositoryFactory(
@@ -464,7 +494,9 @@ class TestExperimentCandidateRepositoryFactory:
         from ai_governance.repositories.factories import (
             ExperimentCandidateRepositoryFactory,
         )
-        from ai_governance.repositories.sqlite.sqlite_experiment_candidate_repository import SQLiteExperimentCandidateRepository
+        from ai_governance.repositories.sqlite.sqlite_experiment_candidate_repository import (
+            SQLiteExperimentCandidateRepository,
+        )
 
         path = str(tmp_path / "candidates.db")
         repo = ExperimentCandidateRepositoryFactory(
@@ -488,7 +520,9 @@ class TestEvaluationRunRepositoryFactory:
 
     def test_sqlite(self, tmp_path):
         from ai_governance.repositories.factories import EvaluationRunRepositoryFactory
-        from ai_governance.repositories.sqlite.sqlite_evaluation_run_repository import SQLiteEvaluationRunRepository
+        from ai_governance.repositories.sqlite.sqlite_evaluation_run_repository import (
+            SQLiteEvaluationRunRepository,
+        )
 
         path = str(tmp_path / "runs.db")
         repo = EvaluationRunRepositoryFactory(
@@ -549,8 +583,7 @@ def test_postgres_factories_select_existing_repository_implementations(
     repository_name: str,
 ) -> None:
     """PostgreSQL selection must be available without a live database connection."""
-    from ai_governance.repositories import factories
-    from ai_governance.repositories import postgres
+    from ai_governance.repositories import factories, postgres
 
     settings = replace(
         _minimal_settings(postgres_dsn="postgresql://user:pass@db.example/ai-governance"),

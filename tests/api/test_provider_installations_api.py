@@ -3,12 +3,16 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from ai_governance.api.app import create_app
-from ai_governance.api.dependencies.provider_installations import get_provider_installation_service
+from ai_governance.api.dependencies.provider_installations import (
+    get_provider_installation_service,
+)
 from ai_governance.providers import EvaluationProviderRegistry, MockEvaluationProvider
 from ai_governance.repositories.settings_provider_installation_repository import (
     SettingsProviderInstallationRepository,
 )
-from ai_governance.services.provider_installation_service import ProviderInstallationService
+from ai_governance.services.provider_installation_service import (
+    ProviderInstallationService,
+)
 from ai_governance.settings_control.repository import InMemorySettingsRepository
 
 

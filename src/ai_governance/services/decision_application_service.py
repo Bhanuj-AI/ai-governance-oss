@@ -1,13 +1,18 @@
 from __future__ import annotations
 
-import hashlib
 import asyncio
+import hashlib
 import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from typing import Any
 
+from ai_governance.authorization.contracts import (
+    AuthorizationEnforcementRequest,
+    AuthorizationEnforcer,
+    AuthorizationResourceFacts,
+)
 from ai_governance.decisions import (
     DecisionAuditAction,
     DecisionAuditRecord,
@@ -21,24 +26,19 @@ from ai_governance.decisions import (
     GovernanceReasoningRequest,
     ReasoningEvidenceSummary,
 )
-from ai_governance.decisions.evidence_builder import DecisionEvidenceBuilder
 from ai_governance.decisions.evidence import DecisionEvidenceGraph, MissingEvidence
+from ai_governance.decisions.evidence_builder import DecisionEvidenceBuilder
 from ai_governance.decisions.exceptions import DecisionValidationError
 from ai_governance.decisions.policies import PolicyEvaluationOutcome
 from ai_governance.decisions.policy_enums import PolicyEffect
 from ai_governance.decisions.validation import copy_mapping
-from ai_governance.authorization.contracts import (
-    AuthorizationEnforcementRequest,
-    AuthorizationEnforcer,
-    AuthorizationResourceFacts,
-)
 from ai_governance.events import EventPublisher, ResourceLifecycleEvent
 from ai_governance.ontology import EntityType, GraphSubgraph, OntologyGraphQueryService
 from ai_governance.repositories.governance_decision_repository import (
     GovernanceDecisionRepository,
 )
-from ai_governance.tenancy.domain import TenantContext
 from ai_governance.settings_control.operational import duration_seconds, setting_context
+from ai_governance.tenancy.domain import TenantContext
 
 REQUEST_FINGERPRINT_METADATA_KEY = "_evaluate_request_fingerprint"
 EVIDENCE_SUMMARY_METADATA_KEY = "_reasoning_evidence_summary"

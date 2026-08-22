@@ -1,10 +1,10 @@
 from ai_governance.decisions import MissingEvidence, PolicyEvaluationOutcome
+from ai_governance.decisions.enums import DecisionConfidenceLevel, DecisionStatus
 from ai_governance.decisions.outcome_mapping import (
     map_policy_outcomes_to_confidence,
     map_policy_outcomes_to_status,
 )
 from ai_governance.decisions.policy_enums import PolicyEffect
-from ai_governance.decisions.enums import DecisionConfidenceLevel, DecisionStatus
 
 
 def _outcome(effect: PolicyEffect, matched: bool = True) -> PolicyEvaluationOutcome:

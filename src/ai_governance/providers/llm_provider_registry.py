@@ -4,8 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from ai_governance.providers.errors import ProviderAlreadyRegisteredError, ProviderNotFoundError
-from ai_governance.providers.provider_descriptor import ProviderDescriptor, normalize_provider_name
+from ai_governance.providers.errors import (
+    ProviderAlreadyRegisteredError,
+    ProviderNotFoundError,
+)
+from ai_governance.providers.provider_descriptor import (
+    ProviderDescriptor,
+    normalize_provider_name,
+)
 from ai_governance.spi.llm import LLMProvider
 
 

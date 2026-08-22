@@ -4,19 +4,18 @@ import hashlib
 import json
 import os
 import sqlite3
+from collections.abc import Mapping
 from contextvars import ContextVar, Token
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from collections.abc import Mapping
 from typing import Any, Protocol
 from uuid import uuid4
 
-from ai_governance.databases.sqlite.database import SQLiteDatabase
 from ai_governance.databases.postgres.database import PostgresDatabase
+from ai_governance.databases.sqlite.database import SQLiteDatabase
 from ai_governance.mcp.dto import WriteEnvelope
 from ai_governance.version import __version__
-
 
 SENSITIVE_KEYS = {
     "api_key",

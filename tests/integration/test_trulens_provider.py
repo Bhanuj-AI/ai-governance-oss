@@ -1,18 +1,19 @@
-from trulens.providers.openai import OpenAI  # type: ignore
 import logging
 
+from trulens.providers.openai import OpenAI  # type: ignore
+
+from ai_governance.config import OPENAI_API_KEY, OPENAI_DEFAULT_JUDGE_MODEL
+from ai_governance.domain.evaluation_dataset import (
+    EvaluationDataset,
+)
 from ai_governance.evaluation.evaluation_metrics import (
     ANSWER_RELEVANCE,
     CONTEXT_RELEVANCE,
     GROUNDEDNESS,
 )
-from ai_governance.domain.evaluation_dataset import (
-    EvaluationDataset,
-)
 from ai_governance.providers.trulens import (
     TruLensProvider,
 )
-from ai_governance.config import OPENAI_API_KEY, OPENAI_DEFAULT_JUDGE_MODEL
 
 logging.basicConfig(level=logging.DEBUG)
 logging.getLogger("openai").setLevel(logging.DEBUG)

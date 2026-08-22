@@ -1,13 +1,22 @@
 from __future__ import annotations
 
+from ai_governance.settings_control.domain import SettingScope
+
 from .common import (
     Category as C,
+)
+from .common import (
     ValueType as T,
+)
+from .common import (
     definition as _definition,
+)
+from .common import (
     https_url as _https_url,
+)
+from .common import (
     optional_env_secret_reference as _optional_env_secret_reference,
 )
-from ai_governance.settings_control.domain import SettingScope
 
 TELEMETRY_DEFINITIONS = (
     _definition(

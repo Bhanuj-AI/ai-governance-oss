@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 ONTOLOGY_SCHEMA_CYPHER = (
     """
     CREATE CONSTRAINT ontology_entity_unique IF NOT EXISTS

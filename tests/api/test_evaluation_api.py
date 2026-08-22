@@ -24,14 +24,16 @@ from ai_governance.evaluation.evaluation_request import EvaluationRequest
 from ai_governance.providers.provider_capabilities import ProviderCapabilities
 from ai_governance.providers.provider_descriptor import ProviderDescriptor
 from ai_governance.providers.provider_registry import EvaluationProviderRegistry
+from ai_governance.repositories import InMemoryJobRepository
 from ai_governance.repositories.in_memory_evaluation_repository import (
     InMemoryEvaluationRepository,
 )
-from ai_governance.repositories import InMemoryJobRepository
 from ai_governance.repositories.settings_provider_installation_repository import (
     SettingsProviderInstallationRepository,
 )
-from ai_governance.services.provider_installation_service import ProviderInstallationService
+from ai_governance.services.provider_installation_service import (
+    ProviderInstallationService,
+)
 from ai_governance.settings_control.repository import InMemorySettingsRepository
 from ai_governance.tenancy.domain import TenantContext
 

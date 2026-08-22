@@ -118,7 +118,7 @@ class ProviderContract(ABC):
             provider_config=request.provider_config,
         )
 
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017 - provider implementations expose distinct error types.
             self.provider().evaluate(unsupported)
 
 

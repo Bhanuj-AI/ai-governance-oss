@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Sequence
 from dataclasses import replace
 from datetime import UTC, datetime
-from collections.abc import Sequence
 from typing import Protocol
 
 from ai_governance.ontology.models import OntologyEntity, OntologyRelationship
@@ -318,11 +318,7 @@ class InMemoryOntologyGraphRepository:
                 relationship.target_entity_type == entity_type
                 and relationship.target_entity_id == entity_id
             )
-            if normalized_direction == "outgoing" and outgoing:
-                matches.append(relationship)
-            elif normalized_direction == "incoming" and incoming:
-                matches.append(relationship)
-            elif normalized_direction == "both" and (outgoing or incoming):
+            if normalized_direction == "outgoing" and outgoing or normalized_direction == "incoming" and incoming or normalized_direction == "both" and (outgoing or incoming):
                 matches.append(relationship)
 
         return sorted(matches, key=lambda item: item.relationship_id)
@@ -670,12 +666,12 @@ class InMemoryOntologyGraphQueryRepository(OntologyGraphQueryRepository):
                 relationship.target_entity_type,
                 relationship.target_entity_id,
             )
-            if direction in {"outgoing", "both"} and source == current:
-                if self._relationship_endpoints_are_live(relationship):
-                    matches.append(relationship)
-            elif direction in {"incoming", "both"} and target == current:
-                if self._relationship_endpoints_are_live(relationship):
-                    matches.append(relationship)
+            if (
+                (direction in {"outgoing", "both"} and source == current
+                 or direction in {"incoming", "both"} and target == current)
+                and self._relationship_endpoints_are_live(relationship)
+            ):
+                matches.append(relationship)
         return sorted(matches, key=lambda item: item.relationship_id)
 
     def _relationship_endpoints_are_live(

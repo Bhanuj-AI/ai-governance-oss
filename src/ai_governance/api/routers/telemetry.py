@@ -3,7 +3,10 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 
 from ai_governance.api.dependencies.telemetry import get_telemetry_service
-from ai_governance.api.models.telemetry import TelemetryPreviewResponse, TelemetryStatusResponse
+from ai_governance.api.models.telemetry import (
+    TelemetryPreviewResponse,
+    TelemetryStatusResponse,
+)
 from ai_governance.services.telemetry_service import TelemetryService
 
 router = APIRouter(prefix="/api/v1/telemetry", tags=["Telemetry"])

@@ -4,11 +4,11 @@ from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
+from ai_governance.domain.assets import AssetProvenance
 from ai_governance.domain.datasets import (
     Dataset,
     DatasetStatus,
 )
-from ai_governance.domain.assets import AssetProvenance
 
 
 class DatasetPersistenceMapper:

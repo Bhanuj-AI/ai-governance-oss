@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from time import monotonic
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
+from time import monotonic
 
 from ai_governance.domain.evaluation_result import EvaluationResult
+from ai_governance.domain.telemetry import TelemetryMetric
 from ai_governance.domain.workflow_execution import WorkflowExecution
 from ai_governance.evaluation import EvaluationService
 from ai_governance.evaluation.evaluation_metrics import (
@@ -17,16 +18,17 @@ from ai_governance.ontology.synchronization import (
 from ai_governance.providers.errors import ProviderNotFoundError
 from ai_governance.providers.provider_registry import EvaluationProviderRegistry
 from ai_governance.repositories.evaluation_repository import EvaluationRepository
-from ai_governance.services.provider_installation_service import ProviderInstallationService
 from ai_governance.services.dataset_builder import EvaluationDatasetBuilder
-from ai_governance.tenancy.domain import TenantContext
-from ai_governance.domain.telemetry import TelemetryMetric
-from ai_governance.telemetry.contracts import TelemetryCollector
+from ai_governance.services.provider_installation_service import (
+    ProviderInstallationService,
+)
 from ai_governance.settings_control.operational import (
     duration_seconds,
     evaluate_thresholds,
     setting_context,
 )
+from ai_governance.telemetry.contracts import TelemetryCollector
+from ai_governance.tenancy.domain import TenantContext
 
 
 class EvaluationProviderNotFoundError(Exception):

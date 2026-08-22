@@ -2,33 +2,32 @@ from __future__ import annotations
 
 import logging
 import os
-from contextlib import suppress
-from threading import Thread
 from collections.abc import AsyncIterator, Iterable
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
+from threading import Thread
 
 from fastapi import Depends, FastAPI  # type: ignore
 from fastapi.middleware.cors import CORSMiddleware  # type: ignore
 
 from ai_governance.api.demo_seed import seed_demo_data_for_app
 from ai_governance.api.dependencies import get_api_settings
+from ai_governance.api.dependencies.authorization import (
+    enforce_permission,
+    enforce_policy_permission,
+    enforce_read_write,
+    enforce_replay_permission,
+)
+from ai_governance.api.dependencies.telemetry import install_telemetry
 from ai_governance.api.exception_handlers import register_exception_handlers
 from ai_governance.api.logging import (
     configure_sensitive_third_party_logging,
     formatter_for,
     request_logging_middleware,
 )
-from ai_governance.api.dependencies.authorization import (
-    enforce_permission,
-    enforce_policy_permission,
-    enforce_replay_permission,
-    enforce_read_write,
-)
-from ai_governance.tenancy.permissions import Permission
 from ai_governance.api.routers import (
     audit_router,
-    datasets_router,
     dashboard_router,
+    datasets_router,
     decisions_router,
     evaluations_router,
     experiments_router,
@@ -45,19 +44,23 @@ from ai_governance.api.routers import (
     ontology_sync_router,
     policies_router,
     prompts_router,
-    providers_router,
     provider_installations_router,
-    reports_router,
+    providers_router,
     replay_executions_router,
     replays_router,
+    reports_router,
     runtime_connections_router,
     settings_router,
     telemetry_router,
     tenancy_router,
 )
-from ai_governance.plugins import AIGovernancePlugin, PluginRegistry, create_plugin_registry
-from ai_governance.api.dependencies.telemetry import install_telemetry
+from ai_governance.plugins import (
+    AIGovernancePlugin,
+    PluginRegistry,
+    create_plugin_registry,
+)
 from ai_governance.services.telemetry_service import TelemetryDeliveryWorker
+from ai_governance.tenancy.permissions import Permission
 
 
 def _configure_application_logging(log_level: str, log_format: str = "json") -> None:
@@ -106,7 +109,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
     telemetry_thread.start()
     if os.getenv("AI_GOVERNANCE_RUN_REPLAY_WORKER", "false").lower() == "true":
-        from ai_governance.workers.replay_worker_runtime import create_replay_worker_runtime
+        from ai_governance.workers.replay_worker_runtime import (
+            create_replay_worker_runtime,
+        )
 
         replay_worker = create_replay_worker_runtime(
             event_publisher=extension_registry.events

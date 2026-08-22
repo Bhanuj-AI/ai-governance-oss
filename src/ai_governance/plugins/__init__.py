@@ -1,15 +1,21 @@
 """Stable plugin API for AI Governance Control Plane OSS extensions."""
 
+from ai_governance.plugins.contracts import (
+    CONTRACT_VERSION,
+    JobHandlerDefinition,
+    MiddlewareDefinition,
+    PermissionDefinition,
+)
 from ai_governance.plugins.lifecycle import AIGovernancePlugin
 from ai_governance.plugins.metadata import PluginMetadata, PluginStatus
 from ai_governance.plugins.registry import (
+    ContributionRegistry,
     DuplicatePluginError,
     ExtensionError,
-    PluginEventContext,
-    PluginHookContext,
     PluginContext,
     PluginContributionContext,
-    ContributionRegistry,
+    PluginEventContext,
+    PluginHookContext,
     PluginProviderContext,
     PluginRegistry,
     ProviderRegistry,
@@ -17,17 +23,33 @@ from ai_governance.plugins.registry import (
 )
 from ai_governance.plugins.registry_types import RouteConflictError
 from ai_governance.plugins.routes import PluginRouteContext, RouteRegistry
-from ai_governance.plugins.contracts import CONTRACT_VERSION, PermissionDefinition, MiddlewareDefinition, JobHandlerDefinition
 from ai_governance.plugins.runtime import (
     DEFAULT_SUPPORTED_EXTENSION_CAPABILITIES,
     create_plugin_registry,
 )
 
 __all__ = [
-    "DuplicatePluginError", "ExtensionError", "AIGovernancePlugin", "PluginContext",
-    "PluginEventContext", "PluginHookContext", "PluginProviderContext",
-    "PluginContributionContext", "ContributionRegistry", "CONTRACT_VERSION", "PermissionDefinition", "MiddlewareDefinition", "JobHandlerDefinition",
-    "PluginMetadata", "PluginRegistry", "PluginStatus", "ProviderRegistry",
-    "ProviderResolutionError", "PluginRouteContext", "RouteConflictError", "RouteRegistry",
-    "DEFAULT_SUPPORTED_EXTENSION_CAPABILITIES", "create_plugin_registry",
+    "CONTRACT_VERSION",
+    "DEFAULT_SUPPORTED_EXTENSION_CAPABILITIES",
+    "AIGovernancePlugin",
+    "ContributionRegistry",
+    "DuplicatePluginError",
+    "ExtensionError",
+    "JobHandlerDefinition",
+    "MiddlewareDefinition",
+    "PermissionDefinition",
+    "PluginContext",
+    "PluginContributionContext",
+    "PluginEventContext",
+    "PluginHookContext",
+    "PluginMetadata",
+    "PluginProviderContext",
+    "PluginRegistry",
+    "PluginRouteContext",
+    "PluginStatus",
+    "ProviderRegistry",
+    "ProviderResolutionError",
+    "RouteConflictError",
+    "RouteRegistry",
+    "create_plugin_registry",
 ]

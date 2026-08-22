@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-from ai_governance.tenancy.authorization import AuthorizationReasonCode, AuthorizationService
+from ai_governance.tenancy.authorization import (
+    AuthorizationReasonCode,
+    AuthorizationService,
+)
 from ai_governance.tenancy.domain import BuiltInRole, MembershipStatus, TenantContext
 from ai_governance.tenancy.errors import LastOrganizationAdministrator
 from ai_governance.tenancy.permissions import ROLE_PERMISSIONS, Permission
@@ -40,7 +43,7 @@ def test_permission_model_maps_every_role_and_permission():
 @pytest.mark.parametrize("role", list(BuiltInRole))
 @pytest.mark.parametrize("permission", list(Permission))
 def test_authorization_matrix_is_exact(control_plane, role, permission):
-    repository, authorization, service = control_plane
+    _repository, authorization, service = control_plane
     service.add_membership(TenantContext("org_a", None, "admin", "setup"), role.value)
     service.assign_role(
         TenantContext("org_a", None, "admin", "setup"), role.value, role, "project_a"
@@ -52,7 +55,7 @@ def test_authorization_matrix_is_exact(control_plane, role, permission):
 
 
 def test_cross_tenant_project_is_rejected(control_plane):
-    repository, authorization, _ = control_plane
+    _repository, authorization, _ = control_plane
     decision = authorization.authorize(
         TenantContext("org_a", "missing", "admin", "request"), Permission.PROJECT_READ
     )

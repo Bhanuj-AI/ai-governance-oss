@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import os
-from urllib.request import urlopen
-
 from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import Any, Literal
+from urllib.request import urlopen
 
 from ai_governance.decisions import GovernanceDecision
 from ai_governance.domain.jobs import Job, JobStatus
@@ -288,7 +287,7 @@ def _database_health(repository: Any) -> tuple[PlatformHealthStatus, str]:
             if path is not None:
                 detail = f"SQLite persistence is responding ({path})."
             return "Healthy", detail
-        except Exception:
+        except Exception:  # noqa: BLE001 - health probes treat every backend failure as unavailable.
             return "Unavailable", "SQLite persistence is not responding."
 
     return "Unknown", "Persistence backend health is not reported."
@@ -331,7 +330,7 @@ def _ontology_graph_health(
             int(node_count),
             int(relationship_count),
         )
-    except Exception:
+    except Exception:  # noqa: BLE001 - health probes treat every backend failure as unavailable.
         return "Unavailable", "Neo4j graph store is not responding.", 0, 0
 
 
@@ -378,8 +377,8 @@ def _mcp_health() -> tuple[PlatformHealthStatus, str]:
         with urlopen(f"{url.rstrip('/')}/openapi.json", timeout=0.5) as response:
             if 200 <= response.status < 300:
                 return "Healthy", "MCP Server is responding."
-    except Exception:
-        pass
+    except Exception:  # noqa: BLE001 - a failed external probe means the service is unavailable.
+        return "Unavailable", "MCP Server is not responding."
     return "Unavailable", "MCP Server is not responding."
 
 

@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Callable
 from uuid import uuid4
 
 from ai_governance.domain.evaluation_result import EvaluationResult
-from ai_governance.domain.history import EvaluationComparison, EvaluationMetricComparison
+from ai_governance.domain.history import (
+    EvaluationComparison,
+    EvaluationMetricComparison,
+)
 from ai_governance.domain.replay import (
     ReplayComparisonSummary,
     ReplayDriftSummary,

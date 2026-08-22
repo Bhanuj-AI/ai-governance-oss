@@ -6,7 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from ai_governance.api.dependencies import get_model_registry_service
 from ai_governance.api.dependencies.authorization import enforce_permission
-from ai_governance.api.dependencies.runtime_connections import get_runtime_connection_service
+from ai_governance.api.dependencies.runtime_connections import (
+    get_runtime_connection_service,
+)
 from ai_governance.api.dependencies.settings_control import get_configuration_service
 from ai_governance.api.dependencies.tenancy import get_compatible_tenant_context
 from ai_governance.api.models import (
@@ -14,8 +16,8 @@ from ai_governance.api.models import (
     ModelCapabilityResolveRequest,
     ModelObservationRequest,
     ModelRegisterRequest,
-    ModelRuntimeCapabilitiesResponse,
     ModelResponse,
+    ModelRuntimeCapabilitiesResponse,
     ModelVersionCreateRequest,
     RuntimeModelProviderResponse,
 )

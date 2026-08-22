@@ -45,7 +45,7 @@ class RuntimeConnectionResponse(BaseModel):
     version: int
 
     @classmethod
-    def from_domain(cls, connection: RuntimeConnection) -> "RuntimeConnectionResponse":
+    def from_domain(cls, connection: RuntimeConnection) -> RuntimeConnectionResponse:
         return cls(
             runtime_connection_id=connection.runtime_connection_id,
             display_name=connection.display_name,

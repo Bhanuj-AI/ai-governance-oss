@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from ai_governance.mcp.clients import RestClient
 from ai_governance.mcp.audit import MCPExecutionAuditLog
+from ai_governance.mcp.clients import RestClient
 from ai_governance.mcp.server import create_server
 
 

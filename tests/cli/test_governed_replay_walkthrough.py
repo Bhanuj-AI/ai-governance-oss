@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 from rich.console import Console
 
+from ai_governance.cli.main import _parser, _renderer_for
 from ai_governance.cli.walkthrough import (
     WalkthroughConfiguration,
     WalkthroughError,
@@ -21,8 +22,11 @@ from ai_governance.cli.walkthrough import (
     run_governed_replay,
     run_policy_gate,
 )
-from ai_governance.cli.main import _parser, _renderer_for
-from ai_governance.cli.walkthrough_renderers import JsonRenderer, PlainRenderer, RichRenderer
+from ai_governance.cli.walkthrough_renderers import (
+    JsonRenderer,
+    PlainRenderer,
+    RichRenderer,
+)
 from ai_governance.mcp.clients import RestClient, RestClientError
 
 

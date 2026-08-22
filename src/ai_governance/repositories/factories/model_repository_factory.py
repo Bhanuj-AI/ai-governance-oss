@@ -36,10 +36,11 @@ class ModelRepositoryFactory:
                         "AI_GOVERNANCE_MODEL_REPOSITORY=sqlite"
                     )
                 logger.debug("Selected SQLite model repository: %s", path)
-                from ai_governance.repositories.sqlite.sqlite_model_repository import SQLiteModelRepository
-
                 from ai_governance.repositories.factories.sqlite_database import (
                     create_sqlite_database,
+                )
+                from ai_governance.repositories.sqlite.sqlite_model_repository import (
+                    SQLiteModelRepository,
                 )
 
                 return SQLiteModelRepository(create_sqlite_database(path))

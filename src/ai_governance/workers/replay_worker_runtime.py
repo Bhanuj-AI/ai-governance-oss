@@ -7,23 +7,26 @@ import logging
 import os
 import signal
 import socket
-from uuid import uuid4
 from collections.abc import Callable
 from time import sleep
+from uuid import uuid4
 
 from ai_governance.domain.jobs import Job, JobResult, JobStatus, JobType
 from ai_governance.domain.replay import ReplayStatus
 from ai_governance.events import EventPublisher
 from ai_governance.plugins import create_plugin_registry
-from ai_governance.services.async_job_handlers import EvaluationJobHandler, ExperimentJobHandler
+from ai_governance.services.async_job_handlers import (
+    EvaluationJobHandler,
+    ExperimentJobHandler,
+)
 from ai_governance.services.job_executor import JobExecutor
 from ai_governance.services.replay_application_service import ReplayApplicationService
+from ai_governance.services.replay_evaluation import ReplayEvaluationJobHandler
 from ai_governance.services.replay_execution import (
     HistoricalReplayExecutionAdapter,
     ReplayExecutionAdapterRegistry,
     ReplayJobHandler,
 )
-from ai_governance.services.replay_evaluation import ReplayEvaluationJobHandler
 from ai_governance.tenancy.domain import TenantContext
 from ai_governance.workers.job_worker import JobWorker
 
@@ -124,9 +127,7 @@ def create_replay_worker_runtime(
         get_provider_installation_service,
     )
     from ai_governance.api.dependencies.providers import get_provider_registry
-    from ai_governance.api.dependencies.runtime_connections import (
-        get_runtime_connection_service,
-    )
+    from ai_governance.api.dependencies.replay import get_replay_source_resolver
     from ai_governance.api.dependencies.repositories import (
         get_dataset_repository,
         get_evaluation_repository,
@@ -140,18 +141,16 @@ def create_replay_worker_runtime(
         get_replay_repository,
         get_replay_result_repository,
     )
-    from ai_governance.api.dependencies.replay import get_replay_source_resolver
+    from ai_governance.api.dependencies.runtime_connections import (
+        get_runtime_connection_service,
+    )
     from ai_governance.api.dependencies.settings_control import (
         get_configuration_service,
         get_provider_installation_repository,
         get_runtime_connection_repository,
         get_settings_repository,
     )
-    from ai_governance.services.evaluation_api_service import EvaluationApiService
-    from ai_governance.services.telemetry_service import TelemetryService
-    from ai_governance.telemetry.repository import SettingsTelemetryStateRepository
-    from ai_governance.services.experiment_api_service import ExperimentApiService
-    from ai_governance.services.job_api_service import JobApiService
+    from ai_governance.datasets import dataset_object_store_from_environment
     from ai_governance.services.candidate_execution_runtime import (
         AnthropicModelRuntimeAdapter,
         CandidateExecutionRuntime,
@@ -159,7 +158,11 @@ def create_replay_worker_runtime(
         OpenAIModelRuntimeAdapter,
     )
     from ai_governance.services.dataset_item_reader import S3DatasetItemReader
-    from ai_governance.datasets import dataset_object_store_from_environment
+    from ai_governance.services.evaluation_api_service import EvaluationApiService
+    from ai_governance.services.experiment_api_service import ExperimentApiService
+    from ai_governance.services.job_api_service import JobApiService
+    from ai_governance.services.telemetry_service import TelemetryService
+    from ai_governance.telemetry.repository import SettingsTelemetryStateRepository
 
     provider_registry = get_provider_registry()
     configuration_service = get_configuration_service(

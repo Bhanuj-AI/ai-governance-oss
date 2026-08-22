@@ -244,9 +244,7 @@ def _matches(
     if (
         query
         and query
-        not in " ".join(
-            (projection.execution_id, projection.workflow_id, projection.workflow_name)
-        ).lower()
+        not in f"{projection.execution_id} {projection.workflow_id} {projection.workflow_name}".lower()
     ):
         return False
     if filters.workflow_id and projection.workflow_id != filters.workflow_id:

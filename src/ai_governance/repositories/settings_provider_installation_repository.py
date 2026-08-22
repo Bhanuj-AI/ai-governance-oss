@@ -11,10 +11,11 @@ from datetime import datetime
 from typing import Any
 
 from ai_governance.domain.provider_installation import ProviderInstallation
-from ai_governance.repositories.provider_installation_repository import ProviderInstallationRepository
+from ai_governance.repositories.provider_installation_repository import (
+    ProviderInstallationRepository,
+)
 from ai_governance.settings_control.domain import SettingScope
 from ai_governance.settings_control.repository import SettingsRepository
-
 
 _KEY_PREFIX = "provider_installation."
 
@@ -99,7 +100,7 @@ def _to_value(installation: ProviderInstallation) -> dict[str, Any]:
 
 def _from_value(value: Any, version: int) -> ProviderInstallation:
     if not isinstance(value, dict):
-        raise ValueError("Provider installation persistence value must be an object.")
+        raise TypeError("Provider installation persistence value must be an object.")
     return ProviderInstallation(
         installation_id=str(value["installation_id"]),
         provider_type=str(value["provider_type"]),

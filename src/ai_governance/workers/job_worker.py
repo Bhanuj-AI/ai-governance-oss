@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
-from collections.abc import Mapping
 import asyncio
+from collections.abc import Mapping
+from datetime import UTC, datetime
 
 from ai_governance.domain.jobs import Job, JobStatus, JobType, WorkerHeartbeat
+from ai_governance.events import EventPublisher, ResourceLifecycleEvent
 from ai_governance.ontology.synchronization import (
     OntologySyncEventPublisherProtocol,
 )
 from ai_governance.repositories.job_repository import JobRepository
 from ai_governance.services.job_executor import JobExecutor
-from ai_governance.events import EventPublisher, ResourceLifecycleEvent
 
 
 class JobWorker:

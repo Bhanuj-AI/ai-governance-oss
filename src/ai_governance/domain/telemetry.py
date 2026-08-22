@@ -6,12 +6,11 @@ It never carries a tenant, actor, request identifier, or customer-owned value.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import Enum
-import re
 from uuid import UUID
-
 
 TELEMETRY_SCHEMA_VERSION = "1"
 _VERSION_PATTERN = re.compile(r"^[0-9]+(?:\.[0-9]+){0,3}(?:[+.-][A-Za-z0-9.-]+)?$")
@@ -94,7 +93,7 @@ class DurationHistogram:
         if self.minimum_ms is not None and self.maximum_ms is not None and self.minimum_ms > self.maximum_ms:
             raise ValueError("Telemetry histogram minimum cannot exceed maximum.")
 
-    def observe(self, duration_ms: int) -> "DurationHistogram":
+    def observe(self, duration_ms: int) -> DurationHistogram:
         if duration_ms < 0:
             raise ValueError("Telemetry duration must be non-negative.")
         bucket = (

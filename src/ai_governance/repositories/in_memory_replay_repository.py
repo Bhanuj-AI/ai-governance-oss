@@ -4,7 +4,10 @@ from dataclasses import replace
 
 from ai_governance.domain.replay import Replay
 from ai_governance.domain.replay.errors import ReplayConflict, ReplayIdempotencyConflict
-from ai_governance.repositories.replay_repository import ReplayListFilters, ReplayRepository
+from ai_governance.repositories.replay_repository import (
+    ReplayListFilters,
+    ReplayRepository,
+)
 
 
 class InMemoryReplayRepository(ReplayRepository):

@@ -9,8 +9,8 @@ belong to the subsequent replay-evaluation job.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import asyncio
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
@@ -55,7 +55,7 @@ class ReplayExecutionContext:
     request_id: str
     correlation_id: str | None
     attempt: int
-    cancellation_token: "ReplayCancellationToken"
+    cancellation_token: ReplayCancellationToken
     metadata: dict[str, Any]
 
 
@@ -361,7 +361,7 @@ class ReplayJobHandler:
             return JobResult(
                 job.job_id, JobStatus.SUCCEEDED, _result_ref(completed), None
             )
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - job failures must be finalized as failed results.
             return self._fail(replay, job, error)
 
     def _cancel(self, replay, job: Job) -> JobResult:

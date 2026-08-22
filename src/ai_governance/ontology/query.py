@@ -5,7 +5,7 @@ import time
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Generic, Protocol, TypeVar
+from typing import Protocol, TypeVar
 
 from ai_governance.ontology.enums import EntityType, RelationshipType
 from ai_governance.ontology.models import OntologyEntity, OntologyRelationship
@@ -128,7 +128,7 @@ class GraphPath:
 
 
 @dataclass(frozen=True)
-class GraphQueryPage(Generic[T]):
+class GraphQueryPage[T]:
     """
     Cursor-paginated graph query result.
     """
@@ -398,7 +398,7 @@ class OntologyGraphQueryService:
             )
 
 
-def page_items(
+def page_items[T](
     items: Sequence[T],
     *,
     limit: int,

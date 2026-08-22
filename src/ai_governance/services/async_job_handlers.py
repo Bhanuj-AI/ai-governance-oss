@@ -127,7 +127,7 @@ def _metric_specs(value: object) -> list[EvaluationMetricSpec]:
     if value is None:
         return []
     if not isinstance(value, list):
-        raise ValueError("Job input reference 'metric_specs' must be a list.")
+        raise TypeError("Job input reference 'metric_specs' must be a list.")
     return [
         EvaluationMetricSpec(
             name=str(item["name"]),

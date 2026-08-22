@@ -78,7 +78,7 @@ class ExperimentCandidateCreateRequest(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def provider_reference_is_required(self) -> "ExperimentCandidateCreateRequest":
+    def provider_reference_is_required(self) -> ExperimentCandidateCreateRequest:
         if not (self.provider_name or "").strip() and not (self.provider_installation_id or "").strip():
             raise ValueError("provider_name or provider_installation_id is required.")
         return self

@@ -36,7 +36,7 @@ def generate_experiment_report(
         object,
         Depends(get_governance_report_service),
     ],
-    format: ReportFormat = Query(default="json"),  # noqa: A002
+    format: ReportFormat = Query(default="json"),
 ) -> GovernanceEvidenceReportResponse:
     return GovernanceInsightApiMapper.to_report_response(
         report_service.experiment_report(experiment_id, format)
@@ -60,7 +60,7 @@ def generate_evaluation_report(
         object,
         Depends(get_governance_report_service),
     ],
-    format: ReportFormat = Query(default="json"),  # noqa: A002
+    format: ReportFormat = Query(default="json"),
 ) -> GovernanceEvidenceReportResponse:
     return GovernanceInsightApiMapper.to_report_response(
         report_service.evaluation_report(evaluation_id, format)
@@ -85,7 +85,7 @@ def generate_drift_report(
         object,
         Depends(get_governance_report_service),
     ],
-    format: ReportFormat = Query(default="json"),  # noqa: A002
+    format: ReportFormat = Query(default="json"),
 ) -> GovernanceEvidenceReportResponse:
     return GovernanceInsightApiMapper.to_report_response(
         report_service.drift_report(drift_id, format)
@@ -108,7 +108,7 @@ def generate_investigation_report(
         object,
         Depends(get_governance_report_service),
     ],
-    format: ReportFormat = Query(default="json"),  # noqa: A002
+    format: ReportFormat = Query(default="json"),
 ) -> GovernanceEvidenceReportResponse:
     return GovernanceInsightApiMapper.to_report_response(
         report_service.investigation_report(correlation_id, format)
@@ -132,7 +132,7 @@ def generate_mcp_audit_report(
         object,
         Depends(get_governance_report_service),
     ],
-    format: ReportFormat = Query(default="json"),  # noqa: A002
+    format: ReportFormat = Query(default="json"),
 ) -> GovernanceEvidenceReportResponse:
     return GovernanceInsightApiMapper.to_report_response(
         report_service.mcp_audit_report(audit_id, format)

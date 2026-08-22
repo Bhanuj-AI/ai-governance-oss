@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any
 
 from fastapi.testclient import TestClient
 
@@ -16,7 +15,6 @@ from ai_governance.mcp.runtime_context import (
 from ai_governance.mcp.server import create_server, get_mcp_settings
 from ai_governance.mcp.transports.streamable_http import create_mcp_http_app
 from ai_governance.tenancy.domain import ActorType, AuthenticatedPrincipal
-
 
 _MODERN_META = {
     "io.modelcontextprotocol/protocolVersion": "2026-07-28",
@@ -277,7 +275,7 @@ def test_streamable_http_forwards_authenticated_tenant_request_context(monkeypat
         def __enter__(self):
             return self
 
-        def __exit__(self, *_: Any) -> None:
+        def __exit__(self, *_: object) -> None:
             return None
 
     class AuthenticationService:
@@ -367,7 +365,7 @@ def test_request_scoped_bearer_context_isolated_across_concurrent_calls(
         def __enter__(self):
             return self
 
-        def __exit__(self, *_: Any) -> None:
+        def __exit__(self, *_: object) -> None:
             return None
 
     def fake_urlopen(request, timeout):
