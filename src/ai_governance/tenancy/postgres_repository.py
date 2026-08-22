@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from threading import RLock
 import json
+from threading import RLock
 
 import psycopg  # type: ignore
 

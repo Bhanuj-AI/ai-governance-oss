@@ -294,6 +294,30 @@ It is also scriptable for CI-like local use:
   --summary "Keep local demo jobs visible within the retention window"
 ```
 
+### GitLab commit signing
+
+This repository's GitLab push rule requires signed commits. Configure Git once
+to sign commits automatically with the SSH key you already use for GitLab:
+
+```bash
+git config --global gpg.format ssh
+git config --global user.signingkey ~/.ssh/id_ed25519.pub
+git config --global commit.gpgsign true
+```
+
+Replace `~/.ssh/id_ed25519.pub` if your public key has a different name. In
+GitLab, ensure the same key is listed under **Edit profile → Access → SSH keys**
+with usage **Authentication & Signing** (or **Signing**) so GitLab can mark
+commits as verified. The local preflight script validates the change but does
+not create or sign a commit. After committing, verify the latest signature:
+
+```bash
+git log --show-signature -1
+```
+
+See GitLab's [SSH commit-signing documentation](https://docs.gitlab.com/user/project/repository/signed_commits/ssh/)
+for key-management details.
+
 ## Your first two minutes in Studio
 
 Open [AI Governance Control Plane Studio](http://localhost:3000) after `./servers.sh` completes. It

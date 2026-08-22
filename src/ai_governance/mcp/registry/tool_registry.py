@@ -10,7 +10,6 @@ from ai_governance.mcp.dto import ToolDescription
 from ai_governance.mcp.runtime_context import get_runtime_context
 from ai_governance.tenancy.domain import ActorType
 
-
 ToolHandler = Callable[[BaseModel], Any]
 
 

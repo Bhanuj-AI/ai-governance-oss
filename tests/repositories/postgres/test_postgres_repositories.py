@@ -1,5 +1,6 @@
-import pytest
 from datetime import UTC, datetime
+
+import pytest
 
 from ai_governance.databases.postgres.database import PostgresDatabase
 from ai_governance.decisions import (
@@ -25,6 +26,9 @@ from ai_governance.repositories.leaderboard_repository import (
     LeaderboardRepository,
 )
 from ai_governance.repositories.model_repository import ModelRepository
+from ai_governance.repositories.policy_administration_repository import (
+    PolicyAdministrationRepository,
+)
 from ai_governance.repositories.postgres.postgres_dataset_repository import (
     PostgresDatasetRepository,
 )
@@ -34,14 +38,14 @@ from ai_governance.repositories.postgres.postgres_evaluation_repository import (
 from ai_governance.repositories.postgres.postgres_evaluation_run_repository import (
     PostgresEvaluationRunRepository,
 )
-from ai_governance.repositories.postgres.postgres_governance_decision_repository import (
-    PostgresGovernanceDecisionRepository,
-)
 from ai_governance.repositories.postgres.postgres_experiment_candidate_repository import (
     PostgresExperimentCandidateRepository,
 )
 from ai_governance.repositories.postgres.postgres_experiment_repository import (
     PostgresExperimentRepository,
+)
+from ai_governance.repositories.postgres.postgres_governance_decision_repository import (
+    PostgresGovernanceDecisionRepository,
 )
 from ai_governance.repositories.postgres.postgres_leaderboard_repository import (
     PostgresLeaderboardRepository,
@@ -54,9 +58,6 @@ from ai_governance.repositories.postgres.postgres_policy_administration_reposito
 )
 from ai_governance.repositories.postgres.postgres_prompt_repository import (
     PostgresPromptRepository,
-)
-from ai_governance.repositories.policy_administration_repository import (
-    PolicyAdministrationRepository,
 )
 from ai_governance.repositories.prompt_repository import PromptRepository
 from tests.repositories.contract.test_dataset_repository_contract import (

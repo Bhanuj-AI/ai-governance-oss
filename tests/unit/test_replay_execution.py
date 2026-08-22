@@ -3,7 +3,9 @@ from datetime import UTC, datetime
 from ai_governance.domain.jobs import Job, JobExecutionContext, JobStatus, JobType
 from ai_governance.domain.replay import ReplayMode, ReplayStatus
 from ai_governance.domain.workflow_execution import WorkflowExecution
-from ai_governance.repositories.in_memory_replay_repository import InMemoryReplayRepository
+from ai_governance.repositories.in_memory_replay_repository import (
+    InMemoryReplayRepository,
+)
 from ai_governance.services.replay_application_service import ReplayApplicationService
 from ai_governance.services.replay_execution import (
     ReplayExecutionAdapterRegistry,

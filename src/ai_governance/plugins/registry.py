@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from builtins import object, RuntimeError, Exception
 import logging
+from builtins import Exception, RuntimeError
 from collections.abc import Callable, Iterable
 from dataclasses import asdict, dataclass
 from importlib.metadata import EntryPoint, entry_points
@@ -12,13 +12,13 @@ from typing import Any, TypeVar
 from packaging.specifiers import SpecifierSet
 from packaging.version import Version
 
-from ai_governance.version import __version__
 from ai_governance.events import EventPublisher
 from ai_governance.hooks import FailurePolicy, HookHandler, HookRegistry
+from ai_governance.plugins.contracts import CONTRACT_VERSION, MiddlewareDefinition
 from ai_governance.plugins.lifecycle import AIGovernancePlugin
 from ai_governance.plugins.metadata import PluginMetadata, PluginStatus
 from ai_governance.plugins.routes import PluginRouteContext, RouteRegistry
-from ai_governance.plugins.contracts import CONTRACT_VERSION, MiddlewareDefinition
+from ai_governance.version import __version__
 
 T = TypeVar("T")
 
@@ -255,7 +255,7 @@ class PluginContext:
     hooks: PluginHookContext
     events: PluginEventContext
     routes: PluginRouteContext
-    contributions: "PluginContributionContext"
+    contributions: PluginContributionContext
 
 class ContributionRegistry:
     """Generic, deterministic registry for optional plugin contributions."""

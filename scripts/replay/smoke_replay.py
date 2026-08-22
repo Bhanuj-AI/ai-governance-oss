@@ -9,7 +9,9 @@ from datetime import UTC, datetime
 from ai_governance.domain.evaluation_result import EvaluationMetric, EvaluationResult
 from ai_governance.domain.jobs import Job, JobExecutionContext, JobStatus, JobType
 from ai_governance.domain.workflow_execution import WorkflowExecution
-from ai_governance.repositories.in_memory_replay_repository import InMemoryReplayRepository
+from ai_governance.repositories.in_memory_replay_repository import (
+    InMemoryReplayRepository,
+)
 from ai_governance.repositories.in_memory_replay_result_repository import (
     InMemoryReplayResultRepository,
 )
@@ -20,7 +22,6 @@ from ai_governance.services.replay_execution import (
     ReplayJobHandler,
 )
 from ai_governance.tenancy.domain import TenantContext
-
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
 CONTEXT = TenantContext("smoke-org", "smoke-project", "smoke-actor", "smoke-request")

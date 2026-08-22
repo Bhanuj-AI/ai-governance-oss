@@ -8,16 +8,20 @@ from ai_governance.domain.jobs import JobExecutionContext, JobSubmission, JobTyp
 from ai_governance.domain.models import ModelStatus
 from ai_governance.ontology import InMemoryOntologyGraphRepository, OntologyEntity
 from ai_governance.repositories import InMemoryJobRepository
-from ai_governance.repositories.in_memory_model_repository import InMemoryModelRepository
-from ai_governance.repositories.in_memory_prompt_repository import InMemoryPromptRepository
+from ai_governance.repositories.in_memory_model_repository import (
+    InMemoryModelRepository,
+)
+from ai_governance.repositories.in_memory_prompt_repository import (
+    InMemoryPromptRepository,
+)
 from ai_governance.repositories.settings_runtime_connection_repository import (
     SettingsRuntimeConnectionRepository,
 )
+from ai_governance.services.job_submission_service import JobSubmissionService
 from ai_governance.services.models import ModelNotFoundError, ModelRegistryService
 from ai_governance.services.prompts import PromptRegistryService
 from ai_governance.services.runtime_connection_service import RuntimeConnectionService
 from ai_governance.settings_control.repository import InMemorySettingsRepository
-from ai_governance.services.job_submission_service import JobSubmissionService
 from ai_governance.tenancy.domain import TenantContext
 
 

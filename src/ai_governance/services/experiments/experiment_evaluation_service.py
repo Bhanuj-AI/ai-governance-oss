@@ -150,7 +150,7 @@ class ExperimentEvaluationService:
                 )
                 self._evaluation_run_repository.save(completed_run)
                 runs.append(completed_run)
-            except Exception:
+            except Exception:  # noqa: BLE001 - candidate failures must be persisted as failed runs.
                 failed_run = replace(
                     running_run,
                     completed_at=self._clock(),

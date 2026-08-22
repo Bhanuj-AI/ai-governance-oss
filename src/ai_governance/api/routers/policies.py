@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
 
 from ai_governance.api.dependencies import get_policy_administration_service
+from ai_governance.api.dependencies.tenancy import get_compatible_tenant_context
 from ai_governance.api.models import (
     ActivatePolicyVersionRequest,
     ArchivePolicyVersionRequest,
@@ -22,7 +23,6 @@ from ai_governance.api.models import (
 )
 from ai_governance.decisions import PolicyRule
 from ai_governance.services.policies import build_policy_rule
-from ai_governance.api.dependencies.tenancy import get_compatible_tenant_context
 
 router = APIRouter(
     tags=["Policies"],

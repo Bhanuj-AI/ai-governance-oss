@@ -5,7 +5,6 @@ from pathlib import Path
 import psycopg
 from psycopg.rows import dict_row
 
-
 _SCHEMA_INITIALIZATION_LOCK = 278_460_749
 
 

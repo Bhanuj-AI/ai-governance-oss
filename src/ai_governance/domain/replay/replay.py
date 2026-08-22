@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from enum import Enum
 from types import MappingProxyType
-from typing import Any, Mapping
+from typing import Any
 
 
 class ReplayStatus(str, Enum):
@@ -163,7 +164,7 @@ class Replay:
         input_hash: str,
         metadata: Mapping[str, Any],
         now: datetime,
-    ) -> "Replay":
+    ) -> Replay:
         if mode is not ReplayMode.FULL:
             raise ValueError("Only FULL replay mode is supported.")
         for name, value in (
@@ -195,7 +196,7 @@ class Replay:
             metadata=MappingProxyType(dict(metadata)),
         )
 
-    def mark_ready(self, configuration: ReplayConfiguration, now: datetime) -> "Replay":
+    def mark_ready(self, configuration: ReplayConfiguration, now: datetime) -> Replay:
         self._require_status(ReplayStatus.DRAFT, "mark ready")
         if self.failure is not None:
             raise ValueError("A failed replay cannot become ready.")
@@ -206,7 +207,7 @@ class Replay:
             updated_at=now,
         )
 
-    def mark_failed(self, failure: ReplayFailure, now: datetime) -> "Replay":
+    def mark_failed(self, failure: ReplayFailure, now: datetime) -> Replay:
         self._require_status(ReplayStatus.DRAFT, "mark failed")
         return replace(
             self,
@@ -215,7 +216,7 @@ class Replay:
             updated_at=now,
         )
 
-    def archive(self, now: datetime) -> "Replay":
+    def archive(self, now: datetime) -> Replay:
         if self.status not in {
             ReplayStatus.READY,
             ReplayStatus.EXECUTION_COMPLETED,
@@ -235,7 +236,7 @@ class Replay:
         if self.status is not expected:
             raise ValueError(f"Cannot {operation} replay in {self.status.value} state.")
 
-    def mark_queued(self, job_id: str, now: datetime) -> "Replay":
+    def mark_queued(self, job_id: str, now: datetime) -> Replay:
         self._require_status(ReplayStatus.READY, "queue")
         if not job_id.strip():
             raise ValueError("Replay job ID is required.")
@@ -249,7 +250,7 @@ class Replay:
             updated_at=now,
         )
 
-    def mark_running(self, attempt_count: int, now: datetime) -> "Replay":
+    def mark_running(self, attempt_count: int, now: datetime) -> Replay:
         self._require_status(ReplayStatus.QUEUED, "start")
         if attempt_count < 1:
             raise ValueError("Replay attempt count must be positive.")
@@ -263,7 +264,7 @@ class Replay:
 
     def reserve_replay_execution_id(
         self, replay_execution_id: str, now: datetime
-    ) -> "Replay":
+    ) -> Replay:
         if self.status not in {ReplayStatus.QUEUED, ReplayStatus.RUNNING}:
             raise ValueError(
                 "Replay execution identity may only be reserved while active."
@@ -279,7 +280,7 @@ class Replay:
             raise ValueError("Replay execution ID is immutable once assigned.")
         return replace(self, replay_execution_id=replay_execution_id, updated_at=now)
 
-    def mark_execution_completed(self, now: datetime) -> "Replay":
+    def mark_execution_completed(self, now: datetime) -> Replay:
         self._require_status(ReplayStatus.RUNNING, "complete execution")
         if self.replay_execution_id is None:
             raise ValueError("Replay execution ID must be reserved before completion.")
@@ -290,7 +291,7 @@ class Replay:
             updated_at=now,
         )
 
-    def request_cancellation(self, now: datetime) -> "Replay":
+    def request_cancellation(self, now: datetime) -> Replay:
         if self.status not in {
             ReplayStatus.READY,
             ReplayStatus.QUEUED,
@@ -302,7 +303,7 @@ class Replay:
             raise ValueError(f"Cannot cancel replay in {self.status.value} state.")
         return replace(self, cancel_requested_at=now, updated_at=now)
 
-    def mark_cancelled(self, now: datetime) -> "Replay":
+    def mark_cancelled(self, now: datetime) -> Replay:
         if self.status is ReplayStatus.READY:
             return replace(
                 self,
@@ -330,7 +331,7 @@ class Replay:
             updated_at=now,
         )
 
-    def mark_execution_failed(self, failure: ReplayFailure, now: datetime) -> "Replay":
+    def mark_execution_failed(self, failure: ReplayFailure, now: datetime) -> Replay:
         if self.status not in {
             ReplayStatus.READY,
             ReplayStatus.QUEUED,
@@ -347,7 +348,7 @@ class Replay:
             updated_at=now,
         )
 
-    def mark_evaluating(self, evaluation_job_id: str, now: datetime) -> "Replay":
+    def mark_evaluating(self, evaluation_job_id: str, now: datetime) -> Replay:
         self._require_status(ReplayStatus.EXECUTION_COMPLETED, "start evaluation")
         if not evaluation_job_id.strip():
             raise ValueError("Replay evaluation job ID is required.")
@@ -361,17 +362,17 @@ class Replay:
             updated_at=now,
         )
 
-    def record_replay_evaluation(self, evaluation_id: str, now: datetime) -> "Replay":
+    def record_replay_evaluation(self, evaluation_id: str, now: datetime) -> Replay:
         if self.status not in {ReplayStatus.EVALUATING, ReplayStatus.COMPARING}:
             raise ValueError("Replay evaluation may only be recorded while evaluating.")
         return self._record_immutable("replay_evaluation_id", evaluation_id, now)
 
-    def record_baseline_evaluation(self, evaluation_id: str, now: datetime) -> "Replay":
+    def record_baseline_evaluation(self, evaluation_id: str, now: datetime) -> Replay:
         if self.status not in {ReplayStatus.EVALUATING, ReplayStatus.COMPARING}:
             raise ValueError("Replay baseline may only be recorded while evaluating.")
         return self._record_immutable("baseline_evaluation_id", evaluation_id, now)
 
-    def mark_comparing(self, now: datetime) -> "Replay":
+    def mark_comparing(self, now: datetime) -> Replay:
         self._require_status(ReplayStatus.EVALUATING, "start comparison")
         if not self.replay_evaluation_id or not self.baseline_evaluation_id:
             raise ValueError("Replay and baseline evaluations are required for comparison.")
@@ -383,15 +384,15 @@ class Replay:
             updated_at=now,
         )
 
-    def record_comparison(self, comparison_id: str, now: datetime) -> "Replay":
+    def record_comparison(self, comparison_id: str, now: datetime) -> Replay:
         self._require_status(ReplayStatus.COMPARING, "record comparison")
         return self._record_immutable("comparison_id", comparison_id, now)
 
-    def record_drift(self, drift_id: str, now: datetime) -> "Replay":
+    def record_drift(self, drift_id: str, now: datetime) -> Replay:
         self._require_status(ReplayStatus.COMPARING, "record drift")
         return self._record_immutable("drift_id", drift_id, now)
 
-    def mark_completed(self, result_id: str, now: datetime) -> "Replay":
+    def mark_completed(self, result_id: str, now: datetime) -> Replay:
         self._require_status(ReplayStatus.COMPARING, "complete")
         if not self.comparison_id or not self.drift_id:
             raise ValueError("Comparison and drift evidence are required for completion.")
@@ -404,7 +405,7 @@ class Replay:
             updated_at=now,
         )
 
-    def _record_immutable(self, field_name: str, value: str, now: datetime) -> "Replay":
+    def _record_immutable(self, field_name: str, value: str, now: datetime) -> Replay:
         if not value.strip():
             raise ValueError(f"Replay {field_name} is required.")
         current = getattr(self, field_name)

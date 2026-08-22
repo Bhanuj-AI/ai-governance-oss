@@ -7,7 +7,6 @@ from collections.abc import Iterable
 from ai_governance.plugins.lifecycle import AIGovernancePlugin
 from ai_governance.plugins.registry import PluginRegistry
 
-
 DEFAULT_SUPPORTED_EXTENSION_CAPABILITIES = frozenset(
     {
         "audit.write",

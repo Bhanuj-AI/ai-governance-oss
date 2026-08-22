@@ -1,7 +1,11 @@
 from types import SimpleNamespace
 
 from ai_governance.intelligence import ExperimentAdvisor
-from ai_governance.intelligence.registry import AdvisorRegistrationError, AdvisorRegistry, IntelligenceService
+from ai_governance.intelligence.registry import (
+    AdvisorRegistrationError,
+    AdvisorRegistry,
+    IntelligenceService,
+)
 from ai_governance.spi.intelligence import (
     AdvisorDescriptor,
     AdvisorEvidence,

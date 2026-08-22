@@ -61,11 +61,10 @@ class EvaluationRun:
             EvaluationRunStatus.EXECUTION_FAILED,
             EvaluationRunStatus.FAILED,
             EvaluationRunStatus.CANCELLED,
-        ):
-            if self.started_at is None or self.completed_at is None:
-                raise ValueError(
-                    "Completed and failed evaluation runs require timestamps."
-                )
+        ) and (self.started_at is None or self.completed_at is None):
+            raise ValueError(
+                "Completed and failed evaluation runs require timestamps."
+            )
 
         if (
             self.started_at is not None

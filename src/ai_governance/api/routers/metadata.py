@@ -3,9 +3,9 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, status
 
 from ai_governance import __version__
-from ai_governance.api.models import ErrorResponse, MetadataResponse
 from ai_governance.api.dependencies.settings_control import get_configuration_service
 from ai_governance.api.dependencies.tenancy import get_compatible_tenant_context
+from ai_governance.api.models import ErrorResponse, MetadataResponse
 from ai_governance.settings_control.operational import setting_context
 
 router = APIRouter(

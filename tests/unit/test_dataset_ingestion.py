@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-from ai_governance.datasets import DatasetUploadValidationError, inspect_uploaded_dataset
+from ai_governance.datasets import (
+    DatasetUploadValidationError,
+    inspect_uploaded_dataset,
+)
 
 
 def test_inspect_jsonl_dataset_returns_record_count_checksum_and_content_type() -> None:

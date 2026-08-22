@@ -3,22 +3,32 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from threading import Event, RLock
 from time import monotonic
-from typing import Callable
 from uuid import uuid4
 
 from ai_governance.domain.telemetry import (
-    DurationHistogram, TelemetryCategory, TelemetryExportResult, TelemetryMetric,
-    TelemetryMode, TelemetryPolicy, TelemetrySnapshot,
+    DurationHistogram,
+    TelemetryCategory,
+    TelemetryExportResult,
+    TelemetryMetric,
+    TelemetryMode,
+    TelemetryPolicy,
+    TelemetrySnapshot,
 )
-from ai_governance.services.provider_installation_service import EnvironmentSecretReferenceResolver
+from ai_governance.services.provider_installation_service import (
+    EnvironmentSecretReferenceResolver,
+)
 from ai_governance.settings_control.operational import duration_seconds
 from ai_governance.settings_control.service import ConfigurationService
 from ai_governance.spi.telemetry import TelemetryExporter
-from ai_governance.telemetry.exporters import NoneTelemetryExporter, PostHogTelemetryExporter
+from ai_governance.telemetry.exporters import (
+    NoneTelemetryExporter,
+    PostHogTelemetryExporter,
+)
 from ai_governance.telemetry.privacy import TelemetryPrivacyGuard
 from ai_governance.telemetry.repository import TelemetryStateRepository
 from ai_governance.version import __version__
@@ -92,7 +102,7 @@ class TelemetryService:
                 product_analytics_enabled=bool(self._configuration.get("telemetry.product_analytics.enabled")),
                 performance_research_enabled=bool(self._configuration.get("telemetry.performance_research.enabled")),
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 - telemetry configuration is optional.
             return TelemetryPolicy(mode=TelemetryMode.DISABLED, essential_enabled=False)
 
     def record(self, metric: TelemetryMetric, *, duration_ms: int | None = None) -> None:
@@ -109,7 +119,7 @@ class TelemetryService:
                     if name:
                         self._state.distributions[name] = self._state.distributions.get(name, DurationHistogram()).observe(duration_ms)
                 self._persist_locked()
-        except Exception:
+        except Exception:  # noqa: BLE001 - telemetry must not interrupt governed work.
             _LOGGER.warning("telemetry_recording_unavailable", extra={"metric": metric.value})
 
     def preview(self) -> list[dict[str, object]]:
@@ -159,7 +169,7 @@ class TelemetryService:
                 self._state.pending = retained
                 self.metrics.pending_snapshots = len(retained)
                 self._persist_locked()
-        except Exception:
+        except Exception:  # noqa: BLE001 - telemetry delivery is best effort.
             _LOGGER.warning("telemetry_delivery_unavailable")
 
     def _rollover_if_due_locked(self) -> None:
@@ -208,7 +218,7 @@ class TelemetryService:
         started = monotonic()
         try:
             result = exporter.export(snapshot)
-        except Exception:
+        except Exception:  # noqa: BLE001 - third-party exporters must not affect governance workflows.
             result = TelemetryExportResult(delivered=False, retryable=True, error_code="EXPORTER_EXCEPTION")
         self.metrics.exports_total += 1
         self.metrics.export_duration_seconds += monotonic() - started
@@ -229,7 +239,7 @@ class TelemetryService:
             value, self._state_version = self._state_repository.load()
             if value:
                 return self._decode_state(value)
-        except Exception:
+        except Exception:  # noqa: BLE001 - a corrupt or unavailable telemetry store is reset safely.
             _LOGGER.warning("telemetry_state_unavailable")
         state = _State(str(uuid4()), __version__, self._clock(), {TelemetryMetric.INSTALLATION_STARTED: 1})
         self._persist_initial(state)
@@ -242,9 +252,9 @@ class TelemetryService:
     def _persist_locked(self) -> None:
         try:
             self._state_version = self._state_repository.save(self._encode_state(), self._state_version)
-        except Exception:
+        except Exception:  # noqa: BLE001 - aggregation remains best effort.
             # Aggregation remains best-effort and must not impact business workflows.
-            pass
+            return
 
     def _encode_state(self) -> dict[str, object]:
         return {
@@ -299,13 +309,13 @@ class TelemetryService:
             reference = str(self._configuration.get("telemetry.exporter.posthog_api_key_ref"))
             api_key = EnvironmentSecretReferenceResolver().resolve(reference)
             return PostHogTelemetryExporter(api_key, str(self._configuration.get("telemetry.exporter.posthog_endpoint")))
-        except Exception:
+        except Exception:  # noqa: BLE001 - missing exporter credentials disable optional telemetry.
             return NoneTelemetryExporter()
 
     def _exporter_type(self) -> str:
         try:
             return str(self._configuration.get("telemetry.exporter.type"))
-        except Exception:
+        except Exception:  # noqa: BLE001 - telemetry is disabled when its configuration is unavailable.
             return "none"
 
     @staticmethod

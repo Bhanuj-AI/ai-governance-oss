@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, fields, is_dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, ClassVar
 
 from ai_governance.domain.experiments import Leaderboard
 from ai_governance.services.experiments import RankingService
@@ -31,7 +31,7 @@ class LeaderboardAPI:
     underlying services and later transport integrations.
     """
 
-    _ROUTES = [
+    _ROUTES: ClassVar = [
         LeaderboardRoute(
             method="GET",
             path="/experiments/{experiment}/leaderboard",

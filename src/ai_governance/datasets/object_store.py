@@ -11,8 +11,7 @@ import os
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path, PureWindowsPath
-from typing import BinaryIO
-from typing import Any, Protocol
+from typing import Any, BinaryIO, Protocol
 
 from botocore.config import Config
 from botocore.exceptions import ClientError
@@ -170,7 +169,7 @@ class FilesystemDatasetObjectStore:
         return self._root
 
     @classmethod
-    def from_environment(cls) -> "FilesystemDatasetObjectStore":
+    def from_environment(cls) -> FilesystemDatasetObjectStore:
         configured_root = _optional_environment("AI_GOVERNANCE_DATASET_FILESYSTEM_ROOT")
         return cls(Path(configured_root or ".ai-governance/datasets"))
 

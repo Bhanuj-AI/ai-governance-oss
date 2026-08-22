@@ -9,8 +9,8 @@ from ai_governance.domain.history import (
     EvaluationHistoryMetric,
     EvaluationHistoryRecord,
     EvaluationMetricComparison,
-    EvaluationSummary,
     EvaluationMetricTrend,
+    EvaluationSummary,
 )
 from ai_governance.governance import DriftAnalyzer, EvaluationDrift
 from ai_governance.repositories.evaluation_repository import EvaluationRepository

@@ -6,20 +6,21 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 
-from ai_governance.api.dependencies.provider_installations import get_provider_installation_service
+from ai_governance.api.dependencies.provider_installations import (
+    get_provider_installation_service,
+)
 from ai_governance.api.dependencies.tenancy import get_compatible_tenant_context
 from ai_governance.api.models import (
     ErrorResponse,
     ProviderInstallationCreateRequest,
     ProviderInstallationResponse,
-    ProviderInstallationValidationResponse,
     ProviderInstallationUpdateRequest,
+    ProviderInstallationValidationResponse,
 )
 from ai_governance.services.provider_installation_service import (
     ProviderInstallationNotFoundError,
     ProviderInstallationTypeUnavailableError,
 )
-
 
 router = APIRouter(prefix="/api/v1/provider-installations", tags=["Provider Installations"])
 

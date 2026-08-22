@@ -13,7 +13,7 @@ import sys
 import webbrowser
 from collections.abc import Mapping
 from datetime import datetime
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, ClassVar, Protocol
 
 from rich.console import Console
 from rich.panel import Panel
@@ -29,8 +29,11 @@ from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
 if TYPE_CHECKING:
-    from ai_governance.cli.walkthrough import WalkthroughLifecycleEvent, WalkthroughManifest
-    from ai_governance.cli.walkthrough import WalkthroughClient
+    from ai_governance.cli.walkthrough import (
+        WalkthroughClient,
+        WalkthroughLifecycleEvent,
+        WalkthroughManifest,
+    )
 
 
 class WalkthroughRenderer(Protocol):
@@ -66,7 +69,7 @@ class JsonRenderer:
 class RichRenderer:
     """An opt-in retro-platform quest presentation using Rich primitives."""
 
-    _STATUS = {
+    _STATUS: ClassVar = {
         "COMPLETED": "✅",
         "SKIPPED": "⏭",
         "PENDING": "⏳",
@@ -182,7 +185,6 @@ class RichRenderer:
             self.console.print("Replay prepared but not submitted.")
         self._render_scorecard(manifest)
         self._render_achievement(manifest)
-        return None
 
     def _render_hud(self, event: WalkthroughLifecycleEvent) -> None:
         """Render an original, roomy platform-quest status display."""

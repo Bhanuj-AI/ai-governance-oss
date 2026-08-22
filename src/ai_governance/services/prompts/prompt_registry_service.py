@@ -8,12 +8,12 @@ from hashlib import sha256
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from ai_governance.domain.assets import AssetProvenance
-from ai_governance.events import EventPublisher, ResourceLifecycleEvent
 from ai_governance.domain.prompts import (
     Prompt,
     PromptDiff,
     PromptStatus,
 )
+from ai_governance.events import EventPublisher, ResourceLifecycleEvent
 from ai_governance.ontology.synchronization import (
     OntologySyncEventPublisherProtocol,
 )

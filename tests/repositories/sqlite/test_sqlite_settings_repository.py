@@ -1,10 +1,11 @@
-from pathlib import Path
 import sqlite3
+from pathlib import Path
+
+import pytest
 
 from ai_governance.databases.sqlite.database import SQLiteDatabase
-from ai_governance.settings_control.repository import SQLiteSettingsRepository
 from ai_governance.settings_control.domain import SettingScope, SettingVersionConflict
-import pytest
+from ai_governance.settings_control.repository import SQLiteSettingsRepository
 
 
 def test_sqlite_settings_repository_versions_and_audits_updates(tmp_path: Path) -> None:

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 from ai_governance.databases.sqlite.database import SQLiteDatabase
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Self
 
 import pytest
 
@@ -135,7 +135,7 @@ class FakePostgresCursor:
     ) -> None:
         self._connection = connection
 
-    def __enter__(self) -> FakePostgresCursor:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(
@@ -168,7 +168,7 @@ class FakePostgresConnection:
         self.commits = 0
         self.rollbacks = 0
 
-    def __enter__(self) -> FakePostgresConnection:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(
@@ -229,7 +229,7 @@ class FakeSnowflakeCursor:
         self._connection = connection
         self._current_rows: list[dict[str, Any]] = []
 
-    def __enter__(self) -> FakeSnowflakeCursor:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(
@@ -272,7 +272,7 @@ class FakeSnowflakeConnection:
         self.commits = 0
         self.rollbacks = 0
 
-    def __enter__(self) -> FakeSnowflakeConnection:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(

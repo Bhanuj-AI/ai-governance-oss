@@ -21,7 +21,6 @@ from ai_governance.tenancy.authentication import (
 from ai_governance.tenancy.context_factory import TenantContextFactory
 from ai_governance.tenancy.domain import ActorType, AuthenticatedPrincipal
 
-
 # ---------------------------------------------------------------------------
 # Helpers — build a fake JWT (signature is intentionally invalid; we mock
 # the RSA verification path so any signature byte sequence works).
@@ -97,7 +96,7 @@ def _make_jwt_no_exp(
 
 def _make_jwt_no_sub(
     iss: str = "http://localhost:8080/realms/ai-governance",
-    exp: int = None,
+    exp: int | None = None,
     azp: str = "ai-governance-service",
     principal_type: str = "USER",
     organization_id: str | None = None,

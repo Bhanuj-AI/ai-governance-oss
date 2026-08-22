@@ -5,7 +5,10 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, status
 
-from ai_governance.api.dependencies import get_replay_application_service, get_replay_audit_service
+from ai_governance.api.dependencies import (
+    get_replay_application_service,
+    get_replay_audit_service,
+)
 from ai_governance.api.dependencies.tenancy import get_compatible_tenant_context
 from ai_governance.api.mappers.replay_mapper import ReplayApiMapper
 from ai_governance.api.models import (
@@ -17,12 +20,11 @@ from ai_governance.api.models import (
     ReplayMutationDryRunResponse,
     ReplayMutationRequest,
     ReplayResponse,
-    ReplaySubmitResponse,
     ReplayResultResponse,
+    ReplaySubmitResponse,
 )
 from ai_governance.domain.replay import ReplayStatus
 from ai_governance.services.replay_application_service import ReplayListFilters
-
 
 router = APIRouter(prefix="/api/v1/replays", tags=["Replays"])
 

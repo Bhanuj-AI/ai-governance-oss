@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any
 
 from ai_governance.settings_control.domain import SettingContext
 from ai_governance.tenancy.domain import TenantContext
-
 
 _DURATION_FACTORS = {
     "ms": 0.001,

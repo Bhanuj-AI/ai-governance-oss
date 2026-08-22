@@ -131,7 +131,7 @@ def test_reject_naive_provenance_timestamp() -> None:
         DecisionProvenance(
             producer_type=DecisionProducerType.SYSTEM,
             producer_id="system",
-            created_at=datetime(2026, 7, 2),
+            created_at=datetime(2026, 7, 2),  # noqa: DTZ001 - this test requires a naive timestamp.
         )
 
 

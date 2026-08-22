@@ -10,8 +10,8 @@ makes worker redelivery safe and prevents completed work from being repeated.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Callable
 from uuid import uuid4
 
 from ai_governance.domain.jobs import Job, JobResult, JobStatus
@@ -20,7 +20,9 @@ from ai_governance.domain.replay.errors import ReplayBaselineUnavailable
 from ai_governance.repositories.replay_repository import ReplayRepository
 from ai_governance.repositories.replay_result_repository import ReplayResultRepository
 from ai_governance.services.evaluation_api_service import EvaluationApiService
-from ai_governance.services.provider_installation_service import ProviderInstallationService
+from ai_governance.services.provider_installation_service import (
+    ProviderInstallationService,
+)
 from ai_governance.services.replay_application_service import ReplaySourceResolver
 from ai_governance.services.replay_governance import (
     ReplayBaselineResolver,
@@ -227,7 +229,7 @@ class ReplayEvaluationJobHandler:
                 threshold_policy = dict(
                     job.input_refs.get("drift_threshold_policy", {})
                 )
-                drift, drift_summary = self._drift.analyze(
+                _drift, drift_summary = self._drift.analyze(
                     resolution.evaluation, replay_evaluation, threshold_policy
                 )
                 drift_id = f"replay-drift:{replay.replay_id}"
@@ -267,7 +269,7 @@ class ReplayEvaluationJobHandler:
                 f"replay_result:{result.result_id}",
                 None,
             )
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - job failures must be finalized as failed results.
             return self._fail(replay, job, error)
 
     def _cancel(self, replay, job: Job) -> JobResult:

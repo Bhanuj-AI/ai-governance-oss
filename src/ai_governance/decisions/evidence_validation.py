@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from ai_governance.decisions.exceptions import DecisionValidationError
 
-
 MISSING_EVIDENCE_SEVERITIES = frozenset({"INFO", "WARNING", "CRITICAL"})
 
 

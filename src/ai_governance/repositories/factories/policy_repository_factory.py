@@ -1,13 +1,14 @@
 import logging
-from ai_governance.settings import Settings
+
 from ai_governance.repositories.in_memory_policy_administration_repository import (
     InMemoryPolicyAdministrationRepository,
 )
 from ai_governance.repositories.policy_administration_repository import (
     PolicyAdministrationRepository,
 )
-from ai_governance.repositories.sqlite import SQLitePolicyAdministrationRepository
 from ai_governance.repositories.postgres import PostgresPolicyAdministrationRepository
+from ai_governance.repositories.sqlite import SQLitePolicyAdministrationRepository
+from ai_governance.settings import Settings
 
 logger = logging.getLogger(__name__)
 

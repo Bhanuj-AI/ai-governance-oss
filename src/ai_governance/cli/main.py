@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import argparse
 import os
-from pathlib import Path
 from importlib.metadata import PackageNotFoundError, version
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -14,8 +14,8 @@ from ai_governance.cli.walkthrough import (
     WalkthroughError,
     cleanup_walkthrough_manifests,
     format_cleanup,
-    run_evaluation_pipeline,
     run_decision_detective,
+    run_evaluation_pipeline,
     run_experiment_arena,
     run_governed_replay,
     run_policy_gate,
@@ -28,7 +28,10 @@ from ai_governance.cli.walkthrough_renderers import (
 )
 from ai_governance.mcp.authentication import StaticBearerAuthenticationContext
 from ai_governance.mcp.clients import RestClient, RestClientError
-from ai_governance.oauth import OAuthClientCredentialsError, access_token_from_environment
+from ai_governance.oauth import (
+    OAuthClientCredentialsError,
+    access_token_from_environment,
+)
 
 
 def main() -> None:

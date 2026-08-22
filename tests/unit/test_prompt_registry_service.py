@@ -2,8 +2,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from ai_governance.domain.prompts import PromptStatus
 from ai_governance.domain.assets import AssetProvenance
+from ai_governance.domain.prompts import PromptStatus
 from ai_governance.repositories.in_memory_prompt_repository import (
     InMemoryPromptRepository,
 )
@@ -13,7 +13,6 @@ from ai_governance.services.prompts import (
     PromptVersionConflictError,
 )
 from ai_governance.tenancy.domain import TenantContext
-
 
 _CONTEXT = TenantContext("org_default", "project_default", "governance-admin", "test-request")
 

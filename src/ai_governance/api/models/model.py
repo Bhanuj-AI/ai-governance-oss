@@ -30,7 +30,7 @@ class ModelRuntimeCapabilitiesResponse(BaseModel):
     @classmethod
     def from_domain(
         cls, capabilities: ModelRuntimeCapabilitySnapshot
-    ) -> "ModelRuntimeCapabilitiesResponse":
+    ) -> ModelRuntimeCapabilitiesResponse:
         return cls(
             profile_id=capabilities.profile_id,
             profile_version=capabilities.profile_version,

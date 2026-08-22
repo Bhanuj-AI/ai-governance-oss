@@ -5,7 +5,9 @@ from datetime import UTC, datetime
 from fastapi.testclient import TestClient
 
 from ai_governance.api.app import create_app
-from ai_governance.api.dependencies.runtime_connections import get_runtime_connection_service
+from ai_governance.api.dependencies.runtime_connections import (
+    get_runtime_connection_service,
+)
 from ai_governance.repositories.settings_runtime_connection_repository import (
     SettingsRuntimeConnectionRepository,
 )

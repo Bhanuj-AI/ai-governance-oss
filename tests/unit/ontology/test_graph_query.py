@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import UTC, datetime
-from typing import Any, Mapping
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -15,8 +16,8 @@ from ai_governance.api.dependencies import (
     get_ontology_graph_repository,
     get_policy_administration_repository,
 )
-from ai_governance.mcp.audit import MCPExecutionAuditLog
 from ai_governance.domain.prompts import PromptStatus
+from ai_governance.mcp.audit import MCPExecutionAuditLog
 from ai_governance.mcp.clients import RestClient
 from ai_governance.mcp.server import create_server
 from ai_governance.ontology import (
@@ -29,8 +30,10 @@ from ai_governance.ontology import (
     RelationshipType,
 )
 from ai_governance.ontology.neo4j_repository import _node_depths_from_paths
-from ai_governance.repositories.in_memory import InMemoryGovernanceDecisionRepository
-from ai_governance.repositories.in_memory import InMemoryJobRepository
+from ai_governance.repositories.in_memory import (
+    InMemoryGovernanceDecisionRepository,
+    InMemoryJobRepository,
+)
 from ai_governance.repositories.in_memory_policy_administration_repository import (
     InMemoryPolicyAdministrationRepository,
 )

@@ -38,4 +38,4 @@ class SettingsTelemetryStateRepository:
         return saved.version
 
 
-__all__ = ["SettingsTelemetryStateRepository", "TelemetryStateRepository", "SettingVersionConflict"]
+__all__ = ["SettingVersionConflict", "SettingsTelemetryStateRepository", "TelemetryStateRepository"]

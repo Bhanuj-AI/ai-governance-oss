@@ -34,12 +34,10 @@ import time
 import urllib.request
 
 from ai_governance.tenancy.authentication import (
-    AuthenticationError,
     AuthenticationService,
 )
 from ai_governance.tenancy.context_factory import TenantContextFactory
 from ai_governance.tenancy.domain import AuthenticatedPrincipal
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -117,7 +115,9 @@ def test_development_mode() -> None:
         import ai_governance.api.dependencies.authentication as auth_mod
         auth_mod.get_authentication_service.cache_clear()
 
-        from ai_governance.api.dependencies.authentication import get_authenticated_principal
+        from ai_governance.api.dependencies.authentication import (
+            get_authenticated_principal,
+        )
 
         class FakeRequest:
             pass
@@ -218,7 +218,9 @@ def test_keycloak_fastapi_dependency() -> None:
     import ai_governance.api.dependencies.authentication as auth_mod
     auth_mod.get_authentication_service.cache_clear()
 
-    from ai_governance.api.dependencies.authentication import get_authenticated_principal
+    from ai_governance.api.dependencies.authentication import (
+        get_authenticated_principal,
+    )
 
     token_data = _get_keycloak_token()
     access_token = token_data["access_token"]
@@ -249,7 +251,10 @@ def test_missing_authorization_header() -> None:
     auth_mod.get_authentication_service.cache_clear()
 
     from fastapi import HTTPException
-    from ai_governance.api.dependencies.authentication import get_authenticated_principal
+
+    from ai_governance.api.dependencies.authentication import (
+        get_authenticated_principal,
+    )
 
     class FakeRequest:
         pass
@@ -278,7 +283,10 @@ def test_invalid_bearer_scheme() -> None:
     auth_mod.get_authentication_service.cache_clear()
 
     from fastapi import HTTPException
-    from ai_governance.api.dependencies.authentication import get_authenticated_principal
+
+    from ai_governance.api.dependencies.authentication import (
+        get_authenticated_principal,
+    )
 
     class FakeRequest:
         pass
@@ -309,7 +317,10 @@ def test_expired_token() -> None:
     auth_mod.get_authentication_service.cache_clear()
 
     from fastapi import HTTPException
-    from ai_governance.api.dependencies.authentication import get_authenticated_principal
+
+    from ai_governance.api.dependencies.authentication import (
+        get_authenticated_principal,
+    )
 
     class FakeRequest:
         pass
@@ -342,7 +353,10 @@ def test_invalid_issuer() -> None:
     auth_mod.get_authentication_service.cache_clear()
 
     from fastapi import HTTPException
-    from ai_governance.api.dependencies.authentication import get_authenticated_principal
+
+    from ai_governance.api.dependencies.authentication import (
+        get_authenticated_principal,
+    )
 
     class FakeRequest:
         pass
@@ -375,7 +389,10 @@ def test_malformed_token() -> None:
     auth_mod.get_authentication_service.cache_clear()
 
     from fastapi import HTTPException
-    from ai_governance.api.dependencies.authentication import get_authenticated_principal
+
+    from ai_governance.api.dependencies.authentication import (
+        get_authenticated_principal,
+    )
 
     class FakeRequest:
         pass
@@ -406,7 +423,10 @@ def test_unsupported_algorithm() -> None:
     auth_mod.get_authentication_service.cache_clear()
 
     from fastapi import HTTPException
-    from ai_governance.api.dependencies.authentication import get_authenticated_principal
+
+    from ai_governance.api.dependencies.authentication import (
+        get_authenticated_principal,
+    )
 
     class FakeRequest:
         pass
@@ -461,7 +481,7 @@ def main() -> None:
         except AssertionError as exc:
             print(f"  FAILED: {exc}")
             failed += 1
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - smoke tests report every unexpected failure.
             print(f"  ERROR: {type(exc).__name__}: {exc}")
             failed += 1
 

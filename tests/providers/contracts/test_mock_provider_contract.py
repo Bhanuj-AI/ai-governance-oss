@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from ai_governance.providers.mock_provider import MockEvaluationProvider
 from ai_governance.providers.evaluation_provider import EvaluationProvider
+from ai_governance.providers.mock_provider import MockEvaluationProvider
 from tests.providers.contracts.provider_contract import ProviderContract
 
 

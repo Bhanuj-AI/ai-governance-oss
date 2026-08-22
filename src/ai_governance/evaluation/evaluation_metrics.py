@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any
-from collections.abc import Mapping
 
 ANSWER_RELEVANCE = "answer_relevance"
 CONTEXT_RELEVANCE = "context_relevance"

@@ -3,12 +3,12 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import replace
 
-from ai_governance.domain.workflow_execution import WorkflowExecution
 from ai_governance.domain.evaluation_result import EvaluationResult
+from ai_governance.domain.workflow_execution import WorkflowExecution
 from ai_governance.evaluation.evaluation_metrics import EvaluationMetricSpec
 from ai_governance.evaluation.evaluation_request import EvaluationRequest
-from ai_governance.providers.evaluation_provider import EvaluationProvider
 from ai_governance.providers.errors import ProviderContractError
+from ai_governance.providers.evaluation_provider import EvaluationProvider
 from ai_governance.providers.provider_metadata import ProviderDescriptorSnapshot
 from ai_governance.providers.provider_registry import EvaluationProviderRegistry
 from ai_governance.services.dataset_builder import EvaluationDatasetBuilder

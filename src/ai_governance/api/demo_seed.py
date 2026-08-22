@@ -5,34 +5,38 @@ import logging
 import os
 from collections.abc import Callable
 from dataclasses import replace
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import FastAPI  # type: ignore
 
 from ai_governance.api.dependencies import (
+    get_dataset_repository,
+    get_evaluation_repository,
+    get_evaluation_run_repository,
+    get_experiment_candidate_repository,
+    get_experiment_repository,
     get_governance_decision_repository,
     get_job_repository,
+    get_leaderboard_repository,
     get_mcp_audit_log,
+    get_model_repository,
     get_ontology_graph_query_repository,
     get_ontology_graph_query_service,
     get_ontology_graph_repository,
     get_policy_administration_repository,
-    get_experiment_repository,
-    get_experiment_candidate_repository,
-    get_evaluation_run_repository,
-    get_evaluation_repository,
-    get_leaderboard_repository,
     get_prompt_repository,
-    get_model_repository,
-    get_dataset_repository,
+    get_provider_registry,
+    get_replay_execution_catalog,
     get_replay_repository,
     get_replay_result_repository,
-    get_replay_execution_catalog,
     get_replay_source_resolver,
-    get_provider_registry,
+)
+from ai_governance.datasets import (
+    dataset_object_store_from_environment,
+    dataset_object_uri,
 )
 from ai_governance.domain.datasets import Dataset, DatasetStatus
-from ai_governance.datasets import dataset_object_store_from_environment, dataset_object_uri
 from ai_governance.domain.evaluation_result import EvaluationMetric, EvaluationResult
 from ai_governance.domain.experiments import (
     EvaluationRun,
@@ -43,6 +47,7 @@ from ai_governance.domain.experiments import (
     Leaderboard,
     LeaderboardEntry,
 )
+from ai_governance.domain.jobs import JobExecutionContext, JobSubmission, JobType
 from ai_governance.domain.models import Model, ModelStatus
 from ai_governance.domain.prompts import Prompt, PromptStatus
 from ai_governance.domain.replay import (
@@ -57,13 +62,20 @@ from ai_governance.domain.replay import (
     ReplayResult,
 )
 from ai_governance.domain.workflow_execution import WorkflowExecution
-from ai_governance.domain.jobs import JobExecutionContext, JobSubmission, JobType
-from datetime import UTC, datetime, timedelta
 from ai_governance.ontology import (
     EntityType,
     OntologyGraphQueryService,
     OntologyService,
     RelationshipType,
+)
+from ai_governance.ontology.demo_seed import (
+    demo_governance_decision_service,
+    seed_demo_jobs,
+    seed_demo_mcp_audit_log,
+    seed_demo_ontology_graph,
+    seed_demo_ontology_graph_decision,
+    seed_demo_policy_administration,
+    seed_demo_workers,
 )
 from ai_governance.ontology.synchronization import (
     EvaluationResultOntologySynchronizer,
@@ -71,17 +83,8 @@ from ai_governance.ontology.synchronization import (
     WorkflowExecutionOntologySynchronizer,
 )
 from ai_governance.ontology.synchronization.synchronizer import sync_relationship
-from ai_governance.tenancy.domain import TenantContext
 from ai_governance.services.job_submission_service import JobSubmissionService
-from ai_governance.ontology.demo_seed import (
-    demo_governance_decision_service,
-    seed_demo_jobs,
-    seed_demo_workers,
-    seed_demo_mcp_audit_log,
-    seed_demo_policy_administration,
-    seed_demo_ontology_graph,
-    seed_demo_ontology_graph_decision,
-)
+from ai_governance.tenancy.domain import TenantContext
 
 LOGGER = logging.getLogger("ai_governance.api")
 
@@ -278,7 +281,9 @@ def seed_demo_replay_source_executions(
             organization_id=organization_id,
             project_id=project_id,
         )
-        from ai_governance.services.replay_execution_discovery import projection_from_execution
+        from ai_governance.services.replay_execution_discovery import (
+            projection_from_execution,
+        )
 
         catalog.upsert(
             projection_from_execution(
@@ -757,7 +762,7 @@ def seed_demo_experiments(
         ExperimentStatus.FAILED,
     )
     now = datetime.now(UTC)
-    created_ids = list(experiment.experiment_id for experiment in existing)
+    created_ids = [experiment.experiment_id for experiment in existing]
     needed = minimum_count - len(existing)
     for index in range(needed):
         experiment_id = f"demo-experiment-{index + 1:02d}"

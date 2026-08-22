@@ -46,7 +46,7 @@ class RuntimeParameterCapability:
         }
 
     @classmethod
-    def from_record(cls, value: dict[str, Any]) -> "RuntimeParameterCapability":
+    def from_record(cls, value: dict[str, Any]) -> RuntimeParameterCapability:
         return cls(
             name=str(value["name"]),
             supported=bool(value["supported"]),
@@ -89,7 +89,7 @@ class ModelRuntimeCapabilitySnapshot:
         }
 
     @classmethod
-    def from_record(cls, value: dict[str, Any]) -> "ModelRuntimeCapabilitySnapshot":
+    def from_record(cls, value: dict[str, Any]) -> ModelRuntimeCapabilitySnapshot:
         return cls(
             profile_id=str(value["profile_id"]),
             profile_version=str(value["profile_version"]),

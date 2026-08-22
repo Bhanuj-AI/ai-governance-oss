@@ -7,7 +7,6 @@ from collections.abc import Callable, Mapping
 from contextlib import AbstractContextManager
 from typing import TYPE_CHECKING, Any, cast
 
-from ai_governance.transactions import TransactionContext
 from ai_governance.authorization.contracts import (
     AuthorizationEnforcementRequest,
     AuthorizationEnforcer,
@@ -15,6 +14,7 @@ from ai_governance.authorization.contracts import (
 )
 from ai_governance.tenancy.domain import TenantContext
 from ai_governance.tenancy.errors import AuthorizationDenied
+from ai_governance.transactions import TransactionContext
 
 from .domain import (
     ResolvedSetting,

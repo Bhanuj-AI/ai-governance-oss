@@ -10,7 +10,10 @@ from ai_governance.domain.replay.errors import ReplayConflict, ReplayIdempotency
 from ai_governance.repositories.mappers.replay_persistence_mapper import (
     ReplayPersistenceMapper,
 )
-from ai_governance.repositories.replay_repository import ReplayListFilters, ReplayRepository
+from ai_governance.repositories.replay_repository import (
+    ReplayListFilters,
+    ReplayRepository,
+)
 
 
 @final

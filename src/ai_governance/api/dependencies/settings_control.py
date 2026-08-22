@@ -5,6 +5,8 @@ from functools import lru_cache
 
 from fastapi import Depends, Request
 
+from ai_governance.api.dependencies.events import get_event_publisher
+from ai_governance.events import EventPublisher
 from ai_governance.repositories.factories.sqlite_database import create_sqlite_database
 from ai_governance.settings_control import (
     ConfigurationService,
@@ -12,8 +14,6 @@ from ai_governance.settings_control import (
     PostgresSettingsRepository,
     SQLiteSettingsRepository,
 )
-from ai_governance.api.dependencies.events import get_event_publisher
-from ai_governance.events import EventPublisher
 
 
 @lru_cache(maxsize=1)

@@ -1,10 +1,13 @@
 from __future__ import annotations
+
 from typing import final
 
 from ai_governance.databases.sqlite.database import SQLiteDatabase
 from ai_governance.domain.evaluation_result import EvaluationResult
-from ai_governance.repositories.evaluation_repository import EvaluationRepository
-from ai_governance.repositories.evaluation_repository import EvaluationResultPage
+from ai_governance.repositories.evaluation_repository import (
+    EvaluationRepository,
+    EvaluationResultPage,
+)
 from ai_governance.repositories.mappers.evaluation_persistence_mapper import (
     EvaluationPersistenceMapper,
 )

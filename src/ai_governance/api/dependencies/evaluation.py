@@ -8,10 +8,12 @@ from typing import Any
 
 from fastapi import Depends
 
-from ai_governance.api.dependencies.providers import get_provider_registry
-from ai_governance.api.dependencies.provider_installations import get_provider_installation_service
-from ai_governance.api.dependencies.repositories import get_evaluation_repository
 from ai_governance.api.dependencies.ontology import get_ontology_sync_event_publisher
+from ai_governance.api.dependencies.provider_installations import (
+    get_provider_installation_service,
+)
+from ai_governance.api.dependencies.providers import get_provider_registry
+from ai_governance.api.dependencies.repositories import get_evaluation_repository
 from ai_governance.api.dependencies.settings_control import get_configuration_service
 from ai_governance.api.dependencies.telemetry import get_telemetry_service
 

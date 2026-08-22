@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Mapping
+from typing import Any
 
-from ai_governance.providers.provider_descriptor import normalize_provider_name, scrub_sensitive_metadata
-
+from ai_governance.providers.provider_descriptor import (
+    normalize_provider_name,
+    scrub_sensitive_metadata,
+)
 
 _SUPPORTED_SECRET_REFERENCE_SCHEMES = (
     "env://",

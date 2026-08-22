@@ -11,9 +11,13 @@ from ai_governance.domain.models import (
 )
 from ai_governance.settings_control.domain import (
     SettingCategory as Category,
+)
+from ai_governance.settings_control.domain import (
     SettingDefinition,
     SettingScope,
     SettingValidationError,
+)
+from ai_governance.settings_control.domain import (
     SettingValueType as ValueType,
 )
 

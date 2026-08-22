@@ -60,7 +60,7 @@ class ModelCatalogDiscoveryService:
             )
             response = client.models.list()
             values = getattr(response, "data", response)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - provider SDK failures are normalized for callers.
             _raise_discovery_error(provider, exc)
         return _discovered_model_identifiers(values)
 
@@ -77,7 +77,7 @@ class ModelCatalogDiscoveryService:
             )
             response = client.models.list(limit=1000)
             values = getattr(response, "data", response)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - provider SDK failures are normalized for callers.
             _raise_discovery_error(provider, exc)
         return _discovered_model_identifiers(values)
 

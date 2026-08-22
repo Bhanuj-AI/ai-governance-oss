@@ -21,7 +21,11 @@ from .domain import (
 from .errors import (
     AuthorizationDenied,
     LastOrganizationAdministrator,
+    MembershipNotFound,
     OrganizationInactive,
+    OrganizationNotFound,
+    RoleAssignmentConflict,
+    RoleAssignmentNotFound,
 )
 from .permissions import Permission
 from .repository import InMemoryControlPlaneRepository
@@ -65,7 +69,7 @@ def provision_walkthrough_service_account(
         legacy_assignment_id = f"role_walkthrough_{actor_id.replace('-', '')}"
         try:
             legacy_assignment = repository.get_assignment(organization_id, legacy_assignment_id)
-        except Exception:
+        except RoleAssignmentNotFound:
             return
         if legacy_assignment.role is BuiltInRole.PLATFORM_OPERATOR:
             repository.delete_assignment(organization_id, legacy_assignment_id)
@@ -88,7 +92,7 @@ def _provision_service_account(
         membership = repository.get_membership(organization_id, actor_id)
         if membership.status is not MembershipStatus.ACTIVE:
             repository.update_membership(replace(membership, status=MembershipStatus.ACTIVE, updated_at=now))
-    except Exception:
+    except MembershipNotFound:
         repository.create_membership(
             OrganizationMembership(
                 organization_id, actor_id, MembershipStatus.ACTIVE, now, now,
@@ -108,8 +112,8 @@ def _provision_service_account(
                     actor_id, role, now, actor_id,
                 )
             )
-        except Exception:
-            pass
+        except RoleAssignmentConflict:
+            return
 
 
 class ControlPlaneService:
@@ -424,11 +428,13 @@ def bootstrap_control_plane(
         Authentication mode: ``development`` or ``keycloak``. Defaults to
         ``development`` for backward compatibility.
     """
+    organization_missing = False
     try:
         repository.get_organization(organization_id)
+    except OrganizationNotFound:
+        organization_missing = True
+    if not organization_missing:
         return
-    except Exception:
-        pass
 
     if administrator_actor_id is None:
         administrator_actor_id, administrator_name = _resolve_bootstrap_administrator(

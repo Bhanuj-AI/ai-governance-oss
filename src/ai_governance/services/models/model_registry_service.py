@@ -7,7 +7,6 @@ from typing import Any
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from ai_governance.domain.assets import AssetProvenance
-from ai_governance.events import EventPublisher, ResourceLifecycleEvent
 from ai_governance.domain.models import (
     Model,
     ModelDiff,
@@ -17,14 +16,15 @@ from ai_governance.domain.models import (
     RuntimeCapabilityVerification,
     runtime_model_provider_key,
 )
+from ai_governance.events import EventPublisher, ResourceLifecycleEvent
 from ai_governance.ontology.synchronization import (
     OntologySyncEventPublisherProtocol,
 )
 from ai_governance.repositories.model_repository import ModelRepository
-from ai_governance.tenancy.domain import TenantContext
 from ai_governance.services.models.runtime_capability_service import (
     resolve_runtime_capabilities,
 )
+from ai_governance.tenancy.domain import TenantContext
 
 
 class ModelNotFoundError(Exception):

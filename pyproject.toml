@@ -58,3 +58,11 @@ markers = [
     "integration: tests that exercise multiple components or external backends",
     "api: FastAPI REST control-plane tests",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# FastAPI evaluates `Depends` declarations in parameter defaults as part of its
+# dependency-injection contract; they are not mutable application defaults.
+"src/ai_governance/api/**/*.py" = ["B008"]
+# Keep connection acquisition and cursor lifetime visually nested in Snowflake
+# adapters, where transaction ownership is deliberately explicit.
+"src/ai_governance/repositories/snowflake/*.py" = ["SIM117"]

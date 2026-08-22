@@ -2,9 +2,15 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status as http_status
+from fastapi import APIRouter, Depends, Query
+from fastapi import status as http_status
 
-from ai_governance.api.dependencies import get_audit_read_service, get_mcp_invocation_audit_log
+from ai_governance.api.dependencies import (
+    get_audit_read_service,
+    get_mcp_invocation_audit_log,
+)
+from ai_governance.api.dependencies.settings_control import get_configuration_service
+from ai_governance.api.dependencies.tenancy import get_compatible_tenant_context
 from ai_governance.api.mappers.audit_mapper import AuditApiMapper
 from ai_governance.api.models import (
     AuditDetailResponse,
@@ -13,8 +19,6 @@ from ai_governance.api.models import (
     InvocationAuditListItemResponse,
     InvocationAuditPageResponse,
 )
-from ai_governance.api.dependencies.tenancy import get_compatible_tenant_context
-from ai_governance.api.dependencies.settings_control import get_configuration_service
 from ai_governance.settings_control.operational import duration_seconds, setting_context
 
 router = APIRouter(

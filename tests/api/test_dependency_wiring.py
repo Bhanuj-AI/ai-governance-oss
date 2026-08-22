@@ -179,7 +179,9 @@ def test_experiment_api_service_resolves() -> None:
 
 
 def test_governance_decision_application_service_resolves() -> None:
-    from ai_governance.api.dependencies import get_governance_decision_application_service
+    from ai_governance.api.dependencies import (
+        get_governance_decision_application_service,
+    )
 
     service = get_governance_decision_application_service()
     assert service is not None

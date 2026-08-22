@@ -36,10 +36,11 @@ class ExperimentRepositoryFactory:
                         "AI_GOVERNANCE_EXPERIMENT_REPOSITORY=sqlite"
                     )
                 logger.debug("Selected SQLite experiment repository: %s", path)
-                from ai_governance.repositories.sqlite.sqlite_experiment_repository import SQLiteExperimentRepository
-
                 from ai_governance.repositories.factories.sqlite_database import (
                     create_sqlite_database,
+                )
+                from ai_governance.repositories.sqlite.sqlite_experiment_repository import (
+                    SQLiteExperimentRepository,
                 )
 
                 return SQLiteExperimentRepository(create_sqlite_database(path))
@@ -52,7 +53,9 @@ class ExperimentRepositoryFactory:
                         "AI_GOVERNANCE_EXPERIMENT_REPOSITORY=postgres"
                     )
                 from ai_governance.databases.postgres.database import PostgresDatabase
-                from ai_governance.repositories.postgres import PostgresExperimentRepository
+                from ai_governance.repositories.postgres import (
+                    PostgresExperimentRepository,
+                )
 
                 return PostgresExperimentRepository(PostgresDatabase(dsn))
 

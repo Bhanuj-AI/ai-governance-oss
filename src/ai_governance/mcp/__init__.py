@@ -1,10 +1,10 @@
-from ai_governance.mcp.server import AIGovernanceMCPServer, create_server
 from ai_governance.mcp.plugins import (
     MCPToolPlugin,
     MCPToolPluginContext,
     MCPToolPluginError,
     MCPToolPluginMetadata,
 )
+from ai_governance.mcp.server import AIGovernanceMCPServer, create_server
 from ai_governance.mcp.transports.streamable_http import create_mcp_http_app
 
 __all__ = [
@@ -13,6 +13,6 @@ __all__ = [
     "MCPToolPluginContext",
     "MCPToolPluginError",
     "MCPToolPluginMetadata",
-    "create_server",
     "create_mcp_http_app",
+    "create_server",
 ]

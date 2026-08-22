@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from enum import Enum
 
-
 ONTOLOGY_VERSION = "1.1.0"
 
 

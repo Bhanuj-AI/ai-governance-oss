@@ -1,6 +1,10 @@
 from ai_governance.plugins import MiddlewareDefinition, PluginRegistry
 from ai_governance.plugins.contracts import PermissionDefinition
-from ai_governance.settings_control.domain import SettingCategory, SettingDefinition, SettingValueType
+from ai_governance.settings_control.domain import (
+    SettingCategory,
+    SettingDefinition,
+    SettingValueType,
+)
 
 
 class FirstMiddleware:

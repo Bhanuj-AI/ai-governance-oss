@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Literal
 from datetime import datetime
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -114,7 +114,7 @@ class ProviderInstallationResponse(BaseModel):
     version: int
 
     @classmethod
-    def from_domain(cls, item) -> "ProviderInstallationResponse":
+    def from_domain(cls, item) -> ProviderInstallationResponse:
         return cls(
             installation_id=item.installation_id,
             provider_type=item.provider_type,

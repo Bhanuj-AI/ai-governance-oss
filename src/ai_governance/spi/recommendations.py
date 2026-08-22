@@ -12,7 +12,6 @@ from typing import Any, Protocol
 
 from ai_governance.tenancy.domain import TenantContext
 
-
 JsonValue = Any
 
 
@@ -150,7 +149,7 @@ class RecommendationCandidate:
         object.__setattr__(self, "limitations", tuple(self.limitations))
         object.__setattr__(self, "metadata", MappingProxyType(dict(self.metadata)))
 
-    def with_updates(self, **values: JsonValue) -> "RecommendationCandidate":
+    def with_updates(self, **values: JsonValue) -> RecommendationCandidate:
         return replace(self, **values)
 
     def as_dict(self) -> dict[str, JsonValue]:

@@ -8,8 +8,8 @@ from ai_governance.api.dependencies import get_prompt_registry_service
 from ai_governance.api.dependencies.tenancy import get_compatible_tenant_context
 from ai_governance.api.models import (
     ErrorResponse,
-    PromptDetailResponse,
     PromptCreateRequest,
+    PromptDetailResponse,
     PromptObservationRequest,
     PromptResponse,
     PromptVersionCreateRequest,

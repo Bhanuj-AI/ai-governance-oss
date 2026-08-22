@@ -4,14 +4,16 @@ from collections.abc import Callable
 
 from fastapi import Depends, Request
 
+from ai_governance.api.dependencies.repositories import (
+    get_policy_administration_repository,
+)
 from ai_governance.api.dependencies.tenancy import (
     get_compatible_tenant_context,
     get_control_plane_service,
 )
+from ai_governance.services.policies import PolicyAdminNotFoundError
 from ai_governance.tenancy.domain import TenantContext
 from ai_governance.tenancy.permissions import Permission
-from ai_governance.api.dependencies.repositories import get_policy_administration_repository
-from ai_governance.services.policies import PolicyAdminNotFoundError
 
 
 def enforce_permission(permission: Permission | str) -> Callable:

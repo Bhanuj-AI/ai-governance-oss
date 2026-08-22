@@ -7,15 +7,17 @@ from ai_governance.repositories.postgres.postgres_evaluation_repository import (
 from ai_governance.repositories.postgres.postgres_evaluation_run_repository import (
     PostgresEvaluationRunRepository,
 )
-from ai_governance.repositories.postgres.postgres_governance_decision_repository import (
-    PostgresGovernanceDecisionRepository,
-)
-from ai_governance.repositories.postgres.postgres_job_repository import PostgresJobRepository
 from ai_governance.repositories.postgres.postgres_experiment_candidate_repository import (
     PostgresExperimentCandidateRepository,
 )
 from ai_governance.repositories.postgres.postgres_experiment_repository import (
     PostgresExperimentRepository,
+)
+from ai_governance.repositories.postgres.postgres_governance_decision_repository import (
+    PostgresGovernanceDecisionRepository,
+)
+from ai_governance.repositories.postgres.postgres_job_repository import (
+    PostgresJobRepository,
 )
 from ai_governance.repositories.postgres.postgres_leaderboard_repository import (
     PostgresLeaderboardRepository,
@@ -40,10 +42,10 @@ __all__ = [
     "PostgresDatasetRepository",
     "PostgresEvaluationRepository",
     "PostgresEvaluationRunRepository",
-    "PostgresGovernanceDecisionRepository",
-    "PostgresJobRepository",
     "PostgresExperimentCandidateRepository",
     "PostgresExperimentRepository",
+    "PostgresGovernanceDecisionRepository",
+    "PostgresJobRepository",
     "PostgresLeaderboardRepository",
     "PostgresModelRepository",
     "PostgresOntologySyncEventRepository",

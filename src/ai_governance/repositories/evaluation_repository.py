@@ -1,5 +1,4 @@
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 from ai_governance.domain.evaluation_result import EvaluationResult
@@ -43,4 +42,3 @@ class EvaluationRepository(ABC):
         limit: int,
     ) -> EvaluationResultPage:
         """Return ordered evaluation results belonging to one execution family."""
-        pass

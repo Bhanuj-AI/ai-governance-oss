@@ -289,12 +289,12 @@ class ProjectionBuilder:
             seed_entities=seed_entities,
             seed_relationships=seed_relationships,
         )
-        original_service = getattr(synchronizer, "_ontology_service")
+        original_service = synchronizer._ontology_service
         try:
-            setattr(synchronizer, "_ontology_service", recorder)
+            synchronizer._ontology_service = recorder
             result = synchronizer.synchronize(entity)  # type: ignore[attr-defined]
         finally:
-            setattr(synchronizer, "_ontology_service", original_service)
+            synchronizer._ontology_service = original_service
 
         if not result.succeeded:
             raise ValueError(

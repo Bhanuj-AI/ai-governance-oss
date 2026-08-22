@@ -254,6 +254,7 @@ class AuthenticationService:
             signature = _base64url_decode(parts[2])
             signing_input = f"{parts[0]}.{parts[1]}".encode("ascii")
 
+            from cryptography.exceptions import InvalidSignature
             from cryptography.hazmat.primitives import hashes
             from cryptography.hazmat.primitives.asymmetric import padding
 
@@ -264,7 +265,7 @@ class AuthenticationService:
                 padding.PKCS1v15(),
                 hashes.SHA256(),
             )
-        except Exception:
+        except (InvalidSignature, TypeError, ValueError):
             raise AuthenticationError(
                 "JWT signature verification failed",
                 code="invalid_signature",

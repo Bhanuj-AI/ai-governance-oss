@@ -6,30 +6,31 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from ai_governance.api.dependencies.runtime_connections import get_runtime_connection_service
 from ai_governance.api.dependencies.model_catalog_discovery import (
     get_model_catalog_discovery_service,
 )
+from ai_governance.api.dependencies.runtime_connections import (
+    get_runtime_connection_service,
+)
 from ai_governance.api.dependencies.tenancy import get_compatible_tenant_context
 from ai_governance.api.models.runtime_connection import (
+    DiscoveredRuntimeModelResponse,
     RuntimeConnectionCreateRequest,
     RuntimeConnectionProviderResponse,
     RuntimeConnectionResponse,
     RuntimeConnectionUpdateRequest,
     RuntimeConnectionValidationResponse,
-    DiscoveredRuntimeModelResponse,
 )
 from ai_governance.domain.models import runtime_model_provider_display_name
+from ai_governance.services.model_catalog_discovery_service import (
+    ModelCatalogDiscoveryError,
+)
 from ai_governance.services.runtime_connection_service import (
     RuntimeConnectionNotFoundError,
     RuntimeConnectionProviderNotAllowedError,
     RuntimeConnectionProviderUnavailableError,
 )
-from ai_governance.services.model_catalog_discovery_service import (
-    ModelCatalogDiscoveryError,
-)
 from ai_governance.tenancy.domain import TenantContext
-
 
 router = APIRouter(prefix="/api/v1/runtime-connections", tags=["Runtime Connections"])
 

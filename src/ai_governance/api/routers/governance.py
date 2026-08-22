@@ -4,10 +4,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 
-from ai_governance.api.dependencies import get_drift_explanation_service
-from ai_governance.api.dependencies import get_governance_api_service
-from ai_governance.api.mappers import GovernanceApiMapper
-from ai_governance.api.mappers import GovernanceInsightApiMapper
+from ai_governance.api.dependencies import (
+    get_drift_explanation_service,
+    get_governance_api_service,
+)
+from ai_governance.api.mappers import GovernanceApiMapper, GovernanceInsightApiMapper
 from ai_governance.api.models import (
     DriftAnalysisRequest,
     DriftAnalysisResponse,

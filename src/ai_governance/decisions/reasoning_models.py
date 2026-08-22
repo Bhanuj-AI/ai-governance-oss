@@ -19,7 +19,6 @@ from ai_governance.decisions.validation import (
     require_optional_non_empty,
 )
 
-
 DEFAULT_REASONING_PRODUCER_ID = "ai-governance-governance-reasoning-engine"
 
 

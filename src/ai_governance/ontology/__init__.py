@@ -19,11 +19,6 @@ from ai_governance.ontology.models import (
     OntologyEvent,
     OntologyRelationship,
 )
-from ai_governance.ontology.repositories import (
-    InMemoryOntologyGraphRepository,
-    InMemoryOntologyGraphQueryRepository,
-    OntologyGraphRepository,
-)
 from ai_governance.ontology.query import (
     GraphEdge,
     GraphEntity,
@@ -35,6 +30,11 @@ from ai_governance.ontology.query import (
     GraphSubgraph,
     OntologyGraphQueryRepository,
     OntologyGraphQueryService,
+)
+from ai_governance.ontology.repositories import (
+    InMemoryOntologyGraphQueryRepository,
+    InMemoryOntologyGraphRepository,
+    OntologyGraphRepository,
 )
 from ai_governance.ontology.schema import (
     ONTOLOGY_SCHEMA_CYPHER,
@@ -51,6 +51,7 @@ from ai_governance.ontology.validation import (
 __all__ = [
     "ONTOLOGY_SCHEMA_CYPHER",
     "ONTOLOGY_VERSION",
+    "RULES",
     "Cardinality",
     "DuplicateOntologyRelationshipError",
     "EntityType",
@@ -63,8 +64,8 @@ __all__ = [
     "GraphQueryPage",
     "GraphRelationship",
     "GraphSubgraph",
-    "InMemoryOntologyGraphRepository",
     "InMemoryOntologyGraphQueryRepository",
+    "InMemoryOntologyGraphRepository",
     "InvalidOntologyEntityError",
     "InvalidOntologyRelationshipError",
     "MissingNeo4jDriverError",
@@ -72,9 +73,9 @@ __all__ = [
     "OntologyEntityNotFoundError",
     "OntologyError",
     "OntologyEvent",
-    "OntologyGraphRepository",
     "OntologyGraphQueryRepository",
     "OntologyGraphQueryService",
+    "OntologyGraphRepository",
     "OntologyRelationship",
     "OntologyRepositoryError",
     "OntologyService",
@@ -82,6 +83,5 @@ __all__ = [
     "RelationshipRule",
     "RelationshipType",
     "RelationshipValidator",
-    "RULES",
     "initialize_ontology_schema",
 ]

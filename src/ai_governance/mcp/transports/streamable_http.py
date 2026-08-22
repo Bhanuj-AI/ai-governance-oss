@@ -17,8 +17,8 @@ from uuid import uuid4
 from mcp.server import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 from mcp_types import CallToolResult, TextContent
-from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
@@ -32,7 +32,12 @@ from ai_governance.mcp.runtime_context import (
     reset_runtime_context,
     set_runtime_context,
 )
-from ai_governance.mcp.server import AIGovernanceMCPServer, MCPSettings, create_server, get_mcp_settings
+from ai_governance.mcp.server import (
+    AIGovernanceMCPServer,
+    MCPSettings,
+    create_server,
+    get_mcp_settings,
+)
 from ai_governance.tenancy.authentication import AuthenticationError
 from ai_governance.tenancy.domain import AuthenticatedPrincipal
 from ai_governance.version import __version__

@@ -22,7 +22,6 @@ from ai_governance.ontology import (
     RelationshipType,
 )
 
-
 RELEVANT_ENTITY_TYPES = (
     EntityType.EVALUATION_RESULT.value,
     EntityType.EVALUATION_RUN.value,

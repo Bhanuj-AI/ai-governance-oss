@@ -20,7 +20,9 @@ def get_runtime_connection_service(
     configuration_service: ConfigurationService = Depends(get_configuration_service),
 ) -> Any:
     """Build a tenant-scoped runtime connection service."""
-    from ai_governance.services.runtime_connection_service import RuntimeConnectionService
+    from ai_governance.services.runtime_connection_service import (
+        RuntimeConnectionService,
+    )
 
     def allowed_runtime_providers(context: TenantContext) -> tuple[str, ...]:
         value = configuration_service.get(

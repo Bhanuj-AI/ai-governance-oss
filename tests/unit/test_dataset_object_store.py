@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 from io import BytesIO
+
 import boto3
 import pytest
 
 from ai_governance.datasets import (
     FilesystemDatasetObjectStore,
     S3DatasetObjectStore,
-    dataset_object_uri,
     dataset_object_store_from_environment,
+    dataset_object_uri,
 )
 
 

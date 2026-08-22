@@ -35,7 +35,9 @@ class GovernanceDecisionRepositoryFactory:
         match backend:
             case "inmemory":
                 logger.debug("Selected in-memory governance decision repository")
-                from ai_governance.repositories import InMemoryGovernanceDecisionRepository
+                from ai_governance.repositories import (
+                    InMemoryGovernanceDecisionRepository,
+                )
 
                 return InMemoryGovernanceDecisionRepository(
                     ontology_event_publisher=ontology_event_publisher,
@@ -51,11 +53,11 @@ class GovernanceDecisionRepositoryFactory:
                 logger.debug(
                     "Selected SQLite governance decision repository: %s", path
                 )
-                from ai_governance.repositories.sqlite import (
-                    SQLiteGovernanceDecisionRepository,
-                )
                 from ai_governance.repositories.factories.sqlite_database import (
                     create_sqlite_database,
+                )
+                from ai_governance.repositories.sqlite import (
+                    SQLiteGovernanceDecisionRepository,
                 )
 
                 return SQLiteGovernanceDecisionRepository(
@@ -71,7 +73,9 @@ class GovernanceDecisionRepositoryFactory:
                         "AI_GOVERNANCE_GOVERNANCE_DECISION_REPOSITORY=postgres"
                     )
                 from ai_governance.databases.postgres.database import PostgresDatabase
-                from ai_governance.repositories.postgres import PostgresGovernanceDecisionRepository
+                from ai_governance.repositories.postgres import (
+                    PostgresGovernanceDecisionRepository,
+                )
 
                 return PostgresGovernanceDecisionRepository(
                     PostgresDatabase(dsn),

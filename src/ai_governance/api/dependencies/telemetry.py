@@ -4,8 +4,15 @@ from __future__ import annotations
 
 from fastapi import Request
 
-from ai_governance.api.dependencies.settings_control import get_configuration_service, get_settings_repository
-from ai_governance.events import EvaluationCompleted, ExecutionCompleted, ResourceLifecycleEvent
+from ai_governance.api.dependencies.settings_control import (
+    get_configuration_service,
+    get_settings_repository,
+)
+from ai_governance.events import (
+    EvaluationCompleted,
+    ExecutionCompleted,
+    ResourceLifecycleEvent,
+)
 from ai_governance.services.telemetry_service import TelemetryService
 from ai_governance.telemetry.events import TelemetryEventBridge
 from ai_governance.telemetry.repository import SettingsTelemetryStateRepository

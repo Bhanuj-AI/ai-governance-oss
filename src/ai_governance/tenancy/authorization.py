@@ -13,7 +13,7 @@ from .domain import (
     TenantContext,
     utcnow,
 )
-from .errors import MembershipNotFound, ProjectNotFound
+from .errors import MembershipNotFound, OrganizationNotFound, ProjectNotFound
 from .permissions import PERMISSION_MODEL_VERSION, Permission, role_permissions
 from .repository import InMemoryControlPlaneRepository
 
@@ -75,7 +75,7 @@ class AuthorizationService:
 
         try:
             organization = self.repository.get_organization(context.organization_id)
-        except Exception:
+        except OrganizationNotFound:
             return denied(AuthorizationReasonCode.TENANT_SCOPE_MISMATCH)
         if (
             organization.status is OrganizationStatus.ARCHIVED

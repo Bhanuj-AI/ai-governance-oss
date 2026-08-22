@@ -5,10 +5,10 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import Any, Protocol
-from uuid import uuid4
 from threading import Event
 from time import monotonic
+from typing import Any, Protocol
+from uuid import uuid4
 
 from ai_governance.ontology.synchronization.diff_reconciliation import (
     DiffBasedOntologyReconciler,
@@ -334,7 +334,7 @@ class OntologySynchronizationWorker:
             report = self._run_reconciliation(event)
         except OntologySyncProcessingError as exc:
             return self._mark_failed(event, str(exc), retryable=exc.retryable)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - unexpected reconciliation failures are recorded for retry.
             return self._mark_failed(event, str(exc), retryable=True)
 
         metrics = report.metrics.to_dict()

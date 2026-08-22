@@ -36,10 +36,11 @@ class EvaluationRunRepositoryFactory:
                         "AI_GOVERNANCE_EVALUATION_RUN_REPOSITORY=sqlite"
                     )
                 logger.debug("Selected SQLite evaluation run repository: %s", path)
-                from ai_governance.repositories.sqlite.sqlite_evaluation_run_repository import SQLiteEvaluationRunRepository
-
                 from ai_governance.repositories.factories.sqlite_database import (
                     create_sqlite_database,
+                )
+                from ai_governance.repositories.sqlite.sqlite_evaluation_run_repository import (
+                    SQLiteEvaluationRunRepository,
                 )
 
                 return SQLiteEvaluationRunRepository(create_sqlite_database(path))
@@ -52,7 +53,9 @@ class EvaluationRunRepositoryFactory:
                         "AI_GOVERNANCE_EVALUATION_RUN_REPOSITORY=postgres"
                     )
                 from ai_governance.databases.postgres.database import PostgresDatabase
-                from ai_governance.repositories.postgres import PostgresEvaluationRunRepository
+                from ai_governance.repositories.postgres import (
+                    PostgresEvaluationRunRepository,
+                )
 
                 return PostgresEvaluationRunRepository(PostgresDatabase(dsn))
 

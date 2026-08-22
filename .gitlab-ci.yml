@@ -5,9 +5,83 @@
 # Container Scanning customization: https://docs.gitlab.com/user/application_security/container_scanning/#customizing-analyzer-behavior
 # Note that environment variables can be set in several places
 # See https://docs.gitlab.com/ci/variables/#cicd-variable-precedence
+
+# GitLab CI/CD pipeline for OSS
+
 stages:
-- test
-sast:
+  - test
+  - security
+
+default:
+  image: python:3.12
+
+variables:
+  UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
+
+cache:
+  key: "uv-$CI_COMMIT_REF_SLUG"
+  paths:
+    - .cache/uv/
+
+
+# ---------------------------------------------------------------------------
+# Unit Tests
+# Runs automatically for merge requests and pushes to main.
+# ---------------------------------------------------------------------------
+
+unit-tests:
   stage: test
+
+  before_script:
+    - pip install --no-cache-dir uv
+    - uv sync --frozen
+
+  script:
+    - uv run pytest tests/unit -v --cov=ai-governance --cov-report=term-missing
+
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+
+# ---------------------------------------------------------------------------
+# Integration Tests
+# Manual because these tests consume external provider credentials.
+#
+# Required CI/CD variables:
+#   OPENAI_API_KEY
+#   OPENAI_DEFAULT_JUDGE_MODEL
+# ---------------------------------------------------------------------------
+
+integration-tests:
+  stage: test
+
+  before_script:
+    - pip install --no-cache-dir uv
+    - uv sync --frozen
+
+  script:
+    - uv run pytest tests/integration -v
+
+  rules:
+    # Explicitly started pipeline: run integration tests automatically.
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: on_success
+
+    # Merge request: available on demand, but does not block merge.
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: manual
+      allow_failure: true
+
+    - when: never
+
+
+# ---------------------------------------------------------------------------
+# GitLab Security
+# ---------------------------------------------------------------------------
+
+sast:
+  stage: security
+
 include:
 - template: Security/SAST.gitlab-ci.yml

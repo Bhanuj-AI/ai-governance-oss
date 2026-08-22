@@ -16,10 +16,6 @@ from ai_governance.ontology.synchronization.evaluation_sync import (
     EvaluationResultOntologySynchronizer,
     EvaluationRunOntologySynchronizer,
 )
-from ai_governance.ontology.synchronization.experiment_sync import (
-    CandidateOntologySynchronizer,
-    ExperimentOntologySynchronizer,
-)
 from ai_governance.ontology.synchronization.events import (
     OntologySyncEvent,
     OntologySyncEventFilter,
@@ -28,10 +24,14 @@ from ai_governance.ontology.synchronization.events import (
     OntologySyncEventRepository,
     OntologySyncEventService,
     OntologySyncEventStatus,
+    OntologySynchronizationWorker,
     OntologySyncMetrics,
     OntologySyncProcessingError,
     OntologySyncRetryPolicy,
-    OntologySynchronizationWorker,
+)
+from ai_governance.ontology.synchronization.experiment_sync import (
+    CandidateOntologySynchronizer,
+    ExperimentOntologySynchronizer,
 )
 from ai_governance.ontology.synchronization.governance_sync import (
     DriftOntologySynchronizer,
@@ -45,14 +45,14 @@ from ai_governance.ontology.synchronization.leaderboard_sync import (
     LeaderboardOntologySynchronizer,
 )
 from ai_governance.ontology.synchronization.model_sync import ModelOntologySynchronizer
-from ai_governance.ontology.synchronization.prompt_sync import (
-    PromptOntologySynchronizer,
-)
 from ai_governance.ontology.synchronization.projection import (
     OntologyProjection,
     ProjectionBuilder,
     ProjectionFingerprint,
     fingerprint_projection,
+)
+from ai_governance.ontology.synchronization.prompt_sync import (
+    PromptOntologySynchronizer,
 )
 from ai_governance.ontology.synchronization.replay_sync import (
     ReplayOntologySynchronizer,

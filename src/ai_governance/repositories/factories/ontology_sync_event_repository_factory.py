@@ -22,7 +22,9 @@ class OntologySyncEventRepositoryFactory:
         match backend:
             case "inmemory":
                 logger.debug("Selected in-memory ontology sync event repository")
-                from ai_governance.repositories import InMemoryOntologySyncEventRepository
+                from ai_governance.repositories import (
+                    InMemoryOntologySyncEventRepository,
+                )
 
                 return InMemoryOntologySyncEventRepository()
 
@@ -36,11 +38,11 @@ class OntologySyncEventRepositoryFactory:
                 logger.debug(
                     "Selected SQLite ontology sync event repository: %s", path
                 )
-                from ai_governance.repositories.sqlite import (
-                    SQLiteOntologySyncEventRepository,
-                )
                 from ai_governance.repositories.factories.sqlite_database import (
                     create_sqlite_database,
+                )
+                from ai_governance.repositories.sqlite import (
+                    SQLiteOntologySyncEventRepository,
                 )
 
                 return SQLiteOntologySyncEventRepository(
@@ -55,7 +57,9 @@ class OntologySyncEventRepositoryFactory:
                         "AI_GOVERNANCE_ONTOLOGY_SYNC_EVENT_REPOSITORY=postgres"
                     )
                 from ai_governance.databases.postgres.database import PostgresDatabase
-                from ai_governance.repositories.postgres import PostgresOntologySyncEventRepository
+                from ai_governance.repositories.postgres import (
+                    PostgresOntologySyncEventRepository,
+                )
 
                 database = PostgresDatabase(dsn)
                 database.initialize()

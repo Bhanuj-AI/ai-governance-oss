@@ -5,7 +5,7 @@ import time
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 
 from ai_governance.ontology import OntologyEntity, OntologyService
 from ai_governance.ontology.synchronization.projection import (
@@ -243,7 +243,7 @@ class DiffReconciliationReport:
 
 
 @dataclass(frozen=True)
-class DiffRepositorySynchronizer(Generic[T]):
+class DiffRepositorySynchronizer[T]:
     """
     Repository adapter for diff-based reconciliation.
 
