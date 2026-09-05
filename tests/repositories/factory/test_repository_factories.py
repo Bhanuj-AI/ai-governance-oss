@@ -106,6 +106,27 @@ def _minimal_settings(
         ontology_repository=ontology_repository,
         ontology_sqlite_path=ontology_sqlite_path,
         ontology_postgres_dsn=postgres_dsn,
+
+        # Agent Execution Trace
+        agent_execution_repository="inmemory",
+        agent_execution_sqlite_path=None,
+        agent_execution_postgres_dsn=postgres_dsn,
+
+        # Replay Management
+        replay_repository="inmemory",
+        replay_sqlite_path=None,
+        replay_postgres_dsn=postgres_dsn,
+        replay_execution_catalog_backend="inmemory",
+        replay_execution_catalog_sqlite_path=None,
+
+        # Authentication
+        auth_mode="development",
+        oidc_issuer=None,
+        oidc_jwks_refresh_seconds=300,
+
+        # Bootstrap administrator
+        bootstrap_admin_sub=None,
+        bootstrap_admin_name=None,
     )
 
 

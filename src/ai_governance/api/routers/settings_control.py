@@ -74,6 +74,7 @@ def list_settings(
     category: str | None = Query(default=None),
     scope: SettingScope = Query(default=SettingScope.SYSTEM),
     context: TenantContext = Depends(get_compatible_tenant_context),
+    _: object = Depends(enforce_permission(Permission.SETTINGS_READ)),
     service=Depends(get_configuration_service),
 ):
     setting_context = SettingContext(context.organization_id, context.project_id)
@@ -81,7 +82,10 @@ def list_settings(
 
 
 @router.get("/categories", response_model=list[SettingCategoryResponse])
-def list_setting_categories(service=Depends(get_configuration_service)):
+def list_setting_categories(
+    _: object = Depends(enforce_permission(Permission.SETTINGS_READ)),
+    service=Depends(get_configuration_service),
+):
     return service.categories()
 
 
@@ -90,6 +94,7 @@ def list_setting_audit(
     key: str | None = Query(default=None),
     scope: SettingScope | None = Query(default=None),
     context: TenantContext = Depends(get_compatible_tenant_context),
+    _: object = Depends(enforce_permission(Permission.SETTINGS_READ)),
     repository=Depends(get_settings_repository),
 ):
     scope_id = None
@@ -104,7 +109,9 @@ def list_setting_audit(
 
 @router.post("/validate", response_model=SettingValidationResponse)
 def validate_setting(
-    request: SettingValidationRequest, service=Depends(get_configuration_service)
+    request: SettingValidationRequest,
+    _: object = Depends(enforce_permission(Permission.SETTINGS_READ)),
+    service=Depends(get_configuration_service),
 ):
     try:
         return SettingValidationResponse(
@@ -119,6 +126,7 @@ def get_setting(
     key: str,
     scope: SettingScope = Query(default=SettingScope.SYSTEM),
     context: TenantContext = Depends(get_compatible_tenant_context),
+    _: object = Depends(enforce_permission(Permission.SETTINGS_READ)),
     service=Depends(get_configuration_service),
 ):
     try:

@@ -10,7 +10,9 @@ import {
   CirclePlay,
   ClipboardList,
   Clock3,
+  ListFilter,
   LoaderCircle,
+  RefreshCw,
   RotateCcw,
   Search,
   Send,
@@ -206,6 +208,14 @@ export function JobsPage() {
     replaceFilterUrl(EMPTY_FILTERS);
   }
 
+  function setStatusFilter(status: JobStatus | "") {
+    const next = { ...filterInput, status };
+    setFilterInput(next);
+    setFilters(next);
+    setPageIndex(0);
+    replaceFilterUrl(next);
+  }
+
   function replaceFilterUrl(next: JobFilters) {
     const params = new URLSearchParams(search.toString());
     setOrDelete(params, "status", next.status);
@@ -248,7 +258,7 @@ export function JobsPage() {
 
   return (
     <div className="h-[calc(100vh-3.5rem)] overflow-y-auto">
-      <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-5 px-6 py-5">
+      <div className="studio-page flex flex-col gap-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
@@ -264,7 +274,7 @@ export function JobsPage() {
           </Badge>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
           <JobSummaryStat
             label="Needs attention"
             value={stats.QUEUED + stats.FAILED}
@@ -276,6 +286,8 @@ export function JobsPage() {
             value={stats.RUNNING}
             detail="Currently executing"
             tone="progress"
+            active={filters.status === "RUNNING"}
+            onClick={() => setStatusFilter("RUNNING")}
           />
           <JobSummaryStat
             label="Completed"
@@ -283,18 +295,31 @@ export function JobsPage() {
             detail={`${stats.CANCELLED} cancelled`}
             tone="success"
           />
+          <JobSummaryStat
+            label="Failed"
+            value={stats.FAILED}
+            detail="Requires investigation"
+            tone="danger"
+            active={filters.status === "FAILED"}
+            onClick={() => setStatusFilter("FAILED")}
+          />
         </div>
 
-        <div className="grid gap-5 xl:grid-cols-[1fr_380px]">
+        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_400px] 2xl:grid-cols-[minmax(0,1fr)_460px]">
           <div className="space-y-5">
             <Card>
               <CardHeader className="gap-4 pb-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <CardTitle className="flex items-center gap-2">
-                    <ClipboardList className="h-4 w-4 text-primary" />
-                    Runs
-                  </CardTitle>
-                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <CardTitle className="flex items-center gap-2">
+                      <ClipboardList className="h-4 w-4 text-primary" />
+                      Runs
+                      {!jobsQuery.isLoading ? (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                          {jobs.length}
+                        </span>
+                      ) : null}
+                    </CardTitle>
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <label className="flex items-center gap-2">
                       <span className="text-xs font-medium uppercase">
                         Refresh
@@ -313,11 +338,8 @@ export function JobsPage() {
                           </option>
                         ))}
                       </select>
-                    </label>
-                    <span>
-                      Page {currentPage + 1} of {totalPages}
-                    </span>
-                    <label className="flex items-center gap-2">
+                      </label>
+                      <label className="flex items-center gap-2">
                       <span className="text-xs font-medium uppercase">Rows</span>
                       <select
                         value={pageSize}
@@ -331,33 +353,61 @@ export function JobsPage() {
                             {option}
                           </option>
                         ))}
-                      </select>
-                    </label>
+                        </select>
+                      </label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => void jobsQuery.refetch()}
+                        disabled={jobsQuery.isFetching}
+                        aria-label="Refresh runs now"
+                        title="Refresh runs now"
+                      >
+                        <RefreshCw className={cn("h-4 w-4", jobsQuery.isFetching && "animate-spin")} />
+                      </Button>
+                    </div>
                   </div>
+                <div className="rounded-md border bg-muted/20 p-3">
+                  <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <ListFilter className="h-3.5 w-3.5" />
+                    Quick filters
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <QuickFilter label="All runs" active={!filters.status} onClick={() => setStatusFilter("")} />
+                    {JOB_STATUSES.map((status) => (
+                      <QuickFilter
+                        key={status}
+                        label={status.toLowerCase().replace(/^./, (letter) => letter.toUpperCase())}
+                        active={filters.status === status}
+                        onClick={() => setStatusFilter(status)}
+                      />
+                    ))}
+                  </div>
+                  <form className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto]" onSubmit={handleFiltersSubmit}>
+                    <CompactSelect
+                      ariaLabel="Filter by status"
+                      value={filterInput.status}
+                      onChange={(status) => setFilterInput({ ...filterInput, status })}
+                      options={JOB_STATUSES}
+                      placeholder="Any status"
+                    />
+                    <CompactSelect
+                      ariaLabel="Filter by type"
+                      value={filterInput.jobType}
+                      onChange={(jobType) => setFilterInput({ ...filterInput, jobType })}
+                      options={JOB_TYPES}
+                      placeholder="Any type"
+                    />
+                    <Button type="submit" variant="outline" size="sm">
+                      <Search className="h-4 w-4" />
+                      Apply filters
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={resetFilters}>
+                      Reset
+                    </Button>
+                  </form>
                 </div>
-                <form className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto]" onSubmit={handleFiltersSubmit}>
-                  <CompactSelect
-                    ariaLabel="Filter by status"
-                    value={filterInput.status}
-                    onChange={(status) => setFilterInput({ ...filterInput, status })}
-                    options={JOB_STATUSES}
-                    placeholder="Any status"
-                  />
-                  <CompactSelect
-                    ariaLabel="Filter by type"
-                    value={filterInput.jobType}
-                    onChange={(jobType) => setFilterInput({ ...filterInput, jobType })}
-                    options={JOB_TYPES}
-                    placeholder="Any type"
-                  />
-                  <Button type="submit" variant="outline" size="sm">
-                    <Search className="h-4 w-4" />
-                    Apply
-                  </Button>
-                  <Button type="button" variant="ghost" size="sm" onClick={resetFilters}>
-                    Reset
-                  </Button>
-                </form>
               </CardHeader>
               <CardContent>
                 {jobsQuery.isLoading ? (
@@ -367,7 +417,7 @@ export function JobsPage() {
                 ) : jobs.length ? (
                   <>
                     <div className="divide-y rounded-md border">
-                      <div className="hidden gap-3 bg-muted/30 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid lg:grid-cols-[1.1fr_130px_110px_110px_150px_36px]">
+                      <div className="hidden gap-4 bg-muted/30 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid lg:grid-cols-[minmax(260px,1.7fr)_minmax(145px,0.9fr)_90px_minmax(130px,0.8fr)_150px_36px]">
                         <span>Run ID</span>
                         <span>Type</span>
                         <span>Attempts</span>
@@ -386,7 +436,7 @@ export function JobsPage() {
                     </div>
                     <div className="mt-4 flex items-center justify-between gap-3">
                       <div className="text-sm text-muted-foreground">
-                        Showing {pagedJobs.length} of {jobs.length} runs
+                        Showing {pagedJobs.length} of {jobs.length} runs · Page {currentPage + 1} of {totalPages}
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
@@ -418,7 +468,7 @@ export function JobsPage() {
             </Card>
           </div>
 
-          <div className="space-y-5">
+          <div className="space-y-5 xl:sticky xl:top-5">
             <JobDetailPanel
               job={selectedJob}
               resultError={selectedResultQuery.error}
@@ -512,19 +562,38 @@ function JobSummaryStat({
   value,
   detail,
   tone,
+  active = false,
+  onClick,
 }: {
   label: string;
   value: number;
   detail: string;
-  tone: "warning" | "progress" | "success";
+  tone: "warning" | "progress" | "success" | "danger";
+  active?: boolean;
+  onClick?: () => void;
 }) {
   const iconClassName = {
     warning: "bg-[#ffd60a] text-[#1f2328]",
     progress: "border-primary/30 bg-primary/10 text-primary",
     success: "bg-[#32d74b] text-[#1f2328]",
+    danger: "bg-[#ff453a] text-[#1f2328]",
   }[tone];
   return (
-    <Card>
+    <Card
+      className={cn(
+        onClick && "cursor-pointer transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        active && "ring-2 ring-primary/55",
+      )}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={onClick ? (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick();
+        }
+      } : undefined}
+    >
       <CardContent className="flex items-center justify-between p-4">
         <div>
           <div className="text-xs font-semibold uppercase text-muted-foreground">
@@ -534,10 +603,33 @@ function JobSummaryStat({
           <div className="mt-1 text-xs text-muted-foreground">{detail}</div>
         </div>
         <span className={cn("flex h-9 w-9 items-center justify-center rounded-md border border-transparent", iconClassName)}>
-          {tone === "warning" ? <Clock3 className="h-4 w-4" /> : tone === "progress" ? <LoaderCircle className="h-4 w-4" /> : <CirclePlay className="h-4 w-4" />}
+          {tone === "warning" ? <Clock3 className="h-4 w-4" /> : tone === "progress" ? <LoaderCircle className="h-4 w-4" /> : tone === "danger" ? <AlertCircle className="h-4 w-4" /> : <CirclePlay className="h-4 w-4" />}
         </span>
       </CardContent>
     </Card>
+  );
+}
+
+function QuickFilter({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      type="button"
+      variant={active ? "default" : "outline"}
+      size="sm"
+      onClick={onClick}
+      aria-pressed={active}
+      className="h-8"
+    >
+      {label}
+    </Button>
   );
 }
 
@@ -554,8 +646,9 @@ function JobRow({
     <button
       type="button"
       onClick={onSelect}
+      aria-current={selected || undefined}
       className={cn(
-        "grid w-full gap-3 px-4 py-3 text-left hover:bg-accent/55 lg:grid-cols-[1.1fr_130px_110px_110px_150px_36px]",
+        "grid w-full gap-4 px-4 py-3 text-left hover:bg-accent/55 lg:grid-cols-[minmax(260px,1.7fr)_minmax(145px,0.9fr)_90px_minmax(130px,0.8fr)_150px_36px]",
         selected && "bg-accent/70",
       )}
     >

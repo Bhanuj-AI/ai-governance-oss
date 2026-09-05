@@ -139,7 +139,7 @@ class EmptyRequest(MCPRequest):
 
 class WriteEnvelope(MCPRequest):
     """
-    Shared Phase 2 envelope for controlled MCP write operations.
+    Shared envelope for controlled MCP write operations.
     """
 
     request_id: str = Field(min_length=1)

@@ -78,7 +78,7 @@ export function AccessPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="studio-page space-y-6">
       <div><h1 className="text-3xl font-semibold">Access</h1><p className="mt-1 text-sm text-muted-foreground">Manage actor access across the selected organization and project.</p></div>
       <OrganizationNav />
 

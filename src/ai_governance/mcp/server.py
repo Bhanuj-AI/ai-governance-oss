@@ -274,7 +274,7 @@ class AIGovernanceMCPServer:
         message: Mapping[str, Any],
     ) -> dict[str, Any] | None:
         """
-        Handle the minimal MCP JSON-RPC methods exposed in Phase 1.
+        Handle the minimal MCP JSON-RPC methods exposed .
         """
 
         method = message.get("method")

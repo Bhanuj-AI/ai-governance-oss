@@ -812,3 +812,197 @@ ALTER TABLE setting_audit ADD COLUMN IF NOT EXISTS scope_id TEXT NOT NULL DEFAUL
 
 CREATE INDEX IF NOT EXISTS idx_setting_audit_key_created
 ON setting_audit(key, scope_type, scope_id, created_at);
+
+-- Agent Execution Trace
+CREATE TABLE IF NOT EXISTS agent_execution (
+    execution_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
+    project_id TEXT NOT NULL DEFAULT '',
+    agent_id TEXT NOT NULL,
+    agent_name TEXT NOT NULL,
+    agent_version TEXT NOT NULL,
+    external_execution_id TEXT NOT NULL,
+    runtime_provider TEXT NOT NULL,
+    status TEXT NOT NULL,
+    started_at TIMESTAMPTZ NOT NULL,
+    completed_at TIMESTAMPTZ,
+    correlation_id TEXT,
+    parent_execution_id TEXT,
+    metadata_json JSONB NOT NULL DEFAULT '{}',
+    version INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (organization_id, project_id, execution_id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_agent_execution_external
+ON agent_execution(organization_id, project_id, external_execution_id, runtime_provider);
+
+CREATE INDEX IF NOT EXISTS idx_agent_execution_tenant_order
+ON agent_execution(organization_id, project_id, created_at DESC, execution_id DESC);
+
+CREATE INDEX IF NOT EXISTS idx_agent_execution_agent
+ON agent_execution(organization_id, project_id, agent_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_agent_execution_status
+ON agent_execution(organization_id, project_id, status, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_agent_execution_runtime
+ON agent_execution(organization_id, project_id, runtime_provider, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS agent_execution_event (
+    event_id TEXT NOT NULL,
+    execution_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
+    project_id TEXT NOT NULL DEFAULT '',
+    event_type TEXT NOT NULL,
+    sequence_number INTEGER NOT NULL,
+    occurred_at TIMESTAMPTZ NOT NULL,
+    received_at TIMESTAMPTZ NOT NULL,
+    late_for_runtime_findings BOOLEAN NOT NULL DEFAULT FALSE,
+    runtime_findings_finalization_cutoff_at TIMESTAMPTZ,
+    runtime_findings_lateness_policy_hours INTEGER,
+    correlation_id TEXT,
+    causation_id TEXT,
+    actor_id TEXT,
+    actor_type TEXT,
+    resource_references_json JSONB NOT NULL DEFAULT '[]',
+    evidence_references_json JSONB NOT NULL DEFAULT '[]',
+    attributes_json JSONB NOT NULL DEFAULT '{}',
+    event_schema_version TEXT NOT NULL DEFAULT '1',
+    idempotency_key TEXT,
+    created_at TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (organization_id, project_id, event_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_execution_event_execution_seq
+ON agent_execution_event(organization_id, project_id, execution_id, sequence_number ASC);
+
+CREATE INDEX IF NOT EXISTS idx_agent_execution_event_type
+ON agent_execution_event(organization_id, project_id, execution_id, event_type, occurred_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_agent_execution_event_idempotency
+ON agent_execution_event(organization_id, project_id, execution_id, idempotency_key)
+WHERE idempotency_key IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_agent_execution_event_actor
+ON agent_execution_event(organization_id, project_id, execution_id, actor_id);
+
+-- Runtime ontology projection state — durable outside Neo4j.
+CREATE TABLE IF NOT EXISTS runtime_ontology_projection (
+    execution_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
+    project_id TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'PENDING',
+    projection_version TEXT NOT NULL DEFAULT '1',
+    source_version INTEGER NOT NULL DEFAULT 0,
+    relationships_projected INTEGER NOT NULL DEFAULT 0,
+    unresolved_json JSONB NOT NULL DEFAULT '[]',
+    last_projected_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
+    schema_version TEXT NOT NULL DEFAULT '1',
+    PRIMARY KEY (organization_id, project_id, execution_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_runtime_projection_status
+ON runtime_ontology_projection(organization_id, project_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_runtime_projection_updated
+ON runtime_ontology_projection(organization_id, project_id, updated_at DESC);
+
+-- Runtime findings — durable operational observations.
+CREATE TABLE IF NOT EXISTS runtime_finding (
+    finding_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
+    project_id TEXT NOT NULL DEFAULT '',
+    finding_type TEXT NOT NULL,
+    subject_type TEXT NOT NULL,
+    subject_id TEXT NOT NULL,
+    severity TEXT NOT NULL DEFAULT 'INFO',
+    status TEXT NOT NULL DEFAULT 'OPEN',
+    lifecycle TEXT NOT NULL DEFAULT 'OPERATIONAL',
+    baseline_window TEXT NOT NULL DEFAULT '7d',
+    observation_window TEXT NOT NULL DEFAULT '24h',
+    baseline_metrics_json JSONB NOT NULL DEFAULT '[]',
+    observed_metrics_json JSONB NOT NULL DEFAULT '[]',
+    observation_count INTEGER NOT NULL DEFAULT 0,
+    consecutive_normal_windows INTEGER NOT NULL DEFAULT 0,
+    healthy_reconciliation_windows_json JSONB NOT NULL DEFAULT '[]',
+    last_reconciliation_json JSONB,
+    reviews_json JSONB NOT NULL DEFAULT '[]',
+    evidence_references_json JSONB NOT NULL DEFAULT '[]',
+    related_execution_ids_json JSONB NOT NULL DEFAULT '[]',
+    detector_id TEXT NOT NULL,
+    detector_version TEXT NOT NULL DEFAULT '1',
+    first_detected_at TIMESTAMPTZ,
+    last_detected_at TIMESTAMPTZ,
+    resolved_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (organization_id, project_id, finding_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_runtime_finding_status
+ON runtime_finding(organization_id, project_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_runtime_finding_type
+ON runtime_finding(organization_id, project_id, finding_type);
+
+CREATE INDEX IF NOT EXISTS idx_runtime_finding_subject
+ON runtime_finding(organization_id, project_id, subject_type, subject_id);
+
+CREATE INDEX IF NOT EXISTS idx_runtime_finding_created
+ON runtime_finding(organization_id, project_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS causal_audit (
+    audit_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
+    project_id TEXT NOT NULL DEFAULT '',
+    execution_id TEXT NOT NULL,
+    agent_id TEXT NOT NULL,
+    status TEXT NOT NULL,
+    classification TEXT,
+    evaluator_ref TEXT NOT NULL,
+    request_fingerprint TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    completed_at TIMESTAMPTZ,
+    version INTEGER NOT NULL,
+    payload_json JSONB NOT NULL,
+    PRIMARY KEY (organization_id, project_id, audit_id),
+    UNIQUE (organization_id, project_id, request_fingerprint)
+);
+CREATE INDEX IF NOT EXISTS idx_causal_audit_execution ON causal_audit(organization_id, project_id, execution_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_causal_audit_agent ON causal_audit(organization_id, project_id, agent_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_causal_audit_status ON causal_audit(organization_id, project_id, status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_causal_audit_classification ON causal_audit(organization_id, project_id, classification, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS evidence_intervention_policy (
+    policy_id TEXT NOT NULL,
+    version INTEGER NOT NULL,
+    organization_id TEXT NOT NULL,
+    project_id TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL,
+    tool_name TEXT NOT NULL,
+    schema_id TEXT NOT NULL,
+    schema_version TEXT NOT NULL,
+    provider_id TEXT NOT NULL,
+    provider_version TEXT NOT NULL,
+    policy_digest TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    payload_json JSONB NOT NULL,
+    PRIMARY KEY (organization_id, project_id, policy_id, version)
+);
+CREATE INDEX IF NOT EXISTS idx_evidence_intervention_policy_selector ON evidence_intervention_policy(organization_id, project_id, status, tool_name, schema_id, schema_version);
+
+-- Hardening Check 3: Sustained recovery for auto-resolution
+ALTER TABLE runtime_finding ADD COLUMN IF NOT EXISTS consecutive_normal_windows INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE runtime_finding ADD COLUMN IF NOT EXISTS healthy_reconciliation_windows_json JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE runtime_finding ADD COLUMN IF NOT EXISTS last_reconciliation_json JSONB;
+ALTER TABLE runtime_finding ADD COLUMN IF NOT EXISTS lifecycle TEXT NOT NULL DEFAULT 'OPERATIONAL';
+ALTER TABLE runtime_finding ADD COLUMN IF NOT EXISTS reviews_json JSONB NOT NULL DEFAULT '[]';
+UPDATE runtime_finding SET lifecycle = 'CASE_REVIEW'
+WHERE detector_id = 'causal_audit' AND lifecycle = 'OPERATIONAL';
+ALTER TABLE agent_execution_event ADD COLUMN IF NOT EXISTS late_for_runtime_findings BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE agent_execution_event ADD COLUMN IF NOT EXISTS runtime_findings_finalization_cutoff_at TIMESTAMPTZ;
+ALTER TABLE agent_execution_event ADD COLUMN IF NOT EXISTS runtime_findings_lateness_policy_hours INTEGER;

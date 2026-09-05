@@ -612,7 +612,7 @@ class DriftExplanationService:
 
 class GovernanceReportService:
     """
-    Generates evidence reports from Phase 3 insight services.
+    Generates evidence reports from insight services.
     """
 
     def __init__(

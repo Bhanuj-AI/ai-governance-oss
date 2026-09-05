@@ -1,0 +1,4 @@
+interface:
+  display_name: "Keycloak Service Identity"
+  short_description: "Provision least-privilege Keycloak machine identities."
+  default_prompt: "Use $keycloak-service-identity to provision a confidential Keycloak client and its control-plane authorization."

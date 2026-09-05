@@ -273,7 +273,7 @@ class ReplayEvaluationJobHandler:
             return self._fail(replay, job, error)
 
     def _cancel(self, replay, job: Job) -> JobResult:
-        """Persist cooperative cancellation at a safe Phase 3 boundary."""
+        """Persist cooperative cancellation at a safe boundary."""
         replay = self._replays.update(
             replay.mark_cancelled(self._clock()), replay.version
         )

@@ -29,5 +29,6 @@ done
 
 "$ROOT_DIR/scripts/keycloak/provision-mcp-vscode-client-scopes.sh"
 "$ROOT_DIR/scripts/keycloak/reconcile-mcp-resource-audience.sh"
+"$ROOT_DIR/scripts/keycloak/reconcile-synthetic-agent-runtime-client.sh"
 
 docker compose --env-file .env.keycloak ps

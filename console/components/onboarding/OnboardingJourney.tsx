@@ -64,7 +64,7 @@ type Journey = {
   steps: JourneyStep[];
 };
 
-const docs = "https://ai-governance.bhanuj.app/docs";
+const docs = "https://governance.bhanuj.ai/docs";
 
 const JOURNEYS: Journey[] = [
   {
@@ -259,7 +259,7 @@ export function OnboardingJourney({ onOpenDashboard }: { onOpenDashboard?: () =>
 
   return (
     <div className="journey-console h-[calc(100vh-4rem)] overflow-y-auto">
-      <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-6 px-6 py-8">
+      <div className="studio-page flex flex-col gap-6 py-8">
         <header className="journey-chrome flex flex-col justify-between gap-5 border-b pb-7 sm:flex-row sm:items-end">
           <div className="max-w-2xl">
             <div className="flex items-center gap-2 text-primary"><Sparkles className="h-5 w-5" /><span className="text-sm font-semibold">AI Governance Control Plane Mentor</span></div>

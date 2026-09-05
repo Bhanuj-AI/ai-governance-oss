@@ -1,3 +1,4 @@
+# ruff: noqa: RUF022
 """
 AI Governance Control Plane REST API dependency injection wiring.
 
@@ -15,7 +16,7 @@ Platform-plane modules::
     dashboard         - dashboard read service
     policies          - policy administration service
     mcp               - MCP audit log
-    governance_insights - Phase 3 insights and reports
+    governance_insights - insights and reports
 """
 
 from __future__ import annotations
@@ -34,6 +35,7 @@ __all__ = [
     "get_api_settings",
     # Audit
     "get_audit_read_service",
+    "get_agent_execution_service",
     # Authentication
     "get_authenticated_principal",
     # Dashboard
@@ -46,8 +48,11 @@ __all__ = [
     "get_evaluation_api_service",
     "get_evaluation_history_service",
     # Repositories
+    "get_causal_audit_repository",
+    "get_causal_audit_service",
     "get_evaluation_repository",
     "get_evaluation_run_repository",
+    "get_evidence_intervention_policy_repository",
     # Evaluation
     "get_evaluation_service",
     # Jobs
@@ -95,16 +100,19 @@ __all__ = [
     "get_replay_repository",
     "get_replay_result_repository",
     "get_replay_source_resolver",
+    "get_runtime_finding_repository",
 ]
 
 # -- Providers ---------------------------------------------------------------
 # -- Audit -------------------------------------------------------------------
+from ai_governance.api.dependencies.agent_execution import get_agent_execution_service
 from ai_governance.api.dependencies.audit import get_audit_read_service
 
 # -- Authentication ----------------------------------------------------------
 from ai_governance.api.dependencies.authentication import (
     get_authenticated_principal,
 )
+from ai_governance.api.dependencies.causal_audit import get_causal_audit_service
 
 # -- Dashboard ---------------------------------------------------------------
 from ai_governance.api.dependencies.dashboard import get_dashboard_read_service
@@ -173,9 +181,11 @@ from ai_governance.api.dependencies.replay import (
 
 # -- Repositories ------------------------------------------------------------
 from ai_governance.api.dependencies.repositories import (
+    get_causal_audit_repository,
     get_dataset_repository,
     get_evaluation_repository,
     get_evaluation_run_repository,
+    get_evidence_intervention_policy_repository,
     get_experiment_candidate_repository,
     get_experiment_repository,
     get_governance_decision_repository,
@@ -189,4 +199,7 @@ from ai_governance.api.dependencies.repositories import (
     get_prompt_repository,
     get_replay_repository,
     get_replay_result_repository,
+)
+from ai_governance.api.dependencies.runtime_finding_repo import (
+    get_runtime_finding_repository,
 )

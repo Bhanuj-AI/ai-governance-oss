@@ -50,9 +50,121 @@ class SQLiteDatabase:
             self._ensure_experiment_columns(connection)
             self._ensure_evaluation_run_columns(connection)
             self._ensure_replay_columns(connection)
+            self._ensure_agent_execution_tables(connection)
             self._ensure_tenancy_columns(connection)
             self._ensure_asset_provenance_columns(connection)
+            self._ensure_runtime_finding_columns(connection)
             connection.commit()
+
+    @staticmethod
+    def _ensure_agent_execution_tables(connection: sqlite3.Connection) -> None:
+        """Idempotently create agent execution tables for existing databases."""
+        existing_tables = {
+            row["name"]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+
+        if "agent_execution" not in existing_tables:
+            connection.execute(
+                """
+                CREATE TABLE agent_execution (
+                    execution_id TEXT NOT NULL,
+                    organization_id TEXT NOT NULL,
+                    project_id TEXT NOT NULL DEFAULT '',
+                    agent_id TEXT NOT NULL,
+                    agent_name TEXT NOT NULL,
+                    agent_version TEXT NOT NULL,
+                    external_execution_id TEXT NOT NULL,
+                    runtime_provider TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    started_at TEXT NOT NULL,
+                    completed_at TEXT,
+                    correlation_id TEXT,
+                    parent_execution_id TEXT,
+                    metadata_json TEXT NOT NULL DEFAULT '{}',
+                    version INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    PRIMARY KEY (organization_id, project_id, execution_id)
+                )
+                """
+            )
+            connection.execute(
+                "CREATE UNIQUE INDEX uq_agent_execution_external "
+                "ON agent_execution(organization_id, project_id, external_execution_id, runtime_provider)"
+            )
+            connection.execute(
+                "CREATE INDEX idx_agent_execution_tenant_order "
+                "ON agent_execution(organization_id, project_id, created_at DESC, execution_id DESC)"
+            )
+            connection.execute(
+                "CREATE INDEX idx_agent_execution_agent "
+                "ON agent_execution(organization_id, project_id, agent_id, created_at DESC)"
+            )
+            connection.execute(
+                "CREATE INDEX idx_agent_execution_status "
+                "ON agent_execution(organization_id, project_id, status, created_at DESC)"
+            )
+            connection.execute(
+                "CREATE INDEX idx_agent_execution_runtime "
+                "ON agent_execution(organization_id, project_id, runtime_provider, created_at DESC)"
+            )
+
+        if "agent_execution_event" not in existing_tables:
+            connection.execute(
+                """
+                CREATE TABLE agent_execution_event (
+                    event_id TEXT NOT NULL,
+                    execution_id TEXT NOT NULL,
+                    organization_id TEXT NOT NULL,
+                    project_id TEXT NOT NULL DEFAULT '',
+                    event_type TEXT NOT NULL,
+                    sequence_number INTEGER NOT NULL,
+                    occurred_at TEXT NOT NULL,
+                    received_at TEXT NOT NULL,
+                    correlation_id TEXT,
+                    causation_id TEXT,
+                    actor_id TEXT,
+                    actor_type TEXT,
+                    resource_references_json TEXT NOT NULL DEFAULT '[]',
+                    evidence_references_json TEXT NOT NULL DEFAULT '[]',
+                    attributes_json TEXT NOT NULL DEFAULT '{}',
+                    event_schema_version TEXT NOT NULL DEFAULT '1',
+                    idempotency_key TEXT,
+                    created_at TEXT NOT NULL,
+                    PRIMARY KEY (organization_id, project_id, event_id)
+                )
+                """
+            )
+            connection.execute(
+                "CREATE INDEX idx_agent_execution_event_execution_seq "
+                "ON agent_execution_event(organization_id, project_id, execution_id, sequence_number ASC)"
+            )
+            connection.execute(
+                "CREATE INDEX idx_agent_execution_event_type "
+                "ON agent_execution_event(organization_id, project_id, execution_id, event_type, occurred_at DESC)"
+            )
+            connection.execute(
+                "CREATE UNIQUE INDEX uq_agent_execution_event_idempotency "
+                "ON agent_execution_event(organization_id, project_id, execution_id, idempotency_key) "
+                "WHERE idempotency_key IS NOT NULL"
+            )
+            connection.execute(
+                "CREATE INDEX idx_agent_execution_event_actor "
+                "ON agent_execution_event(organization_id, project_id, execution_id, actor_id)"
+            )
+
+        event_columns = {row[1] for row in connection.execute("PRAGMA table_info(agent_execution_event)")}
+        for name, definition in {
+            "late_for_runtime_findings": "INTEGER NOT NULL DEFAULT 0",
+            "runtime_findings_finalization_cutoff_at": "TEXT",
+            "runtime_findings_lateness_policy_hours": "INTEGER",
+        }.items():
+            if name not in event_columns:
+                connection.execute(f"ALTER TABLE agent_execution_event ADD COLUMN {name} {definition}")
+
 
     @staticmethod
     def _ensure_agent_evaluation_columns(
@@ -342,6 +454,29 @@ class SQLiteDatabase:
                 connection.execute(
                     f"CREATE INDEX IF NOT EXISTS idx_replay_{column} ON replay({column})"
                 )
+
+    @staticmethod
+    def _ensure_runtime_finding_columns(connection: sqlite3.Connection) -> None:
+        """Add durable reconciliation and review state to existing findings."""
+        columns = {
+            row[1]
+            for row in connection.execute("PRAGMA table_info(runtime_finding)")
+        }
+        for name, definition in {
+            "consecutive_normal_windows": "INTEGER NOT NULL DEFAULT 0",
+            "healthy_reconciliation_windows_json": "TEXT NOT NULL DEFAULT '[]'",
+            "last_reconciliation_json": "TEXT",
+            "lifecycle": "TEXT NOT NULL DEFAULT 'OPERATIONAL'",
+            "reviews_json": "TEXT NOT NULL DEFAULT '[]'",
+        }.items():
+            if columns and name not in columns:
+                connection.execute(f"ALTER TABLE runtime_finding ADD COLUMN {name} {definition}")
+        # Causal findings written before the lifecycle field existed are
+        # completed-execution cases, not operational recovery candidates.
+        connection.execute(
+            "UPDATE runtime_finding SET lifecycle='CASE_REVIEW' "
+            "WHERE detector_id='causal_audit' AND lifecycle='OPERATIONAL'"
+        )
 
     @staticmethod
     def _ensure_settings_scope(connection: sqlite3.Connection) -> None:

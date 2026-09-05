@@ -11,14 +11,25 @@ from collections.abc import Callable
 from time import sleep
 from uuid import uuid4
 
-from ai_governance.domain.jobs import Job, JobResult, JobStatus, JobType
+from ai_governance.domain.jobs import (
+    Job,
+    JobExecutionContext,
+    JobResult,
+    JobStatus,
+    JobSubmission,
+    JobType,
+)
 from ai_governance.domain.replay import ReplayStatus
 from ai_governance.events import EventPublisher
 from ai_governance.plugins import create_plugin_registry
+from ai_governance.services.agent_runtime_controlled_replay import (
+    DeterministicAgentRuntimeReplayAdapter,
+)
 from ai_governance.services.async_job_handlers import (
     EvaluationJobHandler,
     ExperimentJobHandler,
 )
+from ai_governance.services.causal_audit_service import CausalAuditJobHandler
 from ai_governance.services.job_executor import JobExecutor
 from ai_governance.services.replay_application_service import ReplayApplicationService
 from ai_governance.services.replay_evaluation import ReplayEvaluationJobHandler
@@ -26,6 +37,9 @@ from ai_governance.services.replay_execution import (
     HistoricalReplayExecutionAdapter,
     ReplayExecutionAdapterRegistry,
     ReplayJobHandler,
+)
+from ai_governance.services.synthetic_agent_runtime_replay import (
+    SyntheticAgentRuntimeReplayAdapter,
 )
 from ai_governance.tenancy.domain import TenantContext
 from ai_governance.workers.job_worker import JobWorker
@@ -47,11 +61,13 @@ class _AutoEvaluationReplayHandler:
         replays,
         application_service: ReplayApplicationService,
         evaluation_provider: str,
+        job_service=None,
     ) -> None:
         self._execution_handler = execution_handler
         self._replays = replays
         self._application_service = application_service
         self._evaluation_provider = evaluation_provider
+        self._job_service = job_service
 
     def handle(self, job: Job) -> JobResult:
         outcome = self._execution_handler.handle(job)
@@ -64,7 +80,10 @@ class _AutoEvaluationReplayHandler:
         )
         if replay is None:
             return JobResult(job.job_id, JobStatus.FAILED, None, "Replay disappeared.")
-        if replay.status is ReplayStatus.EXECUTION_COMPLETED:
+        if (
+            replay.status is ReplayStatus.EXECUTION_COMPLETED
+            and replay.controlled_evidence_intervention is None
+        ):
             # The application service reuses the stable replay-evaluation
             # idempotency key, so a redelivered execution job cannot create a
             # second evaluation job or a second produced execution identity.
@@ -76,7 +95,37 @@ class _AutoEvaluationReplayHandler:
                     or self._evaluation_provider
                 ),
             )
+        # A controlled Replay already has its outcome evaluated by the Causal
+        # Audit scorer.  Generic Replay evaluation needs a compatible source
+        # evaluation baseline and would incorrectly fail these isolated runs.
+        # The audit finalization job instead consumes the durable controlled
+        # Replay outcome and its governed intervention lineage.
+        self._schedule_causal_audit_finalization(replay, context)
         return outcome
+
+    def _schedule_causal_audit_finalization(
+        self, replay, context: TenantContext
+    ) -> None:
+        if self._job_service is None:
+            return
+        audit_id = replay.metadata.get("causal_audit_id")
+        if not isinstance(audit_id, str) or not audit_id.strip():
+            return
+        self._job_service.submit(
+            JobSubmission(
+                JobType.CAUSAL_AUDIT,
+                {"audit_id": audit_id, "trigger_replay_id": replay.replay_id},
+                f"causal-audit-finalize:{audit_id}:{replay.replay_id}",
+                context.actor_id,
+                execution_context=JobExecutionContext(
+                    context.organization_id,
+                    context.project_id or "",
+                    context.actor_id,
+                    context.request_id,
+                    context.correlation_id,
+                ),
+            )
+        )
 
 
 class ReplayWorkerRuntime:
@@ -122,6 +171,7 @@ def create_replay_worker_runtime(
     event_publisher: EventPublisher | None = None,
 ) -> ReplayWorkerRuntime:
     """Build runtime dependencies using the same durable factories as the API."""
+    from ai_governance.api.dependencies.causal_audit import get_causal_audit_service
     from ai_governance.api.dependencies.evaluation import get_evaluation_api_service
     from ai_governance.api.dependencies.provider_installations import (
         get_provider_installation_service,
@@ -227,6 +277,8 @@ def create_replay_worker_runtime(
     )
     registry = ReplayExecutionAdapterRegistry()
     registry.register(HistoricalReplayExecutionAdapter())
+    registry.register(DeterministicAgentRuntimeReplayAdapter())
+    registry.register(SyntheticAgentRuntimeReplayAdapter())
     if extra_adapters is not None:
         extra_adapters(registry)
     execution_handler = ReplayJobHandler(
@@ -239,6 +291,7 @@ def create_replay_worker_runtime(
     )
     executor = JobExecutor(
         {
+            JobType.CAUSAL_AUDIT: CausalAuditJobHandler(get_causal_audit_service()),
             JobType.EVALUATION: EvaluationJobHandler(evaluations),
             JobType.EXPERIMENT: ExperimentJobHandler(experiments),
             JobType.REPLAY_EXECUTION: _AutoEvaluationReplayHandler(
@@ -247,20 +300,23 @@ def create_replay_worker_runtime(
                 application,
                 evaluation_provider
                 or os.getenv("AI_GOVERNANCE_REPLAY_EVALUATION_PROVIDER", "trulens"),
+                job_service,
             ),
             JobType.REPLAY_EVALUATION: ReplayEvaluationJobHandler(
                 replay_repository=replay_repository,
                 result_repository=results,
                 source_resolver=source_store,
-            evaluation_api_service=evaluations,
-            provider_installation_service=provider_installation_service,
+                evaluation_api_service=evaluations,
+                provider_installation_service=provider_installation_service,
             ),
         }
     )
     return ReplayWorkerRuntime(
         JobWorker(
             worker_id=worker_id
-            or os.getenv("AI_GOVERNANCE_WORKER_ID", f"replay-worker-{socket.gethostname()}"),
+            or os.getenv(
+                "AI_GOVERNANCE_WORKER_ID", f"replay-worker-{socket.gethostname()}"
+            ),
             repository=job_repository,
             executor=executor,
             lease_seconds=lease_seconds
@@ -270,6 +326,7 @@ def create_replay_worker_runtime(
                 JobType.EXPERIMENT,
                 JobType.REPLAY_EXECUTION,
                 JobType.REPLAY_EVALUATION,
+                JobType.CAUSAL_AUDIT,
             ),
             job_operations={
                 JobType.EVALUATION: ("evaluation.submit_async",),
@@ -297,7 +354,9 @@ def _tenant_context(job: Job) -> TenantContext:
 
 def main() -> None:
     """Start the standalone Replay worker process."""
-    parser = argparse.ArgumentParser(description="Run the AI Governance Control Plane job worker")
+    parser = argparse.ArgumentParser(
+        description="Run the AI Governance Control Plane job worker"
+    )
     parser.add_argument("--once", action="store_true", help="Process at most one job")
     arguments = parser.parse_args()
     extension_registry = create_plugin_registry()

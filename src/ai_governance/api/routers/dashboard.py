@@ -6,8 +6,10 @@ from fastapi import APIRouter, Depends
 from fastapi import status as http_status
 
 from ai_governance.api.dependencies import get_dashboard_read_service
+from ai_governance.api.dependencies.tenancy import get_compatible_tenant_context
 from ai_governance.api.mappers.dashboard_mapper import DashboardApiMapper
 from ai_governance.api.models import DashboardSummaryResponse, ErrorResponse
+from ai_governance.tenancy.domain import TenantContext
 
 router = APIRouter(
     prefix="/api/v1/dashboard",
@@ -32,8 +34,9 @@ def get_dashboard_summary(
         object,
         Depends(get_dashboard_read_service),
     ],
+    context: Annotated[TenantContext, Depends(get_compatible_tenant_context)],
 ) -> DashboardSummaryResponse:
     """
     Return the dashboard summary without requiring frontend request fan-out.
     """
-    return DashboardApiMapper.to_response(dashboard_read_service.get_summary())
+    return DashboardApiMapper.to_response(dashboard_read_service.get_summary(context))

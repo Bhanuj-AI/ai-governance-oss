@@ -24,6 +24,8 @@ from ai_governance.tenancy.repository import InMemoryControlPlaneRepository
 from ai_governance.tenancy.services import (
     ControlPlaneService,
     bootstrap_control_plane,
+    provision_causal_audit_validator_service_account,
+    provision_external_runtime_service_account,
     provision_mcp_service_account,
     provision_walkthrough_service_account,
 )
@@ -76,6 +78,17 @@ def get_control_plane_repository():
     provision_mcp_service_account(
         repository,
         organization_id=os.getenv("AI_GOVERNANCE_BOOTSTRAP_ORGANIZATION_ID", "org_default"),
+    )
+    provision_external_runtime_service_account(
+        repository,
+        organization_id=os.getenv("AI_GOVERNANCE_BOOTSTRAP_ORGANIZATION_ID", "org_default"),
+        project_id=os.getenv("AI_GOVERNANCE_SYNTHETIC_RUNTIME_PROJECT_ID", os.getenv("AI_GOVERNANCE_BOOTSTRAP_PROJECT_ID", "project_default")),
+        grant_test_settings_manage=os.getenv("AI_GOVERNANCE_SYNTHETIC_RUNTIME_TEST_SETTINGS_ENABLED", "false").strip().lower() == "true",
+    )
+    provision_causal_audit_validator_service_account(
+        repository,
+        organization_id=os.getenv("AI_GOVERNANCE_BOOTSTRAP_ORGANIZATION_ID", "org_default"),
+        project_id=os.getenv("AI_GOVERNANCE_SYNTHETIC_RUNTIME_PROJECT_ID", os.getenv("AI_GOVERNANCE_BOOTSTRAP_PROJECT_ID", "project_default")),
     )
     provision_walkthrough_service_account(
         repository,

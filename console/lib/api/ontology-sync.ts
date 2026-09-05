@@ -6,7 +6,6 @@ import type {
   OntologySyncEvent,
   OntologySyncEventDto,
   OntologySyncEventListDto,
-  OntologySyncEventPage,
   OntologySyncEventStatus,
   OntologySyncMetrics,
   OntologySyncMetricsDto,

@@ -48,6 +48,27 @@ AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB=e44566f1-c748-45e1-83db-d2ee5fb424ef
 
 `AI_GOVERNANCE_BOOTSTRAP_ADMIN_SUB` is startup/bootstrap-only. It must never be used as a runtime caller identity.
 
+## Machine identities used by local validation
+
+The local validation flow uses two existing Keycloak service accounts. A
+service account is a non-human login used by software, not an additional
+person or tenant.
+
+| Keycloak client | Purpose | OSS access |
+|---|---|---|
+| `synthetic-agent-runtime` | Sends simulated agent executions and events. | Ingest-only, scoped to `org_default/project_default`. |
+| `ai-governance-service` | Runs the Causal Audit validator after an execution is observed. | Project-scoped external-runtime operator in `org_default/project_default`. |
+
+The validator identity is deliberately separate from the simulator identity:
+the simulator cannot grant itself audit permissions. Keycloak supplies the
+immutable `sub` for each service account; AI Governance Control Plane stores
+the membership and role. Use
+`scripts/keycloak/get-service-account-actorids.sh` to resolve the existing
+subjects. It does not create clients, users, or duplicate identities. The
+Keycloak startup launcher reconciles the local `synthetic-agent-runtime`
+client and its required scope claims when an existing development volume
+predates this capability.
+
 ## Start the platform
 
 From the repository root:

@@ -79,7 +79,7 @@ export function AssetDetailPage({ kind, assetId }: { kind: string; assetId: stri
   const entityId = versionId(registryKind, selected);
 
   return (
-    <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-5 px-6 py-5">
+    <div className="studio-page flex flex-col gap-5">
       <Link href="/assets" className="flex w-fit items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" />Assets</Link>
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>

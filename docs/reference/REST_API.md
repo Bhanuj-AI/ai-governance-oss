@@ -594,6 +594,37 @@ source, inheritance source, supported scopes, runtime-consumer status, type,
 default, editability, restart behavior, and update metadata.
 Environment-controlled settings cannot be changed through this API.
 
+## Agents Runtime
+
+Agents Runtime records bounded, tenant-scoped evidence from externally executed
+AI agents. The control plane observes the runtime; it does not execute the
+agent or accept raw prompts, responses, credentials, reasoning traces, or raw
+tool payloads.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/v1/agent-executions` | Start or idempotently replay an observed execution. |
+| `POST` | `/api/v1/agent-executions/{execution_id}/events` | Append one ordered runtime event. |
+| `POST` | `/api/v1/agent-executions/{execution_id}/complete` | Set a terminal status: `SUCCEEDED`, `FAILED`, or `CANCELLED`. |
+| `GET` | `/api/v1/agent-executions/agents` | List observed agents with tenant-scoped pagination and aggregated execution counts. |
+| `GET` | `/api/v1/agent-executions` | List execution summaries with optional agent, status, provider, date, cursor, and limit filters. |
+| `GET` | `/api/v1/agent-executions/{execution_id}` | Read one execution and its event timeline. |
+| `GET` | `/api/v1/runtime-findings` | List deterministic findings, optionally filtered by finding type, subject, severity, lifecycle, date, and limit. |
+| `POST` | `/api/v1/runtime-findings/detect` | Evaluate configured detectors against current runtime evidence. |
+| `POST` | `/api/v1/runtime-findings/reconcile` | Recheck open findings and resolve only sustained recovery. |
+| `GET` | `/api/v1/runtime-findings/{finding_id}` | Read one finding and its bounded evidence. |
+| `POST` | `/api/v1/agents-runtime/causal-audits` | Queue an idempotent, isolated causal audit for an execution. |
+| `GET` | `/api/v1/agents-runtime/causal-audits` | List tenant-scoped causal audits by agent, classification, status, and evaluator. |
+| `GET` | `/api/v1/agents-runtime/causal-audits/{audit_id}` | Read one immutable causal audit result. |
+| `GET` | `/api/v1/agents-runtime/executions/{execution_id}/causal-audits` | List causal audits for one execution. |
+| `GET` | `/api/v1/agents-runtime/executions/{execution_id}/causal-audit-eligibility` | Explain whether an execution can be safely audited. |
+
+The complete click-by-click workflow, payload examples, lifecycle guide,
+settings overview, and troubleshooting steps are in the
+[Agents Runtime Operator Guide](../tutorials/agents-runtime-operator-guide.md).
+See [Causal Audit](../architecture/CAUSAL_AUDIT.md) for eligibility, scoring,
+methodology versioning, and limitations.
+
 ## Boundaries
 
 REST routers must not import repository implementations, provider adapters, or

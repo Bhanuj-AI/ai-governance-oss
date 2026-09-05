@@ -16,6 +16,7 @@ from typing import Any, Protocol
 
 from ai_governance.domain.jobs import Job, JobResult, JobStatus
 from ai_governance.domain.replay import (
+    ControlledEvidenceIntervention,
     ReplayConfiguration,
     ReplayFailure,
     ReplayFailureStage,
@@ -57,6 +58,7 @@ class ReplayExecutionContext:
     attempt: int
     cancellation_token: ReplayCancellationToken
     metadata: dict[str, Any]
+    controlled_evidence_intervention: ControlledEvidenceIntervention | None = None
 
 
 class ReplayCancellationToken(Protocol):
@@ -147,6 +149,10 @@ class HistoricalReplayExecutionAdapter:
     ) -> WorkflowExecution:
         if context.cancellation_token.is_cancelled:
             raise ReplayReconstructionFailed("Replay cancellation requested.")
+        if context.controlled_evidence_intervention is not None:
+            raise ReplayReconstructionFailed(
+                "The historical replay adapter cannot apply controlled evidence."
+            )
         return WorkflowExecution(
             workflow_id=configuration.workflow_id,
             execution_id=context.new_execution_id,
@@ -216,8 +222,7 @@ class ReplayJobHandler:
     uses optimistic replay updates after each lifecycle transition. Thus a
     retried worker keeps the same replay, job, configuration hash, and produced
     execution identity. Once a matching execution is saved with lineage
-    metadata, the replay becomes ``EXECUTION_COMPLETED`` and can be evaluated
-    by Phase 3.
+    metadata, the replay becomes ``EXECUTION_COMPLETED`` and can be evaluated.
 
     The handler validates tenant linkage, adapter availability, configuration,
     and returned execution identity. It supports cooperative cancellation and
@@ -261,12 +266,16 @@ class ReplayJobHandler:
             return JobResult(
                 job.job_id, JobStatus.FAILED, None, "Replay job linkage is invalid."
             )
-        if replay.status in {
-            ReplayStatus.EXECUTION_COMPLETED,
-            ReplayStatus.EVALUATING,
-            ReplayStatus.COMPARING,
-            ReplayStatus.COMPLETED,
-        } and replay.replay_execution_id:
+        if (
+            replay.status
+            in {
+                ReplayStatus.EXECUTION_COMPLETED,
+                ReplayStatus.EVALUATING,
+                ReplayStatus.COMPARING,
+                ReplayStatus.COMPLETED,
+            }
+            and replay.replay_execution_id
+        ):
             return JobResult(job.job_id, JobStatus.SUCCEEDED, _result_ref(replay), None)
         if replay.status in {ReplayStatus.CANCELLED, ReplayStatus.ARCHIVED}:
             return JobResult(
@@ -325,6 +334,7 @@ class ReplayJobHandler:
                         attempt=max(job.attempt_count, 1),
                         cancellation_token=token,
                         metadata={},
+                        controlled_evidence_intervention=replay.controlled_evidence_intervention,
                     ),
                 )
             except Exception:
@@ -352,6 +362,9 @@ class ReplayJobHandler:
                 "configuration_hash": configuration.configuration_hash,
                 "job_id": job.job_id,
                 "job_attempt": job.attempt_count,
+                "controlled_evidence_intervention": _intervention_metadata(
+                    replay.controlled_evidence_intervention
+                ),
             }
             self._execution_store.save(execution)
             completed = self._replay_repository.update(
@@ -437,6 +450,29 @@ def _context(job: Job) -> TenantContext:
 
 def _result_ref(replay) -> str:
     return f"workflow_execution:{replay.replay_execution_id}"
+
+
+def _intervention_metadata(
+    intervention: ControlledEvidenceIntervention | None,
+) -> dict[str, Any] | None:
+    if intervention is None:
+        return None
+    return {
+        "strategy": intervention.strategy.value,
+        "strategy_version": intervention.strategy_version,
+        "source_evidence_reference": intervention.source_evidence_reference,
+        "target_event_id": intervention.target_event_id,
+        "counterfactual_evidence_reference": intervention.counterfactual_evidence_reference,
+        "seed": intervention.seed,
+        "configuration": dict(intervention.configuration),
+        "policy_id": intervention.policy_id,
+        "policy_version": intervention.policy_version,
+        "provider_id": intervention.provider_id,
+        "provider_version": intervention.provider_version,
+        "original_evidence_digest": intervention.original_evidence_digest,
+        "counterfactual_evidence_digest": intervention.counterfactual_evidence_digest,
+        "intervention_digest": intervention.intervention_digest,
+    }
 
 
 def _failure_stage(error: Exception) -> ReplayFailureStage:

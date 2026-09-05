@@ -25,7 +25,7 @@ export function ProjectsPage() {
     if (searchParams.get("onboarding") === "create") nameInput.current?.focus();
   }, [searchParams]);
   function submit(event: FormEvent) { event.preventDefault(); if (canManage) create.mutate(); }
-  return <div className="space-y-6 p-6"><h1 className="text-3xl font-semibold">Projects</h1><OrganizationNav />
+  return <div className="studio-page space-y-6"><h1 className="text-3xl font-semibold">Projects</h1><OrganizationNav />
     <form className={`flex flex-wrap gap-2 rounded-md ${searchParams.get("onboarding") === "create" ? "bg-primary/5 p-3 ring-1 ring-primary/30" : ""}`} onSubmit={submit}><Input ref={nameInput} value={name} onChange={e => setName(e.target.value)} placeholder="Project name" required />
       <Input value={slug} onChange={e => setSlug(e.target.value)} placeholder="project-slug" required />
       <Button disabled={!canManage || create.isPending} title={!canManage ? "Requires project.create permission" : undefined}>Create project</Button></form>

@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from types import MappingProxyType
 from typing import Any
 
-from .definitions import CORE_SETTING_DEFINITION_SETS
+from .definitions import OSS_SETTING_DEFINITION_SETS
 from .domain import SettingDefinition, SettingValidationError
 from .domain import SettingValueType as T
 
@@ -28,7 +28,7 @@ def _compose_definitions(
     return definitions
 
 
-_SETTINGS = _compose_definitions(CORE_SETTING_DEFINITION_SETS)
+_SETTINGS = _compose_definitions(OSS_SETTING_DEFINITION_SETS)
 SETTINGS_REGISTRY = MappingProxyType(_SETTINGS)
 
 

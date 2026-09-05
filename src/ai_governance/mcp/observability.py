@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 @dataclass
 class MCPMetrics:
     """
-    In-process MCP metrics for Phase 1 observability.
+    In-process MCP metrics for observability.
     """
 
     tool_invocations_total: int = 0

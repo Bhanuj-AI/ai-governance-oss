@@ -92,7 +92,9 @@ The default Compose stack starts Keycloak at
 ```
 
 The Keycloak realm import is only applied when its PostgreSQL data volume is
-new. To deliberately recreate the local realm, run
+new. The local startup launcher reconciles promoted service clients that are
+required by current local workflows, including `synthetic-agent-runtime`, on
+existing development volumes. To deliberately recreate the entire local realm, run
 `docker compose down -v` from `keycloak-postgres/` and then run
 `./scripts/keycloak/start-keycloak.sh`.
 This removes local Keycloak users, sessions, and clients.

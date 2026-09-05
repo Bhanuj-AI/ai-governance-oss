@@ -12,13 +12,18 @@ import {
 import { ReplayLineageGraph } from "@/components/replays/ReplayLineageGraph";
 import { ReplayStatusBadge } from "@/components/replays/ReplayStatusBadge";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { archiveReplay, cancelReplay, evaluateReplay, getReplay, getReplayAudit, getReplayResult, submitReplay } from "@/lib/api/replays";
+import { getCausalAudit } from "@/lib/api/agent-runtime";
 import { listProviderInstallations } from "@/lib/api/registries";
 import { getCurrentContext } from "@/lib/api/tenancy";
+import { controlledCausalAuditId } from "@/lib/replays/controlled-causal-replay";
+import type { CausalAuditDto } from "@/types/agent-runtime";
 import type { Replay, ReplayAuditRecord, ReplayResult } from "@/types/replay";
 
 const TABS = ["Overview", "Configuration", "Execution", "Evaluation", "Comparison", "Lineage", "Audit"] as const;
+const CONTROLLED_CAUSAL_TABS = ["Overview", "Configuration", "Execution", "Lineage", "Audit"] as const;
 type Tab = (typeof TABS)[number];
 
 export function ReplayDetailPage({ replayId }: { replayId: string }) {
@@ -34,6 +39,8 @@ export function ReplayDetailPage({ replayId }: { replayId: string }) {
   const providerInstallations = useQuery({ queryKey: ["provider-installations"], queryFn: listProviderInstallations });
   const result = useQuery({ queryKey: ["replay-result", replayId], queryFn: () => getReplayResult(replayId), enabled: Boolean(replay.data?.result_id), retry: false });
   const audit = useQuery({ queryKey: ["replay-audit", replayId], queryFn: () => getReplayAudit(replayId), enabled: tab === "Audit", refetchInterval: () => tab === "Audit" && replay.data && ["QUEUED", "RUNNING", "EVALUATING", "COMPARING"].includes(replay.data.status) ? 5000 : false });
+  const causalAuditId = replay.data ? controlledCausalAuditId(replay.data) : null;
+  const causalAudit = useQuery({ queryKey: ["causal-audit", causalAuditId], queryFn: () => getCausalAudit(causalAuditId!), enabled: Boolean(causalAuditId), retry: false });
   const refresh = () => Promise.all([queryClient.invalidateQueries({ queryKey: ["replay", replayId] }), queryClient.invalidateQueries({ queryKey: ["replay-result", replayId] }), queryClient.invalidateQueries({ queryKey: ["replay-audit", replayId] })]);
   const mutationOptions = {
     onSuccess: () => { setError(null); void refresh(); },
@@ -48,53 +55,68 @@ export function ReplayDetailPage({ replayId }: { replayId: string }) {
   if (replay.isError || !replay.data) return <div className="p-8 text-sm text-destructive">Replay not found or unavailable in this tenant.</div>;
   const item = replay.data;
   const can = (permission: string) => access.data?.permissions.includes(permission) ?? false;
+  const controlledCausalReplay = causalAuditId !== null;
+  const tabs = controlledCausalReplay ? CONTROLLED_CAUSAL_TABS : TABS;
 
-  return <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-5 px-6 py-5">
+  return <div className="studio-page flex flex-col gap-5">
     <Link href="/replays" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" />Replay Management</Link>
-    <div className="flex flex-wrap items-start justify-between gap-4"><div><div className="flex items-center gap-3"><h1 className="text-2xl font-semibold">Replay {shortId(item.replay_id)}</h1><ReplayStatusBadge status={item.status} /></div><p className="mt-1 text-sm text-muted-foreground">Source execution <span className="font-mono">{item.source_execution_id}</span> · created by {item.requested_by}</p></div><HeaderActions replay={item} can={can} onSubmit={() => submit.mutate()} onEvaluate={() => evaluate.mutate()} onCancel={() => cancel.mutate()} onArchive={() => archive.mutate()} pending={submit.isPending || evaluate.isPending || cancel.isPending || archive.isPending} /></div>
+    <div className="flex flex-wrap items-start justify-between gap-4"><div><div className="flex flex-wrap items-center gap-3"><h1 className="text-2xl font-semibold">Replay {shortId(item.replay_id)}</h1><ReplayStatusBadge status={item.status} />{controlledCausalReplay ? <Badge variant="outline">Controlled Causal Replay</Badge> : null}</div><p className="mt-1 text-sm text-muted-foreground">Source execution <span className="font-mono">{item.source_execution_id}</span> · created by {item.requested_by}</p></div><HeaderActions replay={item} controlledCausalReplay={controlledCausalReplay} can={can} onSubmit={() => submit.mutate()} onEvaluate={() => evaluate.mutate()} onCancel={() => cancel.mutate()} onArchive={() => archive.mutate()} pending={submit.isPending || evaluate.isPending || cancel.isPending || archive.isPending} /></div>
     <div className="rounded-md border bg-muted/30 p-3 text-sm"><label className="mr-3 font-medium">Action Reason</label><input className="mt-2 h-9 w-full rounded-md border bg-background px-3 sm:mt-0 sm:w-[420px]" value={reason} onChange={(event) => setReason(event.target.value)} /></div>
-    {item.status === "EXECUTION_COMPLETED" ? <Card><CardHeader><CardTitle>Evaluate Replay</CardTitle></CardHeader><CardContent className="grid gap-3 md:grid-cols-3"><select className="h-9 rounded-md border bg-background px-3" value={baselineStrategy} onChange={(event) => setBaselineStrategy(event.target.value as typeof baselineStrategy)}><option value="LATEST_COMPATIBLE">Latest compatible baseline</option><option value="SOURCE_PRIMARY">Source primary baseline</option><option value="EXPLICIT">Explicit baseline</option></select><select className="h-9 rounded-md border bg-background px-3" value={providerInstallationId} onChange={(event) => setProviderInstallationId(event.target.value)} disabled={providerInstallations.isLoading || providerInstallations.isError}><option value="">Use the replay&apos;s frozen provider</option>{(providerInstallations.data ?? []).filter((item) => item.enabled).map((installation) => <option key={installation.installation_id} value={installation.installation_id}>{installation.display_name} · {installation.provider_type}</option>)}</select>{baselineStrategy === "EXPLICIT" ? <input className="h-9 rounded-md border bg-background px-3" placeholder="Baseline evaluation ID" value={baselineId} onChange={(event) => setBaselineId(event.target.value)} /> : <div className="text-sm text-muted-foreground">The backend resolves compatibility and drift policy.</div>}{providerInstallations.isError ? <p className="text-xs text-destructive">Provider installations could not be loaded.</p> : null}</CardContent></Card> : null}
+    {controlledCausalReplay ? <ControlledCausalReplayNotice auditId={causalAuditId} auditStatus={causalAudit.data?.status} /> : item.status === "EXECUTION_COMPLETED" ? <Card><CardHeader><CardTitle>Evaluate Replay</CardTitle></CardHeader><CardContent className="grid gap-3 md:grid-cols-3"><select className="h-9 rounded-md border bg-background px-3" value={baselineStrategy} onChange={(event) => setBaselineStrategy(event.target.value as typeof baselineStrategy)}><option value="LATEST_COMPATIBLE">Latest compatible baseline</option><option value="SOURCE_PRIMARY">Source primary baseline</option><option value="EXPLICIT">Explicit baseline</option></select><select className="h-9 rounded-md border bg-background px-3" value={providerInstallationId} onChange={(event) => setProviderInstallationId(event.target.value)} disabled={providerInstallations.isLoading || providerInstallations.isError}><option value="">Use the replay&apos;s frozen provider</option>{(providerInstallations.data ?? []).filter((item) => item.enabled).map((installation) => <option key={installation.installation_id} value={installation.installation_id}>{installation.display_name} · {installation.provider_type}</option>)}</select>{baselineStrategy === "EXPLICIT" ? <input className="h-9 rounded-md border bg-background px-3" placeholder="Baseline evaluation ID" value={baselineId} onChange={(event) => setBaselineId(event.target.value)} /> : <div className="text-sm text-muted-foreground">The backend resolves compatibility and drift policy.</div>}{providerInstallations.isError ? <p className="text-xs text-destructive">Provider installations could not be loaded.</p> : null}</CardContent></Card> : null}
     {error ? <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</div> : null}
-    <div className="flex gap-1 overflow-x-auto border-b">{TABS.map((name) => <button key={name} type="button" className={`border-b-2 px-3 py-2 text-sm ${tab === name ? "border-primary font-medium text-foreground" : "border-transparent text-muted-foreground"}`} onClick={() => setTab(name)}>{name}</button>)}</div>
-    <ReplayTab tab={tab} replay={item} result={result.data} audit={audit.data} />
+    <div className="flex gap-1 overflow-x-auto border-b">{tabs.map((name) => <button key={name} type="button" className={`border-b-2 px-3 py-2 text-sm ${tab === name ? "border-primary font-medium text-foreground" : "border-transparent text-muted-foreground"}`} onClick={() => setTab(name)}>{name}</button>)}</div>
+    <ReplayTab tab={tab} replay={item} result={result.data} audit={audit.data} controlledCausalReplay={controlledCausalReplay} causalAudit={causalAudit.data} />
   </div>;
 }
 
-function HeaderActions({ replay, can, onSubmit, onEvaluate, onCancel, onArchive, pending }: { replay: Replay; can: (permission: string) => boolean; onSubmit: () => void; onEvaluate: () => void; onCancel: () => void; onArchive: () => void; pending: boolean }) {
-  return <div className="flex flex-wrap gap-2">{replay.status === "READY" && can("replay.execute") ? <Button disabled={pending} onClick={onSubmit}><Play className="h-4 w-4" />Submit Replay</Button> : null}{replay.status === "EXECUTION_COMPLETED" && can("replay.evaluate") ? <Button disabled={pending} onClick={onEvaluate}>Evaluate Replay</Button> : null}{["READY", "QUEUED", "RUNNING", "EXECUTION_COMPLETED", "EVALUATING", "COMPARING"].includes(replay.status) && can("replay.cancel") ? <Button variant="outline" disabled={pending} onClick={onCancel}><XCircle className="h-4 w-4" />Cancel</Button> : null}{["READY", "EXECUTION_COMPLETED", "COMPLETED", "FAILED", "CANCELLED"].includes(replay.status) && can("replay.archive") ? <Button variant="outline" disabled={pending} onClick={onArchive}>Archive</Button> : null}{["FAILED", "CANCELLED", "COMPLETED"].includes(replay.status) ? <Button variant="outline" asChild><Link href={`/replays/new?source_execution_id=${encodeURIComponent(replay.source_execution_id)}`}>Create New Replay</Link></Button> : null}</div>;
+function HeaderActions({ replay, controlledCausalReplay, can, onSubmit, onEvaluate, onCancel, onArchive, pending }: { replay: Replay; controlledCausalReplay: boolean; can: (permission: string) => boolean; onSubmit: () => void; onEvaluate: () => void; onCancel: () => void; onArchive: () => void; pending: boolean }) {
+  const canCancel = controlledCausalReplay ? ["READY", "QUEUED", "RUNNING"].includes(replay.status) : ["READY", "QUEUED", "RUNNING", "EXECUTION_COMPLETED", "EVALUATING", "COMPARING"].includes(replay.status);
+  const canCreateNew = ["FAILED", "CANCELLED", "COMPLETED"].includes(replay.status) || (controlledCausalReplay && replay.status === "EXECUTION_COMPLETED");
+  return <div className="flex flex-wrap gap-2">{replay.status === "READY" && can("replay.execute") ? <Button disabled={pending} onClick={onSubmit}><Play className="h-4 w-4" />Submit Replay</Button> : null}{replay.status === "EXECUTION_COMPLETED" && !controlledCausalReplay && can("replay.evaluate") ? <Button disabled={pending} onClick={onEvaluate}>Evaluate Replay</Button> : null}{canCancel && can("replay.cancel") ? <Button variant="outline" disabled={pending} onClick={onCancel}><XCircle className="h-4 w-4" />Cancel</Button> : null}{["READY", "EXECUTION_COMPLETED", "COMPLETED", "FAILED", "CANCELLED"].includes(replay.status) && can("replay.archive") ? <Button variant="outline" disabled={pending} onClick={onArchive}>Archive</Button> : null}{canCreateNew ? <Button variant="outline" asChild><Link href={`/replays/new?source_execution_id=${encodeURIComponent(replay.source_execution_id)}`}>Create New Replay</Link></Button> : null}</div>;
 }
 
-function ReplayTab({ tab, replay, result, audit }: { tab: Tab; replay: Replay; result?: ReplayResult; audit?: ReplayAuditRecord[] }) {
+function ControlledCausalReplayNotice({ auditId, auditStatus }: { auditId: string; auditStatus?: CausalAuditDto["status"] }) {
+  const href = `/agents-runtime/causal-audits/${encodeURIComponent(auditId)}`;
+  const action = auditStatus === "SUCCEEDED" ? "View causal outcome" : auditStatus === "FAILED" || auditStatus === "CANCELLED" ? "Review audit diagnostics" : "Open Causal Audit";
+  return <Card className="border-primary/30 bg-primary/5"><CardHeader><CardTitle>Controlled Causal Replay</CardTitle></CardHeader><CardContent className="space-y-3 text-sm"><p>This Replay contains a governed evidence intervention for Causal Audit. Its isolated outcome is finalized by the associated Causal Audit, not by generic Replay evaluation or drift comparison.</p><div className="flex flex-wrap items-center gap-3"><span className="text-muted-foreground">Causal Audit</span><span className="font-mono text-xs">{auditId}</span><Link className="font-medium text-primary hover:underline" href={href}>{action}</Link></div></CardContent></Card>;
+}
+
+function ReplayTab({ tab, replay, result, audit, controlledCausalReplay, causalAudit }: { tab: Tab; replay: Replay; result?: ReplayResult; audit?: ReplayAuditRecord[]; controlledCausalReplay: boolean; causalAudit?: CausalAuditDto }) {
   if (tab === "Configuration") return <Card><CardHeader><CardTitle>Frozen historical configuration</CardTitle></CardHeader><CardContent>{replay.configuration ? <pre className="max-h-[520px] overflow-auto rounded-md bg-muted p-4 text-xs">{JSON.stringify(replay.configuration, null, 2)}</pre> : <Empty text="Configuration was not resolved for this replay." />}</CardContent></Card>;
   if (tab === "Execution") return <Card><CardHeader><CardTitle>Source and replay execution</CardTitle></CardHeader><CardContent className="grid gap-4 md:grid-cols-2"><Reference label="Source execution" value={replay.source_execution_id} /><Reference label="Replay execution" value={replay.replay_execution_id} /><Reference label="Execution job" value={replay.job_id} /><Reference label="Attempt count" value={String(replay.attempt_count)} /></CardContent></Card>;
-  if (tab === "Evaluation") return <Card><CardHeader><CardTitle>Evaluation evidence</CardTitle></CardHeader><CardContent className="grid gap-4 md:grid-cols-2"><Reference label="Baseline evaluation" value={replay.baseline_evaluation_id} /><Reference label="Replay evaluation" value={replay.replay_evaluation_id} /><Reference label="Evaluation job" value={replay.evaluation_job_id} /><Reference label="Evaluation completed" value={formatDate(replay.evaluation_completed_at)} /></CardContent></Card>;
-  if (tab === "Comparison") return <Comparison result={result} />;
+  if (tab === "Evaluation") return controlledCausalReplay ? <ControlledCausalReplayTab title="Generic Replay evaluation is not applicable" /> : <Card><CardHeader><CardTitle>Evaluation evidence</CardTitle></CardHeader><CardContent className="grid gap-4 md:grid-cols-2"><Reference label="Baseline evaluation" value={replay.baseline_evaluation_id} /><Reference label="Replay evaluation" value={replay.replay_evaluation_id} /><Reference label="Evaluation job" value={replay.evaluation_job_id} /><Reference label="Evaluation completed" value={formatDate(replay.evaluation_completed_at)} /></CardContent></Card>;
+  if (tab === "Comparison") return controlledCausalReplay ? <ControlledCausalReplayTab title="Generic Replay comparison is not applicable" /> : <Comparison result={result} />;
   if (tab === "Lineage") return <Card><CardHeader><CardTitle>Replay lineage</CardTitle></CardHeader><CardContent className="space-y-3"><p className="text-sm text-muted-foreground">Rendered from persisted Replay references. Ontology projection can enrich this graph but does not gate it.</p><ReplayLineageGraph replay={replay} result={result} /></CardContent></Card>;
   if (tab === "Audit") return <Card><CardHeader><CardTitle>Replay audit trail</CardTitle></CardHeader><CardContent><p className="mb-4 text-sm text-muted-foreground">Durable replay transitions and worker outcomes for this run. MCP tool activity remains available in the platform Audit area.</p>{audit ? <div className="space-y-2">{audit.length ? audit.map((record) => <div key={record.event_id} className="rounded-md border p-3 text-sm"><div className="flex flex-wrap items-center gap-x-2 gap-y-1"><span className="font-medium">{record.operation_type}</span><span className="text-muted-foreground">{record.status}</span><span className="text-muted-foreground">{formatDate(record.occurred_at)}</span></div><p className="mt-1 text-muted-foreground">{record.detail}</p><div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground"><span>{record.resource_type}: <span className="font-mono">{record.resource_id}</span></span>{record.job_id ? <span>Job: <span className="font-mono">{record.job_id}</span></span> : null}</div></div>) : <Empty text="No replay transitions have been recorded yet." />}</div> : <Empty text="Loading this replay’s durable audit trail…" />}</CardContent></Card>;
-  return <Overview replay={replay} result={result} />;
+  return <Overview replay={replay} result={result} controlledCausalReplay={controlledCausalReplay} causalAudit={causalAudit} />;
 }
 
-function Overview({ replay, result }: { replay: Replay; result?: ReplayResult }) {
+function ControlledCausalReplayTab({ title }: { title: string }) {
+  return <Card><CardHeader><CardTitle>{title}</CardTitle></CardHeader><CardContent><Empty text="This controlled Replay contributes its bounded outcome and governed lineage to Causal Audit. Review the associated Causal Audit for Evidence Influence and classification." /></CardContent></Card>;
+}
+
+function Overview({ replay, result, controlledCausalReplay, causalAudit }: { replay: Replay; result?: ReplayResult; controlledCausalReplay: boolean; causalAudit?: CausalAuditDto }) {
   return <div className="space-y-4">
-    <ReplayLifecycle replay={replay} result={result} />
+    <ReplayLifecycle replay={replay} result={result} controlledCausalReplay={controlledCausalReplay} />
     <Card>
-      <CardHeader><CardTitle>Replay Timing</CardTitle></CardHeader>
+      <CardHeader><CardTitle>{controlledCausalReplay ? "Controlled Replay Timing" : "Replay Timing"}</CardTitle></CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid gap-3 md:grid-cols-3"><Reference label="Created" value={formatDate(replay.created_at)} /><Reference label="Execution completed" value={formatDate(replay.execution_completed_at)} /><Reference label="Replay completed" value={formatDate(replay.completed_at)} /></div>
+        {controlledCausalReplay ? <div className="grid gap-3 md:grid-cols-3"><Reference label="Created" value={formatDate(replay.created_at)} /><Reference label="Controlled execution completed" value={formatDate(replay.execution_completed_at)} /><Reference label="Causal audit finalized" value={causalAuditFinalization(causalAudit)} /></div> : <div className="grid gap-3 md:grid-cols-3"><Reference label="Created" value={formatDate(replay.created_at)} /><Reference label="Execution completed" value={formatDate(replay.execution_completed_at)} /><Reference label="Replay completed" value={formatDate(replay.completed_at)} /></div>}
         {replay.failure ? <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4"><div className="flex items-center gap-2 font-medium text-destructive"><ShieldAlert className="h-4 w-4" />{replay.failure.code}</div><p className="mt-1 text-sm">{replay.failure.message}</p><p className="mt-2 text-xs text-muted-foreground">Stage: {replay.failure.stage} · {formatDate(replay.failure.occurred_at)}</p></div> : null}
       </CardContent>
     </Card>
-    {result ? <Comparison result={result} /> : <Card><CardContent><Empty text={replay.status === "COMPLETED" ? "Result evidence is loading." : "Comparison and drift evidence will appear after evaluation completes."} /></CardContent></Card>}
+    {!controlledCausalReplay && (result ? <Comparison result={result} /> : <Card><CardContent><Empty text={replay.status === "COMPLETED" ? "Result evidence is loading." : "Comparison and drift evidence will appear after evaluation completes."} /></CardContent></Card>)}
   </div>;
 }
 
-function ReplayLifecycle({ replay, result }: { replay: Replay; result?: ReplayResult }) {
-  const presentation = replayPresentation(replay, result);
-  const steps = replaySteps(replay, presentation.activeStep, presentation.tone);
-  return <GovernedEventFlow stream="Replay / historical execution" steps={steps} outcomeLabel="Governed outcome" outcome={presentation.outcome} outcomeDetail={presentation.detail} outcomeTone={presentation.tone} activeStep={presentation.activeStep} activeAdornment={<ReplayStepState tone={presentation.tone} />} footer={<RunReferences replay={replay} result={result} />} />;
+function ReplayLifecycle({ replay, result, controlledCausalReplay }: { replay: Replay; result?: ReplayResult; controlledCausalReplay: boolean }) {
+  const presentation = replayPresentation(replay, result, controlledCausalReplay);
+  const steps = replaySteps(replay, presentation.activeStep, presentation.tone, controlledCausalReplay);
+  return <GovernedEventFlow stream={controlledCausalReplay ? "Replay / controlled causal execution" : "Replay / historical execution"} steps={steps} outcomeLabel="Governed outcome" outcome={presentation.outcome} outcomeDetail={presentation.detail} outcomeTone={presentation.tone} activeStep={presentation.activeStep} activeAdornment={<ReplayStepState tone={presentation.tone} />} footer={<RunReferences replay={replay} result={result} />} />;
 }
 
-function replayPresentation(replay: Replay, result?: ReplayResult): { activeStep: number; outcome: string; detail: string; tone: Exclude<GovernedFlowTone, "muted"> } {
+function replayPresentation(replay: Replay, result?: ReplayResult, controlledCausalReplay = false): { activeStep: number; outcome: string; detail: string; tone: Exclude<GovernedFlowTone, "muted"> } {
+  if (controlledCausalReplay && replay.status === "EXECUTION_COMPLETED") return { activeStep: 3, outcome: "CAUSAL OUTCOME RECORDED", detail: "The controlled outcome and governed lineage are available to Causal Audit. Generic Replay evaluation is intentionally disabled.", tone: "success" };
   if (replay.status === "COMPLETED" && result) {
     const severity = result.drift_summary.severity;
     const delta = result.comparison_summary.overall_score_delta;
@@ -112,12 +134,14 @@ function replayPresentation(replay: Replay, result?: ReplayResult): { activeStep
   return { activeStep: 3, outcome: "COMPLETED", detail: "Replay execution completed; outcome evidence is loading.", tone: "success" };
 }
 
-function replaySteps(replay: Replay, activeStep: number, activeTone: Exclude<GovernedFlowTone, "muted">): GovernedFlowStep[] {
+function replaySteps(replay: Replay, activeStep: number, activeTone: Exclude<GovernedFlowTone, "muted">, controlledCausalReplay = false): GovernedFlowStep[] {
   const steps: GovernedFlowStep[] = [
     { id: "freeze", label: "freeze source evidence", detail: "The approved historical source and configuration are resolved once.", tone: "info" },
     { id: "queue", label: "queue replay work", detail: replay.job_id ? "A durable execution job was created with an explicit source link." : "The replay is prepared for durable job creation.", tone: "progress" },
     { id: "execute", label: "produce replay execution", detail: "A distinct execution is produced; the original source remains unchanged.", tone: "info" },
-    { id: "compare", label: "evaluate and compare", detail: "A compatible baseline is evaluated and semantic drift is retained as evidence.", tone: "success" },
+    controlledCausalReplay
+      ? { id: "causal", label: "finalize causal audit", detail: "The controlled outcome is attached to the governed Causal Audit lineage.", tone: "success" }
+      : { id: "compare", label: "evaluate and compare", detail: "A compatible baseline is evaluated and semantic drift is retained as evidence.", tone: "success" },
   ];
   return steps.map((step, index) => ({ ...step, tone: index === activeStep ? activeTone : index > activeStep ? "muted" : step.tone }));
 }
@@ -140,3 +164,9 @@ function Reference({ label, value }: { label: string; value: string | null | und
 function Empty({ text }: { text: string }) { return <p className="py-5 text-sm text-muted-foreground">{text}</p>; }
 function shortId(value: string) { return value.length > 16 ? `${value.slice(0, 10)}…${value.slice(-4)}` : value; }
 function formatDate(value: string | null | undefined) { return value ? new Date(value).toLocaleString() : "Not reached"; }
+function causalAuditFinalization(audit?: CausalAuditDto) {
+  if (!audit) return "Loading audit state";
+  if (audit.status === "SUCCEEDED") return formatDate(audit.completed_at);
+  if (audit.status === "FAILED" || audit.status === "CANCELLED") return "Needs review";
+  return audit.status === "QUEUED" ? "Queued" : "In progress";
+}

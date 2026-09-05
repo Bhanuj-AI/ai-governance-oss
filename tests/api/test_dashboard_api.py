@@ -106,12 +106,19 @@ def test_dashboard_summary_returns_home_read_model() -> None:
         "Neo4j Graph Store",
         "Ontology Synchronizer",
         "Job Workers",
+        "Agents Runtime",
     ]
+    assert [section["key"] for section in payload["operational_sections"]] == [
+        "governance",
+        "evaluation-replay",
+        "agent-runtime",
+    ]
+    assert payload["attention_signals"] == []
+    assert payload["health_checked_at"]
     assert payload["recent_activity"]
-    assert {
-        "Candidate/candidate-1",
-        f"Job/{job.json()['job_id']}",
-    }.issubset({item["resource"] for item in payload["recent_activity"]})
+    assert {"Governance decision", "Evaluation"}.issubset(
+        {item["resource"] for item in payload["recent_activity"]}
+    )
     assert all(
         not item["resource"].startswith("GovernanceDecision/")
         for item in payload["recent_activity"]

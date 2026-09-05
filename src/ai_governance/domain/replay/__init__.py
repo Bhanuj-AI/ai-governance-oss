@@ -1,4 +1,6 @@
 from ai_governance.domain.replay.replay import (
+    ControlledEvidenceIntervention,
+    ControlledEvidenceStrategy,
     Replay,
     ReplayConfiguration,
     ReplayConfigurationSource,
@@ -18,6 +20,8 @@ from ai_governance.domain.replay.replay_result import (
 )
 
 __all__ = [
+    "ControlledEvidenceIntervention",
+    "ControlledEvidenceStrategy",
     "Replay",
     "ReplayComparisonSummary",
     "ReplayConfiguration",

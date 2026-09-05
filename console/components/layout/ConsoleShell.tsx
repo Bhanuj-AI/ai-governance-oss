@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   Activity,
   Boxes,
+  Cpu,
   BookOpen,
   BriefcaseBusiness,
   FlaskConical,
@@ -29,7 +30,6 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { listOrganizations, listProjects } from "@/lib/api/tenancy";
-import { AI_GOVERNANCE_API_BASE_URL } from "@/lib/api/config";
 import { useTenantContext } from "@/components/tenancy/TenantContextProvider";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -37,7 +37,7 @@ import { cn } from "@/lib/utils/cn";
 import { useAuth } from "@/auth/auth-provider";
 import { STUDIO_NAVIGATION_CONTRIBUTIONS } from "@/extensions/navigation";
 
-const CORE_NAV_ITEMS = [
+const OSS_NAV_ITEMS = [
   {
     href: "/",
     icon: <Home className="h-4 w-4" />,
@@ -54,6 +54,12 @@ const CORE_NAV_ITEMS = [
     href: "/assets",
     icon: <Boxes className="h-4 w-4" />,
     label: "Assets",
+    enabled: true,
+  },
+  {
+    href: "/agents-runtime",
+    icon: <Cpu className="h-4 w-4" />,
+    label: "Agents Runtime",
     enabled: true,
   },
   {
@@ -112,7 +118,7 @@ const CORE_NAV_ITEMS = [
   },
 ];
 
-const NAV_ITEMS = [...CORE_NAV_ITEMS, ...STUDIO_NAVIGATION_CONTRIBUTIONS];
+const NAV_ITEMS = [...OSS_NAV_ITEMS, ...STUDIO_NAVIGATION_CONTRIBUTIONS];
 
 const NAVIGATION_COLLAPSED_KEY = "ai_governance.navigation.collapsed";
 const THEME_KEY = "ai_governance.theme";
@@ -290,7 +296,7 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
                 Guided journeys
               </Link>
               <a
-                href="https://ai-governance.bhanuj.app/docs"
+                href="https://governance.bhanuj.ai/docs"
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"

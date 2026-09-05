@@ -50,7 +50,7 @@ export function OrganizationPage() {
   const activeMembers = members.data?.filter((member) => member.status === "ACTIVE").length ?? 0;
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="studio-page space-y-6">
       <div>
         <h1 className="flex items-center gap-2 text-3xl font-semibold">
           <Building2 className="h-6 w-6" />

@@ -100,6 +100,10 @@ services:
       AI_GOVERNANCE_GOVERNANCE_DECISION_SQLITE_PATH: /var/lib/ai-governance/governance.db
       AI_GOVERNANCE_ONTOLOGY_SYNC_EVENT_REPOSITORY: sqlite
       AI_GOVERNANCE_ONTOLOGY_SYNC_EVENT_SQLITE_PATH: /var/lib/ai-governance/governance.db
+      # Agents Runtime executions, intervention policies, and causal audits
+      # share the durable store used by the replay worker.
+      AI_GOVERNANCE_AGENT_EXECUTION_REPOSITORY: sqlite
+      AI_GOVERNANCE_AGENT_EXECUTION_SQLITE_PATH: /var/lib/ai-governance/governance.db
       AI_GOVERNANCE_ONTOLOGY_REPOSITORY: neo4j
     volumes:
       - ai-governance_sqlite_data:/var/lib/ai-governance
@@ -160,6 +164,9 @@ services:
   # Executes queued replay jobs against the local durable repositories.
   ai-governance-replay-worker:
     image: ai-governance-platform:local
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "keycloak.localhost:host-gateway"
     env_file:
       - .env.platform
       - .env.build
@@ -172,8 +179,12 @@ services:
       AI_GOVERNANCE_REPLAY_SQLITE_PATH: /var/lib/ai-governance/governance.db
       AI_GOVERNANCE_REPLAY_EXECUTION_CATALOG_BACKEND: sqlite
       AI_GOVERNANCE_REPLAY_EXECUTION_CATALOG_SQLITE_PATH: /var/lib/ai-governance/governance.db
+      AI_GOVERNANCE_AGENT_EXECUTION_REPOSITORY: sqlite
+      AI_GOVERNANCE_AGENT_EXECUTION_SQLITE_PATH: /var/lib/ai-governance/governance.db
       AI_GOVERNANCE_EVALUATION_REPOSITORY: sqlite
       AI_GOVERNANCE_EVALUATION_SQLITE_PATH: /var/lib/ai-governance/governance.db
+      # Local external-runtime validation runs on the Docker host.
+      AI_GOVERNANCE_SYNTHETIC_RUNTIME_REPLAY_ENDPOINT: ${AI_GOVERNANCE_SYNTHETIC_RUNTIME_REPLAY_ENDPOINT:-http://host.docker.internal:8090/replay}
     command: ["/opt/ai-governance-venv/bin/python", "-m", "ai_governance.workers.replay_worker_runtime"]
     volumes:
       - ai-governance_sqlite_data:/var/lib/ai-governance

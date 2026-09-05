@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from ai_governance.api.models.dashboard import (
+    DashboardAttentionSignalResponse,
     DashboardMetricResponse,
+    DashboardMetricSectionResponse,
     DashboardSummaryResponse,
     PlatformHealthComponentResponse,
     RecentActivityItemResponse,
@@ -58,4 +60,28 @@ class DashboardApiMapper:
                 )
                 for item in summary.recent_activity
             ],
+            operational_sections=[
+                DashboardMetricSectionResponse(
+                    key=section.key,
+                    label=section.label,
+                    metrics=[
+                        DashboardMetricResponse(
+                            label=metric.label,
+                            value=metric.value,
+                            description=metric.description,
+                        )
+                        for metric in section.metrics
+                    ],
+                )
+                for section in summary.operational_sections
+            ],
+            attention_signals=[
+                DashboardAttentionSignalResponse(
+                    label=signal.label,
+                    value=signal.value,
+                    detail=signal.detail,
+                )
+                for signal in summary.attention_signals
+            ],
+            health_checked_at=summary.health_checked_at,
         )

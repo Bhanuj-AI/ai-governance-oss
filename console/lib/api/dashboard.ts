@@ -19,6 +19,13 @@ function mapDashboardSummary(dto: DashboardSummaryDto): DashboardSummary {
     platformStatistics: dto.platform_statistics.map(mapMetric),
     platformHealth: dto.platform_health.map(mapHealthComponent),
     recentActivity: dto.recent_activity.map(mapRecentActivity),
+    operationalSections: (dto.operational_sections ?? []).map((section) => ({
+      key: section.key,
+      label: section.label,
+      metrics: section.metrics.map(mapMetric),
+    })),
+    attentionSignals: dto.attention_signals ?? [],
+    healthCheckedAt: dto.health_checked_at ?? null,
   };
 }
 

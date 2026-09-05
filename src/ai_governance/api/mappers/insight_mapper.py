@@ -12,7 +12,7 @@ from ai_governance.services.governance_insights import (
 
 class GovernanceInsightApiMapper:
     """
-    Convert Phase 3 insight service models into REST DTOs.
+    Convert insight service models into REST DTOs.
     """
 
     @staticmethod

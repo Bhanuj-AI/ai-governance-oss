@@ -232,3 +232,37 @@ def get_ontology_graph_query_repository() -> Any:
     return InMemoryOntologyGraphQueryRepository(
         get_ontology_graph_repository(),
     )
+
+
+@lru_cache(maxsize=1)
+def get_agent_execution_repository() -> Any:
+    """
+    Create the agent execution repository used by REST dependencies.
+    """
+
+    from ai_governance.repositories.factories import (
+        AgentExecutionRepositoryFactory,
+    )
+    from ai_governance.settings import load_settings
+
+    return AgentExecutionRepositoryFactory(load_settings()).create()
+
+
+@lru_cache(maxsize=1)
+def get_causal_audit_repository() -> Any:
+    """Create the tenant-scoped causal-audit repository."""
+    from ai_governance.repositories.factories import CausalAuditRepositoryFactory
+    from ai_governance.settings import load_settings
+
+    return CausalAuditRepositoryFactory(load_settings()).create()
+
+
+@lru_cache(maxsize=1)
+def get_evidence_intervention_policy_repository() -> Any:
+    """Create durable, tenant-scoped intervention policy storage."""
+    from ai_governance.repositories.factories import (
+        EvidenceInterventionPolicyRepositoryFactory,
+    )
+    from ai_governance.settings import load_settings
+
+    return EvidenceInterventionPolicyRepositoryFactory(load_settings()).create()

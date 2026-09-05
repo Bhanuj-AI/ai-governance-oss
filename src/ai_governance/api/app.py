@@ -25,11 +25,14 @@ from ai_governance.api.logging import (
     request_logging_middleware,
 )
 from ai_governance.api.routers import (
+    agent_execution_router,
     audit_router,
+    causal_audits_router,
     dashboard_router,
     datasets_router,
     decisions_router,
     evaluations_router,
+    evidence_intervention_policies_router,
     experiments_router,
     extensions_router,
     governance_router,
@@ -41,6 +44,7 @@ from ai_governance.api.routers import (
     metadata_router,
     models_router,
     ontology_graph_router,
+    ontology_projection_router,
     ontology_sync_router,
     policies_router,
     prompts_router,
@@ -50,6 +54,7 @@ from ai_governance.api.routers import (
     replays_router,
     reports_router,
     runtime_connections_router,
+    runtime_findings_router,
     settings_router,
     telemetry_router,
     tenancy_router,
@@ -294,6 +299,47 @@ def create_app(*, plugins: Iterable[AIGovernancePlugin] = ()) -> FastAPI:
         replays_router, dependencies=[Depends(enforce_replay_permission)]
     )
     app.include_router(jobs_router)
+    app.include_router(agent_execution_router)
+    app.include_router(
+        causal_audits_router,
+        dependencies=[
+            Depends(
+                enforce_read_write(
+                    Permission.AGENT_EXECUTION_READ, Permission.JOB_SUBMIT
+                )
+            )
+        ],
+    )
+    app.include_router(
+        evidence_intervention_policies_router,
+        dependencies=[
+            Depends(
+                enforce_read_write(
+                    Permission.AGENT_EXECUTION_READ, Permission.JOB_SUBMIT
+                )
+            )
+        ],
+    )
+    app.include_router(
+        ontology_projection_router,
+        dependencies=[
+            Depends(
+                enforce_read_write(
+                    Permission.AGENT_EXECUTION_READ, Permission.AGENT_EXECUTION_INGEST
+                )
+            )
+        ],
+    )
+    app.include_router(
+        runtime_findings_router,
+        dependencies=[
+            Depends(
+                enforce_read_write(
+                    Permission.AGENT_EXECUTION_READ, Permission.AGENT_EXECUTION_INGEST
+                )
+            )
+        ],
+    )
     app.include_router(
         local_demo_router,
         dependencies=[Depends(enforce_permission(Permission.SETTINGS_MANAGE))],

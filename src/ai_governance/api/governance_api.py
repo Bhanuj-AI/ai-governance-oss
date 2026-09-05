@@ -26,7 +26,7 @@ class GovernanceAPI:
     """
     Framework-neutral adapter for governance history endpoints.
 
-    The class models the Phase 5 API surface without binding the project to
+    The class models the API surface without binding the project to
     FastAPI, Flask, or another server implementation. Handlers return plain
     serializable payloads that can be mounted later by any transport layer.
     """

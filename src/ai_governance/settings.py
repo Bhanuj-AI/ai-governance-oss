@@ -87,6 +87,11 @@ class Settings:
         AI_GOVERNANCE_ONTOLOGY_REPOSITORY        - inmemory | sqlite | postgres
         AI_GOVERNANCE_ONTOLOGY_SQLITE_PATH       - path to SQLite database file
         AI_GOVERNANCE_ONTOLOGY_POSTGRES_DSN      - PostgreSQL connection string
+
+    Agent Execution Trace
+        AI_GOVERNANCE_AGENT_EXECUTION_REPOSITORY - inmemory | sqlite | postgres
+        AI_GOVERNANCE_AGENT_EXECUTION_SQLITE_PATH
+        AI_GOVERNANCE_AGENT_EXECUTION_POSTGRES_DSN
     """
 
     # Policy administration
@@ -153,6 +158,11 @@ class Settings:
     ontology_repository: str
     ontology_sqlite_path: str | None
     ontology_postgres_dsn: str | None
+
+    # Agent Execution Trace
+    agent_execution_repository: str
+    agent_execution_sqlite_path: str | None
+    agent_execution_postgres_dsn: str | None
 
     # Authentication
     auth_mode: str = "development"
@@ -263,6 +273,16 @@ def load_settings() -> Settings:
         ontology_repository=_load_str("AI_GOVERNANCE_ONTOLOGY_REPOSITORY"),
         ontology_sqlite_path=_load_path("AI_GOVERNANCE_ONTOLOGY_SQLITE_PATH"),
         ontology_postgres_dsn=_load_path("AI_GOVERNANCE_ONTOLOGY_POSTGRES_DSN"),
+        # Agent Execution Trace
+        agent_execution_repository=_load_str(
+            "AI_GOVERNANCE_AGENT_EXECUTION_REPOSITORY", "inmemory"
+        ),
+        agent_execution_sqlite_path=_load_path(
+            "AI_GOVERNANCE_AGENT_EXECUTION_SQLITE_PATH"
+        ),
+        agent_execution_postgres_dsn=_load_path(
+            "AI_GOVERNANCE_AGENT_EXECUTION_POSTGRES_DSN"
+        ),
         # Authentication
         auth_mode=_load_str("AI_GOVERNANCE_AUTH_MODE", "development"),
         oidc_issuer=_load_path("AI_GOVERNANCE_OIDC_ISSUER"),

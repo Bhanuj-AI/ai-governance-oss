@@ -1,7 +1,12 @@
 from datetime import UTC, datetime
 
 from ai_governance.domain.jobs import Job, JobExecutionContext, JobStatus, JobType
-from ai_governance.domain.replay import ReplayMode, ReplayStatus
+from ai_governance.domain.replay import (
+    ControlledEvidenceIntervention,
+    ControlledEvidenceStrategy,
+    ReplayMode,
+    ReplayStatus,
+)
 from ai_governance.domain.workflow_execution import WorkflowExecution
 from ai_governance.repositories.in_memory_replay_repository import (
     InMemoryReplayRepository,
@@ -25,10 +30,14 @@ class _SourceResolver:
 class _Adapter:
     name = "historical"
 
+    def __init__(self) -> None:
+        self.intervention = None
+
     def validate_configuration(self, source_execution, configuration) -> None:
         return None
 
     def replay(self, source_execution, configuration, context):
+        self.intervention = context.controlled_evidence_intervention
         return WorkflowExecution(
             workflow_id=source_execution.workflow_id,
             execution_id=context.new_execution_id,
@@ -99,6 +108,58 @@ def test_replay_job_handler_persists_new_execution_and_lineage() -> None:
         repository.get("replay-1", "organization-1", "project-1").status
         is ReplayStatus.EXECUTION_COMPLETED
     )
+
+
+def test_replay_passes_typed_controlled_evidence_to_the_execution_adapter() -> None:
+    source = WorkflowExecution(
+        workflow_id="workflow-1",
+        execution_id="source-1",
+        workflow_name="workflow",
+        workflow_version="1.0.0",
+        execution_status="COMPLETED",
+        input={"x": 1},
+        final_state={},
+        events=[],
+        organization_id="organization-1",
+        project_id="project-1",
+    )
+    repository = InMemoryReplayRepository()
+    context = TenantContext("organization-1", "project-1", "actor-1", "request-1")
+    intervention = ControlledEvidenceIntervention(
+        ControlledEvidenceStrategy.REPLACE,
+        "causal-audit/v1",
+        "artifact://evidence/original",
+        "artifact://evidence/counterfactual",
+        seed=7,
+    )
+    replay = ReplayApplicationService(
+        repository,
+        _SourceResolver(source),
+        id_generator=lambda: "replay-1",
+        clock=lambda: datetime(2026, 1, 1, tzinfo=UTC),
+    ).create(
+        source_execution_id="source-1",
+        context=context,
+        idempotency_key="key-1",
+        controlled_evidence_intervention=intervention,
+    )
+    repository.update(
+        replay.mark_queued("job-1", datetime(2026, 1, 1, tzinfo=UTC)), replay.version
+    )
+    adapter = _Adapter()
+    registry = ReplayExecutionAdapterRegistry()
+    registry.register(adapter)
+    result = ReplayJobHandler(
+        repository,
+        _SourceResolver(source),
+        _Store(),
+        registry,
+        execution_id_generator=lambda: "replay-execution-1",
+        clock=lambda: datetime(2026, 1, 1, tzinfo=UTC),
+    ).handle(_job())
+
+    assert result.status is JobStatus.SUCCEEDED
+    assert adapter.intervention == intervention
 
 
 def _job() -> Job:

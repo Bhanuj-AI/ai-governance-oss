@@ -7,6 +7,12 @@ runtime configuration (``AI_GOVERNANCE_*_REPOSITORY`` environment variables).
 
 from __future__ import annotations
 
+from ai_governance.repositories.factories.agent_execution_repository_factory import (
+    AgentExecutionRepositoryFactory,
+)
+from ai_governance.repositories.factories.causal_audit_repository_factory import (
+    CausalAuditRepositoryFactory,
+)
 from ai_governance.repositories.factories.dataset_repository_factory import (
     DatasetRepositoryFactory,
 )
@@ -15,6 +21,9 @@ from ai_governance.repositories.factories.evaluation_repository_factory import (
 )
 from ai_governance.repositories.factories.evaluation_run_repository_factory import (
     EvaluationRunRepositoryFactory,
+)
+from ai_governance.repositories.factories.evidence_intervention_policy_repository_factory import (
+    EvidenceInterventionPolicyRepositoryFactory,
 )
 from ai_governance.repositories.factories.experiment_candidate_repository_factory import (
     ExperimentCandidateRepositoryFactory,
@@ -55,11 +64,20 @@ from ai_governance.repositories.factories.replay_repository_factory import (
 from ai_governance.repositories.factories.replay_result_repository_factory import (
     ReplayResultRepositoryFactory,
 )
+from ai_governance.repositories.factories.runtime_finding_repository_factory import (
+    RuntimeFindingRepositoryFactory,
+)
+from ai_governance.repositories.factories.runtime_projection_repository_factory import (
+    RuntimeProjectionRepositoryFactory,
+)
 
 __all__ = [
+    "AgentExecutionRepositoryFactory",
+    "CausalAuditRepositoryFactory",
     "DatasetRepositoryFactory",
     "EvaluationRepositoryFactory",
     "EvaluationRunRepositoryFactory",
+    "EvidenceInterventionPolicyRepositoryFactory",
     "ExperimentCandidateRepositoryFactory",
     "ExperimentRepositoryFactory",
     "GovernanceDecisionRepositoryFactory",
@@ -73,4 +91,6 @@ __all__ = [
     "ReplayExecutionStoreFactory",
     "ReplayRepositoryFactory",
     "ReplayResultRepositoryFactory",
+    "RuntimeFindingRepositoryFactory",
+    "RuntimeProjectionRepositoryFactory",
 ]

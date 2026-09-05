@@ -7,7 +7,7 @@ class MCPResponseMapper:
     """
     Maps REST DTO payloads to MCP tool result data.
 
-    Phase 1 deliberately keeps this mapper transparent so REST remains the
+    Deliberately keeps this mapper transparent so REST remains the
     canonical public DTO contract.
     """
 

@@ -27,7 +27,7 @@ def get_experiment_insight_service(
     leaderboard_repository: Any = Depends(get_leaderboard_repository),
 ) -> Any:
     """
-    Create the Phase 3 experiment insight service.
+    Create the experiment insight service.
     """
 
     from ai_governance.services.governance_insights import ExperimentInsightService
@@ -47,7 +47,7 @@ def get_execution_investigation_service(
     evaluation_repository: Any = Depends(get_evaluation_repository),
 ) -> Any:
     """
-    Create the Phase 3 execution investigation service.
+    Create the execution investigation service.
     """
 
     from ai_governance.services.governance_insights import (
@@ -65,7 +65,7 @@ def get_drift_explanation_service(
     evaluation_repository: Any = Depends(get_evaluation_repository),
 ) -> Any:
     """
-    Create the Phase 3 drift explanation service.
+    Create the drift explanation service.
     """
 
     from ai_governance.services.governance_insights import DriftExplanationService
@@ -81,7 +81,7 @@ def get_governance_report_service(
     audit_log: Any = Depends(get_mcp_audit_log),
 ) -> Any:
     """
-    Create the Phase 3 governance report service.
+    Create the governance report service.
     """
 
     from ai_governance.services.governance_insights import GovernanceReportService

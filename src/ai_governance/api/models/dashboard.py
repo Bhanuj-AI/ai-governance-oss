@@ -18,6 +18,18 @@ class PlatformHealthComponentResponse(BaseModel):
     detail: str | None = None
 
 
+class DashboardMetricSectionResponse(BaseModel):
+    key: str
+    label: str
+    metrics: list[DashboardMetricResponse]
+
+
+class DashboardAttentionSignalResponse(BaseModel):
+    label: str
+    value: int
+    detail: str
+
+
 class RecentActivityItemResponse(BaseModel):
     timestamp: datetime
     resource: str
@@ -35,3 +47,6 @@ class DashboardSummaryResponse(BaseModel):
     platform_statistics: list[DashboardMetricResponse]
     platform_health: list[PlatformHealthComponentResponse]
     recent_activity: list[RecentActivityItemResponse]
+    operational_sections: list[DashboardMetricSectionResponse] = []
+    attention_signals: list[DashboardAttentionSignalResponse] = []
+    health_checked_at: datetime | None = None

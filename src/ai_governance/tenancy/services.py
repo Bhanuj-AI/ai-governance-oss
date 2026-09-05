@@ -75,10 +75,78 @@ def provision_walkthrough_service_account(
             repository.delete_assignment(organization_id, legacy_assignment_id)
 
 
+def provision_external_runtime_service_account(
+    repository: InMemoryControlPlaneRepository,
+    *,
+    organization_id: str,
+    project_id: str,
+    actor_id: str | None = None,
+    grant_test_settings_manage: bool = False,
+) -> None:
+    """Provision a least-privilege external runtime service subject.
+
+    Keycloak authenticates this service account.  The control plane alone owns
+    its tenant membership and project-scoped permissions.
+    """
+    actor_id = actor_id or os.getenv("AI_GOVERNANCE_SYNTHETIC_RUNTIME_ACTOR_ID")
+    role = (
+        BuiltInRole.EXTERNAL_RUNTIME_TEST_OPERATOR
+        if grant_test_settings_manage
+        else BuiltInRole.EXTERNAL_RUNTIME_OPERATOR
+    )
+    _provision_service_account(
+        repository,
+        organization_id=organization_id,
+        project_id=project_id,
+        actor_id=actor_id,
+        display_name="Synthetic Agent Runtime service account",
+        role_prefix="external_runtime",
+        role=role,
+    )
+    if actor_id:
+        for assignment in repository.list_assignments(organization_id, actor_id):
+            if (
+                assignment.project_id == project_id
+                and assignment.role
+                in {
+                    BuiltInRole.EXTERNAL_RUNTIME_OPERATOR,
+                    BuiltInRole.EXTERNAL_RUNTIME_TEST_OPERATOR,
+                }
+                and assignment.role is not role
+            ):
+                repository.delete_assignment(organization_id, assignment.assignment_id)
+
+
+def provision_causal_audit_validator_service_account(
+    repository: InMemoryControlPlaneRepository,
+    *,
+    organization_id: str,
+    project_id: str,
+    actor_id: str | None = None,
+) -> None:
+    """Provision the existing validator subject with bounded replay-audit access.
+
+    The validator is distinct from the ingest-only Synthetic Agent Runtime
+    identity. Keycloak owns both subjects; this function only establishes the
+    Core membership and project-scoped RBAC assignment.
+    """
+    actor_id = actor_id or os.getenv("AI_GOVERNANCE_CAUSAL_AUDIT_VALIDATOR_ACTOR_ID")
+    _provision_service_account(
+        repository,
+        organization_id=organization_id,
+        project_id=project_id,
+        actor_id=actor_id,
+        display_name="Causal Audit validator service account",
+        role_prefix="causal_audit_validator",
+        role=BuiltInRole.EXTERNAL_RUNTIME_OPERATOR,
+    )
+
+
 def _provision_service_account(
     repository: InMemoryControlPlaneRepository,
     *,
     organization_id: str,
+    project_id: str | None = None,
     actor_id: str | None,
     display_name: str,
     role_prefix: str,
@@ -100,7 +168,7 @@ def _provision_service_account(
             )
         )
     if not any(
-        item.project_id is None and item.role is role
+        item.project_id == project_id and item.role is role
         for item in repository.list_assignments(organization_id, actor_id)
     ):
         try:
@@ -108,7 +176,7 @@ def _provision_service_account(
                 RoleAssignment(
                     f"role_{role_prefix}_{role.value.lower()}_{actor_id.replace('-', '')}",
                     organization_id,
-                    None,
+                    project_id,
                     actor_id, role, now, actor_id,
                 )
             )

@@ -5,7 +5,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "AI Governance Control Plane Studio",
-  description: "Enterprise governance studio for AI Governance Control Plane control-plane APIs.",
+  description: "Governance studio for AI Governance Control Plane APIs.",
   icons: {
     icon: "/favicon.ico",
     apple: "/apple-icon.png",
@@ -14,8 +14,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
+  executionPicker,
+  executionInspector,
+  reconciliationResults,
 }: Readonly<{
   children: React.ReactNode;
+  executionPicker?: React.ReactNode;
+  executionInspector?: React.ReactNode;
+  reconciliationResults?: React.ReactNode;
 }>) {
   return (
     <html lang="en">
@@ -23,7 +29,7 @@ export default function RootLayout({
         <Script src="/runtime-config.js" strategy="beforeInteractive" />
       </head>
       <body>
-        <Providers>{children}</Providers>
+        <Providers>{children}{executionPicker}{executionInspector}{reconciliationResults}</Providers>
       </body>
     </html>
   );

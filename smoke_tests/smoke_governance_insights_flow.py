@@ -250,7 +250,7 @@ def _seeded_client() -> tuple[TestClient, SeedState]:
             idempotency_key="audit-key-1",
             requested_by="tester",
             actor_type="SERVICE",
-            reason="Smoke-test Phase 3 investigations",
+            reason="Smoke-test investigations",
         ),
         payload={"evaluation_id": "eval-a"},
     )

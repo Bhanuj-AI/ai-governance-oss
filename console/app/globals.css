@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* The Studio theme is selected by the `.dark` class in ConsoleShell, not by
+   the operating-system preference. Keep every `dark:` utility in sync with
+   that explicit toggle. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-background: hsl(210 20% 98%);
   --color-foreground: hsl(220 18% 12%);
@@ -73,6 +78,15 @@
 html,
 body {
   min-height: 100%;
+}
+
+/* Shared operational-page rail. Dense governance screens need room for
+   comparison and actions without letting prose or forms span indefinitely. */
+.studio-page {
+  width: 100%;
+  max-width: 110rem;
+  margin-inline: auto;
+  padding: 1.25rem clamp(1.25rem, 2vw, 2.5rem);
 }
 
 .dark body {

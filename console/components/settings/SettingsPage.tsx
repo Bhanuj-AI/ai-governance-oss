@@ -20,6 +20,7 @@ const SETTING_CATEGORY_ORDER = [
   "General",
   "Integrations",
   "Repositories",
+  "Agents Runtime",
   "Governance",
   "Evaluation",
   "Jobs",
@@ -30,16 +31,56 @@ const SETTING_CATEGORY_ORDER = [
   "System",
 ];
 
+type RuntimeSettingsGroup =
+  | "tool-reliability"
+  | "execution-reliability"
+  | "runtime-errors"
+  | "performance"
+  | "evaluation-quality"
+  | "policy-activity"
+  | "recovery"
+  | "causal-audit"
+  | "all";
+
+const RUNTIME_SETTINGS_GROUPS: Array<{
+  id: RuntimeSettingsGroup;
+  label: string;
+  description: string;
+}> = [
+  { id: "tool-reliability", label: "Tool Reliability", description: "Failure-rate thresholds, sample sizes, severity bands, and observation windows for tools." },
+  { id: "execution-reliability", label: "Execution Reliability", description: "Failure-rate thresholds and response windows for agent executions." },
+  { id: "runtime-errors", label: "Runtime Errors", description: "Repeated-error detection thresholds and severity bands." },
+  { id: "performance", label: "Performance", description: "Execution-latency regression thresholds, baselines, and severity bands." },
+  { id: "evaluation-quality", label: "Evaluation Quality", description: "Evaluation failure-rate thresholds, sample sizes, and response windows." },
+  { id: "policy-activity", label: "Policy Activity", description: "Policy-denial rate thresholds, baselines, and severity bands." },
+  { id: "recovery", label: "Recovery", description: "Automatic resolution behaviour after consecutive normal windows." },
+  { id: "causal-audit", label: "Causal Audit", description: "Evidence-influence thresholds and bounded counterfactual audit limits." },
+  { id: "all", label: "All Settings", description: "Every Agents Runtime setting in the selected scope." },
+];
+
 export function SettingsPage() {
   const searchParams = useSearchParams();
-  const [category, setCategory] = useState(() => searchParams.get("section") === "runtime-connections" ? "__runtime_connections__" : "General");
+  const [category, setCategory] = useState(() => {
+    const section = searchParams.get("section");
+    if (section === "runtime-connections") return "__runtime_connections__";
+    if (section === "agents-runtime") return "Agents Runtime";
+    return "General";
+  });
   const [scope, setScope] = useState<SettingScope>("SYSTEM");
+  const [runtimeGroup, setRuntimeGroup] = useState<RuntimeSettingsGroup>("tool-reliability");
   const categories = useQuery({ queryKey: ["setting-categories"], queryFn: listSettingCategories });
   const isRuntimeConnections = category === "__runtime_connections__";
+  const isAgentsRuntime = category === "Agents Runtime";
   const settings = useQuery({ queryKey: ["settings", category, scope], queryFn: () => listSettings(category, scope), enabled: !isRuntimeConnections });
   const orderedCategories = useMemo(() => [...(categories.data || [])].sort((left, right) => categoryPosition(left.name) - categoryPosition(right.name)), [categories.data]);
+  const visibleSettings = useMemo(() => {
+    const items = settings.data || [];
+    if (!isAgentsRuntime || runtimeGroup === "all") return items;
+    return items.filter(setting => runtimeSettingGroup(setting.key) === runtimeGroup);
+  }, [isAgentsRuntime, runtimeGroup, settings.data]);
+  const activeRuntimeGroup = RUNTIME_SETTINGS_GROUPS.find(group => group.id === runtimeGroup) ?? RUNTIME_SETTINGS_GROUPS[0];
 
-  return <div className="mx-auto max-w-7xl space-y-6 p-6 lg:p-10">
+  return <div className="studio-page space-y-6">
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div><div className="mb-2 flex items-center gap-2 text-sm font-medium text-primary"><Settings2 className="h-4 w-4" />Configuration control plane</div>
         <h1 className="text-4xl font-semibold tracking-tight">Settings</h1>
@@ -56,11 +97,13 @@ export function SettingsPage() {
           {item.name === "General" ? <button onClick={() => setCategory("__runtime_connections__")} className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition ${isRuntimeConnections ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}><span>Runtime Connections</span><span className={`text-xs ${isRuntimeConnections ? "text-primary-foreground/70" : "text-muted-foreground"}`}>Tenant</span></button> : null}
         </Fragment>)}
       </nav>
-      {isRuntimeConnections ? <RuntimeConnectionsPanel /> : <section className="min-w-0 space-y-4">
-        <div><h2 className="text-2xl font-semibold">{category}</h2><p className="mt-1 text-sm text-muted-foreground">Effective values follow Environment → Runtime → Default precedence.</p></div>
+      {isRuntimeConnections ? <RuntimeConnectionsPanel /> : <section id={isAgentsRuntime ? "agents-runtime-settings" : undefined} className="min-w-0 space-y-4">
+        <div><h2 className="text-2xl font-semibold">{category}</h2><p className="mt-1 text-sm text-muted-foreground">{isAgentsRuntime ? "Configure runtime controls by operational area, without scanning every setting at once." : "Effective values follow Environment → Runtime → Default precedence."}</p></div>
+        {isAgentsRuntime ? <RuntimeSettingsTabs activeGroup={runtimeGroup} onGroupChange={setRuntimeGroup} settings={settings.data || []} /> : null}
+        {isAgentsRuntime ? <div className="rounded-lg border bg-muted/20 px-4 py-3"><h3 className="font-medium">{activeRuntimeGroup.label}</h3><p className="mt-1 text-sm text-muted-foreground">{activeRuntimeGroup.description}</p></div> : null}
         {settings.isLoading ? <Card><CardContent className="p-6 text-sm text-muted-foreground">Loading settings…</CardContent></Card> : null}
         {settings.error ? <Card><CardContent className="p-6 text-sm text-destructive">Unable to load settings: {settings.error.message}</CardContent></Card> : null}
-        {(settings.data || []).map(setting => <SettingCard key={`${setting.key}:${scope}`} setting={setting} />)}
+        {visibleSettings.map(setting => <SettingCard key={`${setting.key}:${scope}`} setting={setting} />)}
       </section>}
     </div>
   </div>;
@@ -69,6 +112,32 @@ export function SettingsPage() {
 function categoryPosition(category: string): number {
   const position = SETTING_CATEGORY_ORDER.indexOf(category);
   return position === -1 ? SETTING_CATEGORY_ORDER.length : position;
+}
+
+function RuntimeSettingsTabs({ activeGroup, onGroupChange, settings }: { activeGroup: RuntimeSettingsGroup; onGroupChange: (group: RuntimeSettingsGroup) => void; settings: PlatformSetting[] }) {
+  return <div className="rounded-xl border bg-card p-2" role="tablist" aria-label="Agents Runtime setting groups">
+    <div className="flex flex-wrap gap-1">
+      {RUNTIME_SETTINGS_GROUPS.map(group => {
+        const count = group.id === "all" ? settings.length : settings.filter(setting => runtimeSettingGroup(setting.key) === group.id).length;
+        const selected = activeGroup === group.id;
+        return <button key={group.id} type="button" role="tab" aria-selected={selected} aria-controls="agents-runtime-settings" onClick={() => onGroupChange(group.id)} className={`rounded-lg px-3 py-2 text-sm transition ${selected ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}>
+          {group.label}<span className={`ml-2 text-xs ${selected ? "text-primary-foreground/70" : "text-muted-foreground"}`}>{count}</span>
+        </button>;
+      })}
+    </div>
+  </div>;
+}
+
+function runtimeSettingGroup(key: string): RuntimeSettingsGroup {
+  if (key.startsWith("runtime_findings.tool_failure_rate.")) return "tool-reliability";
+  if (key.startsWith("runtime_findings.agent_execution_failure_rate.")) return "execution-reliability";
+  if (key.startsWith("runtime_findings.repeated_runtime_error.")) return "runtime-errors";
+  if (key.startsWith("runtime_findings.execution_latency_regression.")) return "performance";
+  if (key.startsWith("runtime_findings.evaluation_failure_rate.")) return "evaluation-quality";
+  if (key.startsWith("runtime_findings.policy_denial_rate.")) return "policy-activity";
+  if (key.startsWith("runtime_findings.auto_resolution.")) return "recovery";
+  if (key.startsWith("causal_audit.")) return "causal-audit";
+  return "all";
 }
 
 function SettingCard({ setting }: { setting: PlatformSetting }) {

@@ -5,17 +5,22 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ChevronLeft,
   ChevronRight,
+  CircleCheckBig,
+  ListFilter,
   Plus,
   RefreshCw,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useTenantContext } from "@/components/tenancy/TenantContextProvider";
+import { listCausalAudits } from "@/lib/api/agent-runtime";
 import { getCurrentContext } from "@/lib/api/tenancy";
 import { listReplays } from "@/lib/api/replays";
+import { controlledCausalAuditId, isControlledCausalReplay } from "@/lib/replays/controlled-causal-replay";
 import type { ReplayStatus } from "@/types/replay";
 import { ReplayStatusBadge } from "./ReplayStatusBadge";
 
@@ -67,6 +72,18 @@ export function ReplaysPage() {
   });
   const canCreate = permissions.data?.permissions.includes("replay.create") ?? false;
   const items = useMemo(() => replays.data ?? [], [replays.data]);
+  const causalAudits = useQuery({
+    queryKey: ["causal-audits", "replay-outcomes"],
+    queryFn: () => listCausalAudits({ limit: 100 }),
+    enabled: items.some(isControlledCausalReplay),
+  });
+  const causalAuditsById = useMemo(
+    () => new Map((causalAudits.data?.items ?? []).map((audit) => [audit.audit_id, audit])),
+    [causalAudits.data],
+  );
+  const controlledCount = items.filter(isControlledCausalReplay).length;
+  const activeCount = items.filter((item) => active.has(item.status)).length;
+  const completedCount = items.filter((item) => item.status === "COMPLETED" || item.status === "EXECUTION_COMPLETED").length;
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
   const currentPage = Math.min(page, totalPages - 1);
   const visibleItems = items.slice(
@@ -86,25 +103,26 @@ export function ReplaysPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-5 px-6 py-5">
+    <div className="studio-page flex flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Replay Operations</p>
           <h1 className="text-2xl font-semibold">Replay Management</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Create and inspect governed reproductions of historical executions.
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+            Reproduce a historical execution safely. Controlled Causal Replays test governed evidence and publish their outcome to Causal Audit.
           </p>
         </div>
         <div className="flex gap-2">
           <Button
-            variant="outline"
             size="sm"
+            className="border border-sky-200 bg-sky-300 text-slate-950 hover:bg-sky-200"
             onClick={() => void replays.refetch()}
           >
             <RefreshCw className="h-4 w-4" />
             Refresh
           </Button>
           {canCreate ? (
-            <Button asChild>
+            <Button asChild className="border border-cyan-200 bg-cyan-300 text-slate-950 hover:bg-cyan-200">
               <Link href="/replays/new">
                 <Plus className="h-4 w-4" />
                 Create Replay
@@ -113,8 +131,23 @@ export function ReplaysPage() {
           ) : null}
         </div>
       </div>
+
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Replay overview">
+        <ReplayMetric label="All" value={items.length} detail="In this project" />
+        <ReplayMetric label="In Progress" value={activeCount} detail="Queued, running, or evaluating" tone="info" />
+        <ReplayMetric label="Execution Complete" value={completedCount} detail="Outcome is ready or available" tone="success" />
+        <ReplayMetric label="Controlled Causal" value={controlledCount} detail="Linked to Causal Audit" tone="causal" />
+      </section>
+
       <Card>
         <CardContent className="space-y-4 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <div className="mt-0.5 rounded-md bg-muted p-1.5 text-muted-foreground"><ListFilter className="h-4 w-4" /></div>
+              <div><h2 className="font-semibold">Find Replay</h2><p className="mt-0.5 text-sm text-muted-foreground">Filter by lifecycle state, source execution, or requesting principal.</p></div>
+            </div>
+            <span className="rounded-full border bg-muted/20 px-2.5 py-1 text-xs text-muted-foreground">{items.length} matching replay{items.length === 1 ? "" : "s"}</span>
+          </div>
           <div className="grid gap-3 md:grid-cols-3">
             <select
               aria-label="Replay status"
@@ -122,7 +155,7 @@ export function ReplaysPage() {
               value={status}
               onChange={(event) => updateFilter("status", event.target.value)}
             >
-              <option value="">All statuses</option>
+              <option value="">Status</option>
               {statuses.map((item) => (
                 <option key={item} value={item}>
                   {item.replaceAll("_", " ")}
@@ -171,80 +204,58 @@ export function ReplaysPage() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[1080px] text-left text-sm">
-                  <thead>
-                    <tr className="border-b text-xs text-muted-foreground">
-                      <th className="p-3">Replay</th>
-                      <th>Source</th>
-                      <th>Status</th>
-                      <th>Drift</th>
-                      <th>Result</th>
-                      <th>Created by</th>
-                      <th>Created</th>
-                      <th className="text-right">Action</th>
+              <div className="overflow-hidden rounded-lg border">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/20 px-4 py-3">
+                  <div><h2 className="font-semibold">Replay Runs</h2><p className="mt-0.5 text-sm text-muted-foreground">Open a run for technical detail, or follow a causal outcome directly.</p></div>
+                  <span className="text-sm text-muted-foreground">Page {currentPage + 1} of {totalPages}</span>
+                </div>
+                <div className="overflow-x-auto">
+                <table className="w-full min-w-[920px] text-left text-sm">
+                  <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-3">Replay</th>
+                      <th className="px-4 py-3">Source execution</th>
+                      <th className="px-4 py-3">Lifecycle</th>
+                      <th className="px-4 py-3">Outcome</th>
+                      <th className="px-4 py-3">Created</th>
+                      <th className="px-4 py-3 text-right">Open</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {visibleItems.map((replay) => (
+                    {visibleItems.map((replay) => {
+                      const causalAuditId = controlledCausalAuditId(replay);
+                      const controlledCausalReplay = causalAuditId !== null;
+                      const causalAudit = causalAuditId ? causalAuditsById.get(causalAuditId) : undefined;
+                      return (
                       <tr
                         key={replay.replay_id}
                         className="border-b last:border-0 hover:bg-accent/35"
                       >
-                        <td className="p-3">
-                          <Link
-                            className="font-medium hover:underline"
-                            href={`/replays/${replay.replay_id}`}
-                          >
-                            {shortId(replay.replay_id)}
-                          </Link>
-                          <CopyButton
-                            value={replay.replay_id}
-                            variant="ghost"
-                            size="sm"
-                            className="ml-2 h-auto w-auto p-0 text-muted-foreground hover:text-foreground"
-                            copyTitle="Copy replay ID"
-                            iconClassName="h-3.5 w-3.5"
-                          />
+                        <td className="px-4 py-3 align-top">
+                          <div className="flex items-center gap-1.5"><Link className="font-medium hover:text-primary hover:underline" href={`/replays/${replay.replay_id}`}>{shortId(replay.replay_id)}</Link><CopyButton value={replay.replay_id} variant="ghost" size="sm" className="h-auto w-auto p-0 text-muted-foreground hover:text-foreground" copyTitle="Copy replay ID" iconClassName="h-3.5 w-3.5" /></div>
+                          <div className="mt-1">{controlledCausalReplay ? <Badge variant="outline" className="border-cyan-200 bg-cyan-300 text-slate-950">Causal Replay</Badge> : <span className="text-xs text-muted-foreground">Historical replay</span>}</div>
                         </td>
-                        <td className="p-3">
-                          <span className="font-mono text-xs">
-                            {replay.source_execution_id}
-                          </span>
-                          <CopyButton
-                            value={replay.source_execution_id}
-                            variant="ghost"
-                            size="sm"
-                            className="ml-2 h-auto w-auto p-0 text-muted-foreground hover:text-foreground"
-                            copyTitle="Copy source execution ID"
-                            iconClassName="h-3.5 w-3.5"
-                          />
+                        <td className="max-w-64 px-4 py-3 align-top">
+                          <div className="flex items-start gap-1"><span className="break-all font-mono text-xs leading-5">{replay.source_execution_id}</span><CopyButton value={replay.source_execution_id} variant="ghost" size="sm" className="mt-0.5 h-auto w-auto shrink-0 p-0 text-muted-foreground hover:text-foreground" copyTitle="Copy source execution ID" iconClassName="h-3.5 w-3.5" /></div>
                         </td>
-                        <td>
+                        <td className="px-4 py-3 align-top">
                           <ReplayStatusBadge status={replay.status} />
+                          <div className="mt-1 text-xs text-muted-foreground">{lifecycleHint(replay.status, controlledCausalReplay)}</div>
                         </td>
-                        <td>
-                          {replay.status === "COMPLETED"
-                            ? "Available in result"
-                            : "—"}
+                        <td className="px-4 py-3 align-top">
+                          {causalAuditId ? <CausalReplayOutcome auditId={causalAuditId} auditStatus={causalAudit?.status} loading={causalAudits.isLoading} /> : <ReplayOutcome status={replay.status} resultReady={Boolean(replay.result_id)} />}
                         </td>
-                        <td>{replay.result_id ? "Evidence ready" : "Not created"}</td>
-                        <td>{replay.requested_by}</td>
-                        <td>{formatDate(replay.created_at)}</td>
-                        <td className="pr-3 text-right">
-                          <Link
-                            className="text-primary hover:underline"
-                            href={`/replays/${replay.replay_id}`}
-                          >
-                            Open
-                          </Link>
+                        <td className="px-4 py-3 align-top"><div>{formatDate(replay.created_at)}</div><div className="mt-1 text-xs text-muted-foreground">by {shortId(replay.requested_by)}</div></td>
+                        <td className="px-4 py-3 text-right align-top">
+                          <Button asChild size="sm" variant="outline"><Link href={`/replays/${replay.replay_id}`}>Details <ChevronRight className="h-3.5 w-3.5" /></Link></Button>
                         </td>
                       </tr>
-                    ))}
+                    );})}
                   </tbody>
                 </table>
+                </div>
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-sm">
                 <span className="text-muted-foreground">
                   Page {currentPage + 1} of {totalPages} · {items.length} replays
                 </span>
@@ -298,4 +309,40 @@ function shortId(value: string) {
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString();
+}
+
+function ReplayMetric({ label, value, detail, tone = "default" }: { label: string; value: number; detail: string; tone?: "default" | "info" | "success" | "causal" }) {
+  const toneClasses = tone === "success"
+    ? { card: "border-emerald-400/60 bg-card hover:bg-emerald-500/5", label: "border-emerald-200 bg-emerald-300 text-slate-950" }
+    : tone === "causal"
+      ? { card: "border-cyan-400/60 bg-card hover:bg-cyan-500/5", label: "border-cyan-200 bg-cyan-300 text-slate-950" }
+      : tone === "info"
+        ? { card: "border-sky-400/60 bg-card hover:bg-sky-500/5", label: "border-sky-200 bg-sky-300 text-slate-950" }
+        : { card: "border-border bg-card hover:bg-muted/20", label: "border-border bg-muted text-foreground" };
+  return <div className={`rounded-lg border px-4 py-3 transition-colors ${toneClasses.card}`}><Badge variant="outline" className={toneClasses.label}>{label}</Badge><div className="mt-3 text-2xl font-semibold tabular-nums">{value}</div><div className="mt-1 text-xs text-muted-foreground">{detail}</div></div>;
+}
+
+function ReplayOutcome({ status, resultReady }: { status: ReplayStatus; resultReady: boolean }) {
+  if (resultReady) return <div className="font-medium text-emerald-700 dark:text-emerald-300">Replay result ready</div>;
+  if (status === "FAILED") return <div className="font-medium text-destructive">Needs review</div>;
+  if (status === "CANCELLED") return <div className="font-medium text-amber-700 dark:text-amber-300">No outcome — cancelled</div>;
+  if (status === "EXECUTION_COMPLETED") return <div><div className="font-medium">Ready to evaluate</div><div className="mt-1 text-xs text-muted-foreground">Choose a compatible baseline</div></div>;
+  return <div className="text-muted-foreground">Outcome pending</div>;
+}
+
+function CausalReplayOutcome({ auditId, auditStatus, loading }: { auditId: string; auditStatus?: "QUEUED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "CANCELLED"; loading: boolean }) {
+  const href = `/agents-runtime/causal-audits/${encodeURIComponent(auditId)}`;
+  if (loading) return <div className="text-muted-foreground">Checking Causal Audit…</div>;
+  if (auditStatus === "SUCCEEDED") return <div className="space-y-1"><div className="flex items-center gap-1.5 font-medium text-cyan-700 dark:text-cyan-300"><CircleCheckBig className="h-4 w-4" />Causal outcome recorded</div><Link className="text-sm text-cyan-700 hover:underline dark:text-cyan-300" href={href}>View evidence influence</Link></div>;
+  if (auditStatus === "FAILED" || auditStatus === "CANCELLED") return <div className="space-y-1"><div className="font-medium text-destructive">Needs review</div><Link className="text-sm text-cyan-700 hover:underline dark:text-cyan-300" href={href}>Review audit diagnostics</Link></div>;
+  if (auditStatus === "QUEUED" || auditStatus === "RUNNING") return <div className="space-y-1"><div className="font-medium">Causal audit in progress</div><Link className="text-sm text-cyan-700 hover:underline dark:text-cyan-300" href={href}>Open audit status</Link></div>;
+  return <div className="space-y-1"><div className="font-medium text-muted-foreground">Causal audit unavailable</div><Link className="text-sm text-cyan-700 hover:underline dark:text-cyan-300" href={href}>Open audit diagnostics</Link></div>;
+}
+
+function lifecycleHint(status: ReplayStatus, controlledCausalReplay: boolean) {
+  if (controlledCausalReplay && status === "EXECUTION_COMPLETED") return "Governed evidence replay completed";
+  if (status === "COMPLETED") return "Evaluation and comparison completed";
+  if (status === "FAILED") return "Open details for the failure";
+  if (active.has(status)) return "Processing in the background";
+  return status.replaceAll("_", " ").toLowerCase();
 }

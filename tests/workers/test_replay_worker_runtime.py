@@ -3,9 +3,16 @@ from __future__ import annotations
 import sys
 from dataclasses import replace
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 from ai_governance.domain.evaluation_result import EvaluationMetric, EvaluationResult
-from ai_governance.domain.jobs import JobStatus, JobType
+from ai_governance.domain.jobs import (
+    Job,
+    JobExecutionContext,
+    JobResult,
+    JobStatus,
+    JobType,
+)
 from ai_governance.domain.replay import ReplayStatus
 from ai_governance.domain.workflow_execution import WorkflowExecution
 from ai_governance.repositories.in_memory import InMemoryJobRepository
@@ -191,6 +198,71 @@ def test_worker_dispatches_replay_then_automatically_consumes_evaluation() -> No
     assert completed is not None and completed.status is ReplayStatus.COMPLETED
     assert len(jobs.list_jobs(job_type=JobType.REPLAY_EXECUTION)) == 1
     assert len(jobs.list_jobs(job_type=JobType.REPLAY_EVALUATION)) == 1
+
+
+def test_controlled_replay_skips_generic_evaluation_and_finalizes_causal_audit() -> None:
+    """Controlled evidence scores belong to Causal Audit, not Replay evaluation."""
+
+    evaluation_calls: list[str] = []
+    jobs = InMemoryJobRepository()
+    replay = SimpleNamespace(
+        replay_id="controlled-replay-1",
+        status=ReplayStatus.EXECUTION_COMPLETED,
+        controlled_evidence_intervention=object(),
+        metadata={"causal_audit_id": "audit-1"},
+    )
+
+    class _ExecutionHandler:
+        def handle(self, job):
+            return JobResult(job.job_id, JobStatus.SUCCEEDED, "replay:ok", None)
+
+    class _Replays:
+        def get(self, *_args):
+            return replay
+
+    class _Application:
+        def evaluate(self, *_args, **_kwargs):
+            evaluation_calls.append("called")
+
+    handler = _AutoEvaluationReplayHandler(
+        _ExecutionHandler(),
+        _Replays(),
+        _Application(),
+        "mock",
+        JobApiService(jobs),
+    )
+    job = Job(
+        job_id="replay-job-1",
+        job_type=JobType.REPLAY_EXECUTION,
+        status=JobStatus.RUNNING,
+        input_refs={"replay_id": replay.replay_id},
+        input_hash="hash",
+        idempotency_key="replay-job-1",
+        submitted_by="actor-1",
+        attempt_count=1,
+        max_attempts=3,
+        result_ref=None,
+        failure_reason=None,
+        leased_by="worker-1",
+        lease_expires_at=None,
+        heartbeat_at=None,
+        created_at=NOW,
+        updated_at=NOW,
+        started_at=NOW,
+        completed_at=None,
+        execution_context=JobExecutionContext(
+            "org-1", "project-1", "actor-1", "request-1", None
+        ),
+    )
+
+    assert handler.handle(job).status is JobStatus.SUCCEEDED
+    assert evaluation_calls == []
+    finalizations = jobs.list_jobs(job_type=JobType.CAUSAL_AUDIT)
+    assert len(finalizations) == 1
+    assert finalizations[0].input_refs == {
+        "audit_id": "audit-1",
+        "trigger_replay_id": "controlled-replay-1",
+    }
 
 
 def test_recovered_execution_job_reuses_its_reserved_execution_identity() -> None:

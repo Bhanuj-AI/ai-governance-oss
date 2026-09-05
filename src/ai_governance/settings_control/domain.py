@@ -8,6 +8,7 @@ from typing import Any
 
 
 class SettingCategory(str, Enum):
+    AGENTS_RUNTIME = "Agents Runtime"
     GENERAL = "General"
     REPOSITORIES = "Repositories"
     JOBS = "Jobs"

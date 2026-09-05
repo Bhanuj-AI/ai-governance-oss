@@ -460,7 +460,7 @@ export function ExperimentDetailPage({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-5 px-6 py-5">
+    <div className="studio-page flex flex-col gap-5">
       <Link
         href="/experiments"
         className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"

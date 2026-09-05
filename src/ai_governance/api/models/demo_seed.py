@@ -10,3 +10,9 @@ class DemoSeedResponse(BaseModel):
     decision_ids: list[str] = Field(
         description="Governance decisions ensured by the demo seed."
     )
+
+
+class AgentRuntimeDemoStatusResponse(BaseModel):
+    """Availability of the complete local Agent Runtime sample."""
+
+    seeded: bool = Field(description="Whether the full Agent Runtime sample is available.")

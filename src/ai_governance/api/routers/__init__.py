@@ -1,8 +1,13 @@
+from ai_governance.api.routers.agent_execution import router as agent_execution_router
 from ai_governance.api.routers.audit import router as audit_router
+from ai_governance.api.routers.causal_audits import router as causal_audits_router
 from ai_governance.api.routers.dashboard import router as dashboard_router
 from ai_governance.api.routers.datasets import router as datasets_router
 from ai_governance.api.routers.decisions import router as decisions_router
 from ai_governance.api.routers.evaluations import router as evaluations_router
+from ai_governance.api.routers.evidence_intervention_policies import (
+    router as evidence_intervention_policies_router,
+)
 from ai_governance.api.routers.experiments import router as experiments_router
 from ai_governance.api.routers.extensions import router as extensions_router
 from ai_governance.api.routers.governance import router as governance_router
@@ -14,6 +19,9 @@ from ai_governance.api.routers.mcp_audit import router as mcp_audit_router
 from ai_governance.api.routers.metadata import router as metadata_router
 from ai_governance.api.routers.models import router as models_router
 from ai_governance.api.routers.ontology_graph import router as ontology_graph_router
+from ai_governance.api.routers.ontology_projection import (
+    router as ontology_projection_router,
+)
 from ai_governance.api.routers.ontology_sync import router as ontology_sync_router
 from ai_governance.api.routers.policies import router as policies_router
 from ai_governance.api.routers.prompts import router as prompts_router
@@ -29,16 +37,20 @@ from ai_governance.api.routers.reports import router as reports_router
 from ai_governance.api.routers.runtime_connections import (
     router as runtime_connections_router,
 )
+from ai_governance.api.routers.runtime_findings import router as runtime_findings_router
 from ai_governance.api.routers.settings_control import router as settings_router
 from ai_governance.api.routers.telemetry import router as telemetry_router
 from ai_governance.api.routers.tenancy import router as tenancy_router
 
 __all__ = [
+    "agent_execution_router",
     "audit_router",
+    "causal_audits_router",
     "dashboard_router",
     "datasets_router",
     "decisions_router",
     "evaluations_router",
+    "evidence_intervention_policies_router",
     "experiments_router",
     "extensions_router",
     "governance_router",
@@ -50,6 +62,7 @@ __all__ = [
     "metadata_router",
     "models_router",
     "ontology_graph_router",
+    "ontology_projection_router",
     "ontology_sync_router",
     "policies_router",
     "prompts_router",
@@ -59,6 +72,7 @@ __all__ = [
     "replays_router",
     "reports_router",
     "runtime_connections_router",
+    "runtime_findings_router",
     "settings_router",
     "telemetry_router",
     "tenancy_router",

@@ -1,4 +1,4 @@
-# Settings control plane
+# Settings Control Plane
 
 The Settings Control Plane is a typed configuration resource with explicit
 `SYSTEM`, `ORGANIZATION`, and `PROJECT` scopes. `SettingDefinition` records
@@ -34,7 +34,7 @@ restart-bound and read-only.
 write omits `dry_run`, the MCP server resolves the effective scoped value from
 REST. An explicit `dry_run` in the request always wins.
 
-## Operational consumers
+## Operational Consumers
 
 - General instance name and timezone are returned by API metadata.
 - Job settings control worker acquisition concurrency, retry defaults and
@@ -47,6 +47,10 @@ REST. An explicit `dry_run` in the request always wins.
 - Ontology projection and reconciliation intervals are re-resolved by the
   synchronization worker loop on every cycle.
 - Audit retention and interrupted timeout control audit reads.
+- Agents Runtime settings control deterministic finding detectors: their sample
+  counts, baseline and observation windows, thresholds, severity bands, and
+  sustained-recovery behaviour. Studio presents these controls in the
+  dedicated **Agents Runtime** category.
 - MCP dry-run, audit-required, and idempotency-expiry settings are resolved for
   each controlled write. Idempotent results are cached only for the configured
   expiry, and disabling required audit suppresses controlled-write persistence.
@@ -70,7 +74,7 @@ Environment overrides are not stored by AI Governance Control Plane. They belong
 configuration. If an environment variable is present, it wins at every scope
 and the corresponding Studio control becomes read-only.
 
-## Scope and inheritance example
+## Scope and Inheritance Example
 
 Suppose `evaluation.pass_threshold` has these runtime values:
 
@@ -90,7 +94,7 @@ Each scope has its own version. Creating a new override uses
 administrator has already written version 3, the stale update receives HTTP
 409 and must refresh before trying again.
 
-## Duration format
+## Duration Format
 
 Durations are positive integers followed by one unit:
 
@@ -103,7 +107,7 @@ Durations are positive integers followed by one unit:
 
 Examples are `500ms`, `30s`, `15m`, `24h`, and `30d`.
 
-## General settings
+## General Settings
 
 ### `general.instance_name`
 
@@ -146,7 +150,7 @@ This is returned by API metadata so clients know the configured display
 timezone. AI Governance Control Plane continues to persist authoritative timestamps in UTC; this
 setting does not rewrite stored timestamps.
 
-## Repository settings
+## Repository Settings
 
 Repository selections are deployment architecture. They are read-only,
 system-only, and require a restart because repository objects are constructed
@@ -231,7 +235,7 @@ the retention cutoff. The current implementation is logical retention: it does
 not physically delete job rows. Queued and running work is not expired by this
 setting.
 
-## Governance settings
+## Governance Settings
 
 ### `governance.decision_retention`
 
@@ -270,7 +274,7 @@ If requested policies cannot produce a version under the selected behavior,
 decision evaluation reports them as missing rather than silently choosing a
 different version.
 
-## Evaluation settings
+## Evaluation Settings
 
 ### `evaluation.default_provider`
 
@@ -318,7 +322,7 @@ Evaluation history reads hide results older than the effective cutoff before
 selecting the latest result. This is logical retention; it does not delete the
 stored evaluation or its artifacts.
 
-## Ontology settings
+## Ontology Settings
 
 ### `ontology.projection_interval`
 
@@ -353,7 +357,7 @@ Read-only. `unknown` means no graph health probe has populated an authoritative
 state. This field must not be treated as a replacement for Neo4j or platform
 health checks.
 
-## Audit settings
+## Audit Settings
 
 ### `audit.retention`
 
@@ -380,7 +384,7 @@ construction selects in-memory storage when
 PostgreSQL audit construction is not yet wired. It cannot be replaced in a
 running process.
 
-## MCP settings
+## MCP Settings
 
 ### `mcp.dry_run_default`
 
@@ -420,7 +424,7 @@ The setting is durable when the settings repository is durable, but the result
 cache is in memory. Restarting MCP clears it, and separate MCP replicas do not
 share it. Job idempotency remains independently durable in the job repository.
 
-## Integration settings
+## Integration Settings
 
 Integration entries are read-only connection indicators derived from explicit
 deployment variables. Secret values are never returned.
@@ -435,7 +439,7 @@ deployment variables. Secret values are never returned.
 These indicators confirm configuration presence, not successful remote
 authentication or continuous connectivity.
 
-## System settings
+## System Settings
 
 System entries are read-only and system-only:
 
@@ -448,7 +452,7 @@ System entries are read-only and system-only:
 They are deployment/runtime metadata and are never persisted as editable
 runtime settings.
 
-## End-to-end update example
+## End-to-end Update Example
 
 To create a project-level evaluation threshold:
 

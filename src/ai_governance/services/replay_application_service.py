@@ -30,6 +30,7 @@ from ai_governance.domain.jobs import (
     JobType,
 )
 from ai_governance.domain.replay import (
+    ControlledEvidenceIntervention,
     Replay,
     ReplayConfiguration,
     ReplayConfigurationSource,
@@ -177,9 +178,9 @@ class HistoricalReplayabilityValidator:
 class ReplayApplicationService:
     """Coordinate Replay lifecycle requests within an authorized tenant scope.
 
-    Phase 1 creates a durable draft and freezes source evidence. Phase 2
-    submits one execution job and supports cooperative cancellation. Phase 3
-    submits a separate evaluation job and exposes immutable result evidence.
+    Creates a durable draft and freezes source evidence.
+    Submits one execution job and supports cooperative cancellation.
+    Submits a separate evaluation job and exposes immutable result evidence.
     Long-running work belongs to the job handlers; this service persists only
     aggregate transitions around submissions.
 
@@ -228,6 +229,7 @@ class ReplayApplicationService:
         configuration_source: ReplayConfigurationSource
         | str = ReplayConfigurationSource.ORIGINAL,
         metadata: Mapping[str, Any] | None = None,
+        controlled_evidence_intervention: ControlledEvidenceIntervention | None = None,
     ) -> Replay:
         """Create and freeze a replay request without executing it.
 
@@ -251,6 +253,9 @@ class ReplayApplicationService:
                 "mode": mode.value,
                 "configuration_source": source.value,
                 "metadata": metadata,
+                "controlled_evidence_intervention": _intervention_payload(
+                    controlled_evidence_intervention
+                ),
             }
         )
         existing = self._replay_repository.find_by_idempotency(
@@ -275,6 +280,7 @@ class ReplayApplicationService:
             idempotency_key=idempotency_key,
             input_hash=input_hash,
             metadata=metadata,
+            controlled_evidence_intervention=controlled_evidence_intervention,
             now=self._clock(),
         )
         draft = self._replay_repository.save(draft)
@@ -357,7 +363,8 @@ class ReplayApplicationService:
         terminal = [
             replay
             for replay in replays
-            if replay.status in {
+            if replay.status
+            in {
                 ReplayStatus.COMPLETED,
                 ReplayStatus.FAILED,
                 ReplayStatus.CANCELLED,
@@ -544,7 +551,7 @@ class ReplayApplicationService:
         baseline_strategy: str = "LATEST_COMPATIBLE",
         baseline_evaluation_id: str | None = None,
     ) -> Replay:
-        """Submit the separate Phase 3 evaluation job for a completed execution.
+        """Submit the separate evaluation job for a completed execution.
 
         Only an ``EXECUTION_COMPLETED`` replay with a persisted produced
         execution may enter evaluation. Repeated calls in ``EVALUATING``,
@@ -577,7 +584,9 @@ class ReplayApplicationService:
         )
         if provider_installation_id:
             if self._provider_installation_service is None:
-                raise ReplayEvaluationSubmissionFailed("Provider installations are unavailable in this runtime.")
+                raise ReplayEvaluationSubmissionFailed(
+                    "Provider installations are unavailable in this runtime."
+                )
             provider = self._provider_installation_service.resolve_provider_type(
                 provider_installation_id, context
             ).provider_type
@@ -716,7 +725,9 @@ class ReplayApplicationService:
             try:
                 decision = enforcer.authorize(request)
             except Exception as error:
-                raise ReplayUnauthorized("Fine-grained authorization evaluation failed.") from error
+                raise ReplayUnauthorized(
+                    "Fine-grained authorization evaluation failed."
+                ) from error
             if not decision.allowed:
                 detail = decision.reason_code
                 if decision.decision_id:
@@ -745,7 +756,7 @@ class ReplayApplicationService:
         baseline_strategy: str = "LATEST_COMPATIBLE",
         baseline_evaluation_id: str | None = None,
     ) -> Replay:
-        """Validate Phase 3 inputs without reserving a job or mutating a replay."""
+        """Validate inputs without reserving a job or mutating a replay."""
         self._authorize(context, Permission.REPLAY_EVALUATE)
         replay = self.get(replay_id, context)
         if (
@@ -818,6 +829,29 @@ class ReplayApplicationService:
 
 def _inline_reference(kind: str, value: object) -> str:
     return f"inline:{kind}:{_hash(value)}"
+
+
+def _intervention_payload(
+    intervention: ControlledEvidenceIntervention | None,
+) -> dict[str, Any] | None:
+    if intervention is None:
+        return None
+    return {
+        "strategy": intervention.strategy.value,
+        "strategy_version": intervention.strategy_version,
+        "source_evidence_reference": intervention.source_evidence_reference,
+        "target_event_id": intervention.target_event_id,
+        "counterfactual_evidence_reference": intervention.counterfactual_evidence_reference,
+        "seed": intervention.seed,
+        "configuration": dict(intervention.configuration),
+        "policy_id": intervention.policy_id,
+        "policy_version": intervention.policy_version,
+        "provider_id": intervention.provider_id,
+        "provider_version": intervention.provider_version,
+        "original_evidence_digest": intervention.original_evidence_digest,
+        "counterfactual_evidence_digest": intervention.counterfactual_evidence_digest,
+        "intervention_digest": intervention.intervention_digest,
+    }
 
 
 def _hash(value: object) -> str:

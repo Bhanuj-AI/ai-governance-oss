@@ -16,6 +16,7 @@ class JobType(str, Enum):
     REPLAY = "REPLAY"
     REPLAY_EXECUTION = "REPLAY_EXECUTION"
     REPLAY_EVALUATION = "REPLAY_EVALUATION"
+    CAUSAL_AUDIT = "CAUSAL_AUDIT"
     DRIFT_ANALYSIS = "DRIFT_ANALYSIS"
     # Plugin-owned operations use this stable envelope and declare their
     # operation in ``input_refs["_ai_governance_extension"]``. Core deliberately

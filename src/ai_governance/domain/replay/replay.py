@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from enum import Enum
+from hashlib import sha256
 from types import MappingProxyType
 from typing import Any
 
@@ -28,6 +30,100 @@ class ReplayMode(str, Enum):
 
 class ReplayConfigurationSource(str, Enum):
     ORIGINAL = "ORIGINAL"
+
+
+class ControlledEvidenceStrategy(str, Enum):
+    """Deterministic evidence substitutions applied only in isolated replays."""
+
+    NULLIFY = "NULLIFY"
+    REPLACE = "REPLACE"
+    PERTURB = "PERTURB"
+
+
+@dataclass(frozen=True)
+class ControlledEvidenceIntervention:
+    """Immutable, reference-only evidence intervention for a Replay adapter."""
+
+    strategy: ControlledEvidenceStrategy
+    strategy_version: str
+    source_evidence_reference: str
+    counterfactual_evidence_reference: str | None = None
+    target_event_id: str | None = None
+    seed: int | None = None
+    configuration: Mapping[str, Any] = field(default_factory=dict)
+    policy_id: str | None = None
+    policy_version: int | None = None
+    provider_id: str | None = None
+    provider_version: str | None = None
+    original_evidence_digest: str | None = None
+    counterfactual_evidence_digest: str | None = None
+    intervention_digest: str = ""
+
+    def __post_init__(self) -> None:
+        if (
+            not self.strategy_version.strip()
+            or not self.source_evidence_reference.strip()
+        ):
+            raise ValueError(
+                "Controlled evidence strategy_version and source evidence reference are required."
+            )
+        if self.strategy is ControlledEvidenceStrategy.REPLACE and (
+            not self.counterfactual_evidence_reference
+            or not self.counterfactual_evidence_reference.strip()
+        ):
+            raise ValueError("REPLACE requires a counterfactual evidence reference.")
+        if (
+            self.counterfactual_evidence_reference is not None
+            and not self.counterfactual_evidence_reference.strip()
+        ):
+            raise ValueError("Counterfactual evidence reference must not be blank.")
+        if self.target_event_id is not None and not self.target_event_id.strip():
+            raise ValueError("Controlled evidence target event ID must not be blank.")
+        provenance = (
+            self.policy_id,
+            self.policy_version,
+            self.provider_id,
+            self.provider_version,
+            self.original_evidence_digest,
+            self.counterfactual_evidence_digest,
+        )
+        if any(value is not None for value in provenance) and not all(
+            value is not None for value in provenance
+        ):
+            raise ValueError(
+                "Controlled evidence provenance must be complete when present."
+            )
+        if self.policy_version is not None and self.policy_version < 1:
+            raise ValueError("Controlled evidence policy version must be positive.")
+        object.__setattr__(
+            self, "configuration", MappingProxyType(dict(self.configuration))
+        )
+        digest = sha256(
+            json.dumps(
+                {
+                    "strategy": self.strategy.value,
+                    "strategy_version": self.strategy_version,
+                    "source": self.source_evidence_reference,
+                    "counterfactual": self.counterfactual_evidence_reference,
+                    "target": self.target_event_id,
+                    "seed": self.seed,
+                    "configuration": dict(self.configuration),
+                    "policy_id": self.policy_id,
+                    "policy_version": self.policy_version,
+                    "provider_id": self.provider_id,
+                    "provider_version": self.provider_version,
+                    "original_digest": self.original_evidence_digest,
+                    "counterfactual_digest": self.counterfactual_evidence_digest,
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode()
+        ).hexdigest()
+        if self.intervention_digest and self.intervention_digest != digest:
+            raise ValueError(
+                "Controlled evidence intervention digest does not match content."
+            )
+        object.__setattr__(self, "intervention_digest", digest)
 
 
 class ReplayFailureStage(str, Enum):
@@ -147,6 +243,7 @@ class Replay:
     comparison_started_at: datetime | None = None
     comparison_completed_at: datetime | None = None
     completed_at: datetime | None = None
+    controlled_evidence_intervention: ControlledEvidenceIntervention | None = None
 
     @classmethod
     def create(
@@ -164,6 +261,7 @@ class Replay:
         input_hash: str,
         metadata: Mapping[str, Any],
         now: datetime,
+        controlled_evidence_intervention: ControlledEvidenceIntervention | None = None,
     ) -> Replay:
         if mode is not ReplayMode.FULL:
             raise ValueError("Only FULL replay mode is supported.")
@@ -194,6 +292,7 @@ class Replay:
             created_at=now,
             updated_at=now,
             metadata=MappingProxyType(dict(metadata)),
+            controlled_evidence_intervention=controlled_evidence_intervention,
         )
 
     def mark_ready(self, configuration: ReplayConfiguration, now: datetime) -> Replay:

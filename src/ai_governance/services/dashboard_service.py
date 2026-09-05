@@ -8,8 +8,17 @@ from typing import Any, Literal
 from urllib.request import urlopen
 
 from ai_governance.decisions import GovernanceDecision
-from ai_governance.domain.jobs import Job, JobStatus
+from ai_governance.domain.agent_execution import AgentExecutionStatus
+from ai_governance.domain.causal_audit import CausalAuditStatus
+from ai_governance.domain.jobs import Job, JobStatus, JobType
+from ai_governance.domain.replay import ReplayStatus
 from ai_governance.ontology.synchronization import OntologySyncEventStatus
+from ai_governance.repositories.agent_execution_repository import (
+    AgentExecutionListFilters,
+)
+from ai_governance.repositories.causal_audit_repository import CausalAuditListFilters
+from ai_governance.repositories.replay_repository import ReplayListFilters
+from ai_governance.tenancy.domain import TenantContext
 
 PlatformHealthStatus = Literal[
     "Healthy",
@@ -35,6 +44,20 @@ class PlatformHealthComponent:
 
 
 @dataclass(frozen=True)
+class DashboardMetricSection:
+    key: str
+    label: str
+    metrics: tuple[DashboardMetric, ...]
+
+
+@dataclass(frozen=True)
+class DashboardAttentionSignal:
+    label: str
+    value: int
+    detail: str
+
+
+@dataclass(frozen=True)
 class RecentActivityItem:
     timestamp: datetime
     resource: str
@@ -49,6 +72,9 @@ class DashboardSummary:
     platform_statistics: tuple[DashboardMetric, ...]
     platform_health: tuple[PlatformHealthComponent, ...]
     recent_activity: tuple[RecentActivityItem, ...]
+    operational_sections: tuple[DashboardMetricSection, ...] = ()
+    attention_signals: tuple[DashboardAttentionSignal, ...] = ()
+    health_checked_at: datetime | None = None
 
 
 class DashboardReadService:
@@ -63,15 +89,23 @@ class DashboardReadService:
         job_repository: Any,
         ontology_sync_event_repository: Any,
         ontology_graph_repository: Any,
+        replay_repository: Any | None = None,
+        causal_audit_repository: Any | None = None,
+        agent_execution_repository: Any | None = None,
+        provider_registry: Any | None = None,
         clock: Any | None = None,
     ) -> None:
         self._decision_repository = decision_repository
         self._job_repository = job_repository
         self._ontology_sync_event_repository = ontology_sync_event_repository
         self._ontology_graph_repository = ontology_graph_repository
+        self._replay_repository = replay_repository
+        self._causal_audit_repository = causal_audit_repository
+        self._agent_execution_repository = agent_execution_repository
+        self._provider_registry = provider_registry
         self._clock = clock or (lambda: datetime.now(UTC))
 
-    def get_summary(self) -> DashboardSummary:
+    def get_summary(self, context: TenantContext | None = None) -> DashboardSummary:
         decisions = tuple(self._decision_repository.list(limit=500))
         jobs = tuple(self._job_repository.list_jobs(limit=500))
         sync_events = tuple(self._ontology_sync_event_repository.list_events(limit=500))
@@ -95,6 +129,19 @@ class DashboardReadService:
         graph_status, graph_detail, graph_nodes, graph_relationships = (
             _ontology_graph_health(self._ontology_graph_repository)
         )
+        replays = _list_replays(self._replay_repository, context)
+        causal_audits = _list_causal_audits(self._causal_audit_repository, context)
+        agent_executions = _list_agent_executions(
+            self._agent_execution_repository, context
+        )
+        provider_count = _provider_count(self._provider_registry)
+        replay_counts = Counter(replay.status for replay in replays)
+        causal_audit_counts = Counter(audit.status for audit in causal_audits)
+        execution_counts = Counter(execution.status for execution in agent_executions)
+        failed_evaluations = sum(
+            1 for job in jobs if job.status is JobStatus.FAILED and job.job_type == "EVALUATION"
+        )
+        now = self._clock()
 
         governance_statistics = (
             DashboardMetric(
@@ -176,13 +223,100 @@ class DashboardReadService:
                     self._job_repository.list_worker_heartbeats(),
                     now=self._clock(),
                 ),
+                agent_runtime_health=_agent_runtime_health(
+                    agent_executions,
+                    repository_available=self._agent_execution_repository is not None,
+                ),
             ),
             recent_activity=_recent_activity(
                 decisions,
                 decision_activity_timestamps,
                 jobs,
                 sync_events,
+                replays,
+                causal_audits,
+                agent_executions,
             ),
+            operational_sections=(
+                DashboardMetricSection(
+                    key="governance",
+                    label="Governance & Assurance",
+                    metrics=(
+                        *governance_statistics[:3],
+                        DashboardMetric(
+                            label="Policy Evaluations",
+                            value=sum(len(decision.policies) for decision in decisions),
+                            description="Policy checks across current governance decisions.",
+                        ),
+                    ),
+                ),
+                DashboardMetricSection(
+                    key="evaluation-replay",
+                    label="Evaluation & Replay",
+                    metrics=(
+                        DashboardMetric(
+                            label="Evaluations",
+                            value=sum(1 for job in jobs if job.job_type == "EVALUATION"),
+                            description="Evaluation jobs submitted.",
+                        ),
+                        DashboardMetric(
+                            label="Replay Executions",
+                            value=len(replays),
+                            description="Replay runs in the selected project.",
+                        ),
+                        DashboardMetric(
+                            label="Running / Queued Replays",
+                            value=sum(replay_counts[status] for status in (ReplayStatus.QUEUED, ReplayStatus.RUNNING, ReplayStatus.EVALUATING, ReplayStatus.COMPARING)),
+                            description="Replay work currently in progress.",
+                        ),
+                        DashboardMetric(
+                            label="Evaluation Providers",
+                            value=provider_count,
+                            description="Ready" if provider_count else "Not configured",
+                        ),
+                    ),
+                ),
+                DashboardMetricSection(
+                    key="agent-runtime",
+                    label="Agent Runtime",
+                    metrics=(
+                        DashboardMetric(
+                            label="Runtime Executions",
+                            value=len(agent_executions),
+                            description="Observed runtime execution records.",
+                        ),
+                        DashboardMetric(
+                            label="Active Agents / Workflows",
+                            value=len({execution.agent_id for execution in agent_executions}),
+                            description="Agents with observed execution evidence.",
+                        ),
+                        DashboardMetric(
+                            label="Failed Executions",
+                            value=execution_counts[AgentExecutionStatus.FAILED],
+                            description="Runtime executions requiring review.",
+                        ),
+                        DashboardMetric(
+                            label="Causal Audits",
+                            value=causal_audit_counts[CausalAuditStatus.SUCCEEDED],
+                            description="Completed causal audits.",
+                        ),
+                    ),
+                ),
+            ),
+            attention_signals=tuple(
+                signal
+                for signal in (
+                    DashboardAttentionSignal("Failed Jobs", job_counts[JobStatus.FAILED], "Jobs requiring operator review."),
+                    DashboardAttentionSignal("Failed Evaluations", failed_evaluations, "Evaluation jobs that did not complete."),
+                    DashboardAttentionSignal("Replay Failures", replay_counts[ReplayStatus.FAILED], "Replay runs that did not complete."),
+                    DashboardAttentionSignal("Causal Audit Failures", causal_audit_counts[CausalAuditStatus.FAILED], "Causal audits that did not complete."),
+                    DashboardAttentionSignal("Ontology Backlog", sync_counts[OntologySyncEventStatus.PENDING] + sync_counts[OntologySyncEventStatus.PROCESSING], "Ontology events awaiting projection."),
+                    DashboardAttentionSignal("Dead-Letter Events", sync_counts[OntologySyncEventStatus.DEAD_LETTER], "Ontology events requiring review or retry."),
+                    DashboardAttentionSignal("Failed Runtime Executions", execution_counts[AgentExecutionStatus.FAILED], "Agent executions that did not complete."),
+                )
+                if signal.value > 0
+            ),
+            health_checked_at=now,
         )
 
 
@@ -199,6 +333,7 @@ def _platform_health(
     database_health: tuple[PlatformHealthStatus, str],
     worker_health: tuple[PlatformHealthStatus, str],
     graph_health: tuple[PlatformHealthStatus, str],
+    agent_runtime_health: tuple[PlatformHealthStatus, str],
 ) -> tuple[PlatformHealthComponent, ...]:
     sync_counts = Counter(event.status for event in sync_events)
     if sync_counts[OntologySyncEventStatus.DEAD_LETTER]:
@@ -224,6 +359,7 @@ def _platform_health(
     database_status, database_detail = database_health
     worker_status, worker_detail = worker_health
     graph_status, graph_detail = graph_health
+    agent_runtime_status, agent_runtime_detail = agent_runtime_health
 
     return (
         PlatformHealthComponent(
@@ -255,6 +391,11 @@ def _platform_health(
             component="Job Workers",
             status=worker_status,
             detail=worker_detail,
+        ),
+        PlatformHealthComponent(
+            component="Agents Runtime",
+            status=agent_runtime_status,
+            detail=agent_runtime_detail,
         ),
     )
 
@@ -382,29 +523,89 @@ def _mcp_health() -> tuple[PlatformHealthStatus, str]:
     return "Unavailable", "MCP Server is not responding."
 
 
+def _list_replays(repository: Any | None, context: TenantContext | None) -> tuple[Any, ...]:
+    if repository is None or context is None or context.project_id is None:
+        return ()
+    return tuple(
+        repository.list(
+            ReplayListFilters(limit=500),
+            context.organization_id,
+            context.project_id,
+        )
+    )
+
+
+def _list_causal_audits(
+    repository: Any | None, context: TenantContext | None
+) -> tuple[Any, ...]:
+    if repository is None or context is None:
+        return ()
+    return tuple(
+        repository.list(
+            CausalAuditListFilters(limit=500),
+            context.organization_id,
+            context.project_id,
+        )
+    )
+
+
+def _list_agent_executions(
+    repository: Any | None, context: TenantContext | None
+) -> tuple[Any, ...]:
+    if repository is None or context is None:
+        return ()
+    return tuple(
+        repository.list(
+            AgentExecutionListFilters(limit=500),
+            context.organization_id,
+            context.project_id,
+        )
+    )
+
+
+def _provider_count(registry: Any | None) -> int:
+    if registry is None:
+        return 0
+    return len(registry.list())
+
+
+def _agent_runtime_health(
+    executions: tuple[Any, ...], *, repository_available: bool
+) -> tuple[PlatformHealthStatus, str]:
+    if not repository_available:
+        return "Unknown", "Runtime health is not configured."
+    return (
+        "Healthy",
+        "Runtime ingestion and execution services are responding."
+        if executions
+        else "Runtime execution storage is responding; no executions observed yet.",
+    )
+
+
 def _recent_activity(
     decisions: tuple[GovernanceDecision, ...],
     decision_activity_timestamps: dict[str, datetime],
     jobs: tuple[Job, ...],
     sync_events: tuple[Any, ...],
+    replays: tuple[Any, ...] = (),
+    causal_audits: tuple[Any, ...] = (),
+    agent_executions: tuple[Any, ...] = (),
 ) -> tuple[RecentActivityItem, ...]:
     items = [
         RecentActivityItem(
             timestamp=decision_activity_timestamps[decision.decision_id],
-            resource=(
-                f"{decision.target.target_type.value}/{decision.target.target_id}"
-            ),
-            action=f"Decision {decision.decision_type.value}",
-            status=decision.status.value,
+            resource="Governance decision",
+            action=f"{_humanize(decision.decision_type.value)} decision",
+            status=_humanize(decision.status.value),
         )
         for decision in decisions
     ]
     items.extend(
         RecentActivityItem(
             timestamp=job.updated_at,
-            resource=f"Job/{job.job_id}",
-            action=job.job_type.value,
-            status=job.status.value,
+            resource=_job_resource(job.job_type),
+            action=_job_action(job.job_type, job.status),
+            status=_humanize(job.status.value),
         )
         for job in jobs
     )
@@ -416,13 +617,38 @@ def _recent_activity(
     items.extend(
         RecentActivityItem(
             timestamp=event.updated_at,
-            resource=(
-                f"{event.entity_type}/{event.entity_id or event.scope_identifier}"
-            ),
-            action=event.event_type,
-            status=event.status.value,
+            resource="Ontology",
+            action=_humanize(event.event_type),
+            status=_humanize(event.status.value),
         )
         for event in visible_sync_events
+    )
+    items.extend(
+        RecentActivityItem(
+            timestamp=replay.updated_at,
+            resource="Replay",
+            action=f"Replay {_humanize(replay.status.value).lower()}",
+            status=_humanize(replay.status.value),
+        )
+        for replay in replays
+    )
+    items.extend(
+        RecentActivityItem(
+            timestamp=audit.updated_at,
+            resource="Causal Audit",
+            action=f"Causal audit {_humanize(audit.status.value).lower()}",
+            status=_humanize(audit.status.value),
+        )
+        for audit in causal_audits
+    )
+    items.extend(
+        RecentActivityItem(
+            timestamp=execution.updated_at,
+            resource="Agent Runtime",
+            action=f"{execution.agent_name} execution {_humanize(execution.status.value).lower()}",
+            status=_humanize(execution.status.value),
+        )
+        for execution in agent_executions
     )
     return tuple(
         sorted(
@@ -431,6 +657,31 @@ def _recent_activity(
             reverse=True,
         )[:12]
     )
+
+
+def _job_resource(job_type: JobType) -> str:
+    return {
+        JobType.EVALUATION: "Evaluation",
+        JobType.REPLAY: "Replay",
+        JobType.REPLAY_EXECUTION: "Replay",
+        JobType.REPLAY_EVALUATION: "Replay",
+        JobType.CAUSAL_AUDIT: "Causal Audit",
+    }.get(job_type, "Jobs")
+
+
+def _job_action(job_type: JobType, status: JobStatus) -> str:
+    subject = {
+        JobType.EVALUATION: "Evaluation",
+        JobType.REPLAY: "Replay",
+        JobType.REPLAY_EXECUTION: "Replay execution",
+        JobType.REPLAY_EVALUATION: "Replay evaluation",
+        JobType.CAUSAL_AUDIT: "Causal audit",
+    }.get(job_type, _humanize(job_type.value))
+    return f"{subject} {_humanize(status.value).lower()}"
+
+
+def _humanize(value: str) -> str:
+    return value.replace("_", " ").title()
 
 
 def _decision_activity_timestamp(

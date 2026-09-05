@@ -69,7 +69,7 @@ function RegistryTable({ kind }: { kind: AssetKind }) {
   const onboardingRegistration = kind === "datasets" && searchParams.get("onboarding") === "register";
   const openProviderInstallation = kind === "providers" && searchParams.get("new") === "1";
 
-  return <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-5 px-6 py-5">
+  return <div className="studio-page flex flex-col gap-5">
     <Link href="/assets" className="flex w-fit items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" />Assets</Link>
     <div className="flex items-start gap-3"><div className="rounded-md bg-primary/10 p-2 text-primary"><Icon className="h-5 w-5" /></div><div><h1 className="text-2xl font-semibold">{info.title}</h1><p className="mt-1 text-sm text-muted-foreground">{info.description}</p></div></div>
     <div className="flex justify-end">{kind === "datasets" ? <DatasetUploadForm openInitially={onboardingRegistration} /> : kind === "prompts" || kind === "models" ? <ManagedAssetForm kind={kind} /> : null}</div>

@@ -9,6 +9,28 @@ This project follows Semantic Versioning.
 
 ## Unreleased
 
+## [1.1.0] - 2026-09-02
+
+### Added
+
+- Added Agents Runtime: tenant-scoped execution traces, ordered event evidence,
+  deterministic Runtime Findings, reconciliation, projection, and Studio views.
+- Added Causal Audit with versioned evidence-intervention policies, immutable
+  audit/replay lineage, and provider-neutral controlled replay adapters.
+- Added authenticated external-runtime ingestion and the reference-only
+  `synthetic-agent-runtime/v1` replay integration for local validation.
+- Added an opaque-reference evidence-intervention provider, reviewer case
+  lifecycle actions, and causal-audit evidence-influence detail views.
+- Added SQLite, PostgreSQL, in-memory, worker, API, tenant-isolation, and
+  external-adapter coverage for the promoted capabilities.
+
+### Changed
+
+- Runtime Findings now derive canonical tool identity and eligible latency
+  samples from finalized execution evidence.
+- Local Docker, environment templates, and Keycloak setup now configure the
+  durable Agents Runtime store and external-runtime service identity.
+
 ## [1.0.4] - 2026-08-15
 
 ### Added

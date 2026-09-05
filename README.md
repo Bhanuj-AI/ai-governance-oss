@@ -38,9 +38,9 @@ reviewable, explainable, and auditable.
 
 ![BHANUJ AI Governance Control Plane](assets/Hero.png)
 
-- [Website](https://ai-governance.bhanuj.app)
-- [Documentation](https://ai-governance.bhanuj.app/docs)
-- [Tutorials](https://ai-governance.bhanuj.app/tutorials)
+- [Website](https://governance.bhanuj.ai)
+- [Documentation](https://governance.bhanuj.ai/docs)
+- [Tutorials](https://governance.bhanuj.ai/tutorials)
 - [Start with the governed replay walkthrough](docs/tutorials/governed-replay-walkthrough.md)
 - [Understand the platform boundary](docs/architecture/ARCHITECTURE.md)
 - [Roadmap](docs/roadmap/ROADMAP.md)

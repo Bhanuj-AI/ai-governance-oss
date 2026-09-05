@@ -29,7 +29,22 @@ def test_settings_api_lists_categories_and_effective_metadata() -> None:
         {"source", "editable", "restart_required", "default"} <= set(item)
         for item in response.json()
     )
-    assert client.get("/api/v1/settings/categories").status_code == 200
+    categories_response = client.get("/api/v1/settings/categories")
+    assert categories_response.status_code == 200
+    categories = categories_response.json()
+    assert any(
+        item["name"] == "Agents Runtime" and item["setting_count"] > 0
+        for item in categories
+    )
+
+    runtime_settings = client.get(
+        "/api/v1/settings", params={"category": "Agents Runtime"}
+    )
+    assert runtime_settings.status_code == 200
+    assert runtime_settings.json()
+    assert {item["category"] for item in runtime_settings.json()} == {
+        "Agents Runtime"
+    }
 
 
 def test_settings_api_validates_updates_and_exposes_audit() -> None:

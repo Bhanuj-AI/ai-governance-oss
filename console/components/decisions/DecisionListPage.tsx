@@ -77,7 +77,7 @@ export function DecisionListPage() {
 
   return (
     <div className="h-[calc(100vh-3.5rem)] overflow-y-auto">
-      <div className="mx-auto flex w-full max-w-[1240px] flex-col gap-5 px-6 py-5">
+      <div className="studio-page flex flex-col gap-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">

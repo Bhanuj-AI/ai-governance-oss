@@ -6,6 +6,8 @@ from datetime import datetime
 from typing import Any
 
 from ai_governance.domain.replay import (
+    ControlledEvidenceIntervention,
+    ControlledEvidenceStrategy,
     Replay,
     ReplayConfiguration,
     ReplayConfigurationSource,
@@ -24,7 +26,7 @@ class ReplayPersistenceMapper:
             "source_execution_id": replay.source_execution_id,
             "status": replay.status.value,
             "mode": replay.mode.value,
-            "configuration_json": _json(_configuration(replay.configuration)),
+            "configuration_json": _json(_replay_configuration(replay)),
             "requested_by": replay.requested_by,
             "organization_id": replay.organization_id,
             "project_id": replay.project_id,
@@ -73,7 +75,8 @@ class ReplayPersistenceMapper:
 
     @classmethod
     def from_persistence_record(cls, record: Mapping[str, Any]) -> Replay:
-        configuration = _configuration_from_json(_value(record, "configuration_json"))
+        configuration_data = _load_json(_value(record, "configuration_json"), None)
+        configuration = _configuration_from_data(configuration_data)
         failure = _failure_from_json(_value(record, "failure_json"))
         return Replay(
             replay_id=str(record["replay_id"]),
@@ -125,6 +128,11 @@ class ReplayPersistenceMapper:
                 _value(record, "comparison_completed_at")
             ),
             completed_at=_datetime_or_none(_value(record, "completed_at")),
+            controlled_evidence_intervention=_intervention_from_data(
+                configuration_data.get("controlled_evidence_intervention")
+                if configuration_data
+                else None
+            ),
         )
 
 
@@ -151,9 +159,27 @@ def _configuration(configuration: ReplayConfiguration | None) -> dict[str, Any] 
     }
 
 
+def _replay_configuration(replay: Replay) -> dict[str, Any] | None:
+    configuration = _configuration(replay.configuration)
+    if configuration is None and replay.controlled_evidence_intervention is not None:
+        configuration = {}
+    if configuration is not None:
+        configuration["controlled_evidence_intervention"] = _intervention(
+            replay.controlled_evidence_intervention
+        )
+    return configuration
+
+
 def _configuration_from_json(value: object) -> ReplayConfiguration | None:
-    data = _load_json(value, None)
+    return _configuration_from_data(_load_json(value, None))
+
+
+def _configuration_from_data(
+    data: Mapping[str, Any] | None,
+) -> ReplayConfiguration | None:
     if data is None:
+        return None
+    if "workflow_id" not in data:
         return None
     return ReplayConfiguration(
         workflow_id=data["workflow_id"],
@@ -170,6 +196,58 @@ def _configuration_from_json(value: object) -> ReplayConfiguration | None:
         configuration_source=ReplayConfigurationSource(data["configuration_source"]),
         resolved_at=_datetime_or_none(data.get("resolved_at")),
         configuration_hash=data["configuration_hash"],
+    )
+
+
+def _intervention(
+    intervention: ControlledEvidenceIntervention | None,
+) -> dict[str, Any] | None:
+    if intervention is None:
+        return None
+    return {
+        "strategy": intervention.strategy.value,
+        "strategy_version": intervention.strategy_version,
+        "source_evidence_reference": intervention.source_evidence_reference,
+        "target_event_id": intervention.target_event_id,
+        "counterfactual_evidence_reference": intervention.counterfactual_evidence_reference,
+        "seed": intervention.seed,
+        "configuration": dict(intervention.configuration),
+        "policy_id": intervention.policy_id,
+        "policy_version": intervention.policy_version,
+        "provider_id": intervention.provider_id,
+        "provider_version": intervention.provider_version,
+        "original_evidence_digest": intervention.original_evidence_digest,
+        "counterfactual_evidence_digest": intervention.counterfactual_evidence_digest,
+        "intervention_digest": intervention.intervention_digest,
+    }
+
+
+def _intervention_from_data(value: object) -> ControlledEvidenceIntervention | None:
+    if not isinstance(value, Mapping):
+        return None
+    return ControlledEvidenceIntervention(
+        strategy=ControlledEvidenceStrategy(str(value["strategy"])),
+        strategy_version=str(value["strategy_version"]),
+        source_evidence_reference=str(value["source_evidence_reference"]),
+        target_event_id=(
+            str(value["target_event_id"])
+            if value.get("target_event_id") is not None
+            else None
+        ),
+        counterfactual_evidence_reference=(
+            str(value["counterfactual_evidence_reference"])
+            if value.get("counterfactual_evidence_reference") is not None
+            else None
+        ),
+        seed=int(value["seed"]) if value.get("seed") is not None else None,
+        configuration=value.get("configuration", {}),
+        policy_id=value.get("policy_id"),
+        policy_version=value.get("policy_version"),
+        provider_id=value.get("provider_id"),
+        provider_version=value.get("provider_version"),
+        original_evidence_digest=value.get("original_evidence_digest"),
+        counterfactual_evidence_digest=value.get("counterfactual_evidence_digest"),
+        intervention_digest=value.get("intervention_digest", ""),
     )
 
 

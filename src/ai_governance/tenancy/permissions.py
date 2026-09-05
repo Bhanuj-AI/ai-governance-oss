@@ -53,6 +53,14 @@ class Permission(str, Enum):
     REPLAY_CANCEL = "replay.cancel"
     REPLAY_EVALUATE = "replay.evaluate"
     REPLAY_RESULT_READ = "replay.result.read"
+    AGENT_EXECUTION_INGEST = "agent_execution.ingest"
+    AGENT_EXECUTION_READ = "agent_execution.read"
+    RUNTIME_FINDING_READ = "runtime_finding.read"
+    RUNTIME_FINDING_DETECT = "runtime_finding.detect"
+    RUNTIME_FINDING_RECONCILE = "runtime_finding.reconcile"
+    RUNTIME_FINDING_REVIEW = "runtime_finding.review"
+    CAUSAL_AUDIT_CREATE = "causal_audit.create"
+    CAUSAL_AUDIT_READ = "causal_audit.read"
     ENTERPRISE_RECOMMENDATIONS_READ = "enterprise.recommendations.read"
     ENTERPRISE_RECOMMENDATIONS_SYNTHESIZE = "enterprise.recommendations.synthesize"
 
@@ -70,6 +78,7 @@ _viewer = frozenset(
         Permission.SETTINGS_READ,
         Permission.REPLAY_READ,
         Permission.REPLAY_RESULT_READ,
+        Permission.AGENT_EXECUTION_READ,
         Permission.ENTERPRISE_RECOMMENDATIONS_READ,
     }
 )
@@ -89,6 +98,10 @@ _operator = frozenset(
         Permission.SETTINGS_READ,
         Permission.SETTINGS_MANAGE,
         Permission.REPLAY_READ,
+        Permission.AGENT_EXECUTION_INGEST,
+        Permission.AGENT_EXECUTION_READ,
+        Permission.RUNTIME_FINDING_READ,
+        Permission.RUNTIME_FINDING_DETECT,
         Permission.ENTERPRISE_RECOMMENDATIONS_READ,
     }
 )
@@ -123,10 +136,40 @@ _governance_admin = frozenset(
         Permission.REPLAY_EVALUATE,
         Permission.REPLAY_RESULT_READ,
         Permission.SETTINGS_MANAGE,
+        Permission.AGENT_EXECUTION_INGEST,
+        Permission.AGENT_EXECUTION_READ,
+        Permission.RUNTIME_FINDING_READ,
+        Permission.RUNTIME_FINDING_DETECT,
+        Permission.RUNTIME_FINDING_RECONCILE,
+        Permission.RUNTIME_FINDING_REVIEW,
+        Permission.CAUSAL_AUDIT_CREATE,
+        Permission.CAUSAL_AUDIT_READ,
         Permission.ENTERPRISE_RECOMMENDATIONS_READ,
         Permission.ENTERPRISE_RECOMMENDATIONS_SYNTHESIZE,
     }
 )
+
+_external_runtime_operator = frozenset(
+    {
+        # Causal Audit and its intervention-policy lifecycle queue governed
+        # work through the normal job boundary.
+        Permission.JOB_SUBMIT,
+        Permission.AGENT_EXECUTION_INGEST,
+        Permission.AGENT_EXECUTION_READ,
+        Permission.RUNTIME_FINDING_READ,
+        Permission.RUNTIME_FINDING_DETECT,
+        Permission.RUNTIME_FINDING_RECONCILE,
+        Permission.CAUSAL_AUDIT_CREATE,
+        Permission.CAUSAL_AUDIT_READ,
+        Permission.REPLAY_CREATE,
+        Permission.REPLAY_READ,
+        Permission.REPLAY_RESULT_READ,
+        Permission.SETTINGS_READ,
+    }
+)
+_external_runtime_test_operator = _external_runtime_operator | {
+    Permission.SETTINGS_MANAGE,
+}
 
 ROLE_PERMISSIONS = MappingProxyType(
     {
@@ -134,6 +177,8 @@ ROLE_PERMISSIONS = MappingProxyType(
         BuiltInRole.GOVERNANCE_ADMIN: _governance_admin,
         BuiltInRole.GOVERNANCE_REVIEWER: _reviewer,
         BuiltInRole.PLATFORM_OPERATOR: _operator,
+        BuiltInRole.EXTERNAL_RUNTIME_OPERATOR: _external_runtime_operator,
+        BuiltInRole.EXTERNAL_RUNTIME_TEST_OPERATOR: _external_runtime_test_operator,
         BuiltInRole.VIEWER: _viewer,
     }
 )
