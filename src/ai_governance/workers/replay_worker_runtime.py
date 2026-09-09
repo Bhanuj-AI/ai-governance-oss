@@ -171,6 +171,9 @@ def create_replay_worker_runtime(
     event_publisher: EventPublisher | None = None,
 ) -> ReplayWorkerRuntime:
     """Build runtime dependencies using the same durable factories as the API."""
+    from ai_governance.api.dependencies.agent_execution import (
+        get_agent_execution_service,
+    )
     from ai_governance.api.dependencies.causal_audit import get_causal_audit_service
     from ai_governance.api.dependencies.evaluation import get_evaluation_api_service
     from ai_governance.api.dependencies.provider_installations import (
@@ -209,6 +212,7 @@ def create_replay_worker_runtime(
     )
     from ai_governance.services.dataset_item_reader import S3DatasetItemReader
     from ai_governance.services.evaluation_api_service import EvaluationApiService
+    from ai_governance.services.execution_deadline import WorkerExecutionDeadline
     from ai_governance.services.experiment_api_service import ExperimentApiService
     from ai_governance.services.job_api_service import JobApiService
     from ai_governance.services.telemetry_service import TelemetryService
@@ -269,11 +273,17 @@ def create_replay_worker_runtime(
             model_repository=get_model_repository(),
             dataset_repository=get_dataset_repository(),
             runtime_connection_service=runtime_connection_service,
-            dataset_item_reader=S3DatasetItemReader(dataset_object_store_from_environment()),
-            adapter_registry=ModelRuntimeAdapterRegistry((OpenAIModelRuntimeAdapter(), AnthropicModelRuntimeAdapter())),
+            dataset_item_reader=S3DatasetItemReader(
+                dataset_object_store_from_environment()
+            ),
+            adapter_registry=ModelRuntimeAdapterRegistry(
+                (OpenAIModelRuntimeAdapter(), AnthropicModelRuntimeAdapter())
+            ),
             execution_store=source_store,
             event_publisher=event_publisher,
         ),
+        agent_execution_service=get_agent_execution_service(),
+        provider_execution_deadline=WorkerExecutionDeadline(),
     )
     registry = ReplayExecutionAdapterRegistry()
     registry.register(HistoricalReplayExecutionAdapter())

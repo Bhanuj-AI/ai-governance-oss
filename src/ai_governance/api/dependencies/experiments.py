@@ -8,6 +8,7 @@ from typing import Any
 
 from fastapi import Depends
 
+from ai_governance.api.dependencies.agent_execution import get_agent_execution_service
 from ai_governance.api.dependencies.events import get_event_publisher
 from ai_governance.api.dependencies.ontology import get_ontology_sync_event_publisher
 from ai_governance.api.dependencies.provider_installations import (
@@ -45,6 +46,7 @@ def get_experiment_api_service(
     execution_store: Any = Depends(get_replay_source_resolver),
     ontology_event_publisher: Any = Depends(get_ontology_sync_event_publisher),
     event_publisher: Any = Depends(get_event_publisher),
+    agent_execution_service: Any = Depends(get_agent_execution_service),
 ) -> Any:
     """
     Create the REST experiment facade through dependency injection.
@@ -84,4 +86,5 @@ def get_experiment_api_service(
             event_publisher=event_publisher,
         ),
         ontology_event_publisher=ontology_event_publisher,
+        agent_execution_service=agent_execution_service,
     )

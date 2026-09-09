@@ -33,6 +33,7 @@ export function ExperimentLifecycle({
   leaderboardLoading: boolean;
 }) {
   const topEntry = leaderboard?.entries[0];
+  const canCompare = (candidateCount ?? 0) >= 2;
   const presentation = presentationFor({
     experiment,
     candidateCount,
@@ -67,7 +68,10 @@ export function ExperimentLifecycle({
         leaderboard && topEntry ? (
           <div className="grid gap-3 text-sm sm:grid-cols-3">
             <Metadata label="Ranking strategy" value={leaderboard.ranking_strategy} />
-            <Metadata label="Selected rank" value={`#${topEntry.rank} of ${leaderboard.entries.length}`} />
+            <Metadata
+              label={canCompare ? "Selected rank" : "Observed rank"}
+              value={`#${topEntry.rank} of ${leaderboard.entries.length}`}
+            />
             <Metadata label="Generated" value={new Date(leaderboard.generated_at).toLocaleString()} />
           </div>
         ) : null
@@ -95,12 +99,28 @@ function presentationFor({
   topEntry: Leaderboard["entries"][number] | undefined;
   leaderboardLoading: boolean;
 }): LifecyclePresentation {
-  if (topEntry) {
+  if (candidatesLoading || leaderboardLoading) {
+    return {
+      activeStep: candidateCount ? 2 : 0,
+      outcome: "LOADING",
+      detail: "Resolving the current experiment state and governed outcome.",
+      tone: "progress",
+    };
+  }
+  if (topEntry && (candidateCount ?? 0) >= 2) {
     return {
       activeStep: 3,
       outcome: "RECOMMENDED",
-      detail: `${topEntry.candidate_id} ranked #${topEntry.rank} with ${Math.round(topEntry.overall_score * 100)}% overall score.`,
+      detail: `${topEntry.candidate_id} ranked #${topEntry.rank} with ranking value ${formatRankingValue(topEntry.overall_score)}.`,
       tone: "success",
+    };
+  }
+  if (topEntry && candidateCount === 1) {
+    return {
+      activeStep: 2,
+      outcome: "COMPARISON REQUIRED",
+      detail: "One candidate has evaluation evidence. Add a second candidate before making a recommendation.",
+      tone: "warning",
     };
   }
   if (experiment.status === "CANCELLED") {
@@ -117,14 +137,6 @@ function presentationFor({
       outcome: "NEEDS REVIEW",
       detail: `${failedRuns} evaluation ${failedRuns === 1 ? "run has" : "runs have"} failed. Resolve the run issue before comparing results.`,
       tone: "danger",
-    };
-  }
-  if (candidatesLoading || leaderboardLoading) {
-    return {
-      activeStep: candidateCount ? 2 : 0,
-      outcome: "LOADING",
-      detail: "Resolving the current experiment state and governed outcome.",
-      tone: "progress",
     };
   }
   if (!candidateCount) {
@@ -176,6 +188,7 @@ function stepsFor({
   activeStep: number;
   activeTone: Exclude<GovernedFlowTone, "muted">;
 }): GovernedFlowStep[] {
+  const canCompare = (candidateCount ?? 0) >= 2;
   const base: GovernedFlowStep[] = [
     {
       id: "candidates",
@@ -196,14 +209,18 @@ function stepsFor({
     {
       id: "compare",
       label: "compare results",
-      detail: "Compatible evaluation evidence is ranked using the configured strategy.",
+      detail: canCompare
+        ? "Compatible evaluation evidence is ranked using the configured strategy."
+        : "Add a second candidate before interpreting this as a comparison.",
       tone: "info",
     },
     {
       id: "recommend",
-      label: "publish recommendation",
-      detail: "The leading candidate is retained as an explainable, non-deploying outcome.",
-      tone: "success",
+      label: canCompare ? "publish recommendation" : "comparison required",
+      detail: canCompare
+        ? "The leading candidate is retained as an explainable, non-deploying outcome."
+        : "A single candidate can be observed, but cannot receive a comparative recommendation.",
+      tone: canCompare ? "success" : "warning",
     },
   ];
 
@@ -211,6 +228,12 @@ function stepsFor({
     ...step,
     tone: index === activeStep ? activeTone : index > activeStep ? "muted" : step.tone,
   }));
+}
+
+function formatRankingValue(value: number): string {
+  return value.toLocaleString(undefined, {
+    maximumFractionDigits: 4,
+  });
 }
 
 function StepState({ tone }: { tone: Exclude<GovernedFlowTone, "muted"> }) {

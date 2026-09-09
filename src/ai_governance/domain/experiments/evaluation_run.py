@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
 from ai_governance.domain.experiments.experiment_candidate import ExperimentCandidate
 
@@ -42,6 +43,7 @@ class EvaluationRun:
     total_item_count: int | None = None
     completed_item_count: int = 0
     evaluated_item_count: int = 0
+    runner_provenance: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         self._require_non_empty("run_id", self.run_id)
@@ -100,6 +102,10 @@ class EvaluationRun:
             raise ValueError(
                 "EvaluationRun evaluated_item_count must not exceed completed_item_count."
             )
+        if self.runner_provenance is not None:
+            if not isinstance(self.runner_provenance, dict):
+                raise ValueError("EvaluationRun runner_provenance must be an object.")
+            object.__setattr__(self, "runner_provenance", dict(self.runner_provenance))
 
         if (
             self.status == EvaluationRunStatus.COMPLETED

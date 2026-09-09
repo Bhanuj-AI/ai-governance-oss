@@ -5,6 +5,9 @@ from ai_governance.api.routers.dashboard import router as dashboard_router
 from ai_governance.api.routers.datasets import router as datasets_router
 from ai_governance.api.routers.decisions import router as decisions_router
 from ai_governance.api.routers.evaluations import router as evaluations_router
+from ai_governance.api.routers.evidence_fidelity import (
+    router as evidence_fidelity_router,
+)
 from ai_governance.api.routers.evidence_intervention_policies import (
     router as evidence_intervention_policies_router,
 )
@@ -50,6 +53,7 @@ __all__ = [
     "datasets_router",
     "decisions_router",
     "evaluations_router",
+    "evidence_fidelity_router",
     "evidence_intervention_policies_router",
     "experiments_router",
     "extensions_router",

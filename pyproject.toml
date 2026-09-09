@@ -1,7 +1,7 @@
 [project]
 name = "ai-governance"
-version = "1.1.0"
-description = "Open-source AI governance control plane for governed AI assets, evaluations, replay, audit, and deterministic governance."
+version = "1.1.1"
+description = "AI Governance Control Plane for execution audit, workflow replay, evaluation, decision-drift analysis, and governance controls for AI systems."
 readme = "README.md"
 requires-python = ">=3.12"
 
@@ -17,7 +17,7 @@ dependencies = [
     "jsonschema>=4.26.0",
     "PyYAML>=6.0",
     "rich>=13.9.4",
-    "snowflake-connector-python>=4.6.0",
+    "snowflake-connector-python>=4.7.2",
     "trulens>=2.10.0",
     "trulens-connectors-snowflake>=2.10.0",
     "trulens-core>=2.10.0",
@@ -33,6 +33,11 @@ Homepage = "https://governance.bhanuj.ai"
 Documentation = "https://governance.bhanuj.ai/docs"
 Tutorials = "https://governance.bhanuj.ai/tutorials"
 Repository = "https://gitlab.com/bhanuj-ai/ai-governance-oss.git"
+
+[project.optional-dependencies]
+inspect = [
+    "inspect-ai>=0.3",
+]
 
 [project.scripts]
 ai-governance = "ai_governance.cli:main"

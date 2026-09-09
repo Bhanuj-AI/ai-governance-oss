@@ -32,7 +32,8 @@ class PostgresEvaluationRunRepository(EvaluationRunRepository):
         failure_reason,
         total_item_count,
         completed_item_count,
-        evaluated_item_count
+        evaluated_item_count,
+        runner_provenance_json
     )
     VALUES (
         %(run_id)s,
@@ -47,7 +48,8 @@ class PostgresEvaluationRunRepository(EvaluationRunRepository):
         %(failure_reason)s,
         %(total_item_count)s,
         %(completed_item_count)s,
-        %(evaluated_item_count)s
+        %(evaluated_item_count)s,
+        %(runner_provenance_json)s::jsonb
     )
     ON CONFLICT (run_id)
     DO UPDATE SET
@@ -63,6 +65,7 @@ class PostgresEvaluationRunRepository(EvaluationRunRepository):
         total_item_count = EXCLUDED.total_item_count,
         completed_item_count = EXCLUDED.completed_item_count,
         evaluated_item_count = EXCLUDED.evaluated_item_count
+        , runner_provenance_json = EXCLUDED.runner_provenance_json
     """
 
     _SELECT_RUN_COLUMNS = """
@@ -79,7 +82,8 @@ class PostgresEvaluationRunRepository(EvaluationRunRepository):
         failure_reason,
         total_item_count,
         completed_item_count,
-        evaluated_item_count
+        evaluated_item_count,
+        runner_provenance_json::text AS runner_provenance_json
     FROM evaluation_run
     """
 

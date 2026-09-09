@@ -38,3 +38,7 @@ default.sqlite
 
 # walkthrough
 .ai-governance/walkthroughs/*
+.governance/
+
+# misc
+logs/

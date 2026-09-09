@@ -158,7 +158,8 @@ CREATE TABLE IF NOT EXISTS evaluation_run (
     failure_reason VARCHAR,
     total_item_count NUMBER,
     completed_item_count NUMBER NOT NULL DEFAULT 0,
-    evaluated_item_count NUMBER NOT NULL DEFAULT 0
+    evaluated_item_count NUMBER NOT NULL DEFAULT 0,
+    runner_provenance_json VARIANT
 );
 
 CREATE TABLE IF NOT EXISTS leaderboard (

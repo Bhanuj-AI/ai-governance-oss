@@ -34,6 +34,14 @@ COPY . .
 
 RUN corepack enable && pnpm build
 
+# Next's standalone file tracing currently includes only the CommonJS helpers
+# from @swc/helpers. The production server can also resolve its ESM helpers,
+# so retain the complete installed package as a self-contained runtime asset.
+# Resolve it through Node rather than depending on pnpm's versioned store path.
+RUN helpers_package=$(node -p "require.resolve('@swc/helpers/package.json', { paths: [require.resolve('next/package.json')] })") && \
+    mkdir -p /opt/next-runtime/swc-helpers && \
+    cp -a "$(dirname "${helpers_package}")/." /opt/next-runtime/swc-helpers/
+
 # ============================================
 # Stage 3: Run Next.js application
 # ============================================
@@ -59,6 +67,13 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # If you want to persist the fetch cache generated during the build so that
 # cached responses are available immediately on startup
 COPY --from=builder --chown=nextjs:nodejs /app/.next/cache ./.next/cache
+COPY --from=builder --chown=nextjs:nodejs /opt/next-runtime/swc-helpers /opt/next-runtime/swc-helpers
+
+# The traced pnpm links point to a partial @swc/helpers package. Point every
+# traced link at the complete runtime asset above; this remains valid when the
+# pnpm store path changes with a future locked dependency update.
+RUN find /app/node_modules/.pnpm -path '*/node_modules/@swc/helpers' -type l \
+        -exec sh -c 'rm "$1" && ln -s /opt/next-runtime/swc-helpers "$1"' _ {} \;
 
 # Set the correct permission for prerender cache
 RUN mkdir -p /app/.next/cache/images && \

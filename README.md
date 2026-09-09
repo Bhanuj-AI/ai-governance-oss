@@ -448,6 +448,7 @@ graph explorer, or governance decision index.
 - [End-to-End Local Tutorial](docs/tutorials/end-to-end-local.md)
 - [Producer Integration Guide](docs/tutorials/producer-integration.md)
 - [Governed Replay Walkthrough](docs/tutorials/governed-replay-walkthrough.md)
+- [Inspect AI Batch Experiment](docs/tutorials/inspect-ai-batch-experiment.md)
 - [Roadmap](docs/roadmap/ROADMAP.md)
 - [Ontology Synchronization](docs/ontology/ontology-synchronization.md)
 

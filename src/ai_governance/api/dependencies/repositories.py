@@ -258,6 +258,17 @@ def get_causal_audit_repository() -> Any:
 
 
 @lru_cache(maxsize=1)
+def get_evidence_fidelity_comparison_repository() -> Any:
+    """Create immutable comparison storage alongside runtime evidence."""
+    from ai_governance.repositories.factories import (
+        EvidenceFidelityComparisonRepositoryFactory,
+    )
+    from ai_governance.settings import load_settings
+
+    return EvidenceFidelityComparisonRepositoryFactory(load_settings()).create()
+
+
+@lru_cache(maxsize=1)
 def get_evidence_intervention_policy_repository() -> Any:
     """Create durable, tenant-scoped intervention policy storage."""
     from ai_governance.repositories.factories import (

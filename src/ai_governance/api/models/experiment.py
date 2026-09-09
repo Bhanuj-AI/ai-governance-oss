@@ -129,6 +129,7 @@ class ExperimentRunRequest(BaseModel):
 
     metric_specs: list[EvaluationMetricSpecRequest] = Field(default_factory=list)
     provider_config: dict[str, Any] = Field(default_factory=dict)
+    repetitions: int = Field(default=1, ge=1, le=100)
     request_id: str | None = None
     idempotency_key: str | None = None
     requested_by: str | None = None
@@ -163,6 +164,7 @@ class EvaluationRunResponse(BaseModel):
     total_item_count: int | None = Field(default=None, ge=0)
     completed_item_count: int = Field(default=0, ge=0)
     evaluated_item_count: int = Field(default=0, ge=0)
+    runner_provenance: dict[str, Any] | None = None
 
 
 class EvaluationRunItemResultResponse(BaseModel):
@@ -205,6 +207,9 @@ class ExperimentRunPlanResponse(BaseModel):
     experiment_id: str
     candidate_count: int = Field(ge=0)
     dataset_item_count: int = Field(ge=0)
+    runner_invocation_count: int = Field(ge=0)
+    expected_sample_result_count: int | None = Field(default=None, ge=0)
+    workload_basis: str = Field(min_length=1)
     model_invocation_count: int = Field(ge=0)
     evaluation_item_count: int = Field(ge=0)
     active_run: ExperimentRunProgressResponse | None = None

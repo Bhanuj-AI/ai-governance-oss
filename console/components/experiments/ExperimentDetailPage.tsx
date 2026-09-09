@@ -74,6 +74,7 @@ type CandidateDraft = {
   provider_installation_id: string;
   runtime_connection_id: string;
   runtime_parameters: Record<string, unknown>;
+  metadata: Record<string, unknown>;
 };
 
 const INITIAL_CANDIDATE: CandidateDraft = {
@@ -85,6 +86,7 @@ const INITIAL_CANDIDATE: CandidateDraft = {
   provider_installation_id: "",
   runtime_connection_id: "",
   runtime_parameters: {},
+  metadata: {},
 };
 
 const DEFAULT_RUN_COLUMN_WIDTHS = {
@@ -152,6 +154,25 @@ function ResizableRunColumnHeader({
   );
 }
 
+const EVALUATION_METRIC_LABELS: Record<string, string> = {
+  input_tokens: "Input tokens",
+  output_tokens: "Output tokens",
+  total_tokens: "Total tokens",
+  tool_action_count: "Tool actions",
+  wall_clock_duration_seconds: "Wall clock (s)",
+};
+
+function formatEvaluationMetricLabel(name: string) {
+  return (
+    EVALUATION_METRIC_LABELS[name] ??
+    name
+      .split("_")
+      .filter(Boolean)
+      .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+      .join(" ")
+  );
+}
+
 export function ExperimentDetailPage({
   experimentId,
 }: {
@@ -162,9 +183,11 @@ export function ExperimentDetailPage({
   const [candidate, setCandidate] = useState<CandidateDraft>(
     INITIAL_CANDIDATE,
   );
+  const [runnerVariantJson, setRunnerVariantJson] = useState("{}");
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [runSubmitted, setRunSubmitted] = useState(false);
+  const [repetitions, setRepetitions] = useState(1);
   const [refreshInterval, setRefreshInterval] = useState<"5" | "10" | "never">("5");
   const [selectedRunId, setSelectedRunId] = useState("");
   const [evaluationPage, setEvaluationPage] = useState(1);
@@ -318,11 +341,15 @@ export function ExperimentDetailPage({
           item.enabled && runtimeProviderKey(item.provider) === selectedModelProvider,
       )
     : [];
+  const selectedProviderInstallation = (providerInstallations.data ?? []).find(
+    (item) => item.installation_id === candidate.provider_installation_id,
+  );
 
   const add = useMutation({
     mutationFn: () => addCandidate(experimentId, candidate),
     onSuccess: async () => {
       setCandidate({ ...candidate, candidate_name: "" });
+      setRunnerVariantJson("{}");
       setError(null);
       await queryClient.invalidateQueries({
         queryKey: ["candidates", experimentId],
@@ -338,7 +365,7 @@ export function ExperimentDetailPage({
   });
 
   const run = useMutation({
-    mutationFn: () => runExperiment(experimentId),
+    mutationFn: () => runExperiment(experimentId, repetitions),
     onMutate: () => {
       setRunSubmitted(true);
       setError(null);
@@ -492,6 +519,20 @@ export function ExperimentDetailPage({
         </div>
 
         <div className="flex gap-2">
+          {experimentData.status === "DRAFT" && (
+            <label className="grid gap-1 text-xs text-muted-foreground">
+              Repetitions
+              <Input
+                aria-label="Experiment repetitions"
+                className="h-9 w-20"
+                min={1}
+                max={100}
+                type="number"
+                value={repetitions}
+                onChange={(event) => setRepetitions(Math.max(1, Number(event.target.value) || 1))}
+              />
+            </label>
+          )}
           <Button
             variant="outline"
             disabled={refreshing}
@@ -509,7 +550,7 @@ export function ExperimentDetailPage({
               onClick={() => {
                 const plan = runPlan.data;
                 if (!plan) return;
-                const message = `This experiment will make ${plan.model_invocation_count} model invocation${plan.model_invocation_count === 1 ? "" : "s"} (${plan.candidate_count} candidate${plan.candidate_count === 1 ? "" : "s"} × ${plan.dataset_item_count} dataset item${plan.dataset_item_count === 1 ? "" : "s"}). Each output will also be sent to the configured evaluator. Provider charges may apply. Continue?`;
+                const message = `This experiment will make ${plan.model_invocation_count * repetitions} model invocation${plan.model_invocation_count * repetitions === 1 ? "" : "s"} (${plan.candidate_count} candidate${plan.candidate_count === 1 ? "" : "s"} × ${plan.dataset_item_count} dataset item${plan.dataset_item_count === 1 ? "" : "s"} × ${repetitions} repetition${repetitions === 1 ? "" : "s"}). Each output will also be sent to the configured evaluator. Provider charges may apply. Continue?`;
                 if (window.confirm(message)) run.mutate();
               }}
             >
@@ -581,9 +622,9 @@ export function ExperimentDetailPage({
             />
             <MetricCard
               icon={Trophy}
-              label="Best score"
-              value={topEntry ? `${Math.round(topEntry.overall_score * 100)}%` : "—"}
-              description={topEntry ? `Rank 1 · ${topEntry.candidate_id}` : "No leaderboard yet"}
+              label="Ranking value"
+              value={topEntry ? formatRankingValue(topEntry.overall_score) : "—"}
+              description={topEntry ? "Composite value · not a percentage" : "No leaderboard yet"}
             />
           </div>
 
@@ -607,7 +648,9 @@ export function ExperimentDetailPage({
                 <CardDescription>
                   {activeRun
                     ? `Candidate ${activeRun.candidate_position} of ${runPlan.data.candidate_count}: ${activeRun.candidate_name}`
-                    : "The declared workload is calculated from the immutable dataset version."}
+                    : runPlan.data.workload_basis === "PROVIDER_DECLARED"
+                      ? "The provider's bounded task configuration defines this workload."
+                      : "The declared workload is calculated from the immutable dataset version."}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -633,10 +676,21 @@ export function ExperimentDetailPage({
                   </>
                 ) : (
                   <div className="grid gap-3 text-sm sm:grid-cols-3">
-                    <DetailItem label="Dataset items" value={runPlan.data.dataset_item_count} />
-                    <DetailItem label="Model invocations" value={runPlan.data.model_invocation_count} />
-                    <DetailItem label="Evaluation items" value={runPlan.data.evaluation_item_count} />
+                    <DetailItem label="Runner invocations" value={runPlan.data.runner_invocation_count} />
+                    <DetailItem
+                      label="Expected sample results"
+                      value={runPlan.data.expected_sample_result_count ?? "Provider does not declare a bound"}
+                    />
+                    <DetailItem
+                      label={runPlan.data.workload_basis === "PROVIDER_DECLARED" ? "Control-plane dataset items" : "Dataset items"}
+                      value={runPlan.data.dataset_item_count}
+                    />
                   </div>
+                )}
+                {runPlan.data.workload_basis === "PROVIDER_DECLARED" && !activeRun && (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    This provider can run its own packaged task set. The control-plane dataset count is retained for lineage and does not define the provider workload.
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -814,6 +868,36 @@ export function ExperimentDetailPage({
                   options={(providerInstallations.data ?? []).filter((item) => item.enabled).map((item) => ({ value: item.installation_id, label: `${item.display_name} · ${item.provider_type}` }))}
                   onChange={(value) => setCandidate({ ...candidate, provider_installation_id: value, provider_name: "" })}
                 />
+                {selectedProviderInstallation?.provider_type === "inspect_ai" ? (
+                  <label className="grid gap-1 text-sm">
+                    Inspect runner variant JSON
+                    <span className="text-xs text-muted-foreground">
+                      Vary only solver/scaffold fields here. Fixed model, tasks, scorer,
+                      and limits belong to the shared installation.
+                    </span>
+                    <textarea
+                      aria-label="Inspect runner variant JSON"
+                      className="min-h-24 rounded-md border bg-background p-2 font-mono text-xs"
+                      value={runnerVariantJson}
+                      onChange={(event) => {
+                        setRunnerVariantJson(event.target.value);
+                        try {
+                          const value = JSON.parse(event.target.value) as Record<string, unknown>;
+                          setCandidate({
+                            ...candidate,
+                            metadata: {
+                              ...candidate.metadata,
+                              evaluation_runner_config: value,
+                            },
+                          });
+                          setError(null);
+                        } catch {
+                          setError("Inspect runner variant JSON must be an object.");
+                        }
+                      }}
+                    />
+                  </label>
+                ) : null}
                 <AssetSelect
                   label={requiresCandidateRuntimeConnection ? "Runtime connection (required, matching provider only)" : "Runtime connection (matching provider only)"}
                   value={candidate.runtime_connection_id}
@@ -1082,33 +1166,47 @@ export function ExperimentDetailPage({
               <p className="text-sm text-muted-foreground">No item evaluations have completed for this run yet.</p>
             ) : (
               <>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b text-muted-foreground">
-                        <th className="p-2">Item</th>
-                        <th>Evaluator</th>
-                        <th>Model API latency</th>
-                        <th>Scores</th>
-                        <th>Completed</th>
+                <div className="overflow-x-auto rounded-lg border border-border/70 bg-background">
+                  <table className="w-full min-w-[1080px] table-fixed text-left text-sm">
+                    <colgroup>
+                      <col className="w-[12%]" />
+                      <col className="w-[16%]" />
+                      <col className="w-[14%]" />
+                      <col className="w-[40%]" />
+                      <col className="w-[18%]" />
+                    </colgroup>
+                    <thead className="bg-muted/40">
+                      <tr className="border-b border-border/70 text-muted-foreground">
+                        <th className="px-4 py-3 text-xs font-medium whitespace-nowrap" scope="col">Item</th>
+                        <th className="px-4 py-3 text-xs font-medium whitespace-nowrap" scope="col">Evaluator</th>
+                        <th className="px-4 py-3 text-xs font-medium whitespace-nowrap" scope="col">Model latency</th>
+                        <th className="px-4 py-3 text-xs font-medium whitespace-nowrap" scope="col">Scores</th>
+                        <th className="px-4 py-3 text-xs font-medium whitespace-nowrap" scope="col">Completed</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-border/70">
                       {evaluationResults.items.map((item) => (
-                        <tr key={item.evaluation_id} className="border-b align-top">
-                          <td className="p-2 font-mono text-xs">{item.execution_id.split(":").slice(-2).join(":")}</td>
-                          <td>{item.evaluator_type}</td>
-                          <td className="whitespace-nowrap text-xs text-muted-foreground">
+                        <tr key={item.evaluation_id} className="align-top transition-colors hover:bg-muted/30">
+                          <td className="px-4 py-3 font-mono text-xs whitespace-nowrap">{item.execution_id.split(":").slice(-2).join(":")}</td>
+                          <td className="px-4 py-3 font-medium text-foreground">{item.evaluator_type}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-xs tabular-nums text-muted-foreground">
                             {item.model_latency_ms == null ? "—" : `${item.model_latency_ms} ms`}
                           </td>
-                          <td className="space-y-1">
+                          <td className="px-4 py-3">
+                            <div className="flex flex-wrap gap-1.5">
                             {item.metrics.map((metric) => (
-                              <span key={metric.name} className="mr-1 inline-block rounded bg-muted px-2 py-1 text-xs">
-                                {metric.name}: {metric.score.toFixed(3)}
+                              <span
+                                key={metric.name}
+                                className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs tabular-nums text-foreground/85"
+                                title={metric.name}
+                              >
+                                <span className="text-muted-foreground">{formatEvaluationMetricLabel(metric.name)}</span>
+                                <span className="font-medium">{metric.score.toFixed(3)}</span>
                               </span>
                             ))}
+                            </div>
                           </td>
-                          <td className="text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString()}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-xs tabular-nums text-muted-foreground">{new Date(item.created_at).toLocaleString()}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1163,7 +1261,7 @@ export function ExperimentDetailPage({
                     <tr className="border-b text-muted-foreground">
                       <th className="p-2">Rank</th>
                       <th>Candidate</th>
-                      <th>Overall Score</th>
+                      <th>Ranking Value</th>
                       <th>Latency</th>
                       <th>Cost</th>
                       <th>Reason</th>
@@ -1174,7 +1272,7 @@ export function ExperimentDetailPage({
                       <tr key={item.candidate_id} className="border-b">
                         <td className="p-2">{item.rank}</td>
                         <td>{item.candidate_id}</td>
-                        <td>{item.overall_score}</td>
+                        <td>{formatRankingValue(item.overall_score)}</td>
                         <td>{item.latency ?? "—"}</td>
                         <td>{item.cost ?? "—"}</td>
                         <td>{item.reason}</td>
@@ -1183,7 +1281,9 @@ export function ExperimentDetailPage({
                   </tbody>
                 </table>
                 <p className="mt-4 text-xs text-muted-foreground">
-                  A recommendation does not deploy or promote the candidate.
+                  {leaderboard.data.entries.length >= 2
+                    ? "A recommendation does not deploy or promote the candidate."
+                    : "One candidate is an observation, not a comparison or recommendation. Ranking values are not percentages unless the selected strategy explicitly defines one."}
                 </p>
               </div>
             )}
@@ -1605,6 +1705,10 @@ function formatMetricValue(value: number | null | undefined): string {
   return value === null || value === undefined
     ? "—"
     : value.toLocaleString(undefined, { maximumFractionDigits: 4 });
+}
+
+function formatRankingValue(value: number): string {
+  return value.toLocaleString(undefined, { maximumFractionDigits: 4 });
 }
 
 function MetricDelta({ metric }: { metric: MetricComparison }) {

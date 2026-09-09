@@ -143,6 +143,11 @@ class ExperimentApiMapper:
             total_item_count=run.total_item_count,
             completed_item_count=run.completed_item_count,
             evaluated_item_count=run.evaluated_item_count,
+            runner_provenance=(
+                _scrub_metadata(run.runner_provenance)
+                if run.runner_provenance is not None
+                else None
+            ),
         )
 
     @staticmethod
@@ -152,6 +157,9 @@ class ExperimentApiMapper:
             experiment_id=plan.experiment_id,
             candidate_count=plan.candidate_count,
             dataset_item_count=plan.dataset_item_count,
+            runner_invocation_count=plan.runner_invocation_count,
+            expected_sample_result_count=plan.expected_sample_result_count,
+            workload_basis=plan.workload_basis,
             model_invocation_count=plan.model_invocation_count,
             evaluation_item_count=plan.evaluation_item_count,
             active_run=(
@@ -246,6 +254,11 @@ class ExperimentApiMapper:
                     total_item_count=run.total_item_count,
                     completed_item_count=run.completed_item_count,
                     evaluated_item_count=run.evaluated_item_count,
+                    runner_provenance=(
+                        _scrub_metadata(run.runner_provenance)
+                        if run.runner_provenance is not None
+                        else None
+                    ),
                 )
                 for run in runs
             ],
@@ -312,6 +325,7 @@ class ExperimentApiMapper:
                     metric.model_dump(mode="json") for metric in request.metric_specs
                 ],
                 "provider_config": dict(request.provider_config),
+                "repetitions": request.repetitions,
                 "metadata": dict(request.metadata),
                 "requested_by": request.requested_by,
                 "actor_type": request.actor_type,

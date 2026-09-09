@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
@@ -37,6 +38,9 @@ class EvaluationRunPersistenceMapper:
             "total_item_count": run.total_item_count,
             "completed_item_count": run.completed_item_count,
             "evaluated_item_count": run.evaluated_item_count,
+            "runner_provenance_json": json.dumps(run.runner_provenance)
+            if run.runner_provenance is not None
+            else None,
         }
 
     @staticmethod
@@ -61,6 +65,9 @@ class EvaluationRunPersistenceMapper:
             total_item_count=record["total_item_count"],
             completed_item_count=record["completed_item_count"] or 0,
             evaluated_item_count=record["evaluated_item_count"] or 0,
+            runner_provenance=json.loads(_record_value(record, "runner_provenance_json"))
+            if _record_value(record, "runner_provenance_json")
+            else None,
         )
 
     @classmethod
@@ -72,3 +79,10 @@ class EvaluationRunPersistenceMapper:
             cls.from_persistence_record(record)
             for record in records
         ]
+
+
+def _record_value(record: Mapping[str, Any], key: str) -> Any:
+    try:
+        return record[key]
+    except (IndexError, KeyError):
+        return None

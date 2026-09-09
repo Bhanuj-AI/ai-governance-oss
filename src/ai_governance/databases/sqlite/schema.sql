@@ -385,7 +385,8 @@ CREATE TABLE IF NOT EXISTS evaluation_run (
     failure_reason TEXT,
     total_item_count INTEGER,
     completed_item_count INTEGER NOT NULL DEFAULT 0,
-    evaluated_item_count INTEGER NOT NULL DEFAULT 0
+    evaluated_item_count INTEGER NOT NULL DEFAULT 0,
+    runner_provenance_json TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_evaluation_run_experiment_id
@@ -900,6 +901,22 @@ CREATE INDEX IF NOT EXISTS idx_causal_audit_execution ON causal_audit(organizati
 CREATE INDEX IF NOT EXISTS idx_causal_audit_agent ON causal_audit(organization_id, project_id, agent_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_causal_audit_status ON causal_audit(organization_id, project_id, status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_causal_audit_classification ON causal_audit(organization_id, project_id, classification, created_at DESC);
+
+-- Immutable evidence-view comparison records.  The source event stream stays
+-- in agent_execution_event; this table stores only the derived conclusion.
+CREATE TABLE IF NOT EXISTS evidence_fidelity_comparison (
+    comparison_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
+    project_id TEXT NOT NULL DEFAULT '',
+    source_execution_id TEXT NOT NULL,
+    request_fingerprint TEXT NOT NULL,
+    status TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    PRIMARY KEY (organization_id, project_id, comparison_id),
+    UNIQUE (organization_id, project_id, request_fingerprint)
+);
+CREATE INDEX IF NOT EXISTS idx_evidence_fidelity_execution ON evidence_fidelity_comparison(organization_id, project_id, source_execution_id, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS evidence_intervention_policy (
     policy_id TEXT NOT NULL,

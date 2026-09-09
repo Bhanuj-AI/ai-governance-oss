@@ -446,6 +446,12 @@ def run_experiment(
     Execute an experiment synchronously.
     """
     if request.is_async_submission:
+        experiment_api_service.validate_experiment_run(
+            experiment_id,
+            metric_specs=ExperimentApiMapper.to_metric_specs(request.metric_specs),
+            provider_config=dict(request.provider_config),
+            context=context,
+        )
         if "max_attempts" not in request.model_fields_set:
             request = request.model_copy(
                 update={
@@ -473,6 +479,7 @@ def run_experiment(
         experiment_id=experiment_id,
         metric_specs=ExperimentApiMapper.to_metric_specs(request.metric_specs),
         provider_config=dict(request.provider_config),
+        repetitions=request.repetitions,
         context=context,
     )
     return ExperimentApiMapper.to_run_response(

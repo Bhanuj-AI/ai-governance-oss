@@ -47,6 +47,34 @@ class EvaluationArtifact:
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
 
+@dataclass(frozen=True)
+class EvaluationSampleResult:
+    """Provider-neutral outcome for one sample within a batch evaluation.
+
+    This value is deliberately independent of a provider SDK. The experiment
+    service assigns the durable evaluation and execution identities when it
+    persists the sample beneath its owning evaluation run.
+    """
+
+    sample_id: str
+    metrics: tuple[EvaluationMetric, ...]
+    metadata: Mapping[str, Any] = field(default_factory=dict)
+    artifacts: tuple[EvaluationArtifact, ...] = ()
+    provider_metadata: Mapping[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        sample_id = self.sample_id.strip()
+        if not sample_id:
+            raise ValueError("EvaluationSampleResult sample_id must not be blank.")
+        if not self.metrics:
+            raise ValueError("EvaluationSampleResult requires at least one metric.")
+        object.__setattr__(self, "sample_id", sample_id)
+        object.__setattr__(self, "metrics", tuple(self.metrics))
+        object.__setattr__(self, "metadata", dict(self.metadata))
+        object.__setattr__(self, "artifacts", tuple(self.artifacts))
+        object.__setattr__(self, "provider_metadata", dict(self.provider_metadata))
+
+
 @dataclass
 class EvaluationResult:
     """

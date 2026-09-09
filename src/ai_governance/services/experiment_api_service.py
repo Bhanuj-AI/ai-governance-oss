@@ -8,6 +8,11 @@ from time import perf_counter
 from typing import Any
 from uuid import uuid4
 
+from ai_governance.domain.agent_execution import (
+    ActorType,
+    AgentExecutionStatus,
+    EventType,
+)
 from ai_governance.domain.evaluation_result import (
     EvaluationArtifact,
     EvaluationMetric,
@@ -25,14 +30,21 @@ from ai_governance.domain.experiments import (
 )
 from ai_governance.domain.history import EvaluationMetricComparison
 from ai_governance.domain.models import runtime_model_provider_key
+from ai_governance.domain.workflow_execution import WorkflowExecution
 from ai_governance.evaluation.evaluation_metrics import (
     EvaluationMetricSpec,
     normalize_metric_name,
 )
+from ai_governance.evaluation.evaluation_request import EvaluationRequest
 from ai_governance.ontology.synchronization import (
     OntologySyncEventPublisherProtocol,
 )
 from ai_governance.providers.errors import ProviderNotFoundError
+from ai_governance.providers.evaluation_provider import (
+    BatchEvaluationResult,
+    EvaluationWorkloadEstimate,
+)
+from ai_governance.providers.provider_capabilities import EvaluationGranularity
 from ai_governance.providers.provider_registry import EvaluationProviderRegistry
 from ai_governance.repositories.dataset_repository import DatasetRepository
 from ai_governance.repositories.evaluation_repository import EvaluationRepository
@@ -50,10 +62,16 @@ from ai_governance.services.candidate_execution_runtime import (
     CandidateExecutionError,
     CandidateExecutionRuntime,
 )
+from ai_governance.services.dataset_builder import EvaluationDatasetBuilder
 from ai_governance.services.evaluation_api_service import (
     EvaluationApiService,
     EvaluationProviderNotFoundError,
     UnsupportedMetricError,
+)
+from ai_governance.services.execution_deadline import (
+    ExecutionDeadlineExceeded,
+    ExecutionDeadlineUnavailable,
+    WorkerExecutionDeadline,
 )
 from ai_governance.services.experiments import (
     ExperimentCandidateNotFoundError,
@@ -115,6 +133,11 @@ class ExperimentRunPlan:
     experiment_id: str
     candidate_count: int
     dataset_item_count: int
+    runner_invocation_count: int
+    expected_sample_result_count: int | None
+    workload_basis: str
+    # Retained for REST compatibility with item-oriented providers. A batch
+    # runner must not be displayed as though this were its model-call count.
     model_invocation_count: int
     evaluation_item_count: int
     active_run: ExperimentRunProgress | None = None
@@ -157,6 +180,8 @@ class ExperimentApiService:
         id_generator: Callable[[], str] | None = None,
         clock: Callable[[], datetime] | None = None,
         ontology_event_publisher: OntologySyncEventPublisherProtocol | None = None,
+        agent_execution_service: Any | None = None,
+        provider_execution_deadline: Any | None = None,
     ) -> None:
         self._experiment_repository = experiment_repository
         self._candidate_repository = candidate_repository
@@ -174,6 +199,10 @@ class ExperimentApiService:
         self._id_generator = id_generator or (lambda: str(uuid4()))
         self._clock = clock or (lambda: datetime.now(UTC))
         self._ontology_event_publisher = ontology_event_publisher
+        self._agent_execution_service = agent_execution_service
+        self._provider_execution_deadline = (
+            provider_execution_deadline or WorkerExecutionDeadline()
+        )
 
     def create_experiment(
         self,
@@ -332,6 +361,9 @@ class ExperimentApiService:
                 experiment_id=experiment_id,
                 candidate_count=0,
                 dataset_item_count=0,
+                runner_invocation_count=0,
+                expected_sample_result_count=0,
+                workload_basis="DATASET_RECORDS",
                 model_invocation_count=0,
                 evaluation_item_count=0,
             )
@@ -372,10 +404,46 @@ class ExperimentApiService:
                 completed_item_count=active_run.completed_item_count,
                 evaluated_item_count=active_run.evaluated_item_count,
             )
+        estimates = [
+            self._workload_estimate_for_candidate(candidate, context)
+            for candidate in candidates
+        ]
+        provider_estimate_count = sum(estimate is not None for estimate in estimates)
+        runner_invocation_count = sum(
+            estimate.runner_invocation_count
+            if estimate is not None
+            else dataset.record_count
+            for estimate in estimates
+        )
+        expected_sample_result_count = (
+            sum(
+                estimate.expected_sample_result_count
+                if estimate is not None
+                and estimate.expected_sample_result_count is not None
+                else dataset.record_count
+                for estimate in estimates
+            )
+            if all(
+                estimate is None
+                or estimate.expected_sample_result_count is not None
+                for estimate in estimates
+            )
+            else None
+        )
+        workload_basis = (
+            "PROVIDER_DECLARED"
+            if provider_estimate_count == len(candidates)
+            else "MIXED"
+            if provider_estimate_count
+            else "DATASET_RECORDS"
+        )
         return ExperimentRunPlan(
             experiment_id=experiment_id,
             candidate_count=len(candidates),
             dataset_item_count=dataset.record_count,
+            runner_invocation_count=runner_invocation_count,
+            expected_sample_result_count=expected_sample_result_count,
+            workload_basis=workload_basis,
             model_invocation_count=len(candidates) * dataset.record_count,
             evaluation_item_count=len(candidates) * dataset.record_count,
             active_run=active_progress,
@@ -552,6 +620,7 @@ class ExperimentApiService:
         experiment_id: str,
         metric_specs: Sequence[EvaluationMetricSpec] | None = None,
         provider_config: Mapping[str, Any] | None = None,
+        repetitions: int = 1,
         context: TenantContext | None = None,
     ) -> tuple[list[EvaluationRun], Leaderboard | None]:
         """
@@ -565,11 +634,12 @@ class ExperimentApiService:
                 f"Experiment '{experiment_id}' has no candidates."
             )
 
-        self._validate_candidate_providers_and_metrics(
-            candidates=candidates,
-            metric_specs=metric_specs or (),
+        self.validate_experiment_run(
+            experiment_id,
+            metric_specs=metric_specs,
+            provider_config=provider_config,
+            context=context,
         )
-        self._validate_comparable_dataset_versions(candidates)
         LOGGER.info(
             "experiment_execution_started experiment_id=%s candidate_count=%s organization_id=%s project_id=%s",
             experiment_id,
@@ -591,13 +661,50 @@ class ExperimentApiService:
         runs: list[EvaluationRun] = []
         has_failures = False
 
-        for candidate in candidates:
+        if repetitions < 1:
+            raise InvalidExperimentRequestError("Experiment repetitions must be at least one.")
+        for candidate_index, candidate in enumerate(candidates * repetitions):
             if self._is_experiment_cancelled(experiment_id):
                 return self._cancelled_run_snapshot(experiment_id)
+            repetition_index = (candidate_index // len(candidates)) + 1
+            run_idempotency_key = (
+                f"{experiment.experiment_id}:{candidate.candidate_id}:repetition:{repetition_index}"
+            )
+            existing_run = self._run_for_idempotency_key(
+                experiment_id=experiment.experiment_id,
+                candidate_id=candidate.candidate_id,
+                run_idempotency_key=run_idempotency_key,
+            )
+            if existing_run is not None:
+                runs.append(existing_run)
+                has_failures = has_failures or (
+                    existing_run.status != EvaluationRunStatus.COMPLETED
+                )
+                continue
             candidate_started_at = perf_counter()
+            evaluator_config = self._provider_config_for_candidate(
+                candidate, provider_config or {}, context
+            )
+            runner_provenance = self._runner_provenance_for_candidate(
+                candidate, evaluator_config
+            )
+            if runner_provenance is not None:
+                runner_provenance = {
+                    **runner_provenance,
+                    "repetition": repetition_index,
+                    "repetitions": repetitions,
+                    "run_idempotency_key": run_idempotency_key,
+                }
+            else:
+                runner_provenance = {
+                    "repetition": repetition_index,
+                    "repetitions": repetitions,
+                    "run_idempotency_key": run_idempotency_key,
+                }
             running_run = self._create_running_run(
                 experiment=experiment,
                 candidate=candidate,
+                runner_provenance=runner_provenance,
             )
             LOGGER.info(
                 "experiment_candidate_execution_started experiment_id=%s candidate_id=%s run_id=%s dataset_id=%s dataset_version=%s",
@@ -607,6 +714,39 @@ class ExperimentApiService:
                 candidate.dataset_id,
                 candidate.dataset_version,
             )
+            if self._provider_granularity(candidate.evaluation_provider) is EvaluationGranularity.BATCH:
+                try:
+                    completed_run = self._execute_batch_candidate_run(
+                        experiment=experiment,
+                        candidate=candidate,
+                        running_run=running_run,
+                        evaluator_config=evaluator_config,
+                        context=context,
+                    )
+                    self._publish_evaluation_run_event(completed_run, context)
+                    runs.append(completed_run)
+                except Exception as exc:  # noqa: BLE001 - persist every provider failure as a terminal run.
+                    persisted_run = (
+                        self._evaluation_run_repository.find_by_id(running_run.run_id)
+                        or running_run
+                    )
+                    failed_run = replace(
+                        persisted_run,
+                        completed_at=self._clock(),
+                        status=EvaluationRunStatus.FAILED,
+                        failure_reason=_safe_evaluation_failure_reason(exc),
+                        runner_provenance={
+                            **(persisted_run.runner_provenance or {}),
+                            "batch_persistence_status": "partial"
+                            if persisted_run.evaluated_item_count
+                            else "not_persisted",
+                        },
+                    )
+                    self._evaluation_run_repository.save(failed_run)
+                    self._publish_evaluation_run_event(failed_run, context)
+                    runs.append(failed_run)
+                    has_failures = True
+                continue
             try:
                 def record_execution_progress(
                     total_item_count: int,
@@ -653,9 +793,6 @@ class ExperimentApiService:
                     len(executions),
                     int((perf_counter() - candidate_started_at) * 1000),
                 )
-                evaluator_config = self._provider_config_for_candidate(
-                    candidate, provider_config or {}, context
-                )
                 LOGGER.info(
                     "experiment_candidate_evaluation_started experiment_id=%s candidate_id=%s run_id=%s evaluation_provider=%s execution_count=%s",
                     experiment_id,
@@ -701,7 +838,7 @@ class ExperimentApiService:
                     )
                 result = self._aggregate_item_evaluations(
                     run_id=running_run.run_id,
-                    executions=executions,
+                    execution_ids=[execution.execution_id for execution in executions],
                     item_results=item_results,
                     context=context,
                 )
@@ -797,6 +934,29 @@ class ExperimentApiService:
             leaderboard.leaderboard_id,
         )
         return runs, leaderboard
+
+    def validate_experiment_run(
+        self,
+        experiment_id: str,
+        *,
+        metric_specs: Sequence[EvaluationMetricSpec] | None = None,
+        provider_config: Mapping[str, Any] | None = None,
+        context: TenantContext | None = None,
+    ) -> None:
+        """Fail unsupported resolved provider combinations before job dispatch."""
+        self.get_experiment(experiment_id, context)
+        candidates = self._candidate_repository.find_by_experiment_id(experiment_id)
+        if not candidates:
+            raise InvalidExperimentRequestError(
+                f"Experiment '{experiment_id}' has no candidates."
+            )
+        self._validate_candidate_providers_and_metrics(candidates, metric_specs or ())
+        self._validate_comparable_dataset_versions(candidates)
+        for candidate in candidates:
+            resolved_config = self._provider_config_for_candidate(
+                candidate, provider_config or {}, context
+            )
+            self._validate_provider_run_configuration(candidate, resolved_config)
 
     def get_leaderboard(
         self,
@@ -921,6 +1081,7 @@ class ExperimentApiService:
         self,
         experiment: Experiment,
         candidate: ExperimentCandidate,
+        runner_provenance: Mapping[str, Any] | None = None,
     ) -> EvaluationRun:
         pending_run = EvaluationRun(
             run_id=self._id_generator(),
@@ -932,6 +1093,9 @@ class ExperimentApiService:
             started_at=None,
             completed_at=None,
             status=EvaluationRunStatus.PENDING,
+            runner_provenance=dict(runner_provenance)
+            if runner_provenance is not None
+            else None,
         )
         self._evaluation_run_repository.save(pending_run)
         running_run = replace(
@@ -942,6 +1106,22 @@ class ExperimentApiService:
         self._evaluation_run_repository.save(running_run)
         return running_run
 
+    def _run_for_idempotency_key(
+        self,
+        *,
+        experiment_id: str,
+        candidate_id: str,
+        run_idempotency_key: str,
+    ) -> EvaluationRun | None:
+        """Return the durable candidate/repetition boundary, if already claimed."""
+        for run in self._evaluation_run_repository.find_by_candidate_id(candidate_id):
+            if run.experiment_id != experiment_id:
+                continue
+            provenance = run.runner_provenance or {}
+            if provenance.get("run_idempotency_key") == run_idempotency_key:
+                return run
+        return None
+
     def _candidate_execution_runtime_or_raise(self) -> CandidateExecutionRuntime:
         if self._candidate_execution_runtime is None:
             raise CandidateExecutionError(
@@ -949,15 +1129,240 @@ class ExperimentApiService:
             )
         return self._candidate_execution_runtime
 
+    def _provider_granularity(self, provider_name: str) -> EvaluationGranularity:
+        return self._resolve_provider(
+            provider_name
+        ).descriptor.capabilities.evaluation_granularity
+
+    def _execute_batch_candidate_run(
+        self,
+        *,
+        experiment: Experiment,
+        candidate: ExperimentCandidate,
+        running_run: EvaluationRun,
+        evaluator_config: Mapping[str, Any],
+        context: TenantContext | None,
+    ) -> EvaluationRun:
+        """Persist one provider invocation's child samples under one run.
+
+        Individual provider SDK records are converted by the adapter to the
+        generic batch boundary before this service assigns durable identities.
+        A persistence failure leaves the run non-complete with its persisted
+        item counts, making a partial batch visible rather than silently
+        aggregating incomplete evidence.
+        """
+        provider = self._resolve_provider(candidate.evaluation_provider)
+        evaluate_batch = getattr(provider, "evaluate_batch", None)
+        if not callable(evaluate_batch):
+            raise InvalidExperimentRequestError(
+                f"Provider '{candidate.evaluation_provider}' declares BATCH granularity "
+                "but does not implement evaluate_batch."
+            )
+        request_execution = WorkflowExecution(
+            workflow_id=experiment.experiment_id,
+            execution_id=running_run.run_id,
+            workflow_name=experiment.name,
+            workflow_version=candidate.dataset_version,
+            execution_status="COMPLETED",
+            input={},
+            final_state={},
+            events=[],
+            metadata={"dataset_version": candidate.dataset_version},
+        )
+        batch = self._provider_execution_deadline.call(
+            self._provider_execution_timeout_seconds(provider, evaluator_config),
+            lambda: evaluate_batch(
+                EvaluationRequest(
+                    execution=request_execution,
+                    dataset=EvaluationDatasetBuilder().build(request_execution),
+                    provider_config=dict(evaluator_config),
+                )
+            ),
+        )
+        if not isinstance(batch, BatchEvaluationResult):
+            raise InvalidExperimentRequestError(
+                "Batch evaluation providers must return BatchEvaluationResult."
+            )
+        current_run = replace(
+            running_run,
+            total_item_count=len(batch.sample_results),
+        )
+        self._evaluation_run_repository.save(current_run)
+        item_results: list[EvaluationResult] = []
+        try:
+            for sample in batch.sample_results:
+                execution_id = f"{current_run.run_id}:sample:{sample.sample_id}"
+                item_result = EvaluationResult(
+                    evaluation_id=f"{execution_id}:evaluation",
+                    execution_id=execution_id,
+                    evaluator_type=provider.descriptor.name,
+                    evaluator_version=provider.descriptor.version,
+                    metrics=list(sample.metrics),
+                    metadata={
+                        **dict(sample.metadata),
+                        "evaluation_run_id": current_run.run_id,
+                        "sample_id": sample.sample_id,
+                    },
+                    artifacts=list(sample.artifacts),
+                    provider_metadata=dict(sample.provider_metadata),
+                    provider_descriptor_snapshot=provider.descriptor.to_dict(),
+                    organization_id=context.organization_id if context else "org_default",
+                    project_id=(context.project_id or "") if context else "project_default",
+                )
+                self._evaluation_repository.save(item_result)
+                self._record_batch_sample_execution(
+                    item_result=item_result,
+                    provider_name=provider.descriptor.name,
+                    provider_version=provider.descriptor.version,
+                    context=context,
+                )
+                item_results.append(item_result)
+                current_run = replace(
+                    current_run,
+                    completed_item_count=len(item_results),
+                    evaluated_item_count=len(item_results),
+                )
+                self._evaluation_run_repository.save(current_run)
+        except Exception:
+            self._evaluation_run_repository.save(
+                replace(
+                    current_run,
+                    runner_provenance={
+                        **(current_run.runner_provenance or {}),
+                        "batch_persistence_status": "partial",
+                    },
+                )
+            )
+            raise
+        aggregate = self._aggregate_item_evaluations(
+            run_id=current_run.run_id,
+            execution_ids=[result.execution_id for result in item_results],
+            item_results=item_results,
+            context=context,
+            batch_artifacts=batch.artifacts,
+        )
+        self._evaluation_repository.save(aggregate)
+        completed_run = replace(
+            current_run,
+            evaluation_result_id=aggregate.evaluation_id,
+            completed_at=self._clock(),
+            status=EvaluationRunStatus.COMPLETED,
+        )
+        self._evaluation_run_repository.save(completed_run)
+        return completed_run
+
+    def _record_batch_sample_execution(
+        self,
+        *,
+        item_result: EvaluationResult,
+        provider_name: str,
+        provider_version: str,
+        context: TenantContext | None,
+    ) -> None:
+        """Link batch samples to the authoritative Agent Runtime event source.
+
+        This is deliberately optional for non-runtime deployments.  It records
+        only safe provider-normalized facts and references the evaluation
+        artifact that is already durably persisted with the sample result.
+        """
+        if self._agent_execution_service is None or context is None:
+            return
+        runtime = self._agent_execution_service
+        runner_provenance = dict(item_result.provider_metadata.get("runner_provenance", {}))
+        execution = runtime.ingest_start(
+            agent_id=provider_name,
+            agent_name=f"{provider_name} evaluation sample",
+            agent_version=provider_version,
+            external_execution_id=item_result.execution_id,
+            runtime_provider=provider_name,
+            correlation_id=item_result.metadata.get("evaluation_run_id"),
+            metadata={
+                "evaluation_result_id": item_result.evaluation_id,
+                "evaluation_run_id": item_result.metadata.get("evaluation_run_id"),
+                "sample_id": item_result.metadata.get("sample_id"),
+                "runner_provenance": runner_provenance,
+            },
+            context=context,
+        )
+        artifact = next(
+            (
+                value
+                for value in item_result.artifacts
+                if value.artifact_type == "observable_execution_events"
+            ),
+            None,
+        )
+        artifact_reference = (
+            f"evaluation-artifact:{item_result.evaluation_id}:observable-events"
+            if artifact is not None
+            else None
+        )
+        if artifact is not None and isinstance(artifact.payload, Mapping):
+            source_events = artifact.payload.get("events", [])
+            if isinstance(source_events, Sequence):
+                for source_event in source_events:
+                    if not isinstance(source_event, Mapping):
+                        continue
+                    kind = str(source_event.get("kind", "")).lower()
+                    event_type = {
+                        "tool": EventType.TOOL_CALL,
+                        "tool_call": EventType.TOOL_CALL,
+                        "tool_result": EventType.TOOL_CALL,
+                        "model": EventType.MODEL_CALL,
+                        "model_call": EventType.MODEL_CALL,
+                        "generate": EventType.MODEL_CALL,
+                        "error": EventType.ERROR,
+                        "timeout": EventType.ERROR,
+                        "failure": EventType.ERROR,
+                    }.get(kind)
+                    if event_type is None:
+                        continue
+                    attributes = {
+                        key: value
+                        for key, value in source_event.items()
+                        if key not in {"sequence", "kind"}
+                    }
+                    runtime.ingest_event(
+                        execution_id=execution.execution_id,
+                        event_type=event_type,
+                        attributes=attributes,
+                        context=context,
+                        idempotency_key=f"{item_result.evaluation_id}:source:{source_event.get('sequence')}",
+                        actor_id=provider_name,
+                        actor_type=ActorType.TOOL if event_type is EventType.TOOL_CALL else ActorType.MODEL if event_type is EventType.MODEL_CALL else ActorType.SYSTEM,
+                        evidence_references=[artifact_reference] if artifact_reference else [],
+                    )
+        metrics = {metric.metric_name: metric.metric_value for metric in item_result.metrics}
+        runtime.ingest_event(
+            execution_id=execution.execution_id,
+            event_type=EventType.EVALUATION,
+            attributes={
+                "evaluation_result_id": item_result.evaluation_id,
+                "sample_status": item_result.metadata.get("sample_status"),
+                **metrics,
+            },
+            context=context,
+            idempotency_key=f"{item_result.evaluation_id}:evaluation",
+            actor_id=provider_name,
+            actor_type=ActorType.EVALUATOR,
+            evidence_references=[artifact_reference] if artifact_reference else [],
+        )
+        runtime.mark_completed(
+            execution.execution_id,
+            status=AgentExecutionStatus.SUCCEEDED,
+            context=context,
+        )
+
     def _aggregate_item_evaluations(
         self,
         *,
         run_id: str,
-        executions: Sequence[Any],
+        execution_ids: Sequence[str],
         item_results: Sequence[EvaluationResult],
         context: TenantContext | None,
+        batch_artifacts: Sequence[EvaluationArtifact] = (),
     ) -> EvaluationResult:
-        if not executions or len(executions) != len(item_results):
+        if not execution_ids or len(execution_ids) != len(item_results):
             raise ValueError(
                 "Candidate evaluation requires one result for every execution item."
             )
@@ -977,16 +1382,22 @@ class ExperimentApiService:
             ],
             metadata={
                 "aggregation": "mean",
-                "item_execution_ids": [execution.execution_id for execution in executions],
+                "item_execution_ids": list(execution_ids),
                 "item_evaluation_ids": [result.evaluation_id for result in item_results],
+                **(
+                    {"runner_provenance": first.provider_metadata["runner_provenance"]}
+                    if first.provider_metadata.get("runner_provenance") is not None
+                    else {}
+                ),
             },
             artifacts=[
                 EvaluationArtifact(
                     artifact_type="candidate_execution_set",
-                    metadata={"item_count": len(executions)},
+                    metadata={"item_count": len(execution_ids)},
                 )
-            ],
+            ] + list(batch_artifacts),
             provider_descriptor_snapshot=first.provider_descriptor_snapshot,
+            provider_metadata=dict(first.provider_metadata),
             organization_id=context.organization_id if context else "org_default",
             project_id=(context.project_id or "") if context else "project_default",
         )
@@ -1054,8 +1465,14 @@ class ExperimentApiService:
         context: TenantContext | None,
     ) -> dict[str, Any]:
         installation_id = candidate.metadata.get("provider_installation_id")
+        runner_config = candidate.metadata.get("evaluation_runner_config")
+        if runner_config is not None and not isinstance(runner_config, Mapping):
+            raise InvalidExperimentRequestError(
+                "evaluation_runner_config must be an object."
+            )
+        candidate_config = dict(runner_config or {})
         if not installation_id:
-            return dict(request_config)
+            return {**candidate_config, **dict(request_config)}
         if self._provider_installation_service is None or context is None:
             raise InvalidExperimentRequestError(
                 "Provider installations require a tenant-scoped runtime."
@@ -1067,7 +1484,74 @@ class ExperimentApiService:
             raise InvalidExperimentRequestError(
                 "Provider installation type no longer matches the candidate snapshot."
             )
-        return {**installation_config, **dict(request_config)}
+        return {**installation_config, **candidate_config, **dict(request_config)}
+
+    def _workload_estimate_for_candidate(
+        self,
+        candidate: ExperimentCandidate,
+        context: TenantContext,
+    ) -> EvaluationWorkloadEstimate | None:
+        """Use a provider's optional generic planner without leaking its config."""
+        provider = self._resolve_provider(candidate.evaluation_provider)
+        estimate_workload = getattr(provider, "estimate_workload", None)
+        if not callable(estimate_workload):
+            return None
+        estimate = estimate_workload(
+            self._provider_config_for_candidate(candidate, {}, context)
+        )
+        if not isinstance(estimate, EvaluationWorkloadEstimate):
+            raise InvalidExperimentRequestError(
+                "Evaluation provider returned an invalid workload estimate."
+            )
+        return estimate
+
+    def _validate_provider_run_configuration(
+        self,
+        candidate: ExperimentCandidate,
+        provider_config: Mapping[str, Any],
+    ) -> None:
+        """Invoke a provider's optional pre-dispatch capability check."""
+        provider = self._resolve_provider(candidate.evaluation_provider)
+        validate = getattr(provider, "validate_run_configuration", None)
+        if callable(validate):
+            try:
+                validate(provider_config)
+            except ValueError as exc:
+                raise InvalidExperimentRequestError(str(exc)) from exc
+
+    @staticmethod
+    def _provider_execution_timeout_seconds(
+        provider: Any,
+        provider_config: Mapping[str, Any],
+    ) -> int | None:
+        """Read a provider-declared bound without interpreting provider config."""
+        timeout = getattr(provider, "execution_timeout_seconds", None)
+        if not callable(timeout):
+            return None
+        value = timeout(provider_config)
+        if value is not None and (
+            isinstance(value, bool) or not isinstance(value, int) or value <= 0
+        ):
+            raise InvalidExperimentRequestError(
+                "Evaluation provider returned an invalid execution timeout."
+            )
+        return value
+
+    def _runner_provenance_for_candidate(
+        self,
+        candidate: ExperimentCandidate,
+        provider_config: Mapping[str, Any],
+    ) -> dict[str, Any] | None:
+        provider = self._resolve_provider(candidate.evaluation_provider)
+        capture = getattr(provider, "capture_runner_provenance", None)
+        if not callable(capture):
+            return None
+        provenance = capture(provider_config, candidate.dataset_version)
+        if not isinstance(provenance, Mapping):
+            raise InvalidExperimentRequestError(
+                "Evaluation runner returned invalid provenance."
+            )
+        return dict(provenance)
 
     def _validate_runtime_connection_for_candidate(
         self,
@@ -1371,6 +1855,8 @@ def _safe_evaluation_failure_reason(error: Exception) -> str:
         RuntimeConnectionDisabledError,
         RuntimeConnectionNotFoundError,
         RuntimeConnectionProviderMismatchError,
+        ExecutionDeadlineExceeded,
+        ExecutionDeadlineUnavailable,
         ValueError,
     )
     if isinstance(error, safe_errors):

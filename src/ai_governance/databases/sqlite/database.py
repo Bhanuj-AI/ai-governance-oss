@@ -51,6 +51,7 @@ class SQLiteDatabase:
             self._ensure_evaluation_run_columns(connection)
             self._ensure_replay_columns(connection)
             self._ensure_agent_execution_tables(connection)
+            self._ensure_evidence_fidelity_table(connection)
             self._ensure_tenancy_columns(connection)
             self._ensure_asset_provenance_columns(connection)
             self._ensure_runtime_finding_columns(connection)
@@ -164,6 +165,30 @@ class SQLiteDatabase:
         }.items():
             if name not in event_columns:
                 connection.execute(f"ALTER TABLE agent_execution_event ADD COLUMN {name} {definition}")
+
+    @staticmethod
+    def _ensure_evidence_fidelity_table(connection: sqlite3.Connection) -> None:
+        """Backfill the immutable comparison table for existing local stores."""
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS evidence_fidelity_comparison (
+                comparison_id TEXT NOT NULL,
+                organization_id TEXT NOT NULL,
+                project_id TEXT NOT NULL DEFAULT '',
+                source_execution_id TEXT NOT NULL,
+                request_fingerprint TEXT NOT NULL,
+                status TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                payload_json TEXT NOT NULL,
+                PRIMARY KEY (organization_id, project_id, comparison_id),
+                UNIQUE (organization_id, project_id, request_fingerprint)
+            )
+            """
+        )
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_evidence_fidelity_execution "
+            "ON evidence_fidelity_comparison(organization_id, project_id, source_execution_id, created_at DESC)"
+        )
 
 
     @staticmethod
@@ -401,6 +426,7 @@ class SQLiteDatabase:
             "total_item_count": "INTEGER",
             "completed_item_count": "INTEGER NOT NULL DEFAULT 0",
             "evaluated_item_count": "INTEGER NOT NULL DEFAULT 0",
+            "runner_provenance_json": "TEXT",
         }.items():
             if columns and column_name not in columns:
                 connection.execute(

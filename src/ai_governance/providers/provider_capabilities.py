@@ -2,9 +2,17 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any
 
 from ai_governance.evaluation.evaluation_metrics import normalize_metric_name
+
+
+class EvaluationGranularity(str, Enum):
+    """How one provider invocation maps to persisted experiment items."""
+
+    ITEM = "ITEM"
+    BATCH = "BATCH"
 
 
 @dataclass(frozen=True)
@@ -36,6 +44,7 @@ class ProviderCapabilities:
     supports_artifacts: bool = True
     supports_explanations: bool = True
     supports_row_level_results: bool = False
+    evaluation_granularity: EvaluationGranularity = EvaluationGranularity.ITEM
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -56,6 +65,11 @@ class ProviderCapabilities:
             tuple(self.supported_evaluation_modes),
         )
         object.__setattr__(self, "metadata", dict(self.metadata))
+        object.__setattr__(
+            self,
+            "evaluation_granularity",
+            EvaluationGranularity(self.evaluation_granularity),
+        )
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -71,5 +85,6 @@ class ProviderCapabilities:
             "supports_artifacts": self.supports_artifacts,
             "supports_explanations": self.supports_explanations,
             "supports_row_level_results": self.supports_row_level_results,
+            "evaluation_granularity": self.evaluation_granularity.value,
             "metadata": dict(self.metadata),
         }

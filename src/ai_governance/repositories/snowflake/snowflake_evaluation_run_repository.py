@@ -40,7 +40,8 @@ class SnowflakeEvaluationRunRepository(EvaluationRunRepository):
             %(failure_reason)s AS failure_reason,
             %(total_item_count)s AS total_item_count,
             %(completed_item_count)s AS completed_item_count,
-            %(evaluated_item_count)s AS evaluated_item_count
+            %(evaluated_item_count)s AS evaluated_item_count,
+            PARSE_JSON(%(runner_provenance_json)s) AS runner_provenance_json
     ) source
     ON target.run_id = source.run_id
     WHEN MATCHED THEN UPDATE SET
@@ -56,6 +57,7 @@ class SnowflakeEvaluationRunRepository(EvaluationRunRepository):
         total_item_count = source.total_item_count,
         completed_item_count = source.completed_item_count,
         evaluated_item_count = source.evaluated_item_count
+        , runner_provenance_json = source.runner_provenance_json
     WHEN NOT MATCHED THEN INSERT (
         run_id,
         experiment_id,
@@ -69,7 +71,8 @@ class SnowflakeEvaluationRunRepository(EvaluationRunRepository):
         failure_reason,
         total_item_count,
         completed_item_count,
-        evaluated_item_count
+        evaluated_item_count,
+        runner_provenance_json
     )
     VALUES (
         source.run_id,
@@ -84,7 +87,8 @@ class SnowflakeEvaluationRunRepository(EvaluationRunRepository):
         source.failure_reason,
         source.total_item_count,
         source.completed_item_count,
-        source.evaluated_item_count
+        source.evaluated_item_count,
+        source.runner_provenance_json
     )
     """
 
@@ -104,7 +108,8 @@ class SnowflakeEvaluationRunRepository(EvaluationRunRepository):
         failure_reason,
         total_item_count,
         completed_item_count,
-        evaluated_item_count
+        evaluated_item_count,
+        TO_JSON(runner_provenance_json) AS runner_provenance_json
     FROM evaluation_run
     """
 

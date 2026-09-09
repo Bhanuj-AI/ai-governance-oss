@@ -125,6 +125,11 @@ class FakeEvaluationProvider:
             ],
         )
 
+    @staticmethod
+    def validate_run_configuration(provider_config: dict[str, object]) -> None:
+        if provider_config.get("unsupported_tool_transport") is True:
+            raise ValueError("The provider does not support this tool transport.")
+
 
 class _EvidenceProducingCandidateRuntime:
     """Test double that produces completed candidate evidence, never blanks."""
@@ -576,6 +581,9 @@ def test_get_run_plan_reports_declared_workload_and_active_progress() -> None:
         "experiment_id": experiment_id,
         "candidate_count": 2,
         "dataset_item_count": 1,
+        "runner_invocation_count": 2,
+        "expected_sample_result_count": 2,
+        "workload_basis": "DATASET_RECORDS",
         "model_invocation_count": 2,
         "evaluation_item_count": 2,
         "active_run": {
@@ -862,6 +870,7 @@ def test_run_experiment_async_returns_queued_job() -> None:
         job_repository=job_repository
     )
     experiment_id = _create_experiment(client)
+    _add_candidate(client, experiment_id)
 
     response = client.post(
         f"/api/v1/experiments/{experiment_id}/run",
@@ -883,6 +892,31 @@ def test_run_experiment_async_returns_queued_job() -> None:
     assert payload["input_refs"]["operation"] == "experiment.run_async"
     assert payload["input_refs"]["experiment_id"] == experiment_id
     assert job_repository.find_by_id(payload["job_id"]) is not None
+
+
+def test_run_experiment_async_rejects_unsupported_provider_before_dispatch() -> None:
+    job_repository = InMemoryJobRepository()
+    client, _provider, _evaluation_repository = _client(
+        job_repository=job_repository
+    )
+    experiment_id = _create_experiment(client)
+    _add_candidate(client, experiment_id)
+
+    response = client.post(
+        f"/api/v1/experiments/{experiment_id}/run",
+        json={
+            "metric_specs": [{"name": "answer_relevance"}],
+            "provider_config": {"unsupported_tool_transport": True},
+            "request_id": "request-unsupported-tools",
+            "idempotency_key": "idem-unsupported-tools",
+            "requested_by": "operator-1",
+            "submitted_by": "operator-1",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_EXPERIMENT_REQUEST"
+    assert job_repository.list_jobs() == []
 
 
 def test_run_experiment_without_candidates_returns_400() -> None:

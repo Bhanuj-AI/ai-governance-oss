@@ -5,6 +5,7 @@ Provider registry wiring for the AI Governance Control Plane platform.
 from __future__ import annotations
 
 import os
+from importlib.util import find_spec
 from typing import Any
 
 
@@ -22,6 +23,10 @@ def get_provider_registry() -> Any:
         from ai_governance.providers.trulens import TruLensAdapter
 
         registry.register(TruLensAdapter())
+    if _inspect_is_installed():
+        from ai_governance.providers.inspect_ai import InspectEvaluationRunner
+
+        registry.register(InspectEvaluationRunner())
     return registry
 
 
@@ -35,3 +40,8 @@ def _trulens_is_configured() -> bool:
             or os.getenv("OPENAI_DEFAULT_JUDGE_MODEL", "").strip()
         )
     )
+
+
+def _inspect_is_installed() -> bool:
+    """Expose the optional Inspect adapter only when its runtime extra exists."""
+    return find_spec("inspect_ai") is not None

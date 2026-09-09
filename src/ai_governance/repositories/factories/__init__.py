@@ -22,6 +22,9 @@ from ai_governance.repositories.factories.evaluation_repository_factory import (
 from ai_governance.repositories.factories.evaluation_run_repository_factory import (
     EvaluationRunRepositoryFactory,
 )
+from ai_governance.repositories.factories.evidence_fidelity_repository_factory import (
+    EvidenceFidelityComparisonRepositoryFactory,
+)
 from ai_governance.repositories.factories.evidence_intervention_policy_repository_factory import (
     EvidenceInterventionPolicyRepositoryFactory,
 )
@@ -77,6 +80,7 @@ __all__ = [
     "DatasetRepositoryFactory",
     "EvaluationRepositoryFactory",
     "EvaluationRunRepositoryFactory",
+    "EvidenceFidelityComparisonRepositoryFactory",
     "EvidenceInterventionPolicyRepositoryFactory",
     "ExperimentCandidateRepositoryFactory",
     "ExperimentRepositoryFactory",

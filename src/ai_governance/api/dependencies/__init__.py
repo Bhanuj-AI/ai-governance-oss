@@ -49,6 +49,7 @@ __all__ = [
     "get_evaluation_history_service",
     # Repositories
     "get_causal_audit_repository",
+    "get_evidence_fidelity_comparison_repository",
     "get_causal_audit_service",
     "get_evaluation_repository",
     "get_evaluation_run_repository",
@@ -185,6 +186,7 @@ from ai_governance.api.dependencies.repositories import (
     get_dataset_repository,
     get_evaluation_repository,
     get_evaluation_run_repository,
+    get_evidence_fidelity_comparison_repository,
     get_evidence_intervention_policy_repository,
     get_experiment_candidate_repository,
     get_experiment_repository,

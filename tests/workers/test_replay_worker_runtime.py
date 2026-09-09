@@ -22,6 +22,7 @@ from ai_governance.repositories.in_memory_replay_repository import (
 from ai_governance.repositories.in_memory_replay_result_repository import (
     InMemoryReplayResultRepository,
 )
+from ai_governance.services.execution_deadline import WorkerExecutionDeadline
 from ai_governance.services.job_api_service import JobApiService
 from ai_governance.services.job_executor import JobExecutor
 from ai_governance.services.replay_application_service import ReplayApplicationService
@@ -122,6 +123,10 @@ def test_worker_wires_runtime_connections_into_async_experiments() -> None:
     experiment_handler = runtime._worker._executor._handlers[JobType.EXPERIMENT]
 
     assert experiment_handler._experiments._runtime_connection_service is not None
+    assert isinstance(
+        experiment_handler._experiments._provider_execution_deadline,
+        WorkerExecutionDeadline,
+    )
 
 
 def test_worker_wires_a_real_telemetry_collector_into_async_evaluations() -> None:

@@ -61,4 +61,8 @@ class PostgresDatabase:
                 "ALTER TABLE evaluation_run "
                 "ADD COLUMN IF NOT EXISTS evaluated_item_count INTEGER NOT NULL DEFAULT 0"
             )
+            connection.execute(
+                "ALTER TABLE evaluation_run "
+                "ADD COLUMN IF NOT EXISTS runner_provenance_json JSONB"
+            )
             connection.commit()

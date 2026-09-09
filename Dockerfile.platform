@@ -17,10 +17,10 @@ RUN apt-get update && \
 
 # Install locked dependencies first so this layer remains cacheable.
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-install-project
+RUN uv sync --frozen --extra inspect --no-install-project
 
 COPY . .
-RUN uv sync --frozen
+RUN uv sync --frozen --extra inspect
 
 RUN chmod +x *.sh scripts/build/*.sh scripts/docker/*.sh scripts/keycloak/*.sh scripts/mcp/*.sh
 

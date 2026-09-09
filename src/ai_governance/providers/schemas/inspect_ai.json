@@ -1,0 +1,20 @@
+{
+  "documentation_url": "https://inspect.aisi.org.uk/",
+  "settings": {
+    "properties": {
+      "model": {"type": "string", "title": "Model", "description": "Inspect model identifier."},
+      "tasks": {"type": "array", "title": "Tasks", "items": {"type": "string"}},
+      "task_version": {"type": "string", "title": "Task/dataset version"},
+      "solver": {"type": "string", "title": "Solver/scaffold"},
+      "solver_config": {"type": "object", "title": "Solver/scaffold configuration"},
+      "scorer": {"type": "string", "title": "Scorer"},
+      "scorer_version": {"type": "string", "title": "Scorer version"},
+      "task_limit": {"type": "integer", "minimum": 1, "title": "Task limit"},
+      "timeout_seconds": {"type": "integer", "minimum": 1, "title": "Timeout (seconds)"},
+      "max_connections": {"type": "integer", "minimum": 1, "title": "Maximum connections"},
+      "requires_tools": {"type": "boolean", "title": "Requires function tools", "description": "Declare that this scaffold invokes function tools so unsupported model and transport combinations are rejected before dispatch."}
+    },
+    "required": ["model", "tasks"]
+  },
+  "secret_refs": {"properties": {}}
+}

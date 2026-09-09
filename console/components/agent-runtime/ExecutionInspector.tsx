@@ -29,8 +29,8 @@ function InspectorContent({ executionIds, onClose }: InspectorContentProps) {
   return <div className="flex max-h-[min(52rem,calc(100vh-3rem))] flex-col bg-background">
     <div className="flex items-start justify-between gap-4 border-b px-6 py-5">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Execution evidence</p>
-        <h1 className="mt-1 text-xl font-semibold">{comparing ? "Compare executions" : "Execution inspector"}</h1>
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Execution Evidence</p>
+        <h1 className="mt-1 text-xl font-semibold">{comparing ? "Compare Executions" : "Execution Inspector"}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{comparing ? "Compare governed operational facts and event coverage. Event payloads are intentionally not shown." : "Inspect the ordered runtime evidence captured for this execution. Event payloads are intentionally not shown."}</p>
       </div>
       <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Close execution inspector"><X className="h-4 w-4" /></Button>
@@ -136,7 +136,7 @@ function formatDuration(start: string, end: string | null) { if (!end) return "R
 
 export function ExecutionInspectorModal({ executionIds }: { executionIds: string[] }) {
   const router = useRouter();
-  return <Dialog.Root open onOpenChange={(open) => { if (!open) router.back(); }}><Dialog.Portal><Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" /><Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(84rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg border bg-background shadow-xl focus:outline-none"><Dialog.Title className="sr-only">Execution inspector</Dialog.Title><Dialog.Description className="sr-only">Tenant-scoped execution evidence and a governed operational comparison.</Dialog.Description><InspectorContent executionIds={executionIds} onClose={() => router.back()} /></Dialog.Content></Dialog.Portal></Dialog.Root>;
+  return <Dialog.Root open onOpenChange={(open) => { if (!open) router.back(); }}><Dialog.Portal><Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" /><Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(84rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg border bg-background shadow-xl focus:outline-none"><Dialog.Title className="sr-only">Execution Inspector</Dialog.Title><Dialog.Description className="sr-only">Tenant-scoped execution evidence and a governed operational comparison.</Dialog.Description><InspectorContent executionIds={executionIds} onClose={() => router.back()} /></Dialog.Content></Dialog.Portal></Dialog.Root>;
 }
 
 export function ExecutionInspectorPage({ executionIds }: { executionIds: string[] }) {

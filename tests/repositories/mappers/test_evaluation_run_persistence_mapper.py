@@ -23,6 +23,10 @@ def test_evaluation_run_persistence_mapper_round_trips_run() -> None:
         total_item_count=10,
         completed_item_count=10,
         evaluated_item_count=10,
+        runner_provenance={
+            "runner_type": "inspect_ai",
+            "configuration_fingerprint": "sha256:abc",
+        },
     )
 
     record = EvaluationRunPersistenceMapper.to_persistence_record(run)

@@ -111,6 +111,10 @@ class SnowflakeDatabase:
                         "ALTER TABLE evaluation_run "
                         "ADD COLUMN IF NOT EXISTS evaluated_item_count NUMBER NOT NULL DEFAULT 0"
                     )
+                    cursor.execute(
+                        "ALTER TABLE evaluation_run "
+                        "ADD COLUMN IF NOT EXISTS runner_provenance_json VARIANT"
+                    )
                 connection.commit()
             except Exception:
                 connection.rollback()

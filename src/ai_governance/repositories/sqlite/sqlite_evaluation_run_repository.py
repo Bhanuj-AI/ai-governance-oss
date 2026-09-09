@@ -32,7 +32,8 @@ class SQLiteEvaluationRunRepository(EvaluationRunRepository):
         failure_reason,
         total_item_count,
         completed_item_count,
-        evaluated_item_count
+        evaluated_item_count,
+        runner_provenance_json
     )
     VALUES (
         :run_id,
@@ -47,7 +48,8 @@ class SQLiteEvaluationRunRepository(EvaluationRunRepository):
         :failure_reason,
         :total_item_count,
         :completed_item_count,
-        :evaluated_item_count
+        :evaluated_item_count,
+        :runner_provenance_json
     )
     """
 
@@ -65,7 +67,8 @@ class SQLiteEvaluationRunRepository(EvaluationRunRepository):
         failure_reason,
         total_item_count,
         completed_item_count,
-        evaluated_item_count
+        evaluated_item_count,
+        runner_provenance_json
     FROM evaluation_run
     """
 

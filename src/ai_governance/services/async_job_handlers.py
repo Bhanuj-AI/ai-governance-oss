@@ -74,6 +74,7 @@ class ExperimentJobHandler:
             experiment_id,
             metric_specs=_metric_specs(refs.get("metric_specs")),
             provider_config=dict(refs.get("provider_config") or {}),
+            repetitions=int(refs.get("repetitions") or 1),
             context=_context(job),
         )
         if self._experiments.get_experiment(

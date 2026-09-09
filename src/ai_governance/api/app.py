@@ -32,6 +32,7 @@ from ai_governance.api.routers import (
     datasets_router,
     decisions_router,
     evaluations_router,
+    evidence_fidelity_router,
     evidence_intervention_policies_router,
     experiments_router,
     extensions_router,
@@ -306,6 +307,16 @@ def create_app(*, plugins: Iterable[AIGovernancePlugin] = ()) -> FastAPI:
             Depends(
                 enforce_read_write(
                     Permission.AGENT_EXECUTION_READ, Permission.JOB_SUBMIT
+                )
+            )
+        ],
+    )
+    app.include_router(
+        evidence_fidelity_router,
+        dependencies=[
+            Depends(
+                enforce_read_write(
+                    Permission.AGENT_EXECUTION_READ, Permission.EVALUATION_EXECUTE
                 )
             )
         ],

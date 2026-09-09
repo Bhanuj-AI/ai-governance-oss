@@ -84,6 +84,83 @@ then builds the adapter configuration. Secret references are dereferenced only
 immediately before the adapter runs. The resolved secret is not returned by the
 API, persisted in the installation, or copied into a job payload.
 
+## Configure an Inspect AI Runner
+
+For the complete operational flow—including queued execution, idempotency,
+persisted child results, restart verification, and Studio—see
+[Run an Inspect AI Batch Experiment](./inspect-ai-batch-experiment.md).
+
+Inspect AI is optional. Install its runtime extra in both the API and worker
+environment before creating an `inspect_ai` installation:
+
+```text
+uv sync --extra inspect
+```
+
+Create one installation for the runner capability and fixed evaluation
+conditions: model, bounded task set, scorer, limits, and environment. Do not
+create installations to represent experimental scaffolds. Put each
+candidate-specific scaffold variation in that candidate's
+`evaluation_runner_config` metadata.
+The installation deliberately has no solver: the solver is the experimental
+variable. Candidates may use an Inspect built-in solver name (such as
+`generate`) or a repository-packaged
+`ai_governance.inspect_tasks:callable` solver; solver configuration is passed
+only to that factory at execution time.
+
+```json
+{
+  "model": "openai/gpt-5.6-luna",
+  "tasks": ["ai_governance.inspect_tasks:scaffold_smoke"],
+  "task_version": "smoke-v1",
+  "scorer": "exact",
+  "scorer_version": "1",
+  "task_limit": 10,
+  "timeout_seconds": 60,
+  "max_connections": 2
+}
+```
+
+For the smoke comparison, attach one of these metadata values to each
+candidate. Keep its model, task, scorer, limits, runtime connection and
+dataset references identical:
+
+```json
+{
+  "evaluation_runner_config": {
+    "solver": "generate",
+    "solver_config": {}
+  }
+}
+```
+
+```json
+{
+  "evaluation_runner_config": {
+    "solver": "ai_governance.inspect_tasks:plan_then_generate",
+    "solver_config": {"planning_prompt_version": "v1"}
+  }
+}
+```
+
+Each completed result retains a secret-free runner provenance record with the
+Inspect version, task/dataset version, model, solver and scorer identifiers,
+limits, configuration digests, and deterministic configuration fingerprint.
+Inspect log references are retained as debugging artifacts; raw Inspect output
+does not become an AI Governance Control Plane contract.
+
+Inspect declares `BATCH` evaluation granularity: one candidate repetition
+invokes Inspect once and persists one child evaluation result per task sample.
+For the bundled smoke task, two candidates and two repetitions therefore make
+four runner invocations, four evaluation runs, and forty persisted sample
+results. Aggregates are calculated from those persisted children. A failed
+child-persistence sequence remains explicitly marked as a partial batch rather
+than being presented as a complete aggregate.
+Tasks and packaged solvers must be identifiers available to both API and worker
+deployments; host-local paths are rejected because they are not reproducible
+execution evidence. The platform image installs the `inspect` extra for both
+the API and replay-worker containers.
+
 ## Validate Connection
 
 **Validate Connection** verifies secret resolution and provider initialization
