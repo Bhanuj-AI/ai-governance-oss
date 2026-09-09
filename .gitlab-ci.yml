@@ -66,12 +66,14 @@ unit-tests:
     # GitLab-hosted Python container may not have uv.
     # Self-hosted runner may already have it.
     - command -v uv >/dev/null 2>&1 || pip install --no-cache-dir uv
-    - uv sync --frozen --python 3.12
+    # Inspect-backed unit tests verify the package-resolvable task and solver
+    # contracts shipped by this repository.
+    - uv sync --frozen --extra inspect --python 3.12
 
   script:
     - >
       uv run --python 3.12 pytest tests/unit -v
-      --cov=ai-governance
+      --cov=ai_governance
       --cov-report=term-missing
 
   rules:
