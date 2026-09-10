@@ -20,7 +20,7 @@ from ai_governance.services.experiments import (
 _UNSET = object()
 
 
-def test_overall_score_ranking_uses_average_metric_score() -> None:
+def test_overall_score_ranking_uses_average_quality_metric_score() -> None:
     score, reason = OverallScoreRanking().score_candidate(
         candidate=_candidate(),
         evaluation_result=_result(
@@ -31,8 +31,8 @@ def test_overall_score_ranking_uses_average_metric_score() -> None:
         model=_model(),
     )
 
-    assert score == pytest.approx((0.90 + 0.80 + 0.10) / 3)
-    assert reason == "Ranked by average evaluation metric score."
+    assert score == pytest.approx((0.90 + 0.80) / 2)
+    assert reason == "Ranked by average quality metric score."
 
 
 def test_metric_rankings_use_expected_metric() -> None:
@@ -71,7 +71,7 @@ def test_cost_and_latency_rankings_prefer_lower_values() -> None:
 
     cost_score, cost_reason = LowestCostRanking().score_candidate(
         candidate=_candidate(),
-        evaluation_result=_result(0.9, 0.8, 0.1),
+        evaluation_result=_result(0.9, 0.8, 0.1, estimated_cost=0.10),
         model=model,
     )
     latency_score, latency_reason = LowestLatencyRanking().score_candidate(
@@ -81,7 +81,7 @@ def test_cost_and_latency_rankings_prefer_lower_values() -> None:
     )
 
     assert cost_score == pytest.approx(-0.10)
-    assert cost_reason == "Ranked by lowest model cost."
+    assert cost_reason == "Ranked by lowest reported evaluation cost."
     assert latency_score == pytest.approx(-0.6)
     assert latency_reason == "Ranked by lowest model latency."
 
@@ -110,7 +110,7 @@ def test_strategies_raise_when_required_inputs_are_missing() -> None:
             LowestCostRanking(),
             _result(0.9, 0.8, 0.1),
             _model(cost=None),
-            "LowestCostRanking requires model cost.",
+            "Ranking strategy requires metric 'estimated_model_cost'.",
         ),
     ]
 
@@ -147,17 +147,21 @@ def _result(
     groundedness: float,
     answer_relevance: float,
     hallucination: float,
+    estimated_cost: float | None = None,
 ) -> EvaluationResult:
+    metrics = [
+        EvaluationMetric("GROUNDEDNESS", groundedness),
+        EvaluationMetric("ANSWER_RELEVANCE", answer_relevance),
+        EvaluationMetric("HALLUCINATION", hallucination),
+    ]
+    if estimated_cost is not None:
+        metrics.append(EvaluationMetric("estimated_model_cost", estimated_cost))
     return EvaluationResult(
         evaluation_id="evaluation-1",
         execution_id="execution-1",
         evaluator_type="FAKE",
         evaluator_version="1.0",
-        metrics=[
-            EvaluationMetric("GROUNDEDNESS", groundedness),
-            EvaluationMetric("ANSWER_RELEVANCE", answer_relevance),
-            EvaluationMetric("HALLUCINATION", hallucination),
-        ],
+        metrics=metrics,
         metadata={},
     )
 
@@ -178,10 +182,7 @@ def _result_without_metric(strategy_name: str) -> EvaluationResult:
         execution_id="execution-1",
         evaluator_type="FAKE",
         evaluator_version="1.0",
-        metrics=[
-            EvaluationMetric(name, value)
-            for name, value in metrics.items()
-        ],
+        metrics=[EvaluationMetric(name, value) for name, value in metrics.items()],
         metadata={},
     )
 

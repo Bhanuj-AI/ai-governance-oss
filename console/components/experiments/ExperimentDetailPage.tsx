@@ -37,6 +37,7 @@ import {
   cancelExperiment,
   getCandidateComparison,
   getExperiment,
+  getEvaluationReport,
   getLeaderboard,
   getRunPlan,
   listCandidates,
@@ -63,6 +64,7 @@ const TABS = [
   "Evaluation Runs",
   "Comparison",
   "Leaderboard",
+  "Results Report",
 ];
 
 type CandidateDraft = {
@@ -244,7 +246,12 @@ export function ExperimentDetailPage({
   const candidates = useQuery({
     queryKey: ["candidates", experimentId],
     queryFn: () => listCandidates(experimentId),
-    enabled: tab === "Overview" || tab === "Candidates" || tab === "Comparison",
+    enabled:
+      tab === "Overview" ||
+      tab === "Candidates" ||
+      tab === "Comparison" ||
+      tab === "Leaderboard" ||
+      tab === "Results Report",
   });
   const runs = useQuery({
     queryKey: ["runs", experimentId],
@@ -263,6 +270,11 @@ export function ExperimentDetailPage({
     queryKey: ["leaderboard", experimentId],
     queryFn: () => getLeaderboard(experimentId),
     enabled: tab === "Overview" || tab === "Leaderboard",
+  });
+  const evaluationReport = useQuery({
+    queryKey: ["evaluation-report", experimentId],
+    queryFn: () => getEvaluationReport(experimentId),
+    enabled: tab === "Results Report",
   });
   const comparisonReady =
     Boolean(baselineCandidateId) &&
@@ -291,6 +303,9 @@ export function ExperimentDetailPage({
     refetchInterval: tab === "Evaluation Runs" ? autoRefreshMs : false,
   });
   const evaluationResults = runEvaluations.data;
+  const candidateNameById = new Map(
+    (candidates.data ?? []).map((item) => [item.candidate_id, item.candidate_name]),
+  );
 
   const prompts = useQuery({
     queryKey: ["prompt-assets"],
@@ -482,6 +497,10 @@ export function ExperimentDetailPage({
         queryKey: ["run-evaluations", experimentId],
         type: "all",
       }),
+      queryClient.refetchQueries({
+        queryKey: ["evaluation-report", experimentId],
+        type: "all",
+      }),
     ]);
     setRefreshing(false);
   }
@@ -637,6 +656,7 @@ export function ExperimentDetailPage({
             failedRuns={failedRuns}
             leaderboard={leaderboard.data}
             leaderboardLoading={leaderboard.isLoading}
+            candidates={candidates.data ?? []}
           />
 
           {runPlan.data && (
@@ -1270,21 +1290,49 @@ export function ExperimentDetailPage({
                   <tbody>
                     {leaderboard.data.entries.map((item) => (
                       <tr key={item.candidate_id} className="border-b">
-                        <td className="p-2">{item.rank}</td>
-                        <td>{item.candidate_id}</td>
+                        <td className="p-2">{formatRank(leaderboard.data.entries, item)}</td>
+                        <td>{candidateNameById.get(item.candidate_id) ?? "Unknown candidate"}</td>
                         <td>{formatRankingValue(item.overall_score)}</td>
-                        <td>{item.latency ?? "—"}</td>
-                        <td>{item.cost ?? "—"}</td>
+                        <td>{item.latency == null ? "Unavailable" : formatDuration(item.latency)}</td>
+                        <td>{item.cost == null ? "Unavailable" : item.cost}</td>
                         <td>{item.reason}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
                 <p className="mt-4 text-xs text-muted-foreground">
-                  {leaderboard.data.entries.length >= 2
+                  {hasUniqueWinner(leaderboard.data.entries)
                     ? "A recommendation does not deploy or promote the candidate."
-                    : "One candidate is an observation, not a comparison or recommendation. Ranking values are not percentages unless the selected strategy explicitly defines one."}
+                    : "No unique winner is recommended. Review quality and operational evidence together. Ranking values are not percentages unless the selected strategy explicitly defines one."}
                 </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {tab === "Results Report" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Results Report</CardTitle>
+            <CardDescription>
+              Derived from durable item evaluations. Missing telemetry is shown as unavailable; it is never estimated from model metadata.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {evaluationReport.isLoading ? <p className="text-sm text-muted-foreground">Building report…</p> : evaluationReport.isError || !evaluationReport.data ? <p className="text-sm text-muted-foreground">No persisted evaluation evidence is available yet.</p> : (
+              <div className="space-y-5">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead><tr className="border-b text-muted-foreground"><th className="p-2">Candidate</th><th>Group</th><th>Samples</th><th>Task Tokens</th><th>Direct Tokens/Task</th><th>Planner In/Out</th><th>Executor In/Out</th><th>Pass Rate</th><th>Cost</th></tr></thead>
+                    <tbody>{evaluationReport.data.rows.map((row) => {
+                      const direct = reportCall(row, "direct_generation"); const planning = reportCall(row, "planning"); const execution = reportCall(row, "execution");
+                      return <tr className="border-b align-top" key={`${row.candidate_id}:${row.group}`}><td className="p-2 font-medium">{row.candidate_name}</td><td>{row.group}</td><td>{row.sample_count}</td><td>{formatReportNumber(row.original_task_tokens)}</td><td>{formatReportNumber(direct?.total_tokens)}</td><td>{formatPair(planning?.input_tokens, planning?.output_tokens)}</td><td>{formatPair(execution?.input_tokens, execution?.output_tokens)}</td><td>{row.pass_rate == null ? "Unavailable" : `${(row.pass_rate * 100).toFixed(1)}%`}</td><td>{row.provider_cost == null ? "Unavailable" : formatReportNumber(row.provider_cost)}</td></tr>;
+                    })}</tbody>
+                  </table>
+                </div>
+                {evaluationReport.data.rows.map((row) => <div className="rounded-md border p-3 text-xs" key={`detail:${row.candidate_id}:${row.group}`}><p className="font-medium">{row.candidate_name} · {row.group}</p><p className="mt-1 text-muted-foreground">Failures: {Object.entries(row.failure_categories).map(([key, value]) => `${key}: ${value}`).join(", ") || "None"}. Failed scenarios: {row.failed_scenario_ids.join(", ") || "None"}.</p><p className="mt-1 text-muted-foreground">Call context: {row.call_roles.map((call) => `${call.call_role}: original task ${formatEvidenceBoolean(call.original_task_included)}, prior conversation ${formatEvidenceBoolean(call.prior_conversation_retained)}`).join(" · ") || "Unavailable"}.</p></div>)}
+                <p className="text-xs text-muted-foreground">Grouping dimension: {evaluationReport.data.group_dimension}. Runner provenance is retained in the machine-readable API response.</p>
               </div>
             )}
           </CardContent>
@@ -1307,7 +1355,8 @@ export function ExperimentDetailPage({
       {tab !== "Overview" &&
         tab !== "Candidates" &&
         tab !== "Comparison" &&
-        tab !== "Leaderboard" && (
+        tab !== "Leaderboard" &&
+        tab !== "Results Report" && (
           <Card>
             <CardContent className="p-8 text-sm text-muted-foreground">
               This view becomes available as evaluation run data is returned by
@@ -1709,6 +1758,51 @@ function formatMetricValue(value: number | null | undefined): string {
 
 function formatRankingValue(value: number): string {
   return value.toLocaleString(undefined, { maximumFractionDigits: 4 });
+}
+
+function formatDuration(seconds: number): string {
+  return `${seconds.toLocaleString(undefined, { maximumFractionDigits: 2 })} s`;
+}
+
+function hasUniqueWinner(entries: { overall_score: number }[]): boolean {
+  return entries.length >= 2 && entries[0].overall_score !== entries[1].overall_score;
+}
+
+function formatRank(
+  entries: { candidate_id: string; overall_score: number; rank: number }[],
+  entry: { candidate_id: string; overall_score: number; rank: number },
+): string {
+  const firstRank = Math.min(
+    ...entries.filter((item) => item.overall_score === entry.overall_score).map((item) => item.rank),
+  );
+  const tied = entries.some(
+    (item) => item.candidate_id !== entry.candidate_id && item.overall_score === entry.overall_score,
+  );
+  return tied ? `Tie · ${firstRank}` : String(entry.rank);
+}
+
+function reportCall(
+  row: import("@/lib/api/experiments").EvaluationReport["rows"][number],
+  role: string,
+) {
+  return row.call_roles.find((call) => call.call_role === role);
+}
+
+function formatReportNumber(value: number | null | undefined) {
+  return value == null ? "Unavailable" : Number(value.toFixed(2)).toString();
+}
+
+function formatPair(
+  input: number | null | undefined,
+  output: number | null | undefined,
+) {
+  return input == null && output == null
+    ? "Unavailable"
+    : `${formatReportNumber(input)} / ${formatReportNumber(output)}`;
+}
+
+function formatEvidenceBoolean(value: boolean | null | undefined) {
+  return value == null ? "Unavailable" : value ? "Yes" : "No";
 }
 
 function MetricDelta({ metric }: { metric: MetricComparison }) {

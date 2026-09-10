@@ -137,11 +137,16 @@ dataset references identical:
 ```json
 {
   "evaluation_runner_config": {
-    "solver": "ai_governance.inspect_tasks:plan_then_generate",
+    "solver": "ai_governance.inspect_tasks:planning_instruction_generate",
     "solver_config": {"planning_prompt_version": "v1"}
   }
 }
 ```
+
+`planning_instruction_generate` makes one model call with an added planning
+instruction. It is a configuration smoke variant, not a genuine
+planner–executor scaffold. Use `planner_executor_generate` with
+`planner_executor_smoke` for a separate plan call followed by an answer call.
 
 Each completed result retains a secret-free runner provenance record with the
 Inspect version, task/dataset version, model, solver and scorer identifiers,

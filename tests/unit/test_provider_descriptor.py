@@ -4,6 +4,7 @@ from ai_governance.providers.provider_capabilities import ProviderCapabilities
 from ai_governance.providers.provider_descriptor import (
     ProviderDescriptor,
     normalize_provider_name,
+    scrub_sensitive_metadata,
 )
 
 
@@ -32,6 +33,21 @@ def test_provider_descriptor_removes_sensitive_metadata() -> None:
     )
 
     assert descriptor.metadata == {"region": "us-east-1"}
+
+
+def test_scrubber_retains_numeric_token_measurements_but_not_credentials() -> None:
+    assert scrub_sensitive_metadata(
+        {
+            "max_tokens": 256,
+            "input_tokens": 42,
+            "output_tokens": 7,
+            "access_token": "must-not-persist",
+        }
+    ) == {
+        "max_tokens": 256,
+        "input_tokens": 42,
+        "output_tokens": 7,
+    }
 
 
 def test_provider_descriptor_removes_nested_sensitive_metadata() -> None:

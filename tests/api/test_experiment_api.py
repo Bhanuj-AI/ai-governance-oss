@@ -894,6 +894,33 @@ def test_run_experiment_async_returns_queued_job() -> None:
     assert job_repository.find_by_id(payload["job_id"]) is not None
 
 
+def test_run_experiment_async_is_idempotent_for_a_persistent_review_seed() -> None:
+    """A retried durable sweep submission must not create another paid job."""
+
+    job_repository = InMemoryJobRepository()
+    client, _provider, _evaluation_repository = _client(
+        job_repository=job_repository
+    )
+    experiment_id = _create_experiment(client, "inspect-prompt-length-sweep-v7")
+    _add_candidate(client, experiment_id)
+    payload = {
+        "request_id": "inspect-prompt-length-sweep-v7",
+        "idempotency_key": "inspect-prompt-length-sweep-v7",
+        "requested_by": "local-review-seed",
+        "submitted_by": "local-review-seed",
+        "reason": "Persist the prompt-length sweep for later review.",
+        "max_attempts": 1,
+    }
+
+    first = client.post(f"/api/v1/experiments/{experiment_id}/run", json=payload)
+    second = client.post(f"/api/v1/experiments/{experiment_id}/run", json=payload)
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert second.json()["job_id"] == first.json()["job_id"]
+    assert len(job_repository.list_jobs()) == 1
+
+
 def test_run_experiment_async_rejects_unsupported_provider_before_dispatch() -> None:
     job_repository = InMemoryJobRepository()
     client, _provider, _evaluation_repository = _client(

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from importlib import import_module
@@ -16,6 +17,11 @@ from ai_governance.domain.evaluation_result import (
     EvaluationSampleResult,
 )
 from ai_governance.evaluation.evaluation_request import EvaluationRequest
+from ai_governance.evaluation.scaffold_artifacts import (
+    SCAFFOLD_PLAN_ARTIFACT_TYPE,
+    SCAFFOLD_PLAN_SCHEMA_VERSION,
+    SCAFFOLD_PLAN_STORE_KEY,
+)
 from ai_governance.providers.evaluation_provider import (
     BatchEvaluationResult,
     EvaluationProvider,
@@ -35,12 +41,14 @@ _METRICS = (
     "pass",
     "score",
     "tool_action_count",
+    "model_call_count",
     "input_tokens",
     "output_tokens",
     "total_tokens",
     "wall_clock_duration_seconds",
     "estimated_model_cost",
 )
+_INSPECT_ADAPTER_VERSION = "1.0.3"
 
 
 class InspectEvaluationRunner(EvaluationProvider):
@@ -63,7 +71,7 @@ class InspectEvaluationRunner(EvaluationProvider):
             name="inspect_ai",
             display_name="Inspect AI",
             version=self._inspect_version(),
-            adapter_version="1.0.0",
+            adapter_version=_INSPECT_ADAPTER_VERSION,
             capabilities=ProviderCapabilities(
                 supported_metrics=_METRICS,
                 supported_evaluation_modes=("sync", "async"),
@@ -84,6 +92,7 @@ class InspectEvaluationRunner(EvaluationProvider):
             default_task="configured-task",
             require_solver=False,
         )
+        _validate_model_generation_configuration(config)
         _validate_supported_tool_transport(config)
         if self._executor is None:
             self._require_installation()
@@ -97,6 +106,7 @@ class InspectEvaluationRunner(EvaluationProvider):
             provider_config,
             default_task="configured-task",
         )
+        _validate_model_generation_configuration(config)
         _validate_supported_tool_transport(config)
 
     def execution_timeout_seconds(
@@ -146,6 +156,7 @@ class InspectEvaluationRunner(EvaluationProvider):
         return configuration_provenance(
             config,
             inspect_version=self._inspect_version(),
+            adapter_version=_INSPECT_ADAPTER_VERSION,
             dataset_version=dataset_version,
         )
 
@@ -157,6 +168,7 @@ class InspectEvaluationRunner(EvaluationProvider):
         provenance = configuration_provenance(
             config,
             inspect_version=self._inspect_version(),
+            adapter_version=_INSPECT_ADAPTER_VERSION,
             dataset_version=_dataset_version(request),
         )
         try:
@@ -179,12 +191,18 @@ class InspectEvaluationRunner(EvaluationProvider):
         provenance = configuration_provenance(
             config,
             inspect_version=self._inspect_version(),
+            adapter_version=_INSPECT_ADAPTER_VERSION,
             dataset_version=_dataset_version(request),
         )
         try:
             raw = self._execute(config)
             samples = tuple(
-                _sample_result(record, index=index, provenance=provenance)
+                _sample_result(
+                    record,
+                    index=index,
+                    provenance=provenance,
+                    call_attribution=_declared_call_attribution(config),
+                )
                 for index, record in enumerate(_records(raw), start=1)
             )
             return BatchEvaluationResult(
@@ -221,12 +239,7 @@ class InspectEvaluationRunner(EvaluationProvider):
             "model": config.model,
             "solver": _resolve_solver(config),
         }
-        if config.task_limit is not None:
-            kwargs["limit"] = config.task_limit
-        if config.max_connections is not None:
-            kwargs["max_connections"] = config.max_connections
-        if config.timeout_seconds is not None:
-            kwargs["timeout"] = config.timeout_seconds
+        kwargs.update(_inspect_eval_controls(config))
         return inspect_eval(**kwargs)
 
     def _normalize(
@@ -242,6 +255,7 @@ class InspectEvaluationRunner(EvaluationProvider):
         aliases_by_metric = {
             "score": ("score",),
             "tool_action_count": ("tool_action_count", "tool_calls", "actions"),
+            "model_call_count": ("model_call_count",),
             "input_tokens": ("input_tokens", "tokens_input"),
             "output_tokens": ("output_tokens", "tokens_output"),
             "total_tokens": ("total_tokens", "tokens"),
@@ -340,7 +354,9 @@ class InspectEvaluationRunner(EvaluationProvider):
 
 def _records(raw: object) -> tuple[object, ...]:
     samples = _value(raw, "samples")
-    if isinstance(samples, Sequence) and not isinstance(samples, str | bytes | bytearray):
+    if isinstance(samples, Sequence) and not isinstance(
+        samples, str | bytes | bytearray
+    ):
         return tuple(samples)
     if isinstance(raw, Sequence) and not isinstance(raw, str | bytes | bytearray):
         if not raw:
@@ -420,14 +436,37 @@ def _inspect_sample_metric(record: object, metric_name: str) -> float | None:
     """Extract standard Inspect sample evidence without retaining content."""
     usage = _value(record, "model_usage")
     if metric_name in {"input_tokens", "output_tokens", "total_tokens"}:
-        if not isinstance(usage, Mapping):
-            return None
-        return float(
-            sum(
-                _number(_value(model_usage, metric_name)) or 0.0
-                for model_usage in usage.values()
+        aggregate = (
+            float(
+                sum(
+                    _number(_value(model_usage, metric_name)) or 0.0
+                    for model_usage in usage.values()
+                )
             )
+            if isinstance(usage, Mapping)
+            else None
         )
+        per_call_values = [
+            _number(call.get(metric_name)) for call in _model_call_usage(record)
+        ]
+        per_call = (
+            float(sum(value for value in per_call_values if value is not None))
+            if per_call_values and all(value is not None for value in per_call_values)
+            else None
+        )
+        if (
+            aggregate is not None
+            and per_call is not None
+            and not math.isclose(aggregate, per_call, rel_tol=0.0, abs_tol=1e-6)
+        ):
+            raise InspectRunnerError(
+                "Inspect sample usage does not equal the sum of its model-call usage.",
+                category="evaluation_runner_failure",
+            )
+        return per_call if per_call is not None else aggregate
+    if metric_name == "model_call_count":
+        calls = _model_call_usage(record)
+        return float(len(calls)) if calls else None
     if metric_name == "wall_clock_duration_seconds":
         direct = _number(_value(record, "total_time"))
         if direct is not None:
@@ -449,11 +488,51 @@ def _inspect_sample_metric(record: object, metric_name: str) -> float | None:
     return None
 
 
+def _model_call_usage(
+    record: object,
+    call_attribution: Sequence[Mapping[str, object]] | None = None,
+) -> list[dict[str, object]]:
+    """Return safe, provider-neutral per-call metrics from Inspect model events."""
+    events = _value(record, "events")
+    if not isinstance(events, Sequence) or isinstance(events, str | bytes):
+        return []
+    calls: list[dict[str, object]] = []
+    for event in events:
+        if _value(event, "event") not in {"model", "model_call", "generate"}:
+            continue
+        output = _value(event, "output")
+        usage = _value(output, "usage") if output is not None else None
+        call: dict[str, object] = {"call_index": len(calls) + 1}
+        for name in ("input_tokens", "output_tokens", "total_tokens"):
+            value = _number(_value(usage, name))
+            if value is not None:
+                call[name] = value
+        duration = _number(_value(output, "time")) if output is not None else None
+        if duration is not None:
+            call["duration_seconds"] = duration
+            call["duration_ms"] = duration * 1000
+        attribution = (
+            call_attribution[len(calls)]
+            if call_attribution is not None and len(calls) <= len(call_attribution)
+            else None
+        )
+        call["call_role"] = attribution.get("call_role") if attribution else None
+        call["original_task_included"] = (
+            attribution.get("original_task_included") if attribution else None
+        )
+        call["prior_conversation_retained"] = (
+            attribution.get("prior_conversation_retained") if attribution else None
+        )
+        calls.append(call)
+    return calls
+
+
 def _sample_result(
     record: object,
     *,
     index: int,
     provenance: Mapping[str, Any],
+    call_attribution: Sequence[Mapping[str, object]] | None = None,
 ) -> EvaluationSampleResult:
     status = str(_value(record, "status") or "success").lower()
     error = _value(record, "error") or _value(record, "error_message")
@@ -495,10 +574,14 @@ def _sample_result(
             value = _inspect_sample_metric(record, metric_name)
         if value is not None:
             metrics.append(EvaluationMetric(metric_name, value))
+    model_calls = _model_call_usage(record, call_attribution)
+    if model_calls:
+        metrics.append(EvaluationMetric("model_call_count", float(len(model_calls))))
     sample_id = str(_value(record, "id") or index)
+    sample_metadata = _safe_sample_metadata(record)
     safe_events = _safe_observable_events(record)
     payload = {"schema_version": "1", "events": safe_events}
-    artifacts = (
+    artifacts = [
         EvaluationArtifact(
             artifact_type="observable_execution_events",
             payload=payload,
@@ -509,17 +592,23 @@ def _sample_result(
                 "retention": "evaluation_result",
                 "durable": True,
             },
-        ),
-    )
+        )
+    ]
+    if plan_artifact := _scaffold_plan_artifact(record):
+        artifacts.append(plan_artifact)
     return EvaluationSampleResult(
         sample_id=sample_id,
         metrics=tuple(metrics),
         metadata={
             "sample_status": status,
             "sample_index": index,
+            "failure_category": _score_failure_category(record),
             "observable_event_count": len(safe_events),
+            "model_call_count": len(model_calls),
+            "model_call_usage": model_calls,
+            **sample_metadata,
         },
-        artifacts=artifacts,
+        artifacts=tuple(artifacts),
         provider_metadata={
             "provider": "inspect_ai",
             "runner_provenance": dict(provenance),
@@ -527,9 +616,130 @@ def _sample_result(
     )
 
 
+def _inspect_eval_controls(config: InspectRunnerConfig) -> dict[str, object]:
+    """Map control-plane limits to the current public Inspect ``eval`` API."""
+    controls: dict[str, object] = dict(config.model_args)
+    if config.model_args:
+        reserved = {"tasks", "model", "solver", "limit", "time_limit"}
+        overlap = reserved.intersection(controls)
+        if overlap:
+            raise InspectRunnerError(
+                "Inspect model_args may not override runner controls: "
+                + ", ".join(sorted(overlap)),
+                category="model_failure",
+            )
+    if config.task_limit is not None:
+        controls["limit"] = config.task_limit
+    if config.token_limit is not None:
+        controls["token_limit"] = config.token_limit
+    if config.max_connections is not None:
+        controls["max_connections"] = config.max_connections
+    if config.timeout_seconds is not None:
+        controls["time_limit"] = config.timeout_seconds
+    return controls
+
+
+def _declared_call_attribution(
+    config: InspectRunnerConfig,
+) -> tuple[dict[str, object], ...]:
+    """Return only solver-declared call facts; unknown facts remain null."""
+    solver = config.solver.rsplit(":", 1)[-1]
+    if solver in {"planner_executor_generate", "incident_planner_executor_generate"}:
+        return (
+            {
+                "call_role": "planning",
+                "original_task_included": True,
+                "prior_conversation_retained": False,
+            },
+            {
+                "call_role": "execution",
+                "original_task_included": True,
+                "prior_conversation_retained": True,
+            },
+        )
+    if solver == "generate":
+        return (
+            {
+                "call_role": "direct_generation",
+                "original_task_included": True,
+                "prior_conversation_retained": False,
+            },
+        )
+    return ()
+
+
+_SAFE_SAMPLE_METADATA_KEYS = frozenset(
+    {
+        "scenario_id",
+        "length_band",
+        "original_prompt_characters",
+        "original_prompt_words",
+        "original_prompt_tokens",
+        "tokenizer",
+        "token_count_kind",
+        "expected_decision_digest",
+    }
+)
+
+
+def _safe_sample_metadata(record: object) -> dict[str, object]:
+    """Persist declared, non-content sample dimensions only."""
+    metadata = _value(record, "metadata")
+    if not isinstance(metadata, Mapping):
+        return {}
+    return {
+        key: metadata[key]
+        for key in _SAFE_SAMPLE_METADATA_KEYS
+        if key in metadata and isinstance(metadata[key], str | int | float | bool)
+    }
+
+
+def _score_failure_category(record: object) -> str | None:
+    scores = _value(record, "scores")
+    if not isinstance(scores, Mapping):
+        return None
+    for score in scores.values():
+        metadata = _value(score, "metadata")
+        if isinstance(metadata, Mapping) and metadata.get("failure_category"):
+            return str(metadata["failure_category"])
+    return None
+
+
+def _scaffold_plan_artifact(record: object) -> EvaluationArtifact | None:
+    """Persist a versioned plan identity, never plan text or hidden reasoning."""
+    store = _value(record, "store")
+    if not isinstance(store, Mapping):
+        return None
+    plan = store.get(SCAFFOLD_PLAN_STORE_KEY)
+    if not isinstance(plan, Mapping):
+        return None
+    schema_version = str(plan.get("schema_version") or "").strip()
+    content_digest = str(plan.get("content_digest") or "").strip()
+    if not schema_version or not content_digest:
+        return None
+    return EvaluationArtifact(
+        artifact_type=SCAFFOLD_PLAN_ARTIFACT_TYPE,
+        payload={
+            "schema_version": schema_version,
+            "content_digest": content_digest,
+            "stage": str(plan.get("stage") or "planning"),
+        },
+        metadata={
+            "retention": "evaluation_result",
+            "durable": True,
+            "content_retained": False,
+            "expected_schema_version": SCAFFOLD_PLAN_SCHEMA_VERSION,
+        },
+    )
+
+
 def _batch_artifacts(raw: object) -> list[EvaluationArtifact]:
     """Record raw log retention truthfully; local worker paths are not durable."""
-    records = raw if isinstance(raw, Sequence) and not isinstance(raw, str | bytes) else (raw,)
+    records = (
+        raw
+        if isinstance(raw, Sequence) and not isinstance(raw, str | bytes)
+        else (raw,)
+    )
     references = [
         str(reference)
         for record in records
@@ -568,7 +778,10 @@ def _safe_observable_events(record: object) -> list[dict[str, object]]:
     safe: list[dict[str, object]] = []
     for index, event in enumerate(raw_events):
         kind = str(
-            _value(event, "event") or _value(event, "event_type") or _value(event, "type") or "unknown"
+            _value(event, "event")
+            or _value(event, "event_type")
+            or _value(event, "type")
+            or "unknown"
         ).lower()
         item: dict[str, object] = {"sequence": index, "kind": kind}
         if kind in {"tool", "tool_call", "tool_result"}:
@@ -591,6 +804,11 @@ def _safe_observable_events(record: object) -> list[dict[str, object]]:
             duration = _number(_value(output, "time")) if output is not None else None
             if duration is not None:
                 item["duration_seconds"] = duration
+            usage = _value(output, "usage") if output is not None else None
+            for metric_name in ("input_tokens", "output_tokens", "total_tokens"):
+                usage_value = _number(_value(usage, metric_name))
+                if usage_value is not None:
+                    item[metric_name] = usage_value
         safe.append(item)
     return safe
 
@@ -622,6 +840,23 @@ def _failure_category(error: object | None, status: str) -> str:
     if "timeout" in text or "process" in text or "infrastructure" in text:
         return "infrastructure_failure"
     return "evaluation_runner_failure"
+
+
+def _validate_model_generation_configuration(config: InspectRunnerConfig) -> None:
+    """Fail before dispatch when a model rejects a declared generation option."""
+    model = config.model.lower()
+    if model.startswith("openai/gpt-5") and "max_tokens" in config.model_args:
+        raise InspectRunnerError(
+            "OpenAI GPT-5 models do not support Inspect max_tokens. "
+            "Set the fixed Inspect token_limit instead.",
+            category="model_failure",
+        )
+    if model.startswith("openai/gpt-5") and "temperature" in config.model_args:
+        raise InspectRunnerError(
+            "OpenAI GPT-5 models in this Inspect transport require the provider "
+            "default temperature. Remove temperature from model_args.",
+            category="model_failure",
+        )
 
 
 def _requires_unsupported_openai_tool_transport(config: InspectRunnerConfig) -> bool:

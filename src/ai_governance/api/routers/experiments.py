@@ -19,6 +19,7 @@ from ai_governance.api.mappers import (
 )
 from ai_governance.api.models import (
     ErrorResponse,
+    EvaluationReportResponse,
     EvaluationRunResponse,
     EvaluationRunResultPageResponse,
     ExperimentCandidateComparisonResponse,
@@ -220,6 +221,34 @@ def list_run_evaluations(
             page=page,
             page_size=page_size,
             context=context,
+        )
+    )
+
+
+@router.get(
+    "/{experiment_id}/report",
+    response_model=EvaluationReportResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
+        status.HTTP_404_NOT_FOUND: {"model": ErrorResponse},
+    },
+    summary="Get generic persisted evaluation report",
+    description=(
+        "Aggregate persisted child evaluation results by an optional declared sample "
+        "dimension. Unavailable provider telemetry remains unavailable."
+    ),
+)
+def get_evaluation_report(
+    experiment_id: str,
+    experiment_api_service: Annotated[object, Depends(get_experiment_api_service)],
+    context=Depends(get_compatible_tenant_context),
+    group_dimension: str = Query(default="length_band", min_length=1, max_length=80),
+) -> EvaluationReportResponse:
+    """Return a read-only, tenant-scoped report over durable evaluation evidence."""
+    return ExperimentApiMapper.to_evaluation_report_response(
+        experiment_api_service.get_evaluation_report(
+            experiment_id, context, group_dimension=group_dimension
         )
     )
 

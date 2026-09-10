@@ -131,6 +131,8 @@ def test_run_and_leaderboard_responses_map_domain_objects() -> None:
     assert response.runs[0].status == "COMPLETED"
     assert response.leaderboard is not None
     assert response.leaderboard.entries[0].candidate_id == "candidate-1"
+    assert response.leaderboard.entries[0].cost is None
+    assert response.leaderboard.entries[0].latency is None
 
 
 def test_evaluation_run_response_maps_domain_run() -> None:

@@ -41,12 +41,20 @@ class OverallScoreRanking(RankingStrategy):
         if not evaluation_result.metrics:
             raise ValueError("OverallScoreRanking requires evaluation metrics.")
 
-        score = sum(
+        quality_metrics = [
             metric.metric_value
             for metric in evaluation_result.metrics
-        ) / len(evaluation_result.metrics)
+            if metric.metric_name.lower()
+            in {"overall_score", "score", "pass", "groundedness", "answer_relevance"}
+        ]
+        if not quality_metrics:
+            raise ValueError(
+                "OverallScoreRanking requires a quality metric; operational counters "
+                "such as tokens, duration, actions, and cost are not ranking points."
+            )
+        score = sum(quality_metrics) / len(quality_metrics)
 
-        return score, "Ranked by average evaluation metric score."
+        return score, "Ranked by average quality metric score."
 
 
 class GroundednessRanking(RankingStrategy):
@@ -107,10 +115,8 @@ class LowestCostRanking(RankingStrategy):
         evaluation_result: EvaluationResult,
         model: Model | None,
     ) -> tuple[float, str]:
-        if model is None or model.cost is None:
-            raise ValueError("LowestCostRanking requires model cost.")
-
-        return -sum(model.cost.values()), "Ranked by lowest model cost."
+        cost = _metric_value(evaluation_result, "estimated_model_cost")
+        return -cost, "Ranked by lowest reported evaluation cost."
 
 
 class HallucinationRanking(RankingStrategy):
@@ -136,6 +142,4 @@ def _metric_value(
         if metric.metric_name == metric_name:
             return metric.metric_value
 
-    raise ValueError(
-        f"Ranking strategy requires metric '{metric_name}'."
-    )
+    raise ValueError(f"Ranking strategy requires metric '{metric_name}'.")

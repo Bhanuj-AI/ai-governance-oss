@@ -48,17 +48,29 @@ def test_ranking_service_ranks_candidates_and_generates_leaderboard() -> None:
     improved = _candidate("candidate-2", "model-2")
     dependencies["candidate_repository"].save(baseline)
     dependencies["candidate_repository"].save(improved)
-    dependencies["model_repository"].save(
-        _model("model-1", latency=0.7, cost=0.03)
-    )
-    dependencies["model_repository"].save(
-        _model("model-2", latency=0.4, cost=0.02)
+    dependencies["model_repository"].save(_model("model-1", latency=0.7, cost=0.03))
+    dependencies["model_repository"].save(_model("model-2", latency=0.4, cost=0.02))
+    dependencies["evaluation_repository"].save(
+        _result(
+            "evaluation-1",
+            "run-1-candidate-1",
+            0.81,
+            0.79,
+            0.11,
+            estimated_cost=0.021,
+            duration_seconds=4.7,
+        )
     )
     dependencies["evaluation_repository"].save(
-        _result("evaluation-1", "run-1-candidate-1", 0.81, 0.79, 0.11)
-    )
-    dependencies["evaluation_repository"].save(
-        _result("evaluation-2", "run-2-candidate-2", 0.93, 0.95, 0.04)
+        _result(
+            "evaluation-2",
+            "run-2-candidate-2",
+            0.93,
+            0.95,
+            0.04,
+            estimated_cost=0.012,
+            duration_seconds=3.5,
+        )
     )
     dependencies["run_repository"].save(
         _completed_run("run-1", baseline.candidate_id, "evaluation-1")
@@ -75,16 +87,15 @@ def test_ranking_service_ranks_candidates_and_generates_leaderboard() -> None:
         "candidate-1",
     ]
     assert rankings[0].rank == 1
-    assert rankings[0].reason == "Ranked by average evaluation metric score."
+    assert rankings[0].reason == "Ranked by average quality metric score."
     assert leaderboard.entries[0].candidate_id == "candidate-2"
-    assert leaderboard.entries[0].metrics["GROUNDEDNESS"] == pytest.approx(
-        0.93
+    assert leaderboard.entries[0].metrics["GROUNDEDNESS"] == pytest.approx(0.93)
+    assert leaderboard.entries[0].cost == pytest.approx(0.012)
+    assert leaderboard.entries[0].latency == pytest.approx(3.5)
+    assert (
+        dependencies["leaderboard_repository"].find_by_id("leaderboard-1")
+        == leaderboard
     )
-    assert leaderboard.entries[0].cost == pytest.approx(0.02)
-    assert leaderboard.entries[0].latency == pytest.approx(0.4)
-    assert dependencies["leaderboard_repository"].find_by_id(
-        "leaderboard-1"
-    ) == leaderboard
 
 
 def test_ranking_service_uses_latest_completed_run_per_candidate() -> None:
@@ -98,9 +109,7 @@ def test_ranking_service_uses_latest_completed_run_per_candidate() -> None:
     )
     candidate = _candidate("candidate-1", "model-1")
     dependencies["candidate_repository"].save(candidate)
-    dependencies["model_repository"].save(
-        _model("model-1", latency=0.5, cost=0.01)
-    )
+    dependencies["model_repository"].save(_model("model-1", latency=0.5, cost=0.01))
     dependencies["evaluation_repository"].save(
         _result("evaluation-old", "run-old-candidate-1", 0.75, 0.75, 0.12)
     )
@@ -221,17 +230,26 @@ def _result(
     groundedness: float,
     answer_relevance: float,
     hallucination: float,
+    estimated_cost: float | None = None,
+    duration_seconds: float | None = None,
 ) -> EvaluationResult:
+    metrics = [
+        EvaluationMetric("GROUNDEDNESS", groundedness),
+        EvaluationMetric("ANSWER_RELEVANCE", answer_relevance),
+        EvaluationMetric("HALLUCINATION", hallucination),
+    ]
+    if estimated_cost is not None:
+        metrics.append(EvaluationMetric("estimated_model_cost", estimated_cost))
+    if duration_seconds is not None:
+        metrics.append(
+            EvaluationMetric("wall_clock_duration_seconds", duration_seconds)
+        )
     return EvaluationResult(
         evaluation_id=evaluation_id,
         execution_id=execution_id,
         evaluator_type="FAKE",
         evaluator_version="1.0",
-        metrics=[
-            EvaluationMetric("GROUNDEDNESS", groundedness),
-            EvaluationMetric("ANSWER_RELEVANCE", answer_relevance),
-            EvaluationMetric("HALLUCINATION", hallucination),
-        ],
+        metrics=metrics,
         metadata={},
     )
 

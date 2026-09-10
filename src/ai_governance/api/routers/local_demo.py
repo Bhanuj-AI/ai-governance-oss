@@ -73,7 +73,6 @@ def get_agent_runtime_demo_status(
     from ai_governance.api.dependencies import (
         get_agent_execution_service,
         get_causal_audit_repository,
-        get_evidence_intervention_policy_repository,
         get_runtime_finding_repository,
     )
 
@@ -83,7 +82,6 @@ def get_agent_runtime_demo_status(
             execution_repo=exec_service._execution_repo,
             finding_repo=get_runtime_finding_repository(),
             causal_audit_repo=get_causal_audit_repository(),
-            intervention_policy_repo=get_evidence_intervention_policy_repository(),
         )
     )
 
@@ -116,7 +114,6 @@ def seed_agent_runtime_demo(
     from ai_governance.api.dependencies import (
         get_agent_execution_service,
         get_causal_audit_repository,
-        get_evidence_intervention_policy_repository,
         get_runtime_finding_repository,
     )
 
@@ -128,13 +125,11 @@ def seed_agent_runtime_demo(
         event_repo=exec_service._event_repo,
         finding_repo=finding_repo,
         causal_audit_repo=get_causal_audit_repository(),
-        intervention_policy_repo=get_evidence_intervention_policy_repository(),
     )
 
     return DemoSeedResponse(
         seeded=True,
         decision_ids=result["execution_ids"]
         + result["finding_ids"]
-        + result["causal_audit_ids"]
-        + result["intervention_policy_ids"],
+        + result["causal_audit_ids"],
     )

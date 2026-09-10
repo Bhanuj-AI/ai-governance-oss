@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections import Counter, defaultdict
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
@@ -152,6 +153,43 @@ class ExperimentRunEvaluationPage:
     page_size: int
     total_items: int
     items: tuple[EvaluationResult, ...]
+
+
+@dataclass(frozen=True)
+class EvaluationReportCallRole:
+    call_role: str
+    call_count: int
+    input_tokens: float | None
+    output_tokens: float | None
+    total_tokens: float | None
+    duration_ms: float | None
+    original_task_included: bool | None
+    prior_conversation_retained: bool | None
+
+
+@dataclass(frozen=True)
+class EvaluationReportRow:
+    candidate_id: str
+    candidate_name: str
+    group: str
+    sample_count: int
+    pass_rate: float | None
+    metrics: Mapping[str, float]
+    original_task_tokens: float | None
+    tokenizer: str | None
+    token_count_kind: str | None
+    failure_categories: Mapping[str, int]
+    failed_scenario_ids: tuple[str, ...]
+    call_roles: tuple[EvaluationReportCallRole, ...]
+    provider_cost: float | None
+
+
+@dataclass(frozen=True)
+class EvaluationReport:
+    experiment_id: str
+    group_dimension: str
+    rows: tuple[EvaluationReportRow, ...]
+    runner_provenance: Mapping[str, tuple[Mapping[str, Any], ...]]
 
 
 class ExperimentApiService:
@@ -447,6 +485,118 @@ class ExperimentApiService:
             model_invocation_count=len(candidates) * dataset.record_count,
             evaluation_item_count=len(candidates) * dataset.record_count,
             active_run=active_progress,
+        )
+
+    def get_evaluation_report(
+        self,
+        experiment_id: str,
+        context: TenantContext,
+        *,
+        group_dimension: str = "length_band",
+    ) -> EvaluationReport:
+        """Derive a generic report from durable child evaluation results.
+
+        Providers may supply optional, safe sample dimensions (for example a
+        prompt-length band). Providers that do not do so remain reportable in
+        the ``all`` group; no provider SDK or schema enters this contract.
+        """
+        self.get_experiment(experiment_id, context)
+        candidates = {
+            candidate.candidate_id: candidate
+            for candidate in self._candidate_repository.find_by_experiment_id(experiment_id)
+        }
+        grouped: dict[tuple[str, str], list[EvaluationResult]] = defaultdict(list)
+        provenance: dict[str, dict[str, Mapping[str, Any]]] = defaultdict(dict)
+        for run in self._evaluation_run_repository.find_by_experiment_id(experiment_id):
+            candidate = candidates.get(run.candidate_id)
+            if candidate is None:
+                continue
+            if run.runner_provenance:
+                fingerprint = str(run.runner_provenance.get("configuration_fingerprint", "unknown"))
+                provenance[candidate.candidate_id][fingerprint] = run.runner_provenance
+            page = self._evaluation_repository.find_page_by_execution_id_prefix(
+                f"{run.run_id}:sample:", context, offset=0, limit=10_000
+            )
+            for result in page.items:
+                group = str(result.metadata.get(group_dimension) or "all")
+                grouped[(candidate.candidate_id, group)].append(result)
+
+        rows = tuple(
+            self._evaluation_report_row(
+                candidates[candidate_id], group, results
+            )
+            for (candidate_id, group), results in sorted(grouped.items())
+        )
+        return EvaluationReport(
+            experiment_id=experiment_id,
+            group_dimension=group_dimension,
+            rows=rows,
+            runner_provenance={
+                candidate_id: tuple(values.values())
+                for candidate_id, values in sorted(provenance.items())
+            },
+        )
+
+    @staticmethod
+    def _evaluation_report_row(
+        candidate: ExperimentCandidate,
+        group: str,
+        results: Sequence[EvaluationResult],
+    ) -> EvaluationReportRow:
+        metric_values: dict[str, list[float]] = defaultdict(list)
+        prompt_tokens: list[float] = []
+        failure_categories: Counter[str] = Counter()
+        failed_scenarios: set[str] = set()
+        role_calls: dict[str, list[Mapping[str, object]]] = defaultdict(list)
+        tokenizers: set[str] = set()
+        token_kinds: set[str] = set()
+        for result in results:
+            for metric in result.metrics:
+                metric_values[metric.metric_name].append(metric.metric_value)
+            token_value = _number_value(result.metadata.get("original_prompt_tokens"))
+            if token_value is not None:
+                prompt_tokens.append(token_value)
+            if value := result.metadata.get("tokenizer"):
+                tokenizers.add(str(value))
+            if value := result.metadata.get("token_count_kind"):
+                token_kinds.add(str(value))
+            passed = next(
+                (metric.metric_value > 0 for metric in result.metrics if metric.metric_name == "pass"),
+                None,
+            )
+            if passed is False:
+                failure_categories[str(result.metadata.get("failure_category") or "incorrect")]+=1
+                if scenario_id := result.metadata.get("scenario_id"):
+                    failed_scenarios.add(str(scenario_id))
+            calls = result.metadata.get("model_call_usage")
+            if isinstance(calls, Sequence) and not isinstance(calls, str | bytes):
+                for call in calls:
+                    if isinstance(call, Mapping):
+                        role_calls[str(call.get("call_role") or "unattributed")].append(call)
+
+        call_roles = tuple(
+            _report_call_role(role, calls)
+            for role, calls in sorted(role_calls.items())
+        )
+        metrics = {
+            name: sum(values) / len(values)
+            for name, values in sorted(metric_values.items())
+            if values
+        }
+        return EvaluationReportRow(
+            candidate_id=candidate.candidate_id,
+            candidate_name=candidate.name,
+            group=group,
+            sample_count=len(results),
+            pass_rate=metrics.get("pass"),
+            metrics=metrics,
+            original_task_tokens=(sum(prompt_tokens) / len(prompt_tokens) if prompt_tokens else None),
+            tokenizer=next(iter(tokenizers)) if len(tokenizers) == 1 else None,
+            token_count_kind=next(iter(token_kinds)) if len(token_kinds) == 1 else None,
+            failure_categories=dict(sorted(failure_categories.items())),
+            failed_scenario_ids=tuple(sorted(failed_scenarios)),
+            call_roles=call_roles,
+            provider_cost=metrics.get("estimated_model_cost"),
         )
 
     def cancel_experiment(
@@ -1877,6 +2027,40 @@ def _model_latency_ms(metadata: Mapping[str, Any]) -> int | None:
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         return None
     return value
+
+
+def _number_value(value: object) -> float | None:
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _report_call_role(
+    role: str,
+    calls: Sequence[Mapping[str, object]],
+) -> EvaluationReportCallRole:
+    def average(name: str) -> float | None:
+        values = [_number_value(call.get(name)) for call in calls]
+        observed = [value for value in values if value is not None]
+        return sum(observed) / len(observed) if observed else None
+
+    def shared_boolean(name: str) -> bool | None:
+        values = [call.get(name) for call in calls if isinstance(call.get(name), bool)]
+        return values[0] if values and len(set(values)) == 1 else None
+
+    return EvaluationReportCallRole(
+        call_role=role,
+        call_count=len(calls),
+        input_tokens=average("input_tokens"),
+        output_tokens=average("output_tokens"),
+        total_tokens=average("total_tokens"),
+        duration_ms=average("duration_ms"),
+        original_task_included=shared_boolean("original_task_included"),
+        prior_conversation_retained=shared_boolean("prior_conversation_retained"),
+    )
 
 
 def _required_tenant_context(context: TenantContext | None) -> TenantContext:
