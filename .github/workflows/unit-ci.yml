@@ -19,7 +19,9 @@ jobs:
 
       - uses: astral-sh/setup-uv@v5
 
-      - run: uv sync
+      # Inspect-backed unit tests verify the package-resolvable task and solver
+      # contracts shipped by this repository.
+      - run: uv sync --frozen --extra inspect
 
       - name: Run unit tests with coverage
         run: uv run pytest tests/unit -v --cov=ai-governance --cov-report=term-missing
