@@ -205,6 +205,12 @@ Start the local Studio, API, ontology, worker and storage topology:
 
 ```bash
 # Clone Repository
+## GITHUB:
+git clone https://github.com/Bhanuj-AI/ai-governance-oss
+
+## OR
+
+## GITLAB: 
 git clone https://gitlab.com/bhanuj-ai/ai-governance-oss.git
 cd ai-governance-oss
 
