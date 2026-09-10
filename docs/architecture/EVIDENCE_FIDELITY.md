@@ -94,19 +94,40 @@ The report preserves the outcome, but it cannot explain the robot's behaviour.
 
 ### What we proved
 
-1. **The surrounding agent design matters.**
+1. **A prompt variant is not automatically a planner–executor scaffold.**
 
-   The same model answered the same questions correctly with both scaffolds.
-   But the planning scaffold used **2.25× more tokens** (539 rather than 240).
-   Adding planning did not improve these deliberately easy answers; it made
-   them more expensive.
+   The original integration smoke run made one model call with an added
+   instruction to plan internally. Across 20 attempts, direct generation used
+   400 input + 80 output = **480 tokens**; the planning-instruction variant
+   used 860 input + 239 output = **1,099 tokens** (2.29×). This proves that an
+   instruction changes usage, not planner–executor overhead. The fixture is
+   named `planning_instruction_generate` to make that boundary clear.
 
-2. **AI Governance Platform preserves the robot's diary.**
+2. **A genuine planner–executor scaffold changes the measured result.**
+
+   A controlled run used ten multi-step exact-answer tasks, the same model,
+   scorer, limits, and two repetitions per candidate. Direct generation made
+   one call per sample; `planner_executor_generate` made one structured-plan
+   call and one answer call. The plan content was used by the answer call but
+   persisted only as a versioned digest.
+
+   | Candidate | Exact passes | Calls | Total tokens | Model latency |
+   | --- | ---: | ---: | ---: | ---: |
+   | Direct generation (20 samples) | 18 / 20 | 20 | 2,129 | 33.79 s |
+   | Planner–executor (20 samples) | 19 / 20 | 40 | 9,143 | 59.57 s |
+
+   Every baseline sample had one call, every planner–executor sample had two,
+   and the sum of per-call usage equalled the reported sample total. Under
+   these fixed conditions, the genuine scaffold changed accuracy from 90% to
+   95%, token consumption by **4.29×**, and model latency by **1.76×**. This is
+   a small controlled result, not a claim about all agent workloads.
+
+3. **AI Governance Platform preserves the robot's diary.**
 
    Replay reads ordered Agent Runtime events, including actions, evidence,
    failures, and recovery order. Therefore, Replay is trajectory-grade.
 
-3. **The ontology projection is only a summary.**
+4. **The ontology projection is only a summary.**
 
    It preserved:
 

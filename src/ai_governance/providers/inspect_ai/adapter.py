@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from importlib import import_module
@@ -16,6 +17,11 @@ from ai_governance.domain.evaluation_result import (
     EvaluationSampleResult,
 )
 from ai_governance.evaluation.evaluation_request import EvaluationRequest
+from ai_governance.evaluation.scaffold_artifacts import (
+    SCAFFOLD_PLAN_ARTIFACT_TYPE,
+    SCAFFOLD_PLAN_SCHEMA_VERSION,
+    SCAFFOLD_PLAN_STORE_KEY,
+)
 from ai_governance.providers.evaluation_provider import (
     BatchEvaluationResult,
     EvaluationProvider,
@@ -35,6 +41,7 @@ _METRICS = (
     "pass",
     "score",
     "tool_action_count",
+    "model_call_count",
     "input_tokens",
     "output_tokens",
     "total_tokens",
@@ -242,6 +249,7 @@ class InspectEvaluationRunner(EvaluationProvider):
         aliases_by_metric = {
             "score": ("score",),
             "tool_action_count": ("tool_action_count", "tool_calls", "actions"),
+            "model_call_count": ("model_call_count",),
             "input_tokens": ("input_tokens", "tokens_input"),
             "output_tokens": ("output_tokens", "tokens_output"),
             "total_tokens": ("total_tokens", "tokens"),
@@ -340,7 +348,9 @@ class InspectEvaluationRunner(EvaluationProvider):
 
 def _records(raw: object) -> tuple[object, ...]:
     samples = _value(raw, "samples")
-    if isinstance(samples, Sequence) and not isinstance(samples, str | bytes | bytearray):
+    if isinstance(samples, Sequence) and not isinstance(
+        samples, str | bytes | bytearray
+    ):
         return tuple(samples)
     if isinstance(raw, Sequence) and not isinstance(raw, str | bytes | bytearray):
         if not raw:
@@ -420,14 +430,37 @@ def _inspect_sample_metric(record: object, metric_name: str) -> float | None:
     """Extract standard Inspect sample evidence without retaining content."""
     usage = _value(record, "model_usage")
     if metric_name in {"input_tokens", "output_tokens", "total_tokens"}:
-        if not isinstance(usage, Mapping):
-            return None
-        return float(
-            sum(
-                _number(_value(model_usage, metric_name)) or 0.0
-                for model_usage in usage.values()
+        aggregate = (
+            float(
+                sum(
+                    _number(_value(model_usage, metric_name)) or 0.0
+                    for model_usage in usage.values()
+                )
             )
+            if isinstance(usage, Mapping)
+            else None
         )
+        per_call_values = [
+            _number(call.get(metric_name)) for call in _model_call_usage(record)
+        ]
+        per_call = (
+            float(sum(value for value in per_call_values if value is not None))
+            if per_call_values and all(value is not None for value in per_call_values)
+            else None
+        )
+        if (
+            aggregate is not None
+            and per_call is not None
+            and not math.isclose(aggregate, per_call, rel_tol=0.0, abs_tol=1e-6)
+        ):
+            raise InspectRunnerError(
+                "Inspect sample usage does not equal the sum of its model-call usage.",
+                category="evaluation_runner_failure",
+            )
+        return per_call if per_call is not None else aggregate
+    if metric_name == "model_call_count":
+        calls = _model_call_usage(record)
+        return float(len(calls)) if calls else None
     if metric_name == "wall_clock_duration_seconds":
         direct = _number(_value(record, "total_time"))
         if direct is not None:
@@ -447,6 +480,29 @@ def _inspect_sample_metric(record: object, metric_name: str) -> float | None:
             return float(sum(1 for event in events if _value(event, "event") == "tool"))
         return 0.0
     return None
+
+
+def _model_call_usage(record: object) -> list[dict[str, float | int]]:
+    """Return safe, provider-neutral per-call metrics from Inspect model events."""
+    events = _value(record, "events")
+    if not isinstance(events, Sequence) or isinstance(events, str | bytes):
+        return []
+    calls: list[dict[str, float | int]] = []
+    for event in events:
+        if _value(event, "event") not in {"model", "model_call", "generate"}:
+            continue
+        output = _value(event, "output")
+        usage = _value(output, "usage") if output is not None else None
+        call: dict[str, float | int] = {"call_index": len(calls) + 1}
+        for name in ("input_tokens", "output_tokens", "total_tokens"):
+            value = _number(_value(usage, name))
+            if value is not None:
+                call[name] = value
+        duration = _number(_value(output, "time")) if output is not None else None
+        if duration is not None:
+            call["duration_seconds"] = duration
+        calls.append(call)
+    return calls
 
 
 def _sample_result(
@@ -495,10 +551,13 @@ def _sample_result(
             value = _inspect_sample_metric(record, metric_name)
         if value is not None:
             metrics.append(EvaluationMetric(metric_name, value))
+    model_calls = _model_call_usage(record)
+    if model_calls:
+        metrics.append(EvaluationMetric("model_call_count", float(len(model_calls))))
     sample_id = str(_value(record, "id") or index)
     safe_events = _safe_observable_events(record)
     payload = {"schema_version": "1", "events": safe_events}
-    artifacts = (
+    artifacts = [
         EvaluationArtifact(
             artifact_type="observable_execution_events",
             payload=payload,
@@ -509,8 +568,10 @@ def _sample_result(
                 "retention": "evaluation_result",
                 "durable": True,
             },
-        ),
-    )
+        )
+    ]
+    if plan_artifact := _scaffold_plan_artifact(record):
+        artifacts.append(plan_artifact)
     return EvaluationSampleResult(
         sample_id=sample_id,
         metrics=tuple(metrics),
@@ -518,8 +579,10 @@ def _sample_result(
             "sample_status": status,
             "sample_index": index,
             "observable_event_count": len(safe_events),
+            "model_call_count": len(model_calls),
+            "model_call_usage": model_calls,
         },
-        artifacts=artifacts,
+        artifacts=tuple(artifacts),
         provider_metadata={
             "provider": "inspect_ai",
             "runner_provenance": dict(provenance),
@@ -527,9 +590,41 @@ def _sample_result(
     )
 
 
+def _scaffold_plan_artifact(record: object) -> EvaluationArtifact | None:
+    """Persist a versioned plan identity, never plan text or hidden reasoning."""
+    store = _value(record, "store")
+    if not isinstance(store, Mapping):
+        return None
+    plan = store.get(SCAFFOLD_PLAN_STORE_KEY)
+    if not isinstance(plan, Mapping):
+        return None
+    schema_version = str(plan.get("schema_version") or "").strip()
+    content_digest = str(plan.get("content_digest") or "").strip()
+    if not schema_version or not content_digest:
+        return None
+    return EvaluationArtifact(
+        artifact_type=SCAFFOLD_PLAN_ARTIFACT_TYPE,
+        payload={
+            "schema_version": schema_version,
+            "content_digest": content_digest,
+            "stage": str(plan.get("stage") or "planning"),
+        },
+        metadata={
+            "retention": "evaluation_result",
+            "durable": True,
+            "content_retained": False,
+            "expected_schema_version": SCAFFOLD_PLAN_SCHEMA_VERSION,
+        },
+    )
+
+
 def _batch_artifacts(raw: object) -> list[EvaluationArtifact]:
     """Record raw log retention truthfully; local worker paths are not durable."""
-    records = raw if isinstance(raw, Sequence) and not isinstance(raw, str | bytes) else (raw,)
+    records = (
+        raw
+        if isinstance(raw, Sequence) and not isinstance(raw, str | bytes)
+        else (raw,)
+    )
     references = [
         str(reference)
         for record in records
@@ -568,7 +663,10 @@ def _safe_observable_events(record: object) -> list[dict[str, object]]:
     safe: list[dict[str, object]] = []
     for index, event in enumerate(raw_events):
         kind = str(
-            _value(event, "event") or _value(event, "event_type") or _value(event, "type") or "unknown"
+            _value(event, "event")
+            or _value(event, "event_type")
+            or _value(event, "type")
+            or "unknown"
         ).lower()
         item: dict[str, object] = {"sequence": index, "kind": kind}
         if kind in {"tool", "tool_call", "tool_result"}:
@@ -591,6 +689,11 @@ def _safe_observable_events(record: object) -> list[dict[str, object]]:
             duration = _number(_value(output, "time")) if output is not None else None
             if duration is not None:
                 item["duration_seconds"] = duration
+            usage = _value(output, "usage") if output is not None else None
+            for metric_name in ("input_tokens", "output_tokens", "total_tokens"):
+                usage_value = _number(_value(usage, metric_name))
+                if usage_value is not None:
+                    item[metric_name] = usage_value
         safe.append(item)
     return safe
 

@@ -4,7 +4,7 @@ import {
   type GovernedFlowStep,
   type GovernedFlowTone,
 } from "@/components/governance/GovernedEventFlow";
-import type { Experiment, Leaderboard } from "@/lib/api/experiments";
+import type { Candidate, Experiment, Leaderboard } from "@/lib/api/experiments";
 
 type LifecyclePresentation = {
   activeStep: number;
@@ -22,6 +22,7 @@ export function ExperimentLifecycle({
   failedRuns,
   leaderboard,
   leaderboardLoading,
+  candidates,
 }: {
   experiment: Experiment;
   candidateCount: number | undefined;
@@ -31,9 +32,15 @@ export function ExperimentLifecycle({
   failedRuns: number;
   leaderboard: Leaderboard | undefined;
   leaderboardLoading: boolean;
+  candidates: Candidate[];
 }) {
   const topEntry = leaderboard?.entries[0];
   const canCompare = (candidateCount ?? 0) >= 2;
+  const hasTopTie = Boolean(
+    topEntry &&
+      leaderboard?.entries.slice(1).some((entry) => entry.overall_score === topEntry.overall_score),
+  );
+  const candidateNameById = new Map(candidates.map((candidate) => [candidate.candidate_id, candidate.candidate_name]));
   const presentation = presentationFor({
     experiment,
     candidateCount,
@@ -43,6 +50,8 @@ export function ExperimentLifecycle({
     failedRuns,
     topEntry,
     leaderboardLoading,
+    hasTopTie,
+    topCandidateName: topEntry ? candidateNameById.get(topEntry.candidate_id) : undefined,
   });
   const steps = stepsFor({
     candidateCount,
@@ -50,6 +59,7 @@ export function ExperimentLifecycle({
     totalRuns,
     completedRuns,
     failedRuns,
+    hasTopTie,
     activeStep: presentation.activeStep,
     activeTone: presentation.tone,
   });
@@ -69,8 +79,8 @@ export function ExperimentLifecycle({
           <div className="grid gap-3 text-sm sm:grid-cols-3">
             <Metadata label="Ranking strategy" value={leaderboard.ranking_strategy} />
             <Metadata
-              label={canCompare ? "Selected rank" : "Observed rank"}
-              value={`#${topEntry.rank} of ${leaderboard.entries.length}`}
+              label={hasTopTie ? "Top outcome" : canCompare ? "Selected rank" : "Observed rank"}
+              value={hasTopTie ? "Tie — no unique winner" : `#${topEntry.rank} of ${leaderboard.entries.length}`}
             />
             <Metadata label="Generated" value={new Date(leaderboard.generated_at).toLocaleString()} />
           </div>
@@ -89,6 +99,8 @@ function presentationFor({
   failedRuns,
   topEntry,
   leaderboardLoading,
+  hasTopTie,
+  topCandidateName,
 }: {
   experiment: Experiment;
   candidateCount: number | undefined;
@@ -98,6 +110,8 @@ function presentationFor({
   failedRuns: number;
   topEntry: Leaderboard["entries"][number] | undefined;
   leaderboardLoading: boolean;
+  hasTopTie: boolean;
+  topCandidateName: string | undefined;
 }): LifecyclePresentation {
   if (candidatesLoading || leaderboardLoading) {
     return {
@@ -107,11 +121,19 @@ function presentationFor({
       tone: "progress",
     };
   }
+  if (topEntry && (candidateCount ?? 0) >= 2 && hasTopTie) {
+    return {
+      activeStep: 2,
+      outcome: "NO UNIQUE WINNER",
+      detail: "The leading candidates have the same quality ranking value. Review efficiency evidence before selecting one.",
+      tone: "warning",
+    };
+  }
   if (topEntry && (candidateCount ?? 0) >= 2) {
     return {
       activeStep: 3,
       outcome: "RECOMMENDED",
-      detail: `${topEntry.candidate_id} ranked #${topEntry.rank} with ranking value ${formatRankingValue(topEntry.overall_score)}.`,
+      detail: `${topCandidateName ?? "The leading candidate"} ranked #${topEntry.rank} with ranking value ${formatRankingValue(topEntry.overall_score)}.`,
       tone: "success",
     };
   }
@@ -177,6 +199,7 @@ function stepsFor({
   totalRuns,
   completedRuns,
   failedRuns,
+  hasTopTie,
   activeStep,
   activeTone,
 }: {
@@ -185,6 +208,7 @@ function stepsFor({
   totalRuns: number;
   completedRuns: number;
   failedRuns: number;
+  hasTopTie: boolean;
   activeStep: number;
   activeTone: Exclude<GovernedFlowTone, "muted">;
 }): GovernedFlowStep[] {
@@ -216,11 +240,13 @@ function stepsFor({
     },
     {
       id: "recommend",
-      label: canCompare ? "publish recommendation" : "comparison required",
+      label: canCompare && !hasTopTie ? "publish recommendation" : "comparison required",
       detail: canCompare
-        ? "The leading candidate is retained as an explainable, non-deploying outcome."
+        ? hasTopTie
+          ? "A quality tie requires human review of the operational trade-offs."
+          : "The leading candidate is retained as an explainable, non-deploying outcome."
         : "A single candidate can be observed, but cannot receive a comparative recommendation.",
-      tone: canCompare ? "success" : "warning",
+      tone: canCompare && !hasTopTie ? "success" : "warning",
     },
   ];
 

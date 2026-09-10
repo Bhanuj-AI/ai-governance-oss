@@ -80,7 +80,7 @@ def test_sqlite_ranking_service_generates_and_persists_leaderboard(
         "candidate-1",
     ]
     assert leaderboard.entries[0].reason == (
-        "Ranked by average evaluation metric score."
+        "Ranked by average quality metric score."
     )
     assert leaderboard.entries[0].metrics["ANSWER_RELEVANCE"] == 0.93
 

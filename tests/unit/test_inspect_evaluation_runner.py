@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import ast
+import asyncio
+import hashlib
 from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -31,18 +34,21 @@ from ai_governance.tenancy.domain import TenantContext
 def test_inspect_runner_invokes_adapter_and_normalizes_result() -> None:
     received: list[InspectRunnerConfig] = []
     runner = InspectEvaluationRunner(
-        executor=lambda config: received.append(config) or {
-            "status": "success",
-            "passed": True,
-            "score": 0.9,
-            "tool_calls": 3,
-            "input_tokens": 11,
-            "output_tokens": 7,
-            "total_tokens": 18,
-            "duration_seconds": 1.5,
-            "model_cost": 0.002,
-            "log_uri": "file:///tmp/inspect.eval",
-        }
+        executor=lambda config: (
+            received.append(config)
+            or {
+                "status": "success",
+                "passed": True,
+                "score": 0.9,
+                "tool_calls": 3,
+                "input_tokens": 11,
+                "output_tokens": 7,
+                "total_tokens": 18,
+                "duration_seconds": 1.5,
+                "model_cost": 0.002,
+                "log_uri": "file:///tmp/inspect.eval",
+            }
+        )
     )
 
     result = runner.evaluate(
@@ -81,7 +87,9 @@ def test_inspect_runner_invokes_adapter_and_normalizes_result() -> None:
     assert "never-persist" not in str(result.provider_metadata)
 
 
-def test_inspect_configuration_fingerprint_is_deterministic_and_changes_for_solver() -> None:
+def test_inspect_configuration_fingerprint_is_deterministic_and_changes_for_solver() -> (
+    None
+):
     baseline = InspectRunnerConfig.from_mapping(
         {
             "model": "model-a",
@@ -136,7 +144,11 @@ def test_inspect_runner_fails_explicitly_without_partial_scores() -> None:
     with pytest.raises(InspectRunnerError, match="model endpoint unavailable"):
         runner.evaluate(
             _request(
-                {"model": "model-a", "solver": "basic_agent", "tasks": ["benchmarks.tasks:task_a"]}
+                {
+                    "model": "model-a",
+                    "solver": "basic_agent",
+                    "tasks": ["benchmarks.tasks:task_a"],
+                }
             )
         )
 
@@ -228,24 +240,182 @@ def test_inspect_workload_estimate_uses_task_limit_not_control_plane_dataset() -
 
 
 def test_packaged_smoke_task_has_ten_exact_samples_and_solver_resolves() -> None:
-    from ai_governance.inspect_tasks import plan_then_generate, scaffold_smoke
+    from ai_governance.inspect_tasks import (
+        planning_instruction_generate,
+        scaffold_smoke,
+    )
 
     smoke_task = scaffold_smoke()
     assert len(smoke_task.dataset) == 10
     assert [sample.target for sample in smoke_task.dataset] == [
-        "2", "7", "3", "3", "12", "B", "January", "7", "blue", "cold"
+        "2",
+        "7",
+        "3",
+        "3",
+        "12",
+        "B",
+        "January",
+        "7",
+        "blue",
+        "cold",
     ]
-    assert plan_then_generate(planning_prompt_version="v1")
+    assert planning_instruction_generate(planning_prompt_version="v1")
     config = InspectRunnerConfig.from_mapping(
         {
             "model": "model-a",
             "tasks": ["ai_governance.inspect_tasks:scaffold_smoke"],
-            "solver": "ai_governance.inspect_tasks:plan_then_generate",
+            "solver": "ai_governance.inspect_tasks:planning_instruction_generate",
             "solver_config": {"planning_prompt_version": "v1"},
         },
         default_task="unused",
     )
     assert _resolve_solver(config)
+
+
+def test_planner_executor_fixture_has_ten_multistep_samples_and_two_model_calls() -> (
+    None
+):
+    from ai_governance.evaluation.scaffold_artifacts import (
+        SCAFFOLD_PLAN_SCHEMA_VERSION,
+        SCAFFOLD_PLAN_STORE_KEY,
+    )
+    from ai_governance.inspect_tasks import (
+        planner_executor_generate,
+        planner_executor_smoke,
+    )
+
+    task = planner_executor_smoke()
+    assert len(task.dataset) == 10
+    assert task.metadata["expected_baseline_model_calls_per_sample"] == 1
+    assert task.metadata["expected_planner_model_calls_per_sample"] == 2
+
+    class FakeStore:
+        def __init__(self) -> None:
+            self.values: dict[str, object] = {}
+
+        def set(self, key: str, value: object) -> None:
+            self.values[key] = value
+
+    state = SimpleNamespace(
+        input_text="Solve the sample task.",
+        user_prompt=SimpleNamespace(text="Solve the sample task."),
+        output=SimpleNamespace(completion=""),
+        store=FakeStore(),
+        messages=[],
+    )
+    calls: list[dict[str, object]] = []
+
+    async def model_generate(fake_state: object, **kwargs: object) -> object:
+        calls.append(dict(kwargs))
+        fake_state.output.completion = (
+            '{"steps":["identify values","calculate result"]}'
+            if len(calls) == 1
+            else "42"
+        )
+        return fake_state
+
+    result = asyncio.run(planner_executor_generate()(state, model_generate))
+
+    assert result.output.completion == "42"
+    assert calls == [{"tool_calls": "none"}, {"tool_calls": "none"}]
+    assert "Original task:\nSolve the sample task." in result.messages[-1].text
+    assert result.store.values[SCAFFOLD_PLAN_STORE_KEY] == {
+        "schema_version": SCAFFOLD_PLAN_SCHEMA_VERSION,
+        "content_digest": hashlib.sha256(
+            b'{"steps":["identify values","calculate result"]}'
+        ).hexdigest(),
+        "stage": "planning",
+    }
+
+
+def test_inspect_batch_retains_safe_per_call_usage_and_plan_artifact() -> None:
+    runner = InspectEvaluationRunner(
+        executor=lambda _config: [
+            {
+                "samples": [
+                    {
+                        "id": "planner-sample",
+                        "scores": {"exact": {"value": "C"}},
+                        "model_usage": {
+                            "model-a": {
+                                "input_tokens": 10,
+                                "output_tokens": 7,
+                                "total_tokens": 17,
+                            }
+                        },
+                        "events": [
+                            {
+                                "event": "model",
+                                "output": {
+                                    "usage": {
+                                        "input_tokens": 4,
+                                        "output_tokens": 2,
+                                        "total_tokens": 6,
+                                    },
+                                    "time": 0.2,
+                                },
+                            },
+                            {
+                                "event": "model",
+                                "output": {
+                                    "usage": {
+                                        "input_tokens": 6,
+                                        "output_tokens": 5,
+                                        "total_tokens": 11,
+                                    },
+                                    "time": 0.3,
+                                },
+                            },
+                        ],
+                        "store": {
+                            "ai_governance.scaffold.plan": {
+                                "schema_version": "planner-executor-plan/v1",
+                                "content_digest": "sha256-plan-digest",
+                                "stage": "planning",
+                            }
+                        },
+                    }
+                ]
+            }
+        ]
+    )
+
+    batch = runner.evaluate_batch(
+        _request(
+            {
+                "model": "model-a",
+                "solver": "ai_governance.inspect_tasks:planner_executor_generate",
+                "tasks": ["ai_governance.inspect_tasks:planner_executor_smoke"],
+            }
+        )
+    )
+
+    sample = batch.sample_results[0]
+    metrics = {metric.metric_name: metric.metric_value for metric in sample.metrics}
+    assert metrics["model_call_count"] == 2.0
+    assert metrics["total_tokens"] == 17.0
+    assert sample.metadata["model_call_usage"] == [
+        {
+            "call_index": 1,
+            "input_tokens": 4.0,
+            "output_tokens": 2.0,
+            "total_tokens": 6.0,
+            "duration_seconds": 0.2,
+        },
+        {
+            "call_index": 2,
+            "input_tokens": 6.0,
+            "output_tokens": 5.0,
+            "total_tokens": 11.0,
+            "duration_seconds": 0.3,
+        },
+    ]
+    plan_artifact = next(
+        artifact
+        for artifact in sample.artifacts
+        if artifact.artifact_type == "scaffold_plan"
+    )
+    assert plan_artifact.metadata["content_retained"] is False
 
 
 def test_packaged_trajectory_fixture_uses_real_deterministic_tools() -> None:
@@ -336,7 +506,11 @@ def test_inspect_runner_normalizes_inspect_sample_logs() -> None:
 
     result = runner.evaluate(
         _request(
-            {"model": "model-a", "solver": "generate", "tasks": ["benchmarks.tasks:task_a"]}
+            {
+                "model": "model-a",
+                "solver": "generate",
+                "tasks": ["benchmarks.tasks:task_a"],
+            }
         )
     )
 
@@ -344,6 +518,7 @@ def test_inspect_runner_normalizes_inspect_sample_logs() -> None:
         "pass": 0.5,
         "score": 0.5,
         "tool_action_count": 0.5,
+        "model_call_count": 1.0,
         "input_tokens": 4.0,
         "output_tokens": 1.5,
         "total_tokens": 5.5,
@@ -366,12 +541,19 @@ def test_inspect_runner_returns_provider_neutral_batch_samples() -> None:
 
     batch = runner.evaluate_batch(
         _request(
-            {"model": "model-a", "solver": "generate", "tasks": ["benchmarks.tasks:task_a"]}
+            {
+                "model": "model-a",
+                "solver": "generate",
+                "tasks": ["benchmarks.tasks:task_a"],
+            }
         )
     )
 
     assert [sample.sample_id for sample in batch.sample_results] == ["one", "two"]
-    assert [sample.metrics[0].metric_value for sample in batch.sample_results] == [1.0, 0.0]
+    assert [sample.metrics[0].metric_value for sample in batch.sample_results] == [
+        1.0,
+        0.0,
+    ]
 
 
 def test_inspect_results_remain_tenant_scoped() -> None:
@@ -385,19 +567,36 @@ def test_inspect_results_remain_tenant_scoped() -> None:
     other = TenantContext("org-b", "project-b", "actor-b", "request-b")
 
     result = service.submit_evaluation(
-            _request({"model": "model-a", "solver": "basic_agent", "tasks": ["benchmarks.tasks:task_a"]}).execution,
+        _request(
+            {
+                "model": "model-a",
+                "solver": "basic_agent",
+                "tasks": ["benchmarks.tasks:task_a"],
+            }
+        ).execution,
         "inspect_ai",
-        provider_config={"model": "model-a", "solver": "basic_agent", "tasks": ["benchmarks.tasks:task_a"]},
+        provider_config={
+            "model": "model-a",
+            "solver": "basic_agent",
+            "tasks": ["benchmarks.tasks:task_a"],
+        },
         context=owner,
     )
 
-    assert service.get_evaluation(result.evaluation_id, owner).evaluation_id == result.evaluation_id
+    assert (
+        service.get_evaluation(result.evaluation_id, owner).evaluation_id
+        == result.evaluation_id
+    )
     with pytest.raises(EvaluationNotFoundError):
         service.get_evaluation(result.evaluation_id, other)
 
 
 def test_controlled_variants_keep_fixed_config_and_vary_scaffold() -> None:
-    fixed = {"model": "model-a", "tasks": ["benchmarks.tasks:task_a"], "scorer": "exact"}
+    fixed = {
+        "model": "model-a",
+        "tasks": ["benchmarks.tasks:task_a"],
+        "scorer": "exact",
+    }
     baseline = _candidate("basic_agent")
     variant = _candidate("react_agent")
 
@@ -409,7 +608,11 @@ def test_controlled_variants_keep_fixed_config_and_vary_scaffold() -> None:
     )
 
     assert baseline_config["model"] == variant_config["model"] == "model-a"
-    assert baseline_config["tasks"] == variant_config["tasks"] == ["benchmarks.tasks:task_a"]
+    assert (
+        baseline_config["tasks"]
+        == variant_config["tasks"]
+        == ["benchmarks.tasks:task_a"]
+    )
     assert baseline_config["scorer"] == variant_config["scorer"] == "exact"
     assert baseline_config["solver"] == "basic_agent"
     assert variant_config["solver"] == "react_agent"

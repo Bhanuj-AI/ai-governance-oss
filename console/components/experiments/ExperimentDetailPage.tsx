@@ -244,7 +244,11 @@ export function ExperimentDetailPage({
   const candidates = useQuery({
     queryKey: ["candidates", experimentId],
     queryFn: () => listCandidates(experimentId),
-    enabled: tab === "Overview" || tab === "Candidates" || tab === "Comparison",
+    enabled:
+      tab === "Overview" ||
+      tab === "Candidates" ||
+      tab === "Comparison" ||
+      tab === "Leaderboard",
   });
   const runs = useQuery({
     queryKey: ["runs", experimentId],
@@ -291,6 +295,9 @@ export function ExperimentDetailPage({
     refetchInterval: tab === "Evaluation Runs" ? autoRefreshMs : false,
   });
   const evaluationResults = runEvaluations.data;
+  const candidateNameById = new Map(
+    (candidates.data ?? []).map((item) => [item.candidate_id, item.candidate_name]),
+  );
 
   const prompts = useQuery({
     queryKey: ["prompt-assets"],
@@ -637,6 +644,7 @@ export function ExperimentDetailPage({
             failedRuns={failedRuns}
             leaderboard={leaderboard.data}
             leaderboardLoading={leaderboard.isLoading}
+            candidates={candidates.data ?? []}
           />
 
           {runPlan.data && (
@@ -1270,20 +1278,20 @@ export function ExperimentDetailPage({
                   <tbody>
                     {leaderboard.data.entries.map((item) => (
                       <tr key={item.candidate_id} className="border-b">
-                        <td className="p-2">{item.rank}</td>
-                        <td>{item.candidate_id}</td>
+                        <td className="p-2">{formatRank(leaderboard.data.entries, item)}</td>
+                        <td>{candidateNameById.get(item.candidate_id) ?? "Unknown candidate"}</td>
                         <td>{formatRankingValue(item.overall_score)}</td>
-                        <td>{item.latency ?? "—"}</td>
-                        <td>{item.cost ?? "—"}</td>
+                        <td>{item.latency == null ? "Unavailable" : formatDuration(item.latency)}</td>
+                        <td>{item.cost == null ? "Unavailable" : item.cost}</td>
                         <td>{item.reason}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
                 <p className="mt-4 text-xs text-muted-foreground">
-                  {leaderboard.data.entries.length >= 2
+                  {hasUniqueWinner(leaderboard.data.entries)
                     ? "A recommendation does not deploy or promote the candidate."
-                    : "One candidate is an observation, not a comparison or recommendation. Ranking values are not percentages unless the selected strategy explicitly defines one."}
+                    : "No unique winner is recommended. Review quality and operational evidence together. Ranking values are not percentages unless the selected strategy explicitly defines one."}
                 </p>
               </div>
             )}
@@ -1709,6 +1717,27 @@ function formatMetricValue(value: number | null | undefined): string {
 
 function formatRankingValue(value: number): string {
   return value.toLocaleString(undefined, { maximumFractionDigits: 4 });
+}
+
+function formatDuration(seconds: number): string {
+  return `${seconds.toLocaleString(undefined, { maximumFractionDigits: 2 })} s`;
+}
+
+function hasUniqueWinner(entries: { overall_score: number }[]): boolean {
+  return entries.length >= 2 && entries[0].overall_score !== entries[1].overall_score;
+}
+
+function formatRank(
+  entries: { candidate_id: string; overall_score: number; rank: number }[],
+  entry: { candidate_id: string; overall_score: number; rank: number },
+): string {
+  const firstRank = Math.min(
+    ...entries.filter((item) => item.overall_score === entry.overall_score).map((item) => item.rank),
+  );
+  const tied = entries.some(
+    (item) => item.candidate_id !== entry.candidate_id && item.overall_score === entry.overall_score,
+  );
+  return tied ? `Tie · ${firstRank}` : String(entry.rank);
 }
 
 function MetricDelta({ metric }: { metric: MetricComparison }) {

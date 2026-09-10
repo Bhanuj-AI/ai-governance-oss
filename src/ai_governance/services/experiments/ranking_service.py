@@ -14,7 +14,6 @@ from ai_governance.domain.experiments import (
     Leaderboard,
     LeaderboardEntry,
 )
-from ai_governance.domain.models import Model
 from ai_governance.repositories.evaluation_repository import EvaluationRepository
 from ai_governance.repositories.evaluation_run_repository import (
     EvaluationRunRepository,
@@ -95,34 +94,27 @@ class RankingService:
             experiment_id=experiment_id,
             ranking_strategy=ranking_strategy,
         )
-        entries = tuple(
-            LeaderboardEntry(
-                rank=ranking.rank,
-                candidate_id=ranking.candidate.candidate_id,
-                overall_score=ranking.overall_score,
-                metrics=self._metric_values(
-                    self._result_by_id(ranking.evaluation_result_id)
-                ),
-                cost=self._total_cost(
-                    self._model_repository.find_by_id(
-                        ranking.candidate.model_id
-                    )
-                ),
-                latency=self._latency(
-                    self._model_repository.find_by_id(
-                        ranking.candidate.model_id
-                    )
-                ),
-                reason=ranking.reason,
+        entries: list[LeaderboardEntry] = []
+        for ranking in rankings:
+            result = self._result_by_id(ranking.evaluation_result_id)
+            metrics = self._metric_values(result)
+            entries.append(
+                LeaderboardEntry(
+                    rank=ranking.rank,
+                    candidate_id=ranking.candidate.candidate_id,
+                    overall_score=ranking.overall_score,
+                    metrics=metrics,
+                    cost=metrics.get("estimated_model_cost"),
+                    latency=metrics.get("wall_clock_duration_seconds"),
+                    reason=ranking.reason,
+                )
             )
-            for ranking in rankings
-        )
         leaderboard = Leaderboard(
             leaderboard_id=self._id_generator(),
             experiment_id=experiment_id,
             ranking_strategy=strategy.strategy_name,
             generated_at=self._clock(),
-            entries=entries,
+            entries=tuple(entries),
         )
         self._leaderboard_repository.save(leaderboard)
 
@@ -134,9 +126,7 @@ class RankingService:
     ) -> Leaderboard:
         leaderboard = self._leaderboard_repository.find_by_id(leaderboard_id)
         if leaderboard is None:
-            raise RankingError(
-                f"Leaderboard '{leaderboard_id}' does not exist."
-            )
+            raise RankingError(f"Leaderboard '{leaderboard_id}' does not exist.")
 
         return leaderboard
 
@@ -144,9 +134,7 @@ class RankingService:
         self,
         experiment_id: str,
     ) -> list[Leaderboard]:
-        return self._leaderboard_repository.find_by_experiment_id(
-            experiment_id
-        )
+        return self._leaderboard_repository.find_by_experiment_id(experiment_id)
 
     def rank_candidates(
         self,
@@ -154,13 +142,9 @@ class RankingService:
         ranking_strategy: str = "overall_score",
     ) -> list[CandidateRanking]:
         strategy = self._strategy(ranking_strategy)
-        candidates = self._candidate_repository.find_by_experiment_id(
-            experiment_id
-        )
+        candidates = self._candidate_repository.find_by_experiment_id(experiment_id)
         if not candidates:
-            raise RankingError(
-                f"Experiment '{experiment_id}' has no candidates."
-            )
+            raise RankingError(f"Experiment '{experiment_id}' has no candidates.")
 
         rankings = [
             self._ranking_for_candidate(
@@ -199,9 +183,7 @@ class RankingService:
     ) -> RankingStrategy:
         strategy = self._strategies.get(ranking_strategy)
         if strategy is None:
-            raise RankingError(
-                f"Unknown ranking strategy '{ranking_strategy}'."
-            )
+            raise RankingError(f"Unknown ranking strategy '{ranking_strategy}'.")
 
         return strategy
 
@@ -253,9 +235,7 @@ class RankingService:
             )
         ]
         if not runs:
-            raise RankingError(
-                "Only completed evaluation runs participate in ranking."
-            )
+            raise RankingError("Only completed evaluation runs participate in ranking.")
 
         latest_run = max(
             runs,
@@ -265,17 +245,13 @@ class RankingService:
             ),
         )
 
-        return latest_run, self._result_by_id(
-            latest_run.evaluation_result_id or ""
-        )
+        return latest_run, self._result_by_id(latest_run.evaluation_result_id or "")
 
     def _result_by_id(
         self,
         evaluation_result_id: str,
     ) -> EvaluationResult:
-        result = self._evaluation_repository.find_by_evaluation_id(
-            evaluation_result_id
-        )
+        result = self._evaluation_repository.find_by_evaluation_id(evaluation_result_id)
         if result is None:
             raise RankingError(
                 f"Evaluation result '{evaluation_result_id}' is missing."
@@ -287,25 +263,4 @@ class RankingService:
     def _metric_values(
         result: EvaluationResult,
     ) -> dict[str, float]:
-        return {
-            metric.metric_name: metric.metric_value
-            for metric in result.metrics
-        }
-
-    @staticmethod
-    def _total_cost(
-        model: Model | None,
-    ) -> float | None:
-        if model is None or model.cost is None:
-            return None
-
-        return sum(model.cost.values())
-
-    @staticmethod
-    def _latency(
-        model: Model | None,
-    ) -> float | None:
-        if model is None:
-            return None
-
-        return model.latency
+        return {metric.metric_name: metric.metric_value for metric in result.metrics}

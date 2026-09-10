@@ -17,7 +17,7 @@ only experimental difference: their solver.
 | Candidate | Solver | Repetitions |
 | --- | --- | --- |
 | `generate` | Inspect `generate` | 2 |
-| `plan_then_generate` | `ai_governance.inspect_tasks:plan_then_generate` | 2 |
+| `planning_instruction_generate` | `ai_governance.inspect_tasks:planning_instruction_generate` | 2 |
 
 The bundled task, `ai_governance.inspect_tasks:scaffold_smoke`, has ten short,
 deterministic samples with exact answers. The expected execution shape is:
@@ -30,6 +30,10 @@ deterministic samples with exact answers. The expected execution shape is:
 Inspect is a `BATCH` provider: one invocation produces several sample results.
 The platform stores one evaluation run for each candidate/repetition and ten
 child results beneath each run. Do not submit the task once per sample.
+
+The second candidate is a one-call planning-instruction prompt variant. It
+proves configuration, fingerprints, batch persistence, and metrics, but not
+planner–executor scaffold overhead.
 
 ## Prerequisites
 
@@ -253,14 +257,14 @@ Add the packaged planning variant. Change only the solver fields:
 curl --fail-with-body -X POST "${SCOPE[@]}" \
   "$API/api/v1/experiments/$EXPERIMENT_ID/candidates" \
   --data "{
-    \"candidate_name\": \"plan_then_generate\",
+    \"candidate_name\": \"planning_instruction_generate\",
     \"prompt_version\": \"demo-prompt-support-v1:v1.0\",
     \"model_version\": \"demo-model-general-v1:2026.01\",
     \"dataset_version\": \"demo-dataset-evaluation:v1.0\",
     \"provider_installation_id\": \"$INSTALLATION_ID\",
     \"metadata\": {
       \"evaluation_runner_config\": {
-        \"solver\": \"ai_governance.inspect_tasks:plan_then_generate\",
+        \"solver\": \"ai_governance.inspect_tasks:planning_instruction_generate\",
         \"solver_config\": {\"planning_prompt_version\": \"v1\"}
       }
     }
@@ -372,9 +376,54 @@ same completed `JOB_ID`, and `/runs` must still contain exactly four runs.
 ## Interpret Smoke Result
 
 The smoke samples are intentionally easy. Equal accuracy only proves that both
-scaffolds and the persistence path work. Compare tokens and latency as an
-efficiency signal, but do not claim scaffold superiority until representative
-agent tasks exercise planning or tool behavior under the same controlled setup.
+candidate configurations and the persistence path work. Compare tokens and
+latency as an instruction-variant signal, not planner–executor overhead.
+
+## Run a Genuine Planner–Executor Experiment
+
+Use `ai_governance.inspect_tasks:planner_executor_smoke` for ten deterministic
+multi-step exact-answer tasks:
+
+```text
+Baseline:          task → generate answer                    (1 model call/sample)
+Planner–executor:  task → structured plan → answer with plan (2 model calls/sample)
+```
+
+Create a separate installation or experiment with these fixed conditions:
+
+```json
+{
+  "model": "openai/gpt-5.6-luna",
+  "tasks": ["ai_governance.inspect_tasks:planner_executor_smoke"],
+  "task_version": "planner-executor-smoke-v1",
+  "scorer": "exact",
+  "scorer_version": "1",
+  "task_limit": 10,
+  "timeout_seconds": 60,
+  "max_connections": 2
+}
+```
+
+Use `generate` for the baseline and this candidate configuration for the
+planner–executor:
+
+```json
+{
+  "evaluation_runner_config": {
+    "solver": "ai_governance.inspect_tasks:planner_executor_generate",
+    "solver_config": {"plan_schema_version": "planner-executor-plan/v1"}
+  }
+}
+```
+
+With two repetitions, expect 40 sample executions: 20 baseline model calls
+and 40 planner–executor model calls. Each sample retains `model_call_count`,
+safe per-call token and duration metrics, and a digest-only `scaffold_plan`
+artifact. The plan text and hidden reasoning are not persisted. Before
+interpreting accuracy, assert one baseline call and two planner calls per
+sample, assert that per-call tokens sum to the reported sample total, and
+compare the secret-free runner fingerprints to prove the scaffold is the only
+candidate-specific condition.
 
 ## Studio Build Note
 

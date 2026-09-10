@@ -29,6 +29,7 @@ from ai_governance.domain.experiments import (
     Experiment,
     ExperimentCandidate,
     Leaderboard,
+    LeaderboardEntry,
 )
 from ai_governance.domain.jobs import JobSubmission, JobType
 from ai_governance.evaluation.evaluation_metrics import EvaluationMetricSpec
@@ -104,9 +105,7 @@ class ExperimentApiMapper:
         Convert a candidate comparison into its REST response representation.
         """
         if comparison.baseline_candidate is None or comparison.candidate is None:
-            raise ValueError(
-                "Candidate comparison is missing candidate configuration."
-            )
+            raise ValueError("Candidate comparison is missing candidate configuration.")
 
         return ExperimentCandidateComparisonResponse(
             experiment_id=comparison.experiment_id or "",
@@ -207,7 +206,8 @@ class ExperimentApiMapper:
             "top_p": float(request.runtime_parameters.get("top_p", 1.0)),
             "max_tokens": int(
                 request.runtime_parameters.get(
-                    "max_output_tokens", request.runtime_parameters.get("max_tokens", 1024)
+                    "max_output_tokens",
+                    request.runtime_parameters.get("max_tokens", 1024),
                 )
             ),
         }
@@ -223,7 +223,8 @@ class ExperimentApiMapper:
                 {
                     "max_tokens" if name == "max_output_tokens" else name
                     for name in request.runtime_parameters
-                    if name in {"temperature", "top_p", "max_tokens", "max_output_tokens"}
+                    if name
+                    in {"temperature", "top_p", "max_tokens", "max_output_tokens"}
                 }
             )
         )
@@ -352,11 +353,13 @@ class ExperimentApiMapper:
                 LeaderboardEntryResponse(
                     rank=entry.rank,
                     candidate_id=entry.candidate_id,
-                    overall_score=entry.overall_score,
+                    overall_score=_observable_ranking_value(entry),
                     metrics=dict(entry.metrics),
-                    cost=entry.cost,
-                    latency=entry.latency,
-                    reason=entry.reason,
+                    cost=entry.metrics.get("estimated_model_cost"),
+                    latency=entry.metrics.get("wall_clock_duration_seconds"),
+                    reason=_observable_ranking_reason(
+                        entry, leaderboard.ranking_strategy
+                    ),
                 )
                 for entry in leaderboard.entries
             ],
@@ -367,6 +370,26 @@ def _scrub_metadata(
     metadata: Mapping[str, Any],
 ) -> dict[str, Any]:
     return scrub_sensitive_metadata(dict(metadata))
+
+
+def _observable_ranking_value(entry: LeaderboardEntry) -> float:
+    """Prefer persisted quality evidence over legacy composite snapshots."""
+    for metric_name in ("overall_score", "score", "pass"):
+        value = entry.metrics.get(metric_name)
+        if value is not None:
+            return value
+    return entry.overall_score
+
+
+def _observable_ranking_reason(
+    entry: LeaderboardEntry,
+    ranking_strategy: str,
+) -> str:
+    if ranking_strategy == "overall_score" and any(
+        name in entry.metrics for name in ("overall_score", "score", "pass")
+    ):
+        return "Ranked by average quality metric score."
+    return entry.reason
 
 
 def _candidate_runtime_parameters(candidate: ExperimentCandidate) -> dict[str, Any]:
