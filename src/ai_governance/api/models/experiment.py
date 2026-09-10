@@ -189,6 +189,46 @@ class EvaluationRunResultPageResponse(BaseModel):
     items: list[EvaluationRunItemResultResponse] = Field(default_factory=list)
 
 
+class EvaluationReportCallRoleResponse(BaseModel):
+    """Provider-neutral aggregate for explicitly attributed model calls."""
+
+    call_role: str
+    call_count: int = Field(ge=0)
+    input_tokens: float | None = None
+    output_tokens: float | None = None
+    total_tokens: float | None = None
+    duration_ms: float | None = None
+    original_task_included: bool | None = None
+    prior_conversation_retained: bool | None = None
+
+
+class EvaluationReportRowResponse(BaseModel):
+    """One candidate and optional sample-dimension group in a generic report."""
+
+    candidate_id: str
+    candidate_name: str
+    group: str
+    sample_count: int = Field(ge=0)
+    pass_rate: float | None = None
+    metrics: dict[str, float] = Field(default_factory=dict)
+    original_task_tokens: float | None = None
+    tokenizer: str | None = None
+    token_count_kind: str | None = None
+    failure_categories: dict[str, int] = Field(default_factory=dict)
+    failed_scenario_ids: list[str] = Field(default_factory=list)
+    call_roles: list[EvaluationReportCallRoleResponse] = Field(default_factory=list)
+    provider_cost: float | None = None
+
+
+class EvaluationReportResponse(BaseModel):
+    """Machine-readable, provider-neutral summary over persisted evaluations."""
+
+    experiment_id: str
+    group_dimension: str
+    rows: list[EvaluationReportRowResponse] = Field(default_factory=list)
+    runner_provenance: dict[str, list[dict[str, Any]]] = Field(default_factory=dict)
+
+
 class ExperimentRunProgressResponse(BaseModel):
     """Live, persisted progress for the active candidate evaluation run."""
 

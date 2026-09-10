@@ -9,6 +9,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from ai_governance.domain.evaluation_result import EvaluationMetric, EvaluationResult
 from ai_governance.domain.experiments import ExperimentCandidate
 from ai_governance.domain.workflow_execution import WorkflowExecution
 from ai_governance.evaluation.evaluation_request import EvaluationRequest
@@ -17,7 +18,10 @@ from ai_governance.providers.inspect_ai import (
     InspectRunnerConfig,
     InspectRunnerError,
 )
-from ai_governance.providers.inspect_ai.adapter import _resolve_solver
+from ai_governance.providers.inspect_ai.adapter import (
+    _inspect_eval_controls,
+    _resolve_solver,
+)
 from ai_governance.providers.inspect_ai.provenance import configuration_provenance
 from ai_governance.providers.provider_registry import EvaluationProviderRegistry
 from ai_governance.repositories.in_memory_evaluation_repository import (
@@ -85,6 +89,57 @@ def test_inspect_runner_invokes_adapter_and_normalizes_result() -> None:
     assert provenance["solver_config_digest"].startswith("sha256:")
     assert provenance["configuration_fingerprint"].startswith("sha256:")
     assert "never-persist" not in str(result.provider_metadata)
+
+
+def test_inspect_eval_controls_use_the_supported_sample_time_limit() -> None:
+    controls = _inspect_eval_controls(
+        InspectRunnerConfig.from_mapping(
+            {
+                "model": "openai/gpt-5-mini",
+                "tasks": ["benchmarks.math:task"],
+                "solver": "generate",
+                "model_args": {"temperature": 0},
+                "task_limit": 4,
+                "token_limit": 256,
+                "timeout_seconds": 120,
+                "max_connections": 2,
+            },
+            default_task="unused",
+        )
+    )
+
+    assert controls == {
+        "temperature": 0,
+        "limit": 4,
+        "token_limit": 256,
+        "max_connections": 2,
+        "time_limit": 120,
+    }
+    assert "timeout" not in controls
+
+
+def test_inspect_rejects_gpt5_max_tokens_before_provider_execution() -> None:
+    runner = InspectEvaluationRunner(executor=lambda _config: {"status": "success"})
+
+    with pytest.raises(InspectRunnerError, match="token_limit"):
+        runner.validate_run_configuration(
+            {
+                "model": "openai/gpt-5.6-luna",
+                "tasks": ["benchmarks.math:task"],
+                "solver": "generate",
+                "model_args": {"max_tokens": 256},
+            }
+        )
+
+    with pytest.raises(InspectRunnerError, match="default temperature"):
+        runner.validate_run_configuration(
+            {
+                "model": "openai/gpt-5.6-luna",
+                "tasks": ["benchmarks.math:task"],
+                "solver": "generate",
+                "model_args": {"temperature": 0},
+            }
+        )
 
 
 def test_inspect_configuration_fingerprint_is_deterministic_and_changes_for_solver() -> (
@@ -401,6 +456,10 @@ def test_inspect_batch_retains_safe_per_call_usage_and_plan_artifact() -> None:
             "output_tokens": 2.0,
             "total_tokens": 6.0,
             "duration_seconds": 0.2,
+            "duration_ms": 200.0,
+            "call_role": "planning",
+            "original_task_included": True,
+            "prior_conversation_retained": False,
         },
         {
             "call_index": 2,
@@ -408,6 +467,10 @@ def test_inspect_batch_retains_safe_per_call_usage_and_plan_artifact() -> None:
             "output_tokens": 5.0,
             "total_tokens": 11.0,
             "duration_seconds": 0.3,
+            "duration_ms": 300.0,
+            "call_role": "execution",
+            "original_task_included": True,
+            "prior_conversation_retained": True,
         },
     ]
     plan_artifact = next(
@@ -416,6 +479,82 @@ def test_inspect_batch_retains_safe_per_call_usage_and_plan_artifact() -> None:
         if artifact.artifact_type == "scaffold_plan"
     )
     assert plan_artifact.metadata["content_retained"] is False
+
+
+def test_incident_prompt_length_sweep_has_stable_decisions_across_bands() -> None:
+    from ai_governance.inspect_tasks import (
+        incident_prompt_length_sweep,
+        score_governed_release_decision,
+    )
+
+    task = incident_prompt_length_sweep()
+    assert len(task.dataset) == 32
+    assert {sample.metadata["length_band"] for sample in task.dataset} == {
+        "short",
+        "medium",
+        "long",
+        "extended",
+    }
+    for scenario_id in {sample.metadata["scenario_id"] for sample in task.dataset}:
+        scenario = [sample for sample in task.dataset if sample.metadata["scenario_id"] == scenario_id]
+        assert len(scenario) == 4
+        assert len({sample.target for sample in scenario}) == 1
+        assert score_governed_release_decision(scenario[0].target, scenario[0].target) == (
+            True,
+            None,
+        )
+    assert score_governed_release_decision("not json", task.dataset[0].target) == (
+        False,
+        "invalid_json",
+    )
+
+
+def test_generic_report_row_uses_durable_call_attribution() -> None:
+    result = EvaluationResult(
+        evaluation_id="evaluation-1",
+        execution_id="run-1:sample:incident-01:short",
+        evaluator_type="inspect_ai",
+        evaluator_version="1",
+        metrics=[
+            EvaluationMetric("pass", 1.0),
+            EvaluationMetric("input_tokens", 40.0),
+        ],
+        metadata={
+            "length_band": "short",
+            "scenario_id": "incident-01",
+            "original_prompt_tokens": 50,
+            "tokenizer": "whitespace-token-estimate/v1",
+            "token_count_kind": "estimated",
+            "model_call_usage": [
+                {
+                    "call_role": "planning",
+                    "input_tokens": 60,
+                    "output_tokens": 12,
+                    "total_tokens": 72,
+                    "duration_ms": 100,
+                    "original_task_included": True,
+                    "prior_conversation_retained": False,
+                },
+                {
+                    "call_role": "execution",
+                    "input_tokens": 120,
+                    "output_tokens": 20,
+                    "total_tokens": 140,
+                    "duration_ms": 200,
+                    "original_task_included": True,
+                    "prior_conversation_retained": True,
+                },
+            ],
+        },
+    )
+    row = ExperimentApiService._evaluation_report_row(_candidate("generate"), "short", [result])
+
+    assert row.original_task_tokens == 50
+    assert row.pass_rate == 1
+    assert [(call.call_role, call.duration_ms) for call in row.call_roles] == [
+        ("execution", 200),
+        ("planning", 100),
+    ]
 
 
 def test_packaged_trajectory_fixture_uses_real_deterministic_tools() -> None:

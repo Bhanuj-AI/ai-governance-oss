@@ -8,6 +8,9 @@ from ai_governance.api.models.evaluation import (
     EvaluationMetricSpecRequest,
 )
 from ai_governance.api.models.experiment import (
+    EvaluationReportCallRoleResponse,
+    EvaluationReportResponse,
+    EvaluationReportRowResponse,
     EvaluationRunItemResultResponse,
     EvaluationRunResponse,
     EvaluationRunResultPageResponse,
@@ -35,6 +38,7 @@ from ai_governance.domain.jobs import JobSubmission, JobType
 from ai_governance.evaluation.evaluation_metrics import EvaluationMetricSpec
 from ai_governance.providers.provider_descriptor import scrub_sensitive_metadata
 from ai_governance.services.experiment_api_service import (
+    EvaluationReport,
     ExperimentRunEvaluationPage,
     ExperimentRunPlan,
 )
@@ -299,6 +303,48 @@ class ExperimentApiMapper:
                 )
                 for result in result_page.items
             ],
+        )
+
+    @staticmethod
+    def to_evaluation_report_response(report: EvaluationReport) -> EvaluationReportResponse:
+        """Map generic, persisted evaluation evidence into the REST report."""
+        return EvaluationReportResponse(
+            experiment_id=report.experiment_id,
+            group_dimension=report.group_dimension,
+            rows=[
+                EvaluationReportRowResponse(
+                    candidate_id=row.candidate_id,
+                    candidate_name=row.candidate_name,
+                    group=row.group,
+                    sample_count=row.sample_count,
+                    pass_rate=row.pass_rate,
+                    metrics=dict(row.metrics),
+                    original_task_tokens=row.original_task_tokens,
+                    tokenizer=row.tokenizer,
+                    token_count_kind=row.token_count_kind,
+                    failure_categories=dict(row.failure_categories),
+                    failed_scenario_ids=list(row.failed_scenario_ids),
+                    call_roles=[
+                        EvaluationReportCallRoleResponse(
+                            call_role=call.call_role,
+                            call_count=call.call_count,
+                            input_tokens=call.input_tokens,
+                            output_tokens=call.output_tokens,
+                            total_tokens=call.total_tokens,
+                            duration_ms=call.duration_ms,
+                            original_task_included=call.original_task_included,
+                            prior_conversation_retained=call.prior_conversation_retained,
+                        )
+                        for call in row.call_roles
+                    ],
+                    provider_cost=row.provider_cost,
+                )
+                for row in report.rows
+            ],
+            runner_provenance={
+                candidate_id: [_scrub_metadata(item) for item in items]
+                for candidate_id, items in report.runner_provenance.items()
+            },
         )
 
     @staticmethod

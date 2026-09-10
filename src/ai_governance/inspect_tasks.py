@@ -13,7 +13,16 @@ import json
 from inspect_ai import Task, task
 from inspect_ai.dataset import Sample
 from inspect_ai.model import ChatMessageUser
-from inspect_ai.scorer import exact
+from inspect_ai.scorer import (
+    CORRECT,
+    INCORRECT,
+    Score,
+    Target,
+    accuracy,
+    exact,
+    scorer,
+    stderr,
+)
 from inspect_ai.solver import (
     Generate,
     Solver,
@@ -118,6 +127,138 @@ _PLANNER_EXECUTOR_SAMPLES = (
         "57",
     ),
 )
+
+_INCIDENT_LENGTH_BANDS = ("short", "medium", "long", "extended")
+_INCIDENT_LENGTH_TARGETS = {"short": 50, "medium": 250, "long": 500, "extended": 1000}
+_INCIDENT_TOKENIZER = "whitespace-token-estimate/v1"
+_INCIDENT_PROMPT_VERSION = "incident-release-decision/v3"
+_INCIDENT_PLAN_PROMPT_VERSION = "planner-executor-prompts/v1"
+
+# Each case is a bounded, deterministic release decision. The supplemental
+# records introduced by longer bands corroborate the same decision; they never
+# change a policy threshold or expected outcome.
+_INCIDENTS = (
+    ("incident-01", "SEV1", "BLOCK", "DATA_ENGINEERING", ("FRESHNESS_BREACH", "PAYMENT_EXPORT"), "The scheduled payment export is 93 minutes late; policy blocks release after 30 minutes. Policy classification: severity SEV1, release BLOCK, owner DATA_ENGINEERING, reason codes FRESHNESS_BREACH and PAYMENT_EXPORT."),
+    ("incident-02", "SEV2", "BLOCK", "DATA_GOVERNANCE", ("NULL_RATE_BREACH", "CUSTOMER_PROFILE"), "Customer-profile null rate is 7.4%; the governed maximum is 2.0%. Policy classification: severity SEV2, release BLOCK, owner DATA_GOVERNANCE, reason codes NULL_RATE_BREACH and CUSTOMER_PROFILE."),
+    ("incident-03", "SEV2", "APPROVE_WITH_MONITORING", "DATA_ENGINEERING", ("RETRY_RECOVERED", "LATE_ARRIVAL"), "A late-arriving partition recovered after retry; freshness is now within the 30-minute threshold. Policy classification: severity SEV2, release APPROVE_WITH_MONITORING, owner DATA_ENGINEERING, reason codes RETRY_RECOVERED and LATE_ARRIVAL."),
+    ("incident-04", "SEV3", "APPROVE", "DATA_ENGINEERING", ("NON_PRODUCTION_DELAY",), "A non-production analytics refresh was delayed 8 minutes and completed without data-quality drift. Policy classification: severity SEV3, release APPROVE, owner DATA_ENGINEERING, reason code NON_PRODUCTION_DELAY."),
+    ("incident-05", "SEV1", "BLOCK", "SECURITY", ("PII_LINEAGE_GAP", "UNAPPROVED_SINK"), "Lineage shows a customer email field reaching an unapproved analytics sink. Policy classification: severity SEV1, release BLOCK, owner SECURITY, reason codes PII_LINEAGE_GAP and UNAPPROVED_SINK."),
+    ("incident-06", "SEV2", "BLOCK", "DATA_GOVERNANCE", ("SCHEMA_BREAKING_CHANGE", "CONTRACT_VIOLATION"), "A required account-status field changed from an enumerated value to free text. Policy classification: severity SEV2, release BLOCK, owner DATA_GOVERNANCE, reason codes SCHEMA_BREAKING_CHANGE and CONTRACT_VIOLATION."),
+    ("incident-07", "SEV3", "APPROVE_WITH_MONITORING", "DATA_ENGINEERING", ("VOLUME_ANOMALY", "THRESHOLD_NOT_BREACHED"), "Daily order volume is 18% above baseline but remains below the 25% release-block threshold. Policy classification: severity SEV3, release APPROVE_WITH_MONITORING, owner DATA_ENGINEERING, reason codes VOLUME_ANOMALY and THRESHOLD_NOT_BREACHED."),
+    ("incident-08", "SEV2", "BLOCK", "SECURITY", ("ACCESS_CONTROL_FAILURE", "AUDIT_LOG_MISSING"), "The pipeline service account wrote customer data without the required audit event. Policy classification: severity SEV2, release BLOCK, owner SECURITY, reason codes ACCESS_CONTROL_FAILURE and AUDIT_LOG_MISSING."),
+)
+
+
+def _decision_target(severity: str, decision: str, owner: str, reasons: tuple[str, ...]) -> str:
+    return json.dumps(
+        {
+            "severity": severity,
+            "release_decision": decision,
+            "escalation_owner": owner,
+            "reason_codes": list(reasons),
+        },
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+
+
+def _incident_prompt(summary: str, length_band: str) -> str:
+    """Build an evidence-rich, semantically stable incident representation."""
+    prompt = (
+        "You are the governed release decision service for a scheduled customer-data pipeline. "
+        f"Incident brief: {summary} "
+        "Return JSON only with exactly severity, release_decision, escalation_owner, and reason_codes. "
+        "Use severity SEV1|SEV2|SEV3; release_decision BLOCK|APPROVE_WITH_MONITORING|APPROVE; "
+        "escalation_owner DATA_ENGINEERING|DATA_GOVERNANCE|SECURITY; and uppercase reason_codes."
+        " Copy every value from the Policy classification exactly; do not add codes."
+    )
+    evidence = (
+        " Contract: customer records require schema validation before publication."
+        " Lineage: source ingestion flows through validation into the governed release gate."
+        " Ownership: the listed escalation owner is on call for this policy category."
+        " Timeline: detection, validation, and release-gate observations agree with the incident brief."
+        " Quality records: corroborating checks did not introduce a conflicting threshold breach."
+        " Downstream impact: affected consumers remain protected when the stated release decision is applied."
+        " Audit record: the policy version and lineage references were reviewed for this release window."
+        " Operations record: retries, acknowledgements, and monitoring observations are consistent with the brief."
+    )
+    target = _INCIDENT_LENGTH_TARGETS[length_band]
+    if length_band == "short":
+        return (
+            prompt
+            + " Apply the stated release threshold and preserve the listed operational owner."
+        )
+    detail_count = {"medium": 3, "long": 6, "extended": 8}[length_band]
+    prompt += "".join(evidence.split(".")[:detail_count]) + "."
+    # Add distinct corroborating audit records until the documented estimate
+    # reaches the band. This is operational context, never a changed fact.
+    record = 1
+    while len(prompt.split()) < target:
+        prompt += (
+            f" Corroborating operational record {record}: retained lineage, contract, "
+            "and policy observations match the incident brief and do not alter the release threshold."
+        )
+        record += 1
+    return prompt
+
+
+def _normalized_decision(value: object) -> tuple[dict[str, object] | None, str | None]:
+    if not isinstance(value, dict):
+        return None, "invalid_schema"
+    required = {"severity", "release_decision", "escalation_owner", "reason_codes"}
+    if set(value) != required or not isinstance(value.get("reason_codes"), list):
+        return None, "invalid_schema"
+    try:
+        normalized = {
+            "severity": str(value["severity"]).upper(),
+            "release_decision": str(value["release_decision"]).upper(),
+            "escalation_owner": str(value["escalation_owner"]).upper(),
+            "reason_codes": sorted(str(item).upper() for item in value["reason_codes"]),
+        }
+    except (TypeError, ValueError):
+        return None, "invalid_schema"
+    if (
+        normalized["severity"] not in {"SEV1", "SEV2", "SEV3"}
+        or normalized["release_decision"] not in {"BLOCK", "APPROVE_WITH_MONITORING", "APPROVE"}
+        or normalized["escalation_owner"] not in {"DATA_ENGINEERING", "DATA_GOVERNANCE", "SECURITY"}
+        or not normalized["reason_codes"]
+    ):
+        return None, "invalid_schema"
+    return normalized, None
+
+
+def score_governed_release_decision(output: str, target: str) -> tuple[bool, str | None]:
+    """Pure semantic JSON decision comparison used by the Inspect scorer and tests."""
+    try:
+        observed_raw = json.loads(output)
+    except json.JSONDecodeError:
+        return False, "invalid_json"
+    try:
+        expected_raw = json.loads(target)
+    except json.JSONDecodeError:  # pragma: no cover - repository fixture invariant
+        return False, "invalid_target"
+    observed, failure = _normalized_decision(observed_raw)
+    expected, _ = _normalized_decision(expected_raw)
+    if failure is not None:
+        return False, failure
+    return (observed == expected, None if observed == expected else "incorrect_decision")
+
+
+@scorer(metrics=[accuracy(), stderr()])
+def governed_release_decision() -> object:
+    """Score valid governed JSON semantically without an LLM judge."""
+    async def score(state: TaskState, target: Target) -> Score:
+        passed, failure_category = score_governed_release_decision(
+            state.output.completion, target.text
+        )
+        return Score(
+            value=CORRECT if passed else INCORRECT,
+            answer=None,
+            explanation="governed_release_decision/v1",
+            metadata={"failure_category": failure_category},
+        )
+
+    return score
 
 
 def _structured_plan(raw_plan: str) -> str:
@@ -254,6 +395,70 @@ def planner_executor_smoke() -> Task:
             "sample_count": len(_PLANNER_EXECUTOR_SAMPLES),
             "expected_baseline_model_calls_per_sample": 1,
             "expected_planner_model_calls_per_sample": 2,
+        },
+    )
+
+
+@solver
+def incident_planner_executor_generate(
+    plan_schema_version: str = SCAFFOLD_PLAN_SCHEMA_VERSION,
+    prompt_version: str = _INCIDENT_PLAN_PROMPT_VERSION,
+    executor_context_policy: str = "retained",
+) -> Solver:
+    """Two-call planner–executor for the prompt-length incident sweep.
+
+    ``retained`` is a declared contract, not an inference: the underlying
+    solver appends the executor message to the existing task state after the
+    planning call, so the executor receives the original task and the prior
+    planning conversation.
+    """
+    if prompt_version != _INCIDENT_PLAN_PROMPT_VERSION:
+        raise ValueError("Unsupported incident planner prompt version.")
+    if executor_context_policy != "retained":
+        raise ValueError("The incident planner–executor requires retained context.")
+    return planner_executor_generate(plan_schema_version)
+
+
+@task
+def incident_prompt_length_sweep() -> Task:
+    """32 deterministic enterprise incident prompts across four context bands."""
+    samples: list[Sample] = []
+    for scenario_id, severity, decision, owner, reasons, summary in _INCIDENTS:
+        target = _decision_target(severity, decision, owner, reasons)
+        target_digest = f"sha256:{hashlib.sha256(target.encode()).hexdigest()}"
+        for length_band in _INCIDENT_LENGTH_BANDS:
+            prompt = _incident_prompt(summary, length_band)
+            samples.append(
+                Sample(
+                    id=f"{scenario_id}:{length_band}",
+                    input=prompt,
+                    target=target,
+                    metadata={
+                        "scenario_id": scenario_id,
+                        "length_band": length_band,
+                        "original_prompt_characters": len(prompt),
+                        "original_prompt_words": len(prompt.split()),
+                        "original_prompt_tokens": len(prompt.split()),
+                        "tokenizer": _INCIDENT_TOKENIZER,
+                        "token_count_kind": "estimated",
+                        "expected_decision_digest": target_digest,
+                    },
+                )
+            )
+    return Task(
+        dataset=samples,
+        solver=generate(),
+        scorer=governed_release_decision(),
+        name="ai_governance_incident_prompt_length_sweep",
+        version=1,
+        metadata={
+            "task_version": "incident-prompt-length-sweep-v3",
+            "sample_count": len(samples),
+            "base_incident_count": len(_INCIDENTS),
+            "length_bands": list(_INCIDENT_LENGTH_BANDS),
+            "tokenizer": _INCIDENT_TOKENIZER,
+            "token_count_kind": "estimated",
+            "scorer": "governed_release_decision/v1",
         },
     )
 

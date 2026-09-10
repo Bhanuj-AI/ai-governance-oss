@@ -73,6 +73,9 @@ from ai_governance.api.models.evaluation import (
     EvaluationSubmitRequest,
 )
 from ai_governance.api.models.experiment import (
+    EvaluationReportCallRoleResponse,
+    EvaluationReportResponse,
+    EvaluationReportRowResponse,
     EvaluationRunItemResultResponse,
     EvaluationRunResponse,
     EvaluationRunResultPageResponse,

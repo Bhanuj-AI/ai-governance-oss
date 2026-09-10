@@ -16,6 +16,22 @@ _SENSITIVE_KEY_PARTS = (
     "token",
 )
 
+# These are numeric execution limits or measured counters, not credentials.
+# Keep the exception deliberately narrow: a key such as ``access_token`` must
+# continue to be removed from any provider or provenance payload.
+_SAFE_TOKEN_MEASUREMENT_KEYS = frozenset(
+    {
+        "input_tokens",
+        "output_tokens",
+        "total_tokens",
+        "max_tokens",
+        "max_output_tokens",
+        "token_limit",
+        "original_prompt_tokens",
+        "token_count_kind",
+    }
+)
+
 
 def normalize_provider_name(
     provider_name: str,
@@ -130,6 +146,8 @@ def _is_sensitive_key(
     key: str,
 ) -> bool:
     normalized = key.lower()
+    if normalized in _SAFE_TOKEN_MEASUREMENT_KEYS:
+        return False
     return any(part in normalized for part in _SENSITIVE_KEY_PARTS)
 
 
