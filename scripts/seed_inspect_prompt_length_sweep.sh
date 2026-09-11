@@ -16,16 +16,16 @@ API="${AI_GOVERNANCE_API_URL:-http://127.0.0.1:8000}"
 ORGANIZATION_ID="${AI_GOVERNANCE_ORGANIZATION_ID:-org_default}"
 PROJECT_ID="${AI_GOVERNANCE_PROJECT_ID:-project_default}"
 if [[ "$MODE" == "--preflight" ]]; then
-  SEED_ID="inspect-prompt-length-sweep-v7-preflight"
+  SEED_ID="inspect-prompt-length-sweep-v8-preflight"
   EXPERIMENT_NAME="$SEED_ID"
-  INSTALLATION_NAME="Inspect prompt-length sweep preflight runner v7"
-  TASK_LIMIT=4
+  INSTALLATION_NAME="Inspect prompt-length sweep preflight runner v8"
+  TASK_LIMIT=6
   REPETITIONS=1
 else
-  SEED_ID="inspect-prompt-length-sweep-v7"
+  SEED_ID="inspect-prompt-length-sweep-v8"
   EXPERIMENT_NAME="$SEED_ID"
-  INSTALLATION_NAME="Inspect prompt-length sweep runner v7"
-  TASK_LIMIT=32
+  INSTALLATION_NAME="Inspect prompt-length sweep runner v8"
+  TASK_LIMIT=48
   REPETITIONS=2
 fi
 PROMPT_REFERENCE="${AI_GOVERNANCE_SWEEP_PROMPT_REFERENCE:-demo-prompt-support-v1:v1.0}"
@@ -46,11 +46,11 @@ request() {
 settings='{
   "model": "openai/gpt-5.6-luna",
   "tasks": ["ai_governance.inspect_tasks:incident_prompt_length_sweep"],
-  "task_version": "incident-prompt-length-sweep-v3",
+  "task_version": "incident-prompt-length-sweep-v4",
   "scorer": "ai_governance.inspect_tasks:governed_release_decision",
   "scorer_version": "1",
   "task_limit": '"$TASK_LIMIT"',
-  "token_limit": 8192,
+  "token_limit": 32768,
   "timeout_seconds": 120,
   "max_connections": 2
 }'

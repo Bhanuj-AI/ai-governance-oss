@@ -128,8 +128,22 @@ _PLANNER_EXECUTOR_SAMPLES = (
     ),
 )
 
-_INCIDENT_LENGTH_BANDS = ("short", "medium", "long", "extended")
-_INCIDENT_LENGTH_TARGETS = {"short": 50, "medium": 250, "long": 500, "extended": 1000}
+_INCIDENT_LENGTH_BANDS = (
+    "short",
+    "medium",
+    "long",
+    "extended",
+    "xlong",
+    "xxlong",
+)
+_INCIDENT_LENGTH_TARGETS = {
+    "short": 50,
+    "medium": 250,
+    "long": 500,
+    "extended": 1000,
+    "xlong": 4600,
+    "xxlong": 10_000,
+}
 _INCIDENT_TOKENIZER = "whitespace-token-estimate/v1"
 _INCIDENT_PROMPT_VERSION = "incident-release-decision/v3"
 _INCIDENT_PLAN_PROMPT_VERSION = "planner-executor-prompts/v1"
@@ -188,15 +202,31 @@ def _incident_prompt(summary: str, length_band: str) -> str:
             prompt
             + " Apply the stated release threshold and preserve the listed operational owner."
         )
-    detail_count = {"medium": 3, "long": 6, "extended": 8}[length_band]
+    detail_count = {
+        "medium": 3,
+        "long": 6,
+        "extended": 8,
+        "xlong": 8,
+        "xxlong": 8,
+    }[length_band]
     prompt += "".join(evidence.split(".")[:detail_count]) + "."
-    # Add distinct corroborating audit records until the documented estimate
-    # reaches the band. This is operational context, never a changed fact.
+    # Add distinct, realistic corroborating records until the documented
+    # estimate reaches the band. They are intentionally observational: the
+    # policy classification in the brief remains the sole decision source.
+    record_templates = (
+        " Evidence ledger {record}: ingestion monitor recorded a retained event for the same release window; its observed state matches the incident brief.",
+        " Evidence ledger {record}: validation audit retained the applicable contract and schema snapshot with no conflicting classification.",
+        " Evidence ledger {record}: lineage checkpoint linked the governed source, validation stage, and release gate described in the brief.",
+        " Evidence ledger {record}: on-call acknowledgement confirms the stated escalation owner reviewed the recorded policy category.",
+        " Evidence ledger {record}: downstream protection monitor recorded the release action already specified by the policy classification.",
+        " Evidence ledger {record}: observability archive retained timing and acknowledgement facts without changing a threshold or reason code.",
+        " Evidence ledger {record}: change-management record references the same policy version, release window, and bounded incident evidence.",
+        " Evidence ledger {record}: audit retention check confirms this corroborating record adds context only and does not alter the decision.",
+    )
     record = 1
     while len(prompt.split()) < target:
-        prompt += (
-            f" Corroborating operational record {record}: retained lineage, contract, "
-            "and policy observations match the incident brief and do not alter the release threshold."
+        prompt += record_templates[(record - 1) % len(record_templates)].format(
+            record=record
         )
         record += 1
     return prompt
@@ -421,7 +451,7 @@ def incident_planner_executor_generate(
 
 @task
 def incident_prompt_length_sweep() -> Task:
-    """32 deterministic enterprise incident prompts across four context bands."""
+    """48 deterministic enterprise incident prompts across six context bands."""
     samples: list[Sample] = []
     for scenario_id, severity, decision, owner, reasons, summary in _INCIDENTS:
         target = _decision_target(severity, decision, owner, reasons)
@@ -452,7 +482,7 @@ def incident_prompt_length_sweep() -> Task:
         name="ai_governance_incident_prompt_length_sweep",
         version=1,
         metadata={
-            "task_version": "incident-prompt-length-sweep-v3",
+            "task_version": "incident-prompt-length-sweep-v4",
             "sample_count": len(samples),
             "base_incident_count": len(_INCIDENTS),
             "length_bands": list(_INCIDENT_LENGTH_BANDS),

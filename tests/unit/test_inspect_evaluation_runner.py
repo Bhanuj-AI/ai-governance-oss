@@ -488,21 +488,26 @@ def test_incident_prompt_length_sweep_has_stable_decisions_across_bands() -> Non
     )
 
     task = incident_prompt_length_sweep()
-    assert len(task.dataset) == 32
+    assert len(task.dataset) == 48
     assert {sample.metadata["length_band"] for sample in task.dataset} == {
         "short",
         "medium",
         "long",
         "extended",
+        "xlong",
+        "xxlong",
     }
     for scenario_id in {sample.metadata["scenario_id"] for sample in task.dataset}:
         scenario = [sample for sample in task.dataset if sample.metadata["scenario_id"] == scenario_id]
-        assert len(scenario) == 4
+        assert len(scenario) == 6
         assert len({sample.target for sample in scenario}) == 1
         assert score_governed_release_decision(scenario[0].target, scenario[0].target) == (
             True,
             None,
         )
+    prompts = {sample.metadata["length_band"]: sample for sample in task.dataset if sample.metadata["scenario_id"] == "incident-01"}
+    assert prompts["xlong"].metadata["original_prompt_tokens"] >= 4600
+    assert prompts["xxlong"].metadata["original_prompt_tokens"] >= 10_000
     assert score_governed_release_decision("not json", task.dataset[0].target) == (
         False,
         "invalid_json",

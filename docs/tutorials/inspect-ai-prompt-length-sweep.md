@@ -7,7 +7,8 @@ planning.
 
 The packaged task is `ai_governance.inspect_tasks:incident_prompt_length_sweep`.
 It contains eight deterministic data-pipeline release incidents represented at
-four evidence lengths: short, medium, long and extended. The metadata records a
+six evidence lengths: short, medium, long, extended, xlong (~4,600) and xxlong
+(~10,000). The metadata records a
 whitespace-token estimate because a model-specific tokenizer is not bundled;
 the provider-reported per-call usage is the authoritative measurement.
 
@@ -17,11 +18,11 @@ Use one Inspect installation with the fixed conditions:
 {
   "model": "openai/gpt-5.6-luna",
   "tasks": ["ai_governance.inspect_tasks:incident_prompt_length_sweep"],
-  "task_version": "incident-prompt-length-sweep-v3",
+  "task_version": "incident-prompt-length-sweep-v4",
   "scorer": "ai_governance.inspect_tasks:governed_release_decision",
   "scorer_version": "1",
-  "task_limit": 32,
-  "token_limit": 8192,
+  "task_limit": 48,
+  "token_limit": 32768,
   "timeout_seconds": 120,
   "max_connections": 2
 }
@@ -56,12 +57,15 @@ Planner–executor uses an explicit JSON plan and then a final decision call:
 }
 ```
 
-Run a four-sample preflight first (`task_limit: 4` selects one incident in each
-length band), then restore `task_limit: 32` and submit two repetitions. The full
-experiment contains 128 sample results and 192 expected model calls.
+Run a six-sample preflight first (`task_limit: 6` selects one incident in each
+length band, including xlong and xxlong), then restore `task_limit: 48` and
+submit two repetitions. The full experiment contains 192 sample results and
+288 expected model calls.
 
-`token_limit: 8192` is the fixed Inspect per-sample total-token bound. It is
-used instead of OpenAI GPT-5's unsupported `max_tokens` request parameter.
+`token_limit: 32768` is the fixed Inspect per-sample total-token bound. It is
+shared by both candidates and is sized for the xxlong task appearing in both
+the planning and retained-context execution calls, plus their bounded outputs.
+It is used instead of OpenAI GPT-5's unsupported `max_tokens` request parameter.
 This configured GPT-5 transport also requires the provider-default temperature,
 so both candidates omit `temperature` rather than claiming an unsupported
 zero-temperature condition. The provider rejects either unsupported option
@@ -108,22 +112,22 @@ curl --fail-with-body -X POST "${SCOPE[@]}" "$API/api/v1/local/demo/seed"
 The exact durable identifiers are intentionally stable:
 
 ```text
-experiment name: inspect-prompt-length-sweep-v7
-installation name: Inspect prompt-length sweep runner v7
-request ID: inspect-prompt-length-sweep-v7
-idempotency key: inspect-prompt-length-sweep-v7
+experiment name: inspect-prompt-length-sweep-v8
+installation name: Inspect prompt-length sweep runner v8
+request ID: inspect-prompt-length-sweep-v8
+idempotency key: inspect-prompt-length-sweep-v8
 ```
 
-First, submit and retain the small, four-sample preflight. It uses a separate
-named installation with `task_limit: 4`, so it cannot change the immutable
-conditions of the full seed. It checks one incident at each prompt-length band
-for both candidates.
+First, submit and retain the small, six-sample preflight. It uses a separate
+named installation with `task_limit: 6`, so it cannot change the immutable
+conditions of the full seed. It checks one incident at each prompt-length band,
+including both new bands, for both candidates.
 
 ```bash
 ./scripts/seed_inspect_prompt_length_sweep.sh --preflight
 ```
 
-To spend the full model budget once, submit the 128-sample seed explicitly:
+To spend the full model budget once, submit the 192-sample seed explicitly:
 
 ```bash
 ./scripts/seed_inspect_prompt_length_sweep.sh --submit
