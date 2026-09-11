@@ -32,7 +32,8 @@ dependencies = [
 Homepage = "https://governance.bhanuj.ai"
 Documentation = "https://governance.bhanuj.ai/docs"
 Tutorials = "https://governance.bhanuj.ai/tutorials"
-Repository = "https://gitlab.com/bhanuj-ai/ai-governance-oss.git"
+Repository = "https://github.com/Bhanuj-AI/ai-governance-oss"
+"Gitlab Mirror" = "https://gitlab.com/bhanuj-ai/ai-governance-oss.git"
 
 [project.optional-dependencies]
 inspect = [

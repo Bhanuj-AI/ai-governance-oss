@@ -31,14 +31,11 @@ from ai_governance.domain.causal_audit import (
     CausalAuditClassification,
     CausalAuditStatus,
     CounterfactualReplayLineage,
-    EvidenceInterventionPolicy,
-    EvidenceInterventionPolicyStatus,
     EvidenceInterventionStrategy,
     InterventionConfiguration,
     OutcomeScore,
     ToolEvidenceInfluence,
 )
-from ai_governance.domain.replay import ControlledEvidenceStrategy
 from ai_governance.domain.runtime_findings.finding import (
     EvidenceReference,
     FindingSeverity,
@@ -56,27 +53,6 @@ LOGGER = logging.getLogger("ai_governance.api")
 _LOCAL_REPLAY_SOURCE_REFERENCE = "artifact://demo/fraud/replay-source-transactions"
 _LOCAL_REPLAY_SOURCE_EVIDENCE = {"confidence": 0.87, "status": "flagged"}
 _LOCAL_PERTURBED_EVIDENCE = {"confidence": 0.37, "status": "flagged"}
-
-# These active, reference-only policies are intentionally local fixtures. They
-# match the Synthetic Agent Runtime's bounded evidence descriptors, allowing a
-# developer to run a governed Causal Audit without first authoring policies by
-# hand. They contain no raw evidence and are never seeded outside local/demo.
-_SYNTHETIC_RUNTIME_INTERVENTION_TOOLS = (
-    "policy.lookup",
-    "claim_history.lookup",
-    "vehicle_damage.evaluate",
-    "evidence.verify",
-    "risk_model.score",
-    "customer_profile.lookup",
-    "device_risk.lookup",
-    "velocity_check",
-    "fraud_model.score",
-    "applicant_profile.lookup",
-    "income.verify",
-    "debt_obligations.lookup",
-    "credit_model.score",
-)
-
 
 def register_local_demo_evidence(resolver: Any) -> None:
     """Register bounded local fixture evidence in the reference resolver.
@@ -102,7 +78,6 @@ def seed_agent_runtime_data(
     event_repo: Any,
     finding_repo: Any,
     causal_audit_repo: Any | None = None,
-    intervention_policy_repo: Any | None = None,
     organization_id: str = "org_default",
     project_id: str | None = "project_default",
 ) -> dict[str, list[str]]:
@@ -140,10 +115,6 @@ def seed_agent_runtime_data(
         )
         if changed:
             finding_ids.append(finding_id)
-
-    intervention_policy_ids = _seed_synthetic_runtime_intervention_policies(
-        intervention_policy_repo, organization_id, project_id, now
-    )
 
     causal_audit_ids: list[str] = []
     if causal_audit_repo is not None:
@@ -199,8 +170,6 @@ def seed_agent_runtime_data(
     # audit demo data and receives that extra list.
     if causal_audit_repo is not None:
         result["causal_audit_ids"] = causal_audit_ids
-    if intervention_policy_repo is not None:
-        result["intervention_policy_ids"] = intervention_policy_ids
     return result
 
 
@@ -208,7 +177,6 @@ def is_agent_runtime_demo_seeded(
     execution_repo: Any,
     finding_repo: Any,
     causal_audit_repo: Any | None = None,
-    intervention_policy_repo: Any | None = None,
     organization_id: str = "org_default",
     project_id: str | None = "project_default",
 ) -> bool:
@@ -228,66 +196,13 @@ def is_agent_runtime_demo_seeded(
         is not None
         for scenario in _FINDING_SCENARIOS
     )
-    policies_seeded = intervention_policy_repo is None or all(
-        intervention_policy_repo.get(
-            _synthetic_runtime_policy_id(tool_name), 1, organization_id, project_id
-        )
-        is not None
-        for tool_name in _SYNTHETIC_RUNTIME_INTERVENTION_TOOLS
-    )
     if causal_audit_repo is None:
-        return findings_seeded and policies_seeded
-    return findings_seeded and policies_seeded and all(
+        return findings_seeded
+    return findings_seeded and all(
         causal_audit_repo.get(scenario["audit_id"], organization_id, project_id)
         is not None
         for scenario in _CAUSAL_AUDIT_SCENARIOS
     )
-
-
-def _seed_synthetic_runtime_intervention_policies(
-    repository: Any | None,
-    organization_id: str,
-    project_id: str | None,
-    now: datetime,
-) -> list[str]:
-    if repository is None:
-        return []
-    created_ids: list[str] = []
-    for tool_name in _SYNTHETIC_RUNTIME_INTERVENTION_TOOLS:
-        policy_id = _synthetic_runtime_policy_id(tool_name)
-        if repository.get(policy_id, 1, organization_id, project_id) is not None:
-            continue
-        repository.save(
-            EvidenceInterventionPolicy(
-                policy_id=policy_id,
-                version=1,
-                organization_id=organization_id,
-                project_id=project_id,
-                status=EvidenceInterventionPolicyStatus.ACTIVE,
-                tool_name=tool_name,
-                schema_id="synthetic-insurance-evidence",
-                schema_version="1",
-                provider_id="opaque-reference",
-                provider_version="v1",
-                allowed_strategies=(ControlledEvidenceStrategy.REPLACE,),
-                strategy_configuration={
-                    "counterfactual_reference_namespace": "synthetic://counterfactual",
-                    "runtime_attests_validation": True,
-                },
-                created_at=now,
-                created_by="local-demo",
-                activated_at=now,
-                activated_by="local-demo",
-            )
-        )
-        created_ids.append(policy_id)
-    return created_ids
-
-
-def _synthetic_runtime_policy_id(tool_name: str) -> str:
-    return "demo-synthetic-policy-" + tool_name.replace(".", "-").replace("_", "-")
-
-
 def _reconciliation_evidence_scenarios(now: datetime) -> tuple[dict[str, Any], ...]:
     """Build bounded local evidence for one completed healthy window."""
     cadence_seconds = 48 * 60 * 60

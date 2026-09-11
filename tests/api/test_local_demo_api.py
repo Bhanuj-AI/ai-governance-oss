@@ -10,7 +10,6 @@ from ai_governance.api.dependencies.agent_execution import get_agent_execution_s
 from ai_governance.api.dependencies.repositories import (
     get_agent_execution_repository,
     get_causal_audit_repository,
-    get_evidence_intervention_policy_repository,
 )
 from ai_governance.api.dependencies.runtime_finding_repo import (
     get_runtime_finding_repository,
@@ -49,7 +48,6 @@ def test_agent_runtime_demo_seed_is_idempotent() -> None:
     get_agent_execution_service.cache_clear()
     get_agent_execution_repository.cache_clear()
     get_causal_audit_repository.cache_clear()
-    get_evidence_intervention_policy_repository.cache_clear()
     get_runtime_finding_repository.cache_clear()
     get_runtime_finding_service.cache_clear()
     try:
@@ -65,9 +63,6 @@ def test_agent_runtime_demo_seed_is_idempotent() -> None:
         next_agent_page = client.get("/api/v1/agent-executions/agents?limit=2&offset=2")
         open_findings = client.get("/api/v1/runtime-findings?status=OPEN&limit=50")
         causal_audits = client.get("/api/v1/agents-runtime/causal-audits?limit=10")
-        intervention_policies = client.get(
-            "/api/v1/agents-runtime/causal-audit/intervention-policies"
-        )
         after_seed = client.get("/api/v1/local/demo/agent-runtime/status")
 
         assert first.status_code == 200
@@ -85,13 +80,6 @@ def test_agent_runtime_demo_seed_is_idempotent() -> None:
         assert open_findings.json()["items"]
         assert {item["status"] for item in open_findings.json()["items"]} == {"OPEN"}
         assert causal_audits.status_code == 200
-        assert intervention_policies.status_code == 200
-        assert len(intervention_policies.json()["items"]) == 13
-        assert all(
-            item["status"] == "ACTIVE"
-            and item["provider_id"] == "opaque-reference"
-            for item in intervention_policies.json()["items"]
-        )
         audits_by_classification = {
             item["classification"]: item for item in causal_audits.json()["items"]
         }
@@ -121,7 +109,6 @@ def test_agent_runtime_demo_seed_is_idempotent() -> None:
         get_agent_execution_service.cache_clear()
         get_agent_execution_repository.cache_clear()
         get_causal_audit_repository.cache_clear()
-        get_evidence_intervention_policy_repository.cache_clear()
         get_runtime_finding_repository.cache_clear()
         get_runtime_finding_service.cache_clear()
 

@@ -14,9 +14,6 @@ from ai_governance.repositories.in_memory.in_memory_agent_execution_repository i
     InMemoryAgentExecutionEventRepository,
     InMemoryAgentExecutionRepository,
 )
-from ai_governance.repositories.in_memory.in_memory_evidence_intervention_policy_repository import (
-    InMemoryEvidenceInterventionPolicyRepository,
-)
 from ai_governance.repositories.in_memory.in_memory_runtime_finding_repository import (
     InMemoryRuntimeFindingRepository,
 )
@@ -73,34 +70,6 @@ class TestSeedAgentRuntimeData:
         )
         demo_execs = [e for e in all_execs if e.execution_id.startswith("demo-exec-")]
         assert len(demo_execs) == len(result["execution_ids"])
-
-    def test_seeds_active_synthetic_runtime_intervention_policies(self, repos):
-        execution_repo, event_repo, finding_repo = repos
-        policies = InMemoryEvidenceInterventionPolicyRepository()
-
-        first = seed_agent_runtime_data(
-            execution_repo,
-            event_repo,
-            finding_repo,
-            intervention_policy_repo=policies,
-            organization_id="org_test",
-            project_id="project_test",
-        )
-        second = seed_agent_runtime_data(
-            execution_repo,
-            event_repo,
-            finding_repo,
-            intervention_policy_repo=policies,
-            organization_id="org_test",
-            project_id="project_test",
-        )
-
-        seeded = policies.list("org_test", "project_test")
-        assert len(first["intervention_policy_ids"]) == 13
-        assert second["intervention_policy_ids"] == []
-        assert len(seeded) == 13
-        assert all(item.status.value == "ACTIVE" for item in seeded)
-        assert all(item.provider_id == "opaque-reference" for item in seeded)
 
     def test_covers_all_execution_statuses(self, repos):
         execution_repo, event_repo, finding_repo = repos
