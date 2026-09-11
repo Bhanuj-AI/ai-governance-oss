@@ -1114,9 +1114,17 @@ class ExperimentApiService:
         context: TenantContext | None = None,
     ) -> Leaderboard:
         """
-        Return the latest leaderboard for an experiment, generating one if needed.
+        Return the latest leaderboard only after an experiment completes.
+
+        A leaderboard is a terminal comparison artifact. Generating one from
+        partially completed runs would turn an interim snapshot into a false
+        recommendation and persist that misleading outcome.
         """
-        self.get_experiment(experiment_id, context)
+        experiment = self.get_experiment(experiment_id, context)
+        if experiment.status is not ExperimentStatus.COMPLETED:
+            raise InvalidExperimentRequestError(
+                "A leaderboard is available only after all evaluation runs complete."
+            )
         leaderboards = self._ranking_service().list_leaderboards(experiment_id)
         if leaderboards:
             leaderboard = max(
