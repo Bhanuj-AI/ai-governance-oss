@@ -210,7 +210,7 @@ git clone https://github.com/Bhanuj-AI/ai-governance-oss
 
 ## OR
 
-## GITLAB: 
+## GITLAB:
 git clone https://gitlab.com/bhanuj-ai/ai-governance-oss.git
 cd ai-governance-oss
 

@@ -34,7 +34,8 @@ export function ExperimentLifecycle({
   leaderboardLoading: boolean;
   candidates: Candidate[];
 }) {
-  const topEntry = leaderboard?.entries[0];
+  const recommendationFinalized = experiment.status === "COMPLETED";
+  const topEntry = recommendationFinalized ? leaderboard?.entries[0] : undefined;
   const canCompare = (candidateCount ?? 0) >= 2;
   const hasTopTie = Boolean(
     topEntry &&
@@ -75,7 +76,7 @@ export function ExperimentLifecycle({
       activeStep={presentation.activeStep}
       activeAdornment={<StepState tone={presentation.tone} />}
       footer={
-        leaderboard && topEntry ? (
+        recommendationFinalized && leaderboard && topEntry ? (
           <div className="grid gap-3 text-sm sm:grid-cols-3">
             <Metadata label="Ranking strategy" value={leaderboard.ranking_strategy} />
             <Metadata
@@ -121,6 +122,30 @@ function presentationFor({
       tone: "progress",
     };
   }
+  if (experiment.status === "RUNNING") {
+    return {
+      activeStep: 1,
+      outcome: "EVALUATING",
+      detail: "Evaluation runs are still producing governed evidence. Comparison and recommendation wait for every run to finish.",
+      tone: "progress",
+    };
+  }
+  if (experiment.status === "CANCELLED") {
+    return {
+      activeStep: 1,
+      outcome: "CANCELLED",
+      detail: "The experiment was cancelled. Any evidence already produced remains available for review, but no recommendation is generated.",
+      tone: "warning",
+    };
+  }
+  if (experiment.status === "FAILED" || failedRuns > 0) {
+    return {
+      activeStep: 1,
+      outcome: "NEEDS REVIEW",
+      detail: `${failedRuns} evaluation ${failedRuns === 1 ? "run has" : "runs have"} failed. Resolve the run issue before comparing results.`,
+      tone: "danger",
+    };
+  }
   if (topEntry && (candidateCount ?? 0) >= 2 && hasTopTie) {
     return {
       activeStep: 2,
@@ -143,22 +168,6 @@ function presentationFor({
       outcome: "COMPARISON REQUIRED",
       detail: "One candidate has evaluation evidence. Add a second candidate before making a recommendation.",
       tone: "warning",
-    };
-  }
-  if (experiment.status === "CANCELLED") {
-    return {
-      activeStep: 1,
-      outcome: "CANCELLED",
-      detail: "The experiment was cancelled. Any evidence already produced remains available for review, but no recommendation is generated.",
-      tone: "warning",
-    };
-  }
-  if (experiment.status === "FAILED" || failedRuns > 0) {
-    return {
-      activeStep: 1,
-      outcome: "NEEDS REVIEW",
-      detail: `${failedRuns} evaluation ${failedRuns === 1 ? "run has" : "runs have"} failed. Resolve the run issue before comparing results.`,
-      tone: "danger",
     };
   }
   if (!candidateCount) {

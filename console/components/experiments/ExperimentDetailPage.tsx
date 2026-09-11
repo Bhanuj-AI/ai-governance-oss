@@ -269,7 +269,9 @@ export function ExperimentDetailPage({
   const leaderboard = useQuery({
     queryKey: ["leaderboard", experimentId],
     queryFn: () => getLeaderboard(experimentId),
-    enabled: tab === "Overview" || tab === "Leaderboard",
+    enabled:
+      (tab === "Overview" || tab === "Leaderboard") &&
+      experiment.data?.status === "COMPLETED",
   });
   const evaluationReport = useQuery({
     queryKey: ["evaluation-report", experimentId],
@@ -457,7 +459,9 @@ export function ExperimentDetailPage({
   const successRate = totalRuns
     ? Math.round((completedRuns / totalRuns) * 100)
     : null;
-  const topEntry = leaderboard.data?.entries[0];
+  const leaderboardFinalized = experimentData.status === "COMPLETED";
+  const finalizedLeaderboard = leaderboardFinalized ? leaderboard.data : undefined;
+  const topEntry = finalizedLeaderboard?.entries[0];
   const activeRun = runPlan.data?.active_run;
   const activeRunTotal = activeRun?.total_item_count ?? runPlan.data?.dataset_item_count ?? 0;
   const activeRunProgress = activeRun && activeRunTotal
@@ -654,8 +658,8 @@ export function ExperimentDetailPage({
             totalRuns={totalRuns}
             completedRuns={completedRuns}
             failedRuns={failedRuns}
-            leaderboard={leaderboard.data}
-            leaderboardLoading={leaderboard.isLoading}
+            leaderboard={finalizedLeaderboard}
+            leaderboardLoading={leaderboardFinalized && leaderboard.isLoading}
             candidates={candidates.data ?? []}
           />
 
@@ -1252,11 +1256,11 @@ export function ExperimentDetailPage({
         <Card>
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle>Latest Leaderboard</CardTitle>
-            {leaderboard.data && (
+            {finalizedLeaderboard && (
               <Button asChild variant="outline" size="sm">
                 <Link
                   href={`/graph?entityType=Leaderboard&entityId=${encodeURIComponent(
-                    leaderboard.data.leaderboard_id,
+                    finalizedLeaderboard.leaderboard_id,
                   )}&depth=2&awaitProjection=true`}
                 >
                   View in Ontology
@@ -1265,11 +1269,16 @@ export function ExperimentDetailPage({
             )}
           </CardHeader>
           <CardContent>
-            {leaderboard.isLoading ? (
+            {!leaderboardFinalized ? (
+              <p className="text-sm text-muted-foreground">
+                Evaluation is still running. The leaderboard and recommendation
+                are generated only after every evaluation run is terminal.
+              </p>
+            ) : leaderboard.isLoading ? (
               <p className="text-sm text-muted-foreground">
                 Loading leaderboard…
               </p>
-            ) : leaderboard.isError || !leaderboard.data ? (
+            ) : leaderboard.isError || !finalizedLeaderboard ? (
               <p className="text-sm text-muted-foreground">
                 No leaderboard is available yet. Complete eligible evaluation
                 runs first.
@@ -1288,9 +1297,9 @@ export function ExperimentDetailPage({
                     </tr>
                   </thead>
                   <tbody>
-                    {leaderboard.data.entries.map((item) => (
+                    {finalizedLeaderboard.entries.map((item) => (
                       <tr key={item.candidate_id} className="border-b">
-                        <td className="p-2">{formatRank(leaderboard.data.entries, item)}</td>
+                        <td className="p-2">{formatRank(finalizedLeaderboard.entries, item)}</td>
                         <td>{candidateNameById.get(item.candidate_id) ?? "Unknown candidate"}</td>
                         <td>{formatRankingValue(item.overall_score)}</td>
                         <td>{item.latency == null ? "Unavailable" : formatDuration(item.latency)}</td>
@@ -1301,7 +1310,7 @@ export function ExperimentDetailPage({
                   </tbody>
                 </table>
                 <p className="mt-4 text-xs text-muted-foreground">
-                  {hasUniqueWinner(leaderboard.data.entries)
+                  {hasUniqueWinner(finalizedLeaderboard.entries)
                     ? "A recommendation does not deploy or promote the candidate."
                     : "No unique winner is recommended. Review quality and operational evidence together. Ranking values are not percentages unless the selected strategy explicitly defines one."}
                 </p>

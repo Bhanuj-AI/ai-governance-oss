@@ -864,6 +864,21 @@ def test_get_leaderboard_after_run() -> None:
     assert response.json()["entries"][0]["candidate_id"]
 
 
+def test_get_leaderboard_does_not_generate_an_interim_recommendation() -> None:
+    client, _provider, _evaluation_repository = _client()
+    experiment_id = _create_experiment(client)
+    _add_candidate(client, experiment_id)
+    repository = client.app.state.test_experiment_repository
+    experiment = repository.find_by_id(experiment_id)
+    assert experiment is not None
+    repository.save(replace(experiment, status=ExperimentStatus.RUNNING))
+
+    response = client.get(f"/api/v1/experiments/{experiment_id}/leaderboard")
+
+    assert response.status_code == 400
+    assert "only after all evaluation runs complete" in response.json()["error"]["message"]
+
+
 def test_run_experiment_async_returns_queued_job() -> None:
     job_repository = InMemoryJobRepository()
     client, _provider, _evaluation_repository = _client(
