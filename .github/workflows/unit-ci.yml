@@ -1,10 +1,13 @@
-name: Unit Tests
+name: Pull Request Verification
 
 on:
   pull_request:
-  push:
     branches:
       - main
+
+concurrency:
+  group: pull-request-verification-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -23,5 +26,12 @@ jobs:
       # contracts shipped by this repository.
       - run: uv sync --frozen --extra inspect
 
-      - name: Run unit tests with coverage
-        run: uv run pytest tests/unit -v --cov=ai-governance --cov-report=term-missing
+      # The live OpenAI provider check remains in the manually dispatched
+      # integration workflow because it needs production credentials and can
+      # incur provider usage. All deterministic tests are required on a PR.
+      - name: Run deterministic test suite with coverage
+        run: >
+          uv run pytest tests -v
+          --ignore=tests/integration/test_trulens_provider.py
+          --cov=ai_governance
+          --cov-report=term-missing

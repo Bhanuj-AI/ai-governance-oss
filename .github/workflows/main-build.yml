@@ -1,0 +1,29 @@
+name: Main Build Smoke Test
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Build source and wheel distributions
+        run: uv build
+
+      - name: Install wheel and verify package import
+        run: |
+          cd "$RUNNER_TEMP"
+          uv run --isolated --no-project --with "$GITHUB_WORKSPACE"/dist/*.whl \
+            python -c "import ai_governance; from importlib.metadata import version; print(version('ai-governance'))"
