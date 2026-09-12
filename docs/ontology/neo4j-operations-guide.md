@@ -95,6 +95,21 @@ uv run python -m ai_governance.ontology.cli initialize-schema
 The command is safe to run repeatedly. It does not seed business data and does
 not delete graph data.
 
+The normal Compose deployment path runs this command and waits for the
+`ontology_entity_search` full-text index to become `ONLINE` before Platform can
+start. For an existing graph that only needs the entity-search capability, run
+the narrower, idempotent migration instead:
+
+```bash
+uv run python -m ai_governance.ontology.cli initialize-search-index
+```
+
+This index-only migration creates `ontology_entity_search` when absent and
+waits for Neo4j to populate it from existing entity properties. It does not
+normalize tenants, alter relationships, deduplicate records, or rewrite nodes.
+It fails if the index cannot be created, is incompatible, or does not become
+`ONLINE`.
+
 Check the schema in Neo4j Browser:
 
 ```cypher
@@ -104,7 +119,8 @@ ORDER BY name;
 ```
 
 Expected names include `ontology_entity_unique`, `ontology_entity_type`,
-`ontology_entity_version`, and `ontology_entity_tenant`.
+`ontology_entity_version`, `ontology_entity_tenant`, and
+`ontology_entity_search`.
 
 ## Demo Seed and First Verification
 
