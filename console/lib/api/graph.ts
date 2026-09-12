@@ -1,6 +1,8 @@
 import { aiGovernanceRequest } from "@/lib/api/client";
 import type {
   GraphEntity,
+  GraphEntityPage,
+  GraphEntityPageDto,
   GraphEntityDto,
   GraphPath,
   GraphPathDto,
@@ -23,6 +25,15 @@ export async function getEntity(entityType: string, entityId: string) {
     `/api/v1/ontology/entities/${encodeURIComponent(entityType)}/${encodeURIComponent(entityId)}`,
   );
   return mapEntity(dto);
+}
+
+export async function searchOntologyEntities(query: string, entityTypes: string[] = [], limit = 15) {
+  const dto = await aiGovernanceRequest<GraphEntityPageDto>("/api/v1/ontology/entities/search", {
+    q: query,
+    entity_type: entityTypes,
+    limit,
+  });
+  return mapEntityPage(dto);
 }
 
 export async function getRelationships(request: RelationshipListRequest) {
@@ -138,6 +149,14 @@ function mapRelationshipPage(
 ): GraphRelationshipPage {
   return {
     items: dto.items.map(mapRelationship),
+    limit: dto.limit,
+    nextCursor: dto.next_cursor,
+  };
+}
+
+function mapEntityPage(dto: GraphEntityPageDto): GraphEntityPage {
+  return {
+    items: dto.items.map(mapEntity),
     limit: dto.limit,
     nextCursor: dto.next_cursor,
   };

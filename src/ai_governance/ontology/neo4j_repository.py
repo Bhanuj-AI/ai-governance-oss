@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+import re
+import time
+from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Any
@@ -34,7 +36,12 @@ from ai_governance.ontology.query import (
     page_items,
 )
 from ai_governance.ontology.repositories import _normalize_direction
-from ai_governance.ontology.schema import ONTOLOGY_SCHEMA_CYPHER
+from ai_governance.ontology.schema import (
+    ENTITY_SEARCH_INDEX_NAME,
+    ENTITY_SEARCH_INDEX_PROPERTIES,
+    ONTOLOGY_ENTITY_SEARCH_INDEX_CYPHER,
+    ONTOLOGY_SCHEMA_CYPHER,
+)
 
 _NORMALIZE_RELATIONSHIP_TENANT_SCOPE_CYPHER = """
 MATCH (source:OntologyEntity)-[r]->()
@@ -56,6 +63,13 @@ WITH r.organization_id AS organization_id,
      collect(r) AS duplicates
 WHERE size(duplicates) > 1
 FOREACH (duplicate IN tail(duplicates) | DELETE duplicate)
+"""
+
+
+_ENTITY_SEARCH_INDEX_STATUS_CYPHER = """
+SHOW INDEXES YIELD name, type, state, labelsOrTypes, properties
+WHERE name = $index_name
+RETURN type, state, labelsOrTypes, properties
 """
 
 
@@ -129,6 +143,87 @@ class Neo4jOntologyGraphRepository:
             session.run(_REMOVE_DUPLICATE_RELATIONSHIPS_CYPHER)
             for statement in ONTOLOGY_SCHEMA_CYPHER:
                 session.run(statement)
+
+    def initialize_deployment_schema(self) -> None:
+        """Create only idempotent constraints and indexes needed at deployment.
+
+        Deployment must not run graph-repair work such as tenant normalization
+        or relationship deduplication. Those operations remain in the explicit
+        broader ``initialize_schema`` maintenance command.
+        """
+
+        with self._session() as session:
+            for statement in ONTOLOGY_SCHEMA_CYPHER:
+                session.run(statement)
+
+    def ensure_entity_search_index(
+        self,
+        *,
+        timeout_seconds: float = 60,
+        poll_interval_seconds: float = 0.25,
+    ) -> None:
+        """Create and verify the full-text entity search index without graph writes."""
+
+        try:
+            with self._session() as session:
+                result = session.run(ONTOLOGY_ENTITY_SEARCH_INDEX_CYPHER)
+                consume = getattr(result, "consume", None)
+                if consume is not None:
+                    consume()
+        except Exception as exc:
+            raise OntologyRepositoryError(
+                f"Could not create Neo4j full-text index {ENTITY_SEARCH_INDEX_NAME!r}."
+            ) from exc
+
+        deadline = time.monotonic() + timeout_seconds
+        last_state = "missing"
+        while True:
+            try:
+                with self._session() as session:
+                    record = session.run(
+                        _ENTITY_SEARCH_INDEX_STATUS_CYPHER,
+                        index_name=ENTITY_SEARCH_INDEX_NAME,
+                    ).single()
+            except Exception as exc:
+                raise OntologyRepositoryError(
+                    f"Could not verify Neo4j full-text index {ENTITY_SEARCH_INDEX_NAME!r}."
+                ) from exc
+
+            if record is not None:
+                details = dict(record)
+                self._validate_entity_search_index(details)
+                last_state = str(details.get("state", "unknown"))
+                if last_state == "ONLINE":
+                    return
+                if last_state == "FAILED":
+                    raise OntologyRepositoryError(
+                        f"Neo4j full-text index {ENTITY_SEARCH_INDEX_NAME!r} failed to populate."
+                    )
+
+            if time.monotonic() >= deadline:
+                raise OntologyRepositoryError(
+                    "Neo4j full-text index "
+                    f"{ENTITY_SEARCH_INDEX_NAME!r} did not become ONLINE "
+                    f"within {timeout_seconds:g} seconds (last state: {last_state})."
+                )
+            time.sleep(poll_interval_seconds)
+
+    @staticmethod
+    def _validate_entity_search_index(details: Mapping[str, Any]) -> None:
+        index_type = str(details.get("type", "")).upper()
+        labels_or_types = set(details.get("labelsOrTypes") or ())
+        properties = tuple(details.get("properties") or ())
+        if (
+            index_type != "FULLTEXT"
+            or labels_or_types != {"OntologyEntity"}
+            or properties != ENTITY_SEARCH_INDEX_PROPERTIES
+        ):
+            raise OntologyRepositoryError(
+                "Neo4j index "
+                f"{ENTITY_SEARCH_INDEX_NAME!r} exists but is incompatible with "
+                "ontology entity search. Expected a FULLTEXT index on "
+                "OntologyEntity with the canonical search properties."
+            )
 
     def save_entity(self, entity: OntologyEntity) -> OntologyEntity:
         label = _safe_entity_label(entity.entity_type)
@@ -478,6 +573,59 @@ class Neo4jOntologyGraphQueryRepository(OntologyGraphQueryRepository):
             else None
         )
 
+    def search_entities(
+        self,
+        query: str,
+        entity_types: Sequence[str] | None = None,
+        limit: int = DEFAULT_LIMIT,
+        cursor: str | None = None,
+    ) -> GraphQueryPage[GraphEntity]:
+        try:
+            offset = int(cursor or "0")
+        except ValueError as exc:
+            raise ValueError("cursor must be a numeric offset.") from exc
+        if offset < 0:
+            raise ValueError("cursor must be a numeric offset.")
+        cypher = """
+        CALL db.index.fulltext.queryNodes("ontology_entity_search", $search_query)
+        YIELD node, score
+        WHERE node.organization_id = $organization_id
+          AND node.project_id = $project_id
+          AND coalesce(node.is_deleted, false) = false
+          AND (size($entity_types) = 0 OR node.entity_type IN $entity_types)
+        RETURN node, score
+        ORDER BY CASE WHEN node.entity_id = $exact_id THEN 0 ELSE 1 END,
+                 score DESC,
+                 node.entity_type,
+                 node.entity_id
+        SKIP $offset
+        LIMIT $fetch_limit
+        """
+        with self._graph_repository._session() as session:
+            records = list(
+                session.run(
+                    cypher,
+                    organization_id="org_default",
+                    project_id="project_default",
+                    entity_types=list(entity_types or ()),
+                    search_query=_full_text_query(query),
+                    exact_id=query,
+                    offset=offset,
+                    fetch_limit=limit + 1,
+                )
+            )
+        items = tuple(
+            GraphEntity.from_ontology_entity(
+                _entity_from_properties(dict(record["node"]))
+            )
+            for record in records[:limit]
+        )
+        return GraphQueryPage(
+            items=items,
+            limit=limit,
+            next_cursor=str(offset + limit) if len(records) > limit else None,
+        )
+
     def get_relationship(
         self,
         relationship_id: str,
@@ -767,9 +915,7 @@ def _graph_node_from_neo4j_node(
     node: Any,
     depths: dict[tuple[str, str], int],
 ) -> GraphNode:
-    entity = GraphEntity.from_ontology_entity(
-        _entity_from_properties(dict(node))
-    )
+    entity = GraphEntity.from_ontology_entity(_entity_from_properties(dict(node)))
     return GraphNode(
         entity,
         depth=depths.get((entity.entity_type, entity.entity_id), 0),
@@ -852,6 +998,11 @@ def _entity_to_properties(entity: OntologyEntity) -> dict[str, Any]:
             _datetime_to_string(entity.deleted_at) if entity.deleted_at else None
         ),
     }
+
+
+def _full_text_query(query: str) -> str:
+    terms = re.findall(r"\w+", query.casefold())
+    return " AND ".join(f"({term}* OR {term}~)" for term in terms)
 
 
 def _entity_from_properties(properties: Mapping[str, Any]) -> OntologyEntity:
