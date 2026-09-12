@@ -162,6 +162,14 @@ class OntologyGraphQueryRepository(Protocol):
         entity_id: str,
     ) -> GraphEntity | None: ...
 
+    def search_entities(
+        self,
+        query: str,
+        entity_types: Sequence[str] | None = None,
+        limit: int = DEFAULT_LIMIT,
+        cursor: str | None = None,
+    ) -> GraphQueryPage[GraphEntity]: ...
+
     def get_relationship(
         self,
         relationship_id: str,
@@ -240,6 +248,29 @@ class OntologyGraphQueryService:
         return self._record_query(
             "get_entity",
             lambda: self._repository.get_entity(entity_type, entity_id),
+        )
+
+    def search_entities(
+        self,
+        query: str,
+        *,
+        entity_types: Sequence[str] | None = None,
+        limit: int = DEFAULT_LIMIT,
+        cursor: str | None = None,
+    ) -> GraphQueryPage[GraphEntity]:
+        normalized_query = query.strip()
+        if not normalized_query:
+            raise ValueError("query must not be empty.")
+        entity_types = _validate_entity_types(entity_types)
+        limit = _validate_limit(limit)
+        return self._record_query(
+            "search_entities",
+            lambda: self._repository.search_entities(
+                normalized_query,
+                entity_types=entity_types,
+                limit=limit,
+                cursor=cursor,
+            ),
         )
 
     def get_relationship(
