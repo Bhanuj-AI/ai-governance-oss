@@ -1,6 +1,6 @@
 # BHANUJ
 
-## AI Governance Control Plane
+## AI Governance Platform
 
 > **Know why an AI action happened, what changed, and whether it is safe to proceed.**
 
@@ -13,7 +13,7 @@ application, or deployment system.
 Your AI systems → assets + runtime evidence → evaluate → policy → decision + audit trail
 ```
 
-### Understand BHANUJ - AI Governance Control Plane in 20 seconds
+### Understand BHANUJ - AI Governance Control Platform in 20 seconds
 
 Use when your team needs reliable answers to questions such as:
 
@@ -31,7 +31,7 @@ It is **not** model serving, an agent framework, a workflow orchestrator,
 or a generic GRC system. It is the governance layer that makes AI activity
 reviewable, explainable, and auditable.
 
-**Modern AI frameworks help build agents. BHANUJ - AI Governance Control Plane governs the evidence and decisions around them.**
+**Modern AI frameworks help build agents. BHANUJ - AI Governance Control Platform governs the evidence and decisions around them.**
 
 > **Enterprise capabilities are under active development. Commercial offerings
 > will be announced as they mature.**
@@ -47,7 +47,7 @@ reviewable, explainable, and auditable.
 
 ---
 
-## See AI Governance Control Plane Studio
+## See AI Governance Control Platform Studio
 
 <table>
   <tr>
@@ -60,7 +60,7 @@ reviewable, explainable, and auditable.
   </tr>
 </table>
 
-## Why AI Governance Control Plane?
+## Why AI Governance Control Platform?
 
 AI systems are no longer just about selecting the best model. Teams need to
 answer governance questions such as:
@@ -72,13 +72,13 @@ answer governance questions such as:
 - Can quality regressions automatically block promotion?
 - Can governance remain independent of orchestration frameworks and model vendors?
 
-AI Governance Control Plane provides the governance control plane that answers these questions.
+AI Governance Control Platform provides the governance control plane that answers these questions.
 
 ---
 
 ## Core Concepts
 
-Everything in AI Governance Control Plane revolves around five fundamental concepts.
+Everything in AI Governance Control Platform revolves around five fundamental concepts.
 
 ### Governance Asset
 
@@ -104,9 +104,17 @@ An explainable, auditable outcome generated from evidence and policy.
 
 ## Platform Architecture
 
-![AI Governance Control Plane Architecture](assets/Enterprise%20Architecture%20-%20Marketing.png)
+![AI Governance Control Platform Architecture](assets/Enterprise%20Architecture%20-%20Marketing.png)
 
-AI Governance Control Plane is organized into independent architectural planes.
+At the product level, AI Governance Control Platform is grouped into five OSS capability domains:
+
+- **Access** — authentication, authorization, multi-tenancy, service identity, and tenant context propagation
+- **Governance** — policies, deterministic decisions, compliance, audit, and governance enforcement
+- **Knowledge & Evidence** — ontology, lineage, provenance, knowledge graph, governed assets, and evidence APIs
+- **Runtime & Evaluation** — Agents Runtime, evaluations and scoring, causal audit, replay, interventions, execution traces, and deterministic runtime findings
+- **Operations & Control** — jobs, scheduling, settings, events and integrations, telemetry, observability, and operational audit
+
+These product domains are implemented as independent architectural planes:
 
 - Authentication Plane
 - Governance Ontology Plane
@@ -114,15 +122,19 @@ AI Governance Control Plane is organized into independent architectural planes.
 - Registry Plane
 - Experiment Plane
 - Evaluation Plane
+- Agents Runtime Plane
+- Causal Audit Plane
 - Job Execution Control Plane
 - Replay Plane
 - Audit Plane
+- Events & Integration Plane
+- Settings Control Plane
 - Persistence Plane
 - REST Control Plane
 - MCP Server
-- AI Governance Control Plane Studio
+- AI Governance Control Platform Studio
 
-Each plane owns a single responsibility and communicates only through explicit contracts.
+Each plane owns a single responsibility and communicates only through explicit contracts. Runtime integrations remain outside BHANUJ ownership; the control plane governs their evidence and decisions rather than replacing the AI runtime, orchestration framework, or deployment system.
 
 ---
 
@@ -145,21 +157,28 @@ Each plane owns a single responsibility and communicates only through explicit c
 - Immutable Versioning
 - Lifecycle Management
 
-### Quality Governance
+### Runtime & Evaluation Governance
 
+- Agents Runtime
 - Evaluation Framework
 - Experiment Management
 - Candidate Comparison
 - Drift Analysis
+- Causal Audit
+- Evidence Intervention Policies
 - Replay-aware Governance
+- Execution Traces and Deterministic Findings
 - Leaderboards
 
-### Execution Governance
+### Operations & Execution Governance
 
 - Execution Audit
 - Workflow Replay
 - Job Execution Control Plane
 - Async Governance Jobs
+- Settings Control Plane
+- Events & Integrations
+- Telemetry & Observability
 
 ### Platform Interfaces
 
@@ -190,11 +209,13 @@ AI Governance Control Plane currently includes:
   plus OpenAI-compatible custom endpoints
 - Pluggable evaluation provider contracts with TruLens support
 - Execution audit, workflow replay, evaluation history, comparison, and drift analysis
+- Tenant-scoped Agents Runtime for observed-agent discovery, execution traces, runtime findings, and deterministic detect/reconcile workflows
+- Causal Audit with governed evidence interventions, replay-backed counterfactual analysis, outcome scoring, deterministic tool-use classification, and durable audit results
 - Async governance job submission, status lookup, cancellation, retry, leases, and worker execution
 - Governance ontology contracts, graph query APIs, ontology synchronization, and Neo4j-backed graph exploration
 - Governance decision models, policy evaluation, evidence building, reasoning, persistence, audit records, and ontology projection
 - Decision REST APIs and MCP tools for evaluation, retrieval, listing, evidence, explanation, and lineage
-- AI Governance Control Plane Studio home dashboard, policy engine authoring, ontology graph exploration, decision index browsing, decision lookup, and visual decision detail inspection
+- AI Governance Control Platform Studio home dashboard, policy engine authoring, ontology graph exploration, decision index browsing, decision lookup, and visual decision detail inspection
 - SQLite and PostgreSQL reference persistence, with optional Snowflake analytics persistence
 
 ---
@@ -326,7 +347,7 @@ for key-management details.
 
 ## Your first two minutes in Studio
 
-Open [AI Governance Control Plane Studio](http://localhost:3000) after `./servers.sh` completes. It
+Open [AI Governance Control Platform Studio](http://localhost:3000) after `./servers.sh` completes. It
 will redirect you to the local Keycloak sign-in page. Sign in as `studio` with
 the `AI_GOVERNANCE_STUDIO_PASSWORD` value from `keycloak-postgres/.env.keycloak`.
 The local stack starts with representative demo data, so you can follow the
@@ -340,10 +361,10 @@ full governance flow immediately:
 
 - Keycloak IDP on http://localhost:18080 (OSS local stack)
 - REST API on http://localhost:8000
-- AI Governance Control Plane Studio on http://localhost:3000
+- AI Governance Control Platform Studio on http://localhost:3000
 - Neo4j on bolt://localhost:7687
-- AI Governance Control Plane MCP Stdio (MCPO) on http://localhost:8001/docs
-- AI Governance Control Plane MCP Streamable HTTP Server on http://localhost:8002/
+- AI Governance Control Platform MCP Stdio (MCPO) on http://localhost:8001/docs
+- AI Governance Control Platform MCP Streamable HTTP Server on http://localhost:8002/
 - SeaweedFS S3 API on http://localhost:8333 (local dataset content)
 - SeaweedFS Filer UI on http://localhost:8888 (browse local dataset objects)
 - SeaweedFS Master UI on http://localhost:9333 (storage topology)
@@ -416,7 +437,7 @@ AWS S3: set `AI_GOVERNANCE_DATASET_OBJECT_STORE_BACKEND=s3`,
 S3-compatible endpoint such as SeaweedFS.
 
 The Dataset Registry also supports direct CSV and JSONL upload from Studio.
-AI Governance Control Plane validates and writes immutable dataset bytes to the configured object
+AI Governance Control Platform validates and writes immutable dataset bytes to the configured object
 store, then registers a DRAFT version with its immutable URI and SHA-256 checksum.
 
 For a guided first run through Assets, SeaweedFS dataset storage, ontology
@@ -450,8 +471,11 @@ graph explorer, or governance decision index.
 - [Neo4j Operations Guide](docs/ontology/neo4j-operations-guide.md)
 - [Dependency Management](docs/maintenance/DEPENDENCY_MANAGEMENT.md)
 - [Graph Query APIs](docs/ontology/graph-query-apis.md)
-- [AI Governance Control Plane Studio](docs/ontology/governance-graph-console.md)
+- [AI Governance Control Platform Studio](docs/ontology/governance-graph-console.md)
 - [End-to-End Local Tutorial](docs/tutorials/end-to-end-local.md)
+- [Agents Runtime Operator Guide](docs/tutorials/agents-runtime-operator-guide.md)
+- [Causal Audit Architecture](docs/architecture/CAUSAL_AUDIT.md)
+- [Agent Evidence Interoperability and Causal Replay](docs/architecture/AGENT_EVIDENCE_INTEROPERABILITY.md)
 - [Producer Integration Guide](docs/tutorials/producer-integration.md)
 - [Governed Replay Walkthrough](docs/tutorials/governed-replay-walkthrough.md)
 - [Inspect AI Batch Experiment](docs/tutorials/inspect-ai-batch-experiment.md)
@@ -479,9 +503,9 @@ Brand assets and favicon sources live in [`assets/`](assets/).
 
 # Vision
 
-AI Governance Control Plane provides the semantic governance layer for AI systems.
+AI Governance Control Platform provides the semantic governance layer for AI systems.
 
-By combining ontology, governance decisions, evaluation, experimentation, replay, audit, and operational APIs into a unified governance platform, AI Governance Control Plane enables organizations to build trustworthy, explainable, and continuously improving AI systems independent of models, orchestration frameworks, or infrastructure providers.
+By combining ontology, governance decisions, evaluation, experimentation, replay, audit, and operational APIs into a unified governance platform, AI Governance Control Platform enables organizations to build trustworthy, explainable, and continuously improving AI systems independent of models, orchestration frameworks, or infrastructure providers.
 
 > **Enterprise capabilities are under active development. Commercial offerings
 > will be announced as they mature.**
