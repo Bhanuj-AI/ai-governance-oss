@@ -1,6 +1,6 @@
 {
   "name": "ai-governance-studio",
-  "version": "0.3.0",
+  "version": "0.1.3",
   "private": true,
   "scripts": {
     "dev": "next dev",

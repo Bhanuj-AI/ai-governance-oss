@@ -1,27 +1,130 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import type { ReactNode } from "react";
+import { Separator } from "@/components/ui/separator";
 import type { GraphEntity, GraphRelationship } from "@/types/graph";
 
-export function EntityDetailPanel({ entity, relationship, technical, open, onOpenChange }: { entity?: GraphEntity; relationship?: GraphRelationship; technical: boolean; open: boolean; onOpenChange: (open: boolean) => void }) {
-  if (!entity && !relationship) return null;
-  return <Sheet open={open} onOpenChange={onOpenChange}><SheetContent className="overflow-hidden p-0 sm:max-w-lg"><ScrollArea className="h-full">{entity ? <EntityDetails entity={entity} technical={technical} /> : null}{relationship ? <RelationshipDetails relationship={relationship} technical={technical} /> : null}</ScrollArea></SheetContent></Sheet>;
+export function EntityDetailPanel({
+  entity,
+  relationship,
+}: {
+  entity?: GraphEntity;
+  relationship?: GraphRelationship;
+}) {
+  if (!entity && !relationship) {
+    return (
+      <Card className="h-full min-w-0 rounded-none border-0 border-l shadow-none">
+        <CardHeader>
+          <CardTitle>Selection</CardTitle>
+          <CardDescription>Select a node or edge to inspect it.</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="h-full min-w-0 rounded-none border-0 border-l shadow-none">
+      <ScrollArea className="h-full">
+        {entity ? <EntityDetails entity={entity} /> : null}
+        {relationship ? <RelationshipDetails relationship={relationship} /> : null}
+      </ScrollArea>
+    </Card>
+  );
 }
 
-function EntityDetails({ entity, technical }: { entity: GraphEntity; technical: boolean }) {
-  const name = entityName(entity);
-  return <><SheetHeader className="p-6 pr-12"><div className="flex items-center gap-2"><Badge>{humanize(entity.entityType)}</Badge><Badge variant="outline">{entity.lifecycle}</Badge></div><SheetTitle className="mt-3 break-words">{name}</SheetTitle><p className="text-sm text-muted-foreground">{technical ? entity.entityId : `Governed ${humanize(entity.entityType).toLowerCase()}`}</p></SheetHeader><div className="space-y-6 px-6 pb-6"><Section title="Properties"><DetailRow label="Status" value={entity.lifecycle} /><DetailRow label="Owner" value={entity.owner} /><DetailRow label="Created" value={new Date(entity.createdAt).toLocaleString()} /></Section><Section title="Governance"><MetadataBlock title="Governed attributes" value={entity.immutableAttributes} /><MetadataBlock title="Current context" value={entity.mutableAttributes} /></Section>{technical ? <><Section title="Technical identity"><DetailRow label="Entity ID" value={entity.entityId} code /><DetailRow label="Node type" value={entity.entityType} /><DetailRow label="Ontology version" value={entity.ontologyVersion} /></Section><Section title="Metadata"><MetadataBlock title="Raw metadata" value={entity.metadata} /></Section></> : <Section title="Evidence"><MetadataBlock title="Recorded evidence" value={entity.metadata} /></Section>}</div></>;
+function EntityDetails({ entity }: { entity: GraphEntity }) {
+  return (
+    <>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Badge>{entity.entityType}</Badge>
+          <Badge variant="outline">{entity.lifecycle}</Badge>
+        </div>
+        <CardTitle className="break-all">{entity.entityId}</CardTitle>
+        <CardDescription>{entity.owner}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <DetailRow label="Ontology Version" value={entity.ontologyVersion} />
+        <DetailRow label="Created" value={entity.createdAt} />
+        <MetadataBlock title="Metadata" value={entity.metadata} />
+        <MetadataBlock
+          title="Immutable Attributes"
+          value={entity.immutableAttributes}
+        />
+        <MetadataBlock
+          title="Mutable Attributes"
+          value={entity.mutableAttributes}
+        />
+      </CardContent>
+    </>
+  );
 }
 
-function RelationshipDetails({ relationship, technical }: { relationship: GraphRelationship; technical: boolean }) {
-  return <><SheetHeader className="p-6 pr-12"><div className="flex items-center gap-2"><Badge>{humanize(relationship.relationshipType)}</Badge><Badge variant="outline">Relationship</Badge></div><SheetTitle className="mt-3">{technical ? relationship.relationshipId : `${humanize(relationship.sourceEntityType)} → ${humanize(relationship.targetEntityType)}`}</SheetTitle><p className="text-sm text-muted-foreground">{humanize(relationship.relationshipType)}</p></SheetHeader><div className="space-y-6 px-6 pb-6"><Section title={technical ? "Endpoints" : "Relationship"}><DetailRow label="From" value={`${humanize(relationship.sourceEntityType)} · ${relationship.sourceEntityId}`} /><DetailRow label="To" value={`${humanize(relationship.targetEntityType)} · ${relationship.targetEntityId}`} /><DetailRow label="Recorded" value={new Date(relationship.createdAt).toLocaleString()} /></Section>{technical ? <><Section title="Technical identity"><DetailRow label="Relationship ID" value={relationship.relationshipId} code /><DetailRow label="Edge type" value={relationship.relationshipType} /><DetailRow label="Ontology version" value={relationship.ontologyVersion} /></Section><Section title="Metadata"><MetadataBlock title="Raw metadata" value={relationship.metadata} /></Section></> : <Section title="Governance"><DetailRow label="Recorded by" value={relationship.createdBy} /><MetadataBlock title="Evidence and context" value={relationship.metadata} /></Section>}</div></>;
+function RelationshipDetails({
+  relationship,
+}: {
+  relationship: GraphRelationship;
+}) {
+  return (
+    <>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Badge>{relationship.relationshipType}</Badge>
+          <Badge variant="outline">Relationship</Badge>
+        </div>
+        <CardTitle className="break-all">{relationship.relationshipId}</CardTitle>
+        <CardDescription>
+          {relationship.sourceEntityType} to {relationship.targetEntityType}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <DetailRow label="Source" value={relationship.sourceEntityId} />
+        <DetailRow label="Target" value={relationship.targetEntityId} />
+        <DetailRow label="Created By" value={relationship.createdBy} />
+        <DetailRow label="Ontology Version" value={relationship.ontologyVersion} />
+        <DetailRow label="Created" value={relationship.createdAt} />
+        <MetadataBlock title="Metadata" value={relationship.metadata} />
+      </CardContent>
+    </>
+  );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) { return <section><h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</h3><div className="mt-3 space-y-3">{children}</div></section>; }
-function DetailRow({ label, value, code = false }: { label: string; value: string; code?: boolean }) { return <div><p className="text-xs text-muted-foreground">{label}</p>{code ? <code className="mt-1 block break-all rounded bg-muted px-2 py-1 text-xs">{value}</code> : <p className="mt-1 break-all text-sm">{value}</p>}</div>; }
-function MetadataBlock({ title, value }: { title: string; value: Record<string, unknown> }) { const rendered = JSON.stringify(value, null, 2); return <div><p className="text-xs text-muted-foreground">{title}</p><pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/60 p-3 text-xs leading-5 [overflow-wrap:anywhere]">{rendered === "{}" ? "No recorded values" : rendered}</pre></div>; }
-function entityName(entity: GraphEntity) { const values = [entity.immutableAttributes.name, entity.immutableAttributes.display_name, entity.immutableAttributes.model_name, entity.metadata.label, entity.metadata.name]; return values.find((value): value is string => typeof value === "string" && Boolean(value.trim())) ?? entity.entityId; }
-function humanize(value: string) { return value.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").replace(/\b\w/g, (character) => character.toUpperCase()); }
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+        {label}
+      </div>
+      <div className="mt-1 break-all text-sm">{value}</div>
+    </div>
+  );
+}
+
+function MetadataBlock({
+  title,
+  value,
+}: {
+  title: string;
+  value: Record<string, unknown>;
+}) {
+  const rendered = JSON.stringify(value, null, 2);
+  return (
+    <div>
+      <Separator className="mb-3" />
+      <div className="mb-2 text-xs font-medium uppercase tracking-normal text-muted-foreground">
+        {title}
+      </div>
+      <pre className="max-h-48 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-xs leading-5 [overflow-wrap:anywhere]">
+        {rendered === "{}" ? "No values" : rendered}
+      </pre>
+    </div>
+  );
+}

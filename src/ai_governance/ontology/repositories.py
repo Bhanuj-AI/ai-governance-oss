@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Protocol
@@ -318,11 +318,7 @@ class InMemoryOntologyGraphRepository:
                 relationship.target_entity_type == entity_type
                 and relationship.target_entity_id == entity_id
             )
-            if normalized_direction == "outgoing" and outgoing:
-                matches.append(relationship)
-            elif normalized_direction == "incoming" and incoming:
-                matches.append(relationship)
-            elif normalized_direction == "both" and (outgoing or incoming):
+            if normalized_direction == "outgoing" and outgoing or normalized_direction == "incoming" and incoming or normalized_direction == "both" and (outgoing or incoming):
                 matches.append(relationship)
 
         return sorted(matches, key=lambda item: item.relationship_id)
@@ -427,35 +423,6 @@ class InMemoryOntologyGraphQueryRepository(OntologyGraphQueryRepository):
             if entity is not None and not entity.is_deleted
             else None
         )
-
-    def search_entities(
-        self,
-        query: str,
-        entity_types: Sequence[str] | None = None,
-        limit: int = DEFAULT_LIMIT,
-        cursor: str | None = None,
-    ) -> GraphQueryPage[GraphEntity]:
-        entity_filter = entity_type_set(entity_types)
-        matches = [
-            GraphEntity.from_ontology_entity(entity)
-            for (organization_id, project_id, _, _), entity in (
-                self._graph_repository._entities.items()
-            )
-            if organization_id == "org_default"
-            and project_id == "project_default"
-            and not entity.is_deleted
-            and (not entity_filter or entity.entity_type in entity_filter)
-            and _entity_matches_query(entity, query)
-        ]
-        matches.sort(
-            key=lambda entity: (
-                entity.entity_id.casefold() != query.casefold(),
-                not entity.entity_id.casefold().startswith(query.casefold()),
-                entity.entity_type,
-                entity.entity_id,
-            )
-        )
-        return page_items(matches, limit=limit, cursor=cursor)
 
     def get_relationship(
         self,
@@ -699,12 +666,12 @@ class InMemoryOntologyGraphQueryRepository(OntologyGraphQueryRepository):
                 relationship.target_entity_type,
                 relationship.target_entity_id,
             )
-            if direction in {"outgoing", "both"} and source == current:
-                if self._relationship_endpoints_are_live(relationship):
-                    matches.append(relationship)
-            elif direction in {"incoming", "both"} and target == current:
-                if self._relationship_endpoints_are_live(relationship):
-                    matches.append(relationship)
+            if (
+                (direction in {"outgoing", "both"} and source == current
+                 or direction in {"incoming", "both"} and target == current)
+                and self._relationship_endpoints_are_live(relationship)
+            ):
+                matches.append(relationship)
         return sorted(matches, key=lambda item: item.relationship_id)
 
     def _relationship_endpoints_are_live(
@@ -778,29 +745,6 @@ class InMemoryOntologyGraphQueryRepository(OntologyGraphQueryRepository):
             ),
             edges=tuple(edges),
         )
-
-
-def _entity_matches_query(entity: OntologyEntity, query: str) -> bool:
-    needle = query.casefold()
-    searchable = (
-        entity.entity_id,
-        entity.entity_type,
-        entity.owner,
-        *(_searchable_values(entity.immutable_attributes)),
-        *(_searchable_values(entity.mutable_attributes)),
-        *(_searchable_values(entity.metadata)),
-    )
-    return any(needle in value.casefold() for value in searchable)
-
-
-def _searchable_values(value: object) -> tuple[str, ...]:
-    if isinstance(value, Mapping):
-        return tuple(
-            item for nested in value.values() for item in _searchable_values(nested)
-        )
-    if isinstance(value, (list, tuple, set)):
-        return tuple(item for nested in value for item in _searchable_values(nested))
-    return (str(value),)
 
 
 def _other_key(

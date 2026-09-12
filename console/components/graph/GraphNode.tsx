@@ -26,7 +26,7 @@ export function GraphNode({ data, selected }: NodeProps<GovernanceGraphNode>) {
 
   return (
     <div
-      className="graph-governance-node group relative w-44 overflow-visible rounded-lg border bg-card px-3 py-2 transition-all duration-150"
+      className="graph-governance-node relative w-44 overflow-hidden rounded-lg border bg-card px-3 py-2 transition-all duration-150"
       style={{
         borderColor: isEmphasized
           ? data.relationTone.selected
@@ -85,11 +85,6 @@ export function GraphNode({ data, selected }: NodeProps<GovernanceGraphNode>) {
           />
           {data.lifecycle}
         </span>
-      </div>
-      <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-48 -translate-x-1/2 rounded-md border border-border/50 bg-card px-3 py-2 text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-        <p className="font-medium text-foreground">{data.label}</p>
-        <p className="mt-1 text-muted-foreground">{data.entityType} · {data.lifecycle}</p>
-        <p className="mt-1 truncate text-muted-foreground">Owner: {data.owner}</p>
       </div>
       <Handle
         type="source"

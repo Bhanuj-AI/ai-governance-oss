@@ -42,23 +42,6 @@ class GraphEntityResponse(BaseModel):
         )
 
 
-class GraphEntityPageResponse(BaseModel):
-    items: list[GraphEntityResponse]
-    limit: int
-    next_cursor: str | None = None
-
-    @classmethod
-    def from_domain(
-        cls,
-        page: GraphQueryPage[GraphEntity],
-    ) -> GraphEntityPageResponse:
-        return cls(
-            items=[GraphEntityResponse.from_domain(item) for item in page.items],
-            limit=page.limit,
-            next_cursor=page.next_cursor,
-        )
-
-
 class GraphRelationshipResponse(BaseModel):
     relationship_id: str
     relationship_type: str

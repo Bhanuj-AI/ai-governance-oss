@@ -320,7 +320,7 @@ services:
       start_period: 20s
     restart: unless-stopped
 
-  # Runs once after Neo4j is healthy to apply the safe deployment schema.
+  # Runs once after Neo4j is healthy to apply graph constraints and indexes.
   ai-governance-neo4j-schema:
     image: ai-governance-platform:local
     env_file:
@@ -330,7 +330,7 @@ services:
       AI_GOVERNANCE_GRAPH_URI: bolt://neo4j:7687
       AI_GOVERNANCE_GRAPH_USER: neo4j
       AI_GOVERNANCE_ONTOLOGY_REPOSITORY: neo4j
-    command: ["/opt/ai-governance-venv/bin/python", "-m", "ai_governance.ontology.cli", "initialize-deployment-schema"]
+    command: ["/opt/ai-governance-venv/bin/python", "-m", "ai_governance.ontology.cli", "initialize-schema"]
     depends_on:
       neo4j:
         condition: service_healthy

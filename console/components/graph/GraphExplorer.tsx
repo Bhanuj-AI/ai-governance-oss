@@ -22,7 +22,7 @@ import {
   relationToneFor,
   statusToneFor,
 } from "@/lib/graph/palette";
-import type { GraphEntity, GraphRelationship, GraphSubgraph } from "@/types/graph";
+import type { GraphRelationship, GraphSubgraph } from "@/types/graph";
 import { GraphEdge, type GovernanceGraphEdge } from "./GraphEdge";
 import { GraphNode, type GovernanceGraphNode } from "./GraphNode";
 
@@ -34,15 +34,6 @@ const edgeTypes = {
   governanceEdge: GraphEdge,
 };
 
-function entityLabel(entity: GraphEntity) {
-  const values = [entity.immutableAttributes.name, entity.immutableAttributes.display_name, entity.immutableAttributes.model_name, entity.metadata.label, entity.metadata.name];
-  return values.find((value): value is string => typeof value === "string" && Boolean(value.trim())) ?? entity.entityId;
-}
-
-function humanize(value: string) {
-  return value.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
-}
-
 type GraphFocus =
   | { kind: "entity"; entityId: string }
   | { kind: "relationship"; relationshipId: string }
@@ -50,18 +41,12 @@ type GraphFocus =
 
 export function GraphExplorer({
   subgraph,
-  presentation = "technical",
   onSelectEntity,
-  onInspectEntity,
   onSelectRelationship,
-  onInspectRelationship,
 }: {
   subgraph: GraphSubgraph;
-  presentation?: "explore" | "technical";
   onSelectEntity: (entityId: string) => void;
-  onInspectEntity: (entityId: string) => void;
   onSelectRelationship: (relationship: GraphRelationship) => void;
-  onInspectRelationship: (relationship: GraphRelationship) => void;
 }) {
   const initialNodes = useMemo<GovernanceGraphNode[]>(
     () => {
@@ -72,7 +57,7 @@ export function GraphExplorer({
         type: "governanceNode",
         position: positions.get(node.entity.entityId) ?? { x: 0, y: 0 },
         data: {
-          label: presentation === "explore" ? entityLabel(node.entity) : node.entity.entityId,
+          label: node.entity.entityId,
           entityType: node.entity.entityType,
           lifecycle: node.entity.lifecycle,
           owner: node.entity.owner,
@@ -83,7 +68,7 @@ export function GraphExplorer({
         },
       }));
     },
-    [presentation, subgraph],
+    [subgraph],
   );
 
   const initialEdges = useMemo<GovernanceGraphEdge[]>(
@@ -101,12 +86,12 @@ export function GraphExplorer({
           height: 18,
         },
         data: {
-          label: presentation === "explore" ? humanize(edge.relationship.relationshipType) : edge.relationship.relationshipType,
+          label: edge.relationship.relationshipType,
           focusState: "default",
           tone: edgeToneFor(edge.relationship, rootEntityId(subgraph)),
         },
       })),
-    [presentation, subgraph],
+    [subgraph],
   );
   const [nodes, setNodes, onNodesChange] =
     useNodesState<GovernanceGraphNode>(initialNodes);
@@ -143,15 +128,6 @@ export function GraphExplorer({
       applyFocus({ kind: "relationship", relationshipId: edge.id });
       onSelectRelationship(relationship);
     }
-  };
-
-  const handleNodeDoubleClick: NodeMouseHandler<GovernanceGraphNode> = (_, node) => {
-    onInspectEntity(node.id);
-  };
-
-  const handleEdgeDoubleClick: EdgeMouseHandler<GovernanceGraphEdge> = (_, edge) => {
-    const relationship = relationshipById.get(edge.id);
-    if (relationship) onInspectRelationship(relationship);
   };
 
   function handleResetLayout() {
@@ -215,8 +191,6 @@ export function GraphExplorer({
       onEdgesChange={onEdgesChange}
       onNodeClick={handleNodeClick}
       onEdgeClick={handleEdgeClick}
-      onNodeDoubleClick={handleNodeDoubleClick}
-      onEdgeDoubleClick={handleEdgeDoubleClick}
       onPaneClick={handleClearFocus}
     >
       <Panel position="top-right">

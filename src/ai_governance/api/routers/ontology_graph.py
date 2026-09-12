@@ -20,7 +20,6 @@ from ai_governance.api.models import (
     GraphRelationshipResponse,
     GraphSubgraphResponse,
 )
-from ai_governance.api.models.ontology_graph import GraphEntityPageResponse
 from ai_governance.ontology import OntologyGraphQueryService
 from ai_governance.ontology.demo_seed import (
     DEMO_ENTITY_ID,
@@ -37,45 +36,6 @@ router = APIRouter(
     prefix="/api/v1/ontology",
     tags=["Ontology Graph"],
 )
-
-
-@router.get(
-    "/entities/search",
-    response_model=GraphEntityPageResponse,
-    status_code=status.HTTP_200_OK,
-    responses={
-        status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
-        status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": ErrorResponse},
-    },
-    summary="Search ontology entities",
-    description=(
-        "Search canonical ontology entity identifiers and projected metadata "
-        "within the current tenant scope."
-    ),
-)
-def search_ontology_entities(
-    q: str = Query(min_length=1, max_length=200),
-    entity_type: list[str] | None = Query(default=None),
-    limit: int = Query(default=15, ge=1, le=20),
-    cursor: str | None = Query(default=None),
-    service: Annotated[
-        OntologyGraphQueryService,
-        Depends(get_ontology_graph_query_service),
-    ] = None,
-) -> GraphEntityPageResponse:
-    try:
-        page = service.search_entities(
-            q,
-            entity_types=entity_type,
-            limit=limit,
-            cursor=cursor,
-        )
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
-    return GraphEntityPageResponse.from_domain(page)
 
 
 @router.post(

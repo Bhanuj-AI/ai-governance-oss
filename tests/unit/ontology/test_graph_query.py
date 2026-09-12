@@ -42,11 +42,6 @@ from ai_governance.repositories.in_memory_policy_administration_repository impor
 def test_graph_query_service_reads_relationships_subgraphs_and_paths() -> None:
     service = _query_service()
 
-    search = service.search_entities(
-        "candidate",
-        entity_types=(EntityType.CANDIDATE.value,),
-    )
-
     page = service.find_relationships(
         EntityType.CANDIDATE.value,
         "candidate-1",
@@ -83,7 +78,6 @@ def test_graph_query_service_reads_relationships_subgraphs_and_paths() -> None:
     )
 
     assert [item.relationship_id for item in page.items] == ["rel-1"]
-    assert [item.entity_id for item in search.items] == ["candidate-1"]
     assert page.next_cursor == "1"
     assert [item.relationship_id for item in next_page.items] == ["rel-3"]
     assert next_page.next_cursor is None
@@ -204,10 +198,6 @@ def test_graph_query_rest_endpoints_return_stable_dtos() -> None:
     entity_response = client.get(
         "/api/v1/ontology/entities/Candidate/candidate-1"
     )
-    search_response = client.get(
-        "/api/v1/ontology/entities/search",
-        params={"q": "candidate", "entity_type": "Candidate"},
-    )
     relationships_response = client.get(
         "/api/v1/ontology/entities/Candidate/candidate-1/relationships",
         params={"direction": "outgoing", "limit": 1},
@@ -233,10 +223,6 @@ def test_graph_query_rest_endpoints_return_stable_dtos() -> None:
 
     assert entity_response.status_code == 200
     assert entity_response.json()["entity_type"] == "Candidate"
-    assert search_response.status_code == 200
-    assert [
-        item["entity_id"] for item in search_response.json()["items"]
-    ] == ["candidate-1"]
     assert relationships_response.status_code == 200
     assert relationships_response.json()["items"][0]["relationship_id"] == "rel-1"
     assert neighbourhood_response.status_code == 200

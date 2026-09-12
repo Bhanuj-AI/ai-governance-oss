@@ -48,12 +48,6 @@ export type GraphRelationshipPage = {
   nextCursor: string | null;
 };
 
-export type GraphEntityPage = {
-  items: GraphEntity[];
-  limit: number;
-  nextCursor: string | null;
-};
-
 export type GraphPathList = {
   paths: GraphPath[];
 };
@@ -142,12 +136,6 @@ export type GraphPathDto = {
 
 export type GraphRelationshipPageDto = {
   items: GraphRelationshipDto[];
-  limit: number;
-  next_cursor: string | null;
-};
-
-export type GraphEntityPageDto = {
-  items: GraphEntityDto[];
   limit: number;
   next_cursor: string | null;
 };
