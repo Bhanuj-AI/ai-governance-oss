@@ -198,8 +198,13 @@ class InMemoryAgentExecutionEventRepository(AgentExecutionEventRepository):
                     (idempotency_key, event.execution_id)
                 )
                 if existing is not None:
-                    # Compare attributes for conflict detection.
-                    if dict(existing.attributes) != dict(event.attributes):
+                    # Compare typed workflow evidence as well as the legacy
+                    # attributes payload for conflict detection.
+                    if (
+                        existing.event_type is not event.event_type
+                        or dict(existing.attributes) != dict(event.attributes)
+                        or existing.workflow_step != event.workflow_step
+                    ):
                         raise AgentExecutionIdempotencyConflict(
                             f"Idempotency key '{idempotency_key}' reused with "
                             f"different payload for execution '{event.execution_id}'."

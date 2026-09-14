@@ -16,6 +16,8 @@ from ai_governance.domain.agent_execution import (
     AgentExecutionEvent,
     AgentExecutionStatus,
     EventType,
+    WorkflowStep,
+    WorkflowStepLifecycle,
 )
 from ai_governance.domain.agent_execution.agent_execution_event import ActorType
 from ai_governance.domain.agent_execution.errors import (
@@ -353,6 +355,7 @@ class PostgresAgentExecutionEventRepository(AgentExecutionEventRepository):
                     event_id, execution_id, organization_id, project_id,
                     event_type, sequence_number, occurred_at, received_at, late_for_runtime_findings, runtime_findings_finalization_cutoff_at, runtime_findings_lateness_policy_hours,
                     correlation_id, causation_id, actor_id, actor_type,
+                    step_id, step_name, step_lifecycle, parent_step_id, source_kind,
                     resource_references_json, evidence_references_json,
                     attributes_json, event_schema_version, idempotency_key,
                     created_at
@@ -361,6 +364,7 @@ class PostgresAgentExecutionEventRepository(AgentExecutionEventRepository):
                     %(project_id)s, %(event_type)s, %(sequence_number)s,
                     %(occurred_at)s, %(received_at)s, %(late_for_runtime_findings)s, %(runtime_findings_finalization_cutoff_at)s, %(runtime_findings_lateness_policy_hours)s, %(correlation_id)s,
                     %(causation_id)s, %(actor_id)s, %(actor_type)s,
+                    %(step_id)s, %(step_name)s, %(step_lifecycle)s, %(parent_step_id)s, %(source_kind)s,
                     %(resource_references_json)s, %(evidence_references_json)s,
                     %(attributes_json)s, %(event_schema_version)s,
                     %(idempotency_key)s, %(created_at)s
@@ -370,6 +374,7 @@ class PostgresAgentExecutionEventRepository(AgentExecutionEventRepository):
                           event_type, sequence_number, occurred_at, received_at,
                           late_for_runtime_findings, runtime_findings_finalization_cutoff_at, runtime_findings_lateness_policy_hours,
                           correlation_id, causation_id, actor_id, actor_type,
+                          step_id, step_name, step_lifecycle, parent_step_id, source_kind,
                           resource_references_json, evidence_references_json,
                           attributes_json, event_schema_version, idempotency_key,
                           created_at
@@ -390,6 +395,21 @@ class PostgresAgentExecutionEventRepository(AgentExecutionEventRepository):
                     "causation_id": event.causation_id,
                     "actor_id": event.actor_id,
                     "actor_type": event.actor_type.value if event.actor_type else None,
+                    "step_id": event.workflow_step.step_id if event.workflow_step else None,
+                    "step_name": event.workflow_step.step_name if event.workflow_step else None,
+                    "step_lifecycle": (
+                        event.workflow_step.lifecycle.value
+                        if event.workflow_step
+                        else None
+                    ),
+                    "parent_step_id": (
+                        event.workflow_step.parent_step_id
+                        if event.workflow_step
+                        else None
+                    ),
+                    "source_kind": (
+                        event.workflow_step.source_kind if event.workflow_step else None
+                    ),
                     "resource_references_json": json.dumps(
                         list(event.resource_references),
                         separators=(",", ":"),
@@ -421,8 +441,10 @@ class PostgresAgentExecutionEventRepository(AgentExecutionEventRepository):
                 event.organization_id,
                 event.project_id,
             )
-            if existing is not None and dict(existing.attributes) != dict(
-                event.attributes
+            if existing is not None and (
+                existing.event_type is not event.event_type
+                or dict(existing.attributes) != dict(event.attributes)
+                or existing.workflow_step != event.workflow_step
             ):
                 raise AgentExecutionIdempotencyConflict(
                     f"Idempotency key conflict for execution '{event.execution_id}'."
@@ -447,6 +469,7 @@ class PostgresAgentExecutionEventRepository(AgentExecutionEventRepository):
                        event_type, sequence_number, occurred_at, received_at,
                        late_for_runtime_findings, runtime_findings_finalization_cutoff_at, runtime_findings_lateness_policy_hours,
                        correlation_id, causation_id, actor_id, actor_type,
+                       step_id, step_name, step_lifecycle, parent_step_id, source_kind,
                        resource_references_json, evidence_references_json,
                        attributes_json, event_schema_version, idempotency_key,
                        created_at
@@ -515,6 +538,7 @@ class PostgresAgentExecutionEventRepository(AgentExecutionEventRepository):
                    event_type, sequence_number, occurred_at, received_at,
                    late_for_runtime_findings, runtime_findings_finalization_cutoff_at, runtime_findings_lateness_policy_hours,
                    correlation_id, causation_id, actor_id, actor_type,
+                   step_id, step_name, step_lifecycle, parent_step_id, source_kind,
                    resource_references_json, evidence_references_json,
                    attributes_json, event_schema_version, idempotency_key,
                    created_at
@@ -543,6 +567,7 @@ class PostgresAgentExecutionEventRepository(AgentExecutionEventRepository):
                        event_type, sequence_number, occurred_at, received_at,
                        late_for_runtime_findings, runtime_findings_finalization_cutoff_at, runtime_findings_lateness_policy_hours,
                        correlation_id, causation_id, actor_id, actor_type,
+                       step_id, step_name, step_lifecycle, parent_step_id, source_kind,
                        resource_references_json, evidence_references_json,
                        attributes_json, event_schema_version, idempotency_key,
                        created_at
@@ -629,6 +654,7 @@ def _event_from_row(row: dict) -> AgentExecutionEvent:
         causation_id=row["causation_id"],
         actor_id=row["actor_id"],
         actor_type=ActorType(row["actor_type"]) if row.get("actor_type") else None,
+        workflow_step=_workflow_step_from_row(row),
         resource_references=json.loads(row["resource_references_json"])
         if row.get("resource_references_json")
         else [],
@@ -639,4 +665,16 @@ def _event_from_row(row: dict) -> AgentExecutionEvent:
         if row.get("attributes_json")
         else {},
         event_schema_version=row.get("event_schema_version", "1"),
+    )
+
+
+def _workflow_step_from_row(row: dict) -> WorkflowStep | None:
+    if row.get("step_id") is None:
+        return None
+    return WorkflowStep(
+        step_id=row["step_id"],
+        step_name=row["step_name"],
+        lifecycle=WorkflowStepLifecycle(row["step_lifecycle"]),
+        parent_step_id=row.get("parent_step_id"),
+        source_kind=row.get("source_kind"),
     )

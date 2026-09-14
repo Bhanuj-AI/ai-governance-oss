@@ -56,6 +56,11 @@ export type AgentExecutionEventDto = {
   causation_id: string | null;
   actor_id: string | null;
   actor_type: string | null;
+  step_id: string | null;
+  step_name: string | null;
+  lifecycle: "STARTED" | "COMPLETED" | "FAILED" | null;
+  parent_step_id: string | null;
+  source_kind: string | null;
   resource_references: string[];
   evidence_references: string[];
   attributes: Record<string, unknown>;

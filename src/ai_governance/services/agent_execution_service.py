@@ -19,11 +19,14 @@ from ai_governance.domain.agent_execution import (
     AgentExecutionEvent,
     AgentExecutionStatus,
     EventType,
+    WorkflowStep,
+    WorkflowStepLifecycle,
 )
 from ai_governance.domain.agent_execution.agent_execution_event import (
     ActorType,
 )
 from ai_governance.domain.agent_execution.errors import (
+    AgentExecutionIdempotencyConflict,
     AgentExecutionInvalidTransition,
     AgentExecutionNotFound,
 )
@@ -291,11 +294,12 @@ class AgentExecutionService:
         causation_id: str | None = None,
         actor_id: str | None = None,
         actor_type: ActorType | None = None,
+        workflow_step: WorkflowStep | None = None,
         resource_references: list[str] | None = None,
         evidence_references: list[str] | None = None,
         occurred_at: datetime | None = None,
     ) -> AgentExecutionEvent:
-        """Ingest a runtime event (MODEL_CALL, TOOL_CALL, etc.).
+        """Ingest a runtime event (MODEL_CALL, TOOL_CALL, WORKFLOW_STEP, etc.).
 
         Events are append-only and immutable after persistence.
         Duplicate delivery with the same idempotency key is a no-op if
@@ -314,6 +318,31 @@ class AgentExecutionService:
             raise AgentExecutionInvalidTransition(
                 f"Cannot ingest events for terminal execution '{execution_id}'."
             )
+
+        if idempotency_key is not None:
+            existing = self._event_repo.find_by_idempotency_key(
+                idempotency_key,
+                execution_id,
+                context.organization_id,
+                context.project_id,
+            )
+            if existing is not None:
+                if (
+                    existing.event_type is not event_type
+                    or dict(existing.attributes) != attributes
+                    or existing.workflow_step != workflow_step
+                ):
+                    raise AgentExecutionIdempotencyConflict(
+                        f"Idempotency key conflict for execution '{execution_id}'."
+                    )
+                return existing
+
+        self._validate_workflow_step_transition(
+            execution_id,
+            event_type,
+            workflow_step,
+            context,
+        )
 
         now = self._clock()
         event_occurred_at = occurred_at or now
@@ -350,6 +379,7 @@ class AgentExecutionService:
             causation_id=causation_id,
             actor_id=actor_id,
             actor_type=actor_type,
+            workflow_step=workflow_step,
             resource_references=tuple(resource_references or []),
             evidence_references=tuple(evidence_references or []),
             attributes=attributes,
@@ -357,6 +387,80 @@ class AgentExecutionService:
         )
 
         return self._event_repo.save(event, idempotency_key=idempotency_key)
+
+    def _validate_workflow_step_transition(
+        self,
+        execution_id: str,
+        event_type: EventType,
+        workflow_step: WorkflowStep | None,
+        context: TenantContext,
+    ) -> None:
+        """Validate durable step lifecycle and same-execution nesting.
+
+        The event stream is the only workflow structure retained by the
+        control plane.  Looking up prior events in the same tenant-scoped
+        execution proves parent references cannot cross executions without
+        introducing a parallel workflow datastore.
+        """
+        if event_type is not EventType.WORKFLOW_STEP:
+            if workflow_step is not None:
+                raise ValueError(
+                    "workflow_step evidence is valid only for WORKFLOW_STEP events."
+                )
+            return
+        if not isinstance(workflow_step, WorkflowStep):
+            raise TypeError(
+                "WORKFLOW_STEP events require typed workflow_step evidence."
+            )
+
+        events = self._event_repo.list_by_execution(
+            execution_id,
+            context.organization_id,
+            context.project_id,
+        )
+        prior_steps = [
+            event.workflow_step
+            for event in events
+            if event.event_type is EventType.WORKFLOW_STEP
+            and event.workflow_step is not None
+        ]
+        if (
+            workflow_step.parent_step_id is not None
+            and workflow_step.parent_step_id
+            not in {step.step_id for step in prior_steps}
+        ):
+            raise AgentExecutionInvalidTransition(
+                "parent_step_id must reference a workflow step in the same execution."
+            )
+
+        same_step = [
+            step for step in prior_steps if step.step_id == workflow_step.step_id
+        ]
+        started = [
+            step for step in same_step
+            if step.lifecycle is WorkflowStepLifecycle.STARTED
+        ]
+        terminal = [
+            step for step in same_step
+            if step.lifecycle
+            in {WorkflowStepLifecycle.COMPLETED, WorkflowStepLifecycle.FAILED}
+        ]
+
+        if workflow_step.lifecycle is WorkflowStepLifecycle.STARTED:
+            if same_step:
+                raise AgentExecutionInvalidTransition(
+                    f"Workflow step '{workflow_step.step_id}' has already started."
+                )
+            return
+
+        if not started:
+            raise AgentExecutionInvalidTransition(
+                f"Workflow step '{workflow_step.step_id}' must start before it terminates."
+            )
+        if terminal:
+            raise AgentExecutionInvalidTransition(
+                f"Workflow step '{workflow_step.step_id}' is already terminal."
+            )
 
     def _runtime_findings_lateness_hours(self, context: TenantContext) -> int:
         if self._configuration_service is None:
