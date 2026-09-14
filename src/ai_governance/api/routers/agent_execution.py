@@ -29,6 +29,8 @@ from ai_governance.api.models.agent_execution import (
 from ai_governance.domain.agent_execution import (
     AgentExecutionStatus,
     EventType,
+    WorkflowStep,
+    WorkflowStepLifecycle,
 )
 from ai_governance.domain.agent_execution.agent_execution_event import (
     ActorType as AgentExecutionActorType,
@@ -92,7 +94,7 @@ def ingest_event(
     service: Annotated[AgentExecutionService, Depends(get_agent_execution_service)],
     context: TenantContext = Depends(get_compatible_tenant_context),
 ) -> AgentExecutionEventIngestedResponse:
-    """Ingest a runtime event (MODEL_CALL, TOOL_CALL, GOVERNANCE_DECISION, etc.)."""
+    """Ingest a runtime event, including provider-neutral WORKFLOW_STEP evidence."""
     try:
         event_type = EventType(body.event_type)
     except ValueError as exc:
@@ -112,6 +114,19 @@ def ingest_event(
                     detail=f"Unsupported actor type '{body.actor_type}'.",
                 ) from None
 
+        workflow_step = None
+        if event_type is EventType.WORKFLOW_STEP:
+            # The request model has already required these fields.  Construct
+            # the named domain value object at the transport boundary so the
+            # service never receives an untyped provider payload.
+            workflow_step = WorkflowStep(
+                step_id=body.step_id or "",
+                step_name=body.step_name or "",
+                lifecycle=WorkflowStepLifecycle(body.lifecycle or ""),
+                parent_step_id=body.parent_step_id,
+                source_kind=body.source_kind,
+            )
+
         event = service.ingest_event(
             execution_id=execution_id,
             event_type=event_type,
@@ -122,6 +137,7 @@ def ingest_event(
             causation_id=body.causation_id,
             actor_id=body.actor_id,
             actor_type=actor_type,
+            workflow_step=workflow_step,
             resource_references=body.resource_references,
             evidence_references=body.evidence_references,
             occurred_at=body.occurred_at,
@@ -371,6 +387,15 @@ def _event_to_response(event: Any) -> Any:
         causation_id=event.causation_id,
         actor_id=event.actor_id,
         actor_type=event.actor_type.value if event.actor_type and hasattr(event.actor_type, "value") else event.actor_type,
+        step_id=event.workflow_step.step_id if event.workflow_step else None,
+        step_name=event.workflow_step.step_name if event.workflow_step else None,
+        lifecycle=(
+            event.workflow_step.lifecycle.value if event.workflow_step else None
+        ),
+        parent_step_id=(
+            event.workflow_step.parent_step_id if event.workflow_step else None
+        ),
+        source_kind=event.workflow_step.source_kind if event.workflow_step else None,
         resource_references=list(event.resource_references) if hasattr(event.resource_references, "__iter__") else [],
         evidence_references=list(event.evidence_references) if hasattr(event.evidence_references, "__iter__") else [],
         attributes=dict(event.attributes) if hasattr(event.attributes, "items") else event.attributes,

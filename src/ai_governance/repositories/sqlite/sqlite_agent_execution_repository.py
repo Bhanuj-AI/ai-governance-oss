@@ -13,6 +13,8 @@ from ai_governance.domain.agent_execution import (
     AgentExecutionEvent,
     AgentExecutionStatus,
     EventType,
+    WorkflowStep,
+    WorkflowStepLifecycle,
 )
 from ai_governance.domain.agent_execution.agent_execution_event import ActorType
 from ai_governance.domain.agent_execution.errors import (
@@ -273,10 +275,11 @@ class SQLiteAgentExecutionEventRepository(AgentExecutionEventRepository):
                             event_id, execution_id, organization_id, project_id,
                             event_type, sequence_number, occurred_at, received_at, late_for_runtime_findings, runtime_findings_finalization_cutoff_at, runtime_findings_lateness_policy_hours,
                             correlation_id, causation_id, actor_id, actor_type,
+                            step_id, step_name, step_lifecycle, parent_step_id, source_kind,
                             resource_references_json, evidence_references_json,
                             attributes_json, event_schema_version, idempotency_key,
                             created_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                     (
                         event.event_id,
@@ -294,6 +297,19 @@ class SQLiteAgentExecutionEventRepository(AgentExecutionEventRepository):
                         event.causation_id,
                         event.actor_id,
                         event.actor_type.value if event.actor_type else None,
+                        event.workflow_step.step_id if event.workflow_step else None,
+                        event.workflow_step.step_name if event.workflow_step else None,
+                        (
+                            event.workflow_step.lifecycle.value
+                            if event.workflow_step
+                            else None
+                        ),
+                        (
+                            event.workflow_step.parent_step_id
+                            if event.workflow_step
+                            else None
+                        ),
+                        event.workflow_step.source_kind if event.workflow_step else None,
                         json.dumps(
                             list(event.resource_references), separators=(",", ":")
                         ),
@@ -315,9 +331,13 @@ class SQLiteAgentExecutionEventRepository(AgentExecutionEventRepository):
                         event.organization_id,
                         event.project_id,
                     )
-                    if existing is not None and dict(existing.attributes) != dict(
-                        event.attributes
-                    ):
+                    if existing is not None:
+                        if (
+                            existing.event_type is event.event_type
+                            and dict(existing.attributes) == dict(event.attributes)
+                            and existing.workflow_step == event.workflow_step
+                        ):
+                            return existing
                         raise AgentExecutionIdempotencyConflict(
                             f"Idempotency key conflict for execution '{event.execution_id}'."
                         ) from exc
@@ -465,6 +485,7 @@ def _event_from_row(row: dict) -> AgentExecutionEvent:
         causation_id=row["causation_id"],
         actor_id=row["actor_id"],
         actor_type=ActorType(row["actor_type"]) if row.get("actor_type") else None,
+        workflow_step=_workflow_step_from_row(row),
         resource_references=json.loads(row["resource_references_json"])
         if row.get("resource_references_json")
         else [],
@@ -475,4 +496,16 @@ def _event_from_row(row: dict) -> AgentExecutionEvent:
         if row.get("attributes_json")
         else {},
         event_schema_version=row.get("event_schema_version", "1"),
+    )
+
+
+def _workflow_step_from_row(row: dict) -> WorkflowStep | None:
+    if row.get("step_id") is None:
+        return None
+    return WorkflowStep(
+        step_id=row["step_id"],
+        step_name=row["step_name"],
+        lifecycle=WorkflowStepLifecycle(row["step_lifecycle"]),
+        parent_step_id=row.get("parent_step_id"),
+        source_kind=row.get("source_kind"),
     )

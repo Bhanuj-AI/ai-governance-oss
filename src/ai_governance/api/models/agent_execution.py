@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # -- Request models -----------------------------------------------------------
 
@@ -24,7 +24,7 @@ class AgentExecutionStartRequest(BaseModel):
 
 
 class AgentExecutionEventRequest(BaseModel):
-    """Ingest a runtime event (MODEL_CALL, TOOL_CALL, etc.)."""
+    """Ingest a runtime event, including optional typed workflow-step evidence."""
 
     event_type: str = Field(..., description="Event type from the vocabulary.")
     attributes: dict[str, Any] = Field(
@@ -38,6 +38,36 @@ class AgentExecutionEventRequest(BaseModel):
     causation_id: str | None = Field(None, max_length=256)
     actor_id: str | None = Field(None, max_length=256)
     actor_type: str | None = Field(None, description="Agent, Model, Tool, Governance, Evaluator, or System.")
+    step_id: str | None = Field(
+        None,
+        min_length=1,
+        max_length=256,
+        description="Stable workflow-step correlation ID. Required for WORKFLOW_STEP.",
+    )
+    step_name: str | None = Field(
+        None,
+        min_length=1,
+        max_length=256,
+        description="Human-readable workflow-step name. Required for WORKFLOW_STEP.",
+    )
+    lifecycle: str | None = Field(
+        None,
+        min_length=1,
+        max_length=32,
+        description="Workflow-step lifecycle: STARTED, COMPLETED, or FAILED.",
+    )
+    parent_step_id: str | None = Field(
+        None,
+        min_length=1,
+        max_length=256,
+        description="Optional parent workflow-step ID in this execution.",
+    )
+    source_kind: str | None = Field(
+        None,
+        min_length=1,
+        max_length=256,
+        description="Optional namespaced source concept, for example langgraph.node.",
+    )
     resource_references: list[str] = Field(
         default_factory=list, description="References to governed resources touched by this event."
     )
@@ -45,6 +75,37 @@ class AgentExecutionEventRequest(BaseModel):
         default_factory=list, description="References to evidence/artifacts stored elsewhere."
     )
     occurred_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def validate_workflow_step_fields(self) -> AgentExecutionEventRequest:
+        workflow_fields = (
+            self.step_id,
+            self.step_name,
+            self.lifecycle,
+            self.parent_step_id,
+            self.source_kind,
+        )
+        if self.event_type == "WORKFLOW_STEP":
+            missing = [
+                name
+                for name, value in (
+                    ("step_id", self.step_id),
+                    ("step_name", self.step_name),
+                    ("lifecycle", self.lifecycle),
+                )
+                if value is None
+            ]
+            if missing:
+                raise ValueError(
+                    "WORKFLOW_STEP events require " + ", ".join(missing) + "."
+                )
+            if self.parent_step_id == self.step_id:
+                raise ValueError("parent_step_id must not equal step_id.")
+        elif any(value is not None for value in workflow_fields):
+            raise ValueError(
+                "step fields are valid only when event_type is WORKFLOW_STEP."
+            )
+        return self
 
 
 class AgentExecutionCompleteRequest(BaseModel):
@@ -139,6 +200,11 @@ class AgentExecutionEventResponse(BaseModel):
     causation_id: str | None = None
     actor_id: str | None = None
     actor_type: str | None = None
+    step_id: str | None = None
+    step_name: str | None = None
+    lifecycle: str | None = None
+    parent_step_id: str | None = None
+    source_kind: str | None = None
     resource_references: list[str] = Field(default_factory=list)
     evidence_references: list[str] = Field(default_factory=list)
     attributes: dict[str, Any] = Field(default_factory=dict)

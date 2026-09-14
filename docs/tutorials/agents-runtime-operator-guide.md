@@ -66,6 +66,37 @@ AI Governance Control Plane
 | Observation window | The recent period being checked for a change or problem. |
 | Reconcile Operational | Recheck open operational findings to see whether they have genuinely recovered. |
 
+
+## Distinct Execution Layers: Model-driven Tool Use & Framework-controlled Workflow Execution
+| Ecosystem                     | LLM / agent action primitive                       | Structured workflow primitive                                                                                            | What BHANUJ should ingest                                               |
+| ----------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| **OpenAI API / Agents SDK**   | Function/tool calls, agent handoffs, agent turns   | No first-class graph/node abstraction; orchestration is largely SDK/Python controlled                                    | `TOOL_CALL`; optionally agent/handoff later ([OpenAI GitHub][1])        |
+| **Anthropic Claude**          | `tool_use` → `tool_result`                         | No first-class deterministic workflow graph in the model API                                                             | `TOOL_CALL` ([Claude Platform][2])                                      |
+| **Google Gemini API**         | `function_call` / tools                            | No graph primitive at raw model API                                                                                      | `TOOL_CALL` ([Google AI for Developers][3])                             |
+| **Google ADK 2.0**            | Agents and tools                                   | **Workflow graph: nodes + edges**; deterministic code/tool/agent nodes; older Sequential/Parallel/Loop agents also exist | `WORKFLOW_STEP` + nested `TOOL_CALL` ([Google Developers Blog][4])      |
+| **LangGraph**                 | Tool calls can happen inside nodes                 | **Nodes + edges + supersteps**; a node may contain an LLM *or plain code*                                                | `WORKFLOW_STEP` + nested `TOOL_CALL` ([Docs by LangChain][5])           |
+| **Microsoft Agent Framework** | Agents/tools                                       | **Executors + edges**, plus functional `@step`; emits executor/workflow events                                           | `WORKFLOW_STEP` + `TOOL_CALL` ([Microsoft Learn][6])                    |
+| **AWS Bedrock model APIs**    | Tool use/function calling                          | No deterministic graph at model API level                                                                                | `TOOL_CALL` ([AWS Documentation][7])                                    |
+| **AWS Strands Agents**        | Agents/tools                                       | **Graph nodes + edges**, including custom deterministic business-logic nodes                                             | `WORKFLOW_STEP` + `TOOL_CALL` ([Strands Agents SDK][8])                 |
+| **CrewAI**                    | Agents, Tasks, Tools                               | **Flows** with structured start/listen/router execution and state                                                        | `WORKFLOW_STEP` + `TOOL_CALL` ([CrewAI Documentation][9])               |
+| **LlamaIndex**                | `ToolCall` / `ToolCallResult`                      | **Workflow `@step`** + typed events                                                                                      | `WORKFLOW_STEP` + `TOOL_CALL` ([Developer Documentation][10])           |
+| **AutoGen**                   | Agent/tool calls                                   | `GraphFlow`: directed graph whose nodes are agents; currently experimental                                               | `WORKFLOW_STEP` + `TOOL_CALL` ([Microsoft GitHub][11])                  |
+| **Snowflake Cortex Agents**   | Agent plans and calls Cortex/custom/MCP/code tools | Orchestration is LLM-driven plan → tool → reflect, not an exposed deterministic graph                                    | Primarily `TOOL_CALL` / agent execution ([Snowflake Documentation][12]) |
+
+[1]: https://openai.github.io/openai-agents-python/?utm_source=chatgpt.com "OpenAI Agents SDK"
+[2]: https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview?utm_source=chatgpt.com "Tool use with Claude - Claude Platform Docs"
+[3]: https://ai.google.dev/gemini-api/docs/function-calling?utm_source=chatgpt.com "Function calling with the Gemini API  |  Google AI for Developers"
+[4]: https://developers.googleblog.com/why-we-built-adk-20/?utm_source=chatgpt.com "Why we built ADK 2.0 - Google Developers Blog"
+[5]: https://docs.langchain.com/oss/python/langgraph/graph-api?utm_source=chatgpt.com "Graph API overview - Docs by LangChain"
+[6]: https://learn.microsoft.com/en-us/agent-framework/workflows/workflows?utm_source=chatgpt.com "Microsoft Agent Framework Workflows - Workflow Builder & Execution | Microsoft Learn"
+[7]: https://docs.aws.amazon.com/bedrock/latest/userguide/tool-use.html?utm_source=chatgpt.com "Use a tool to complete an Amazon Bedrock model response - Amazon Bedrock"
+[8]: https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/?utm_source=chatgpt.com "Graph Multi-Agent Pattern | Strands Agents"
+[9]: https://docs.crewai.com/?utm_source=chatgpt.com "CrewAI Documentation - CrewAI"
+[10]: https://docs.llamaindex.ai/en/stable/understanding/workflows/unbound_functions/?utm_source=chatgpt.com "Unbound syntax - LlamaIndex"
+[11]: https://microsoft.github.io/autogen/dev/user-guide/agentchat-user-guide/graph-flow.html?utm_source=chatgpt.com "GraphFlow (Workflows) — AutoGen"
+[12]: https://docs.snowflake.com/en/en/user-guide/snowflake-cortex/cortex-agents?utm_source=chatgpt.com "Cortex Agents | Snowflake Documentation"
+
+
 ## First-time Local Walkthrough
 
 ### 1. Start the local stack
@@ -323,8 +354,31 @@ curl -X POST http://localhost:8000/api/v1/agent-executions/EXECUTION_ID/events \
 Supported event types are:
 
 ```text
-EXECUTION_STARTED, MODEL_CALL, TOOL_CALL, GOVERNANCE_DECISION,
+EXECUTION_STARTED, MODEL_CALL, TOOL_CALL, WORKFLOW_STEP, GOVERNANCE_DECISION,
 EVALUATION, ERROR, EXECUTION_COMPLETED
+```
+
+`WORKFLOW_STEP` is optional provider-neutral orchestration evidence. It is not
+a synonym for a tool call: a step can contain zero, one, or many tool calls,
+and a provider that only exposes tools should continue to emit `TOOL_CALL`
+events directly. A workflow-step event requires stable `step_id`, `step_name`,
+and `lifecycle` (`STARTED`, `COMPLETED`, or `FAILED`); it can also contain a
+same-execution `parent_step_id` and a bounded namespaced `source_kind` such as
+`langgraph.node`.
+
+```bash
+curl -X POST http://localhost:8000/api/v1/agent-executions/EXECUTION_ID/events \
+  -H 'Content-Type: application/json' \
+  -H 'X-AI-Governance-Organization-Id: org_default' \
+  -H 'X-AI-Governance-Project-Id: project_default' \
+  -d '{
+    "event_type": "WORKFLOW_STEP",
+    "step_id": "claim-check-1",
+    "step_name": "check_policy",
+    "lifecycle": "COMPLETED",
+    "source_kind": "langgraph.node",
+    "idempotency_key": "run-2026-08-18-001-step-check-policy-complete"
+  }'
 ```
 
 Actor types are:

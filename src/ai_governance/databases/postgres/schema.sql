@@ -867,6 +867,11 @@ CREATE TABLE IF NOT EXISTS agent_execution_event (
     causation_id TEXT,
     actor_id TEXT,
     actor_type TEXT,
+    step_id TEXT,
+    step_name TEXT,
+    step_lifecycle TEXT,
+    parent_step_id TEXT,
+    source_kind TEXT,
     resource_references_json JSONB NOT NULL DEFAULT '[]',
     evidence_references_json JSONB NOT NULL DEFAULT '[]',
     attributes_json JSONB NOT NULL DEFAULT '{}',
@@ -1021,3 +1026,8 @@ WHERE detector_id = 'causal_audit' AND lifecycle = 'OPERATIONAL';
 ALTER TABLE agent_execution_event ADD COLUMN IF NOT EXISTS late_for_runtime_findings BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE agent_execution_event ADD COLUMN IF NOT EXISTS runtime_findings_finalization_cutoff_at TIMESTAMPTZ;
 ALTER TABLE agent_execution_event ADD COLUMN IF NOT EXISTS runtime_findings_lateness_policy_hours INTEGER;
+ALTER TABLE agent_execution_event ADD COLUMN IF NOT EXISTS step_id TEXT;
+ALTER TABLE agent_execution_event ADD COLUMN IF NOT EXISTS step_name TEXT;
+ALTER TABLE agent_execution_event ADD COLUMN IF NOT EXISTS step_lifecycle TEXT;
+ALTER TABLE agent_execution_event ADD COLUMN IF NOT EXISTS parent_step_id TEXT;
+ALTER TABLE agent_execution_event ADD COLUMN IF NOT EXISTS source_kind TEXT;

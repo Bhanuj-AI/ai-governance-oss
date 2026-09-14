@@ -129,6 +129,11 @@ class SQLiteDatabase:
                     causation_id TEXT,
                     actor_id TEXT,
                     actor_type TEXT,
+                    step_id TEXT,
+                    step_name TEXT,
+                    step_lifecycle TEXT,
+                    parent_step_id TEXT,
+                    source_kind TEXT,
                     resource_references_json TEXT NOT NULL DEFAULT '[]',
                     evidence_references_json TEXT NOT NULL DEFAULT '[]',
                     attributes_json TEXT NOT NULL DEFAULT '{}',
@@ -162,6 +167,11 @@ class SQLiteDatabase:
             "late_for_runtime_findings": "INTEGER NOT NULL DEFAULT 0",
             "runtime_findings_finalization_cutoff_at": "TEXT",
             "runtime_findings_lateness_policy_hours": "INTEGER",
+            "step_id": "TEXT",
+            "step_name": "TEXT",
+            "step_lifecycle": "TEXT",
+            "parent_step_id": "TEXT",
+            "source_kind": "TEXT",
         }.items():
             if name not in event_columns:
                 connection.execute(f"ALTER TABLE agent_execution_event ADD COLUMN {name} {definition}")

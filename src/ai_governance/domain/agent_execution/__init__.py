@@ -16,6 +16,8 @@ from ai_governance.domain.agent_execution.agent_execution_event import (
     ActorType,
     AgentExecutionEvent,
     EventType,
+    WorkflowStep,
+    WorkflowStepLifecycle,
 )
 from ai_governance.domain.agent_execution.projection import (
     ProjectionStatus,
@@ -38,4 +40,6 @@ __all__ = [
     "ProjectionVersion",
     "RuntimeOntologyProjection",
     "UnresolvedReference",
+    "WorkflowStep",
+    "WorkflowStepLifecycle",
 ]
