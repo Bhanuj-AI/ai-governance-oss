@@ -9,6 +9,9 @@ concurrency:
   group: pull-request-verification-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
