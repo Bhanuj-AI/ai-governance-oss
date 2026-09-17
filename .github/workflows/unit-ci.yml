@@ -35,3 +35,27 @@ jobs:
           --ignore=tests/integration/test_trulens_provider.py
           --cov=ai_governance
           --cov-report=term-missing
+
+  api-reference:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Validate generated public OpenAPI contract
+        run: |
+          uv sync --frozen
+          uv run python -m ai_governance.api.openapi check
+
+      - name: Summarize public API contract changes
+        if: github.event_name == 'pull_request'
+        run: |
+          git diff --no-ext-diff --unified=1 origin/${{ github.base_ref }}...HEAD -- generated/openapi/ai-governance-v1.json >> "$GITHUB_STEP_SUMMARY"

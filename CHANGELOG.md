@@ -9,6 +9,70 @@ This project follows Semantic Versioning.
 
 ## Unreleased
 
+### [1.1.4] - 2026-09-17
+
+- Added a generated, static Scalar REST API reference with explicit
+  `PUBLIC`/`OPERATOR`/`INTERNAL` OpenAPI visibility, formal contract validation,
+  deterministic regeneration, and CI contract checks.
+- Added tenant-scoped policy lifecycle projection to ontology synchronization.
+  Policy creation and version lifecycle changes now publish durable sync events,
+  and the ontology worker reconciles policy identity, ownership, lifecycle,
+  active version, target types, and rule count.
+
+### Changed
+
+- Governance-decision synchronization now connects a decision target to each
+  policy applied to it with a `GOVERNED_BY` relationship, making policy
+  applicability available in the target's evidence graph.
+
+## [1.1.3] - 2026-09-14
+
+### Added
+
+- Added provider-neutral `WORKFLOW_STEP` runtime evidence for durable,
+  tenant-scoped workflow-node lifecycle records, including nesting,
+  validation, idempotency, and SQLite/PostgreSQL persistence.
+- Added LangGraph workflow instrumentation guidance and a fail-open Google ADK
+  reference integration for recording workflow-step evidence without changing
+  framework execution ownership.
+
+### Changed
+
+- Extended the Agent Executions REST API and Studio inspector to ingest and
+  display typed workflow-step lifecycle evidence alongside model and tool calls.
+
+## [1.1.2] - 2026-09-12
+
+### Added
+
+- Added tenant-scoped ontology entity search through the REST API, Neo4j
+  full-text index, and Studio exploration interface.
+- Added idempotent ontology schema and search-index initialization commands for
+  safe deployment and existing-graph migration.
+
+### Changed
+
+- Redesigned the Ontology Studio around task-oriented Explore and Technical
+  views with searchable entities, filters, and inspection controls.
+- Refreshed the README to describe the platform capability domains, including
+  Agents Runtime and Causal Audit.
+
+## [1.1.1] - 2026-09-11
+
+### Added
+
+- Added durable, provider-neutral Inspect evaluation reports with batch-sample
+  evidence and resolved runner provenance exposed in REST and Studio.
+- Expanded the deterministic incident prompt-length sweep to include 4.6k and
+  10k operational-evidence bands, with an idempotent local review seed and
+  updated operator documentation.
+
+### Changed
+
+- Deferred leaderboard generation and recommendations until all evaluation runs
+  reach a terminal state; Studio now keeps comparisons pending and hides stale
+  leaderboard snapshots during execution.
+
 ## [1.1.0] - 2026-09-02
 
 ### Added

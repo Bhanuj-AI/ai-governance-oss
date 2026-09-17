@@ -51,6 +51,12 @@ Documentation endpoints:
 /redoc
 ```
 
+The user-facing, static Scalar reference is served by the public website at
+`https://governance.bhanuj.ai/reference/api`. It consumes the generated public
+subset of this OpenAPI contract and is available without starting the REST API. See the
+[API reference maintainer guide](../maintenance/API_REFERENCE.md) for
+publication visibility, regeneration, and validation.
+
 ## Configuration
 
 Runtime settings such as API host, port, CORS origins, environment label, and

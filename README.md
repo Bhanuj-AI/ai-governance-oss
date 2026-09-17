@@ -375,10 +375,15 @@ used by the API, Studio, graph adapters, demo seeding, and MCP integrations.
 Interactive API docs are available at:
 
 ```text
+https://governance.bhanuj.ai/reference/api  # static Scalar API Reference
 http://localhost:8000/docs
 http://localhost:8000/redoc
 http://localhost:8000/openapi.json
 ```
+
+The Scalar reference is generated from the canonical FastAPI OpenAPI contract
+and excludes internal routes. See [API reference maintenance](docs/maintenance/API_REFERENCE.md)
+for the visibility model and regeneration workflow.
 
 Local development starts with demo ontology data, a release-gate policy,
 governance decisions, varied governance jobs, and representative MCP audit

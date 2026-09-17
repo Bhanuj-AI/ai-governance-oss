@@ -45,6 +45,9 @@ from ai_governance.ontology.synchronization.leaderboard_sync import (
     LeaderboardOntologySynchronizer,
 )
 from ai_governance.ontology.synchronization.model_sync import ModelOntologySynchronizer
+from ai_governance.ontology.synchronization.policy_sync import (
+    PolicyOntologySynchronizer,
+)
 from ai_governance.ontology.synchronization.projection import (
     OntologyProjection,
     ProjectionBuilder,
@@ -105,6 +108,7 @@ __all__ = [
     "OntologySyncRetryPolicy",
     "OntologySynchronizationWorker",
     "OntologySynchronizer",
+    "PolicyOntologySynchronizer",
     "ProjectionBuilder",
     "ProjectionDiff",
     "ProjectionFingerprint",

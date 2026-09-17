@@ -33,6 +33,7 @@ def create_ontology_sync_worker_runtime(*, worker_id: str | None = None):
         get_model_repository,
         get_ontology_graph_repository,
         get_ontology_sync_event_repository,
+        get_policy_administration_repository,
         get_prompt_repository,
     )
     from ai_governance.ontology import EntityType, OntologyService
@@ -49,6 +50,7 @@ def create_ontology_sync_worker_runtime(*, worker_id: str | None = None):
         LeaderboardOntologySynchronizer,
         ModelOntologySynchronizer,
         OntologySynchronizationWorker,
+        PolicyOntologySynchronizer,
         PromptOntologySynchronizer,
     )
 
@@ -63,6 +65,7 @@ def create_ontology_sync_worker_runtime(*, worker_id: str | None = None):
     job_repository = get_job_repository()
     leaderboard_repository = get_leaderboard_repository()
     decision_repository = get_governance_decision_repository()
+    policy_repository = get_policy_administration_repository()
     specs = (
         (PromptOntologySynchronizer(service, prompt_repository), prompt_repository.find_all, "prompt_registry", EntityType.PROMPT_VERSION.value, lambda item: item.prompt_id),
         (ModelOntologySynchronizer(service, model_repository), model_repository.find_all, "model_registry", EntityType.MODEL_VERSION.value, lambda item: item.model_id),
@@ -72,6 +75,7 @@ def create_ontology_sync_worker_runtime(*, worker_id: str | None = None):
         (EvaluationRunOntologySynchronizer(service, evaluation_run_repository), evaluation_run_repository.find_all, "evaluation_run_repository", EntityType.EVALUATION_RUN.value, lambda item: item.run_id),
         (LeaderboardOntologySynchronizer(service, leaderboard_repository, evaluation_run_repository), leaderboard_repository.find_all, "leaderboard_repository", EntityType.LEADERBOARD.value, lambda item: item.leaderboard_id),
         (JobOntologySynchronizer(service, job_repository), job_repository.list_jobs, "job_control_plane", EntityType.JOB.value, lambda item: item.job_id),
+        (PolicyOntologySynchronizer(service, policy_repository), policy_repository.list_definitions, "policy_administration", EntityType.POLICY.value, lambda item: item.policy_id, policy_repository.get_definition),
         (GovernanceDecisionOntologySynchronizer(service), decision_repository.list, "governance_decisions", EntityType.GOVERNANCE_DECISION.value, lambda item: item.decision_id),
         (EvaluationResultOntologySynchronizer(service, evaluation_repository), lambda: (), "evaluation_repository", EntityType.EVALUATION_RESULT.value, lambda item: item.evaluation_id, evaluation_repository.find_by_evaluation_id),
     )
