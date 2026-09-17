@@ -25,6 +25,8 @@ from ai_governance.decisions.policy_enums import (
     PolicyConditionOperator,
     PolicySeverity,
 )
+from ai_governance.ontology import EntityType
+from ai_governance.ontology.synchronization import OntologySyncEventPublisherProtocol
 from ai_governance.repositories.policy_administration_repository import (
     PolicyAdministrationConflictError,
     PolicyAdministrationRepository,
@@ -189,11 +191,13 @@ class PolicyAdministrationService:
         repository: PolicyAdministrationRepository,
         id_generator: Callable[[], str] | None = None,
         clock: Callable[[], datetime] | None = None,
+        ontology_event_publisher: OntologySyncEventPublisherProtocol | None = None,
     ) -> None:
         self._repository = repository
         self._id_generator = id_generator or (lambda: str(uuid4()))
         self._clock = clock or (lambda: datetime.now(UTC))
         self._evaluator = GovernancePolicyEvaluator()
+        self._ontology_event_publisher = ontology_event_publisher
 
     def get_policy_schema(self) -> PolicySchema:
         return _policy_schema()
@@ -244,7 +248,9 @@ class PolicyAdministrationService:
         except PolicyAdministrationConflictError as exc:
             raise PolicyConflictError(str(exc)) from exc
 
-        return self.get_policy_detail(policy_id)
+        detail = self.get_policy_detail(policy_id)
+        self._publish_policy_event("PolicyCreated", definition)
+        return detail
 
     def create_policy_version(
         self,
@@ -273,7 +279,9 @@ class PolicyAdministrationService:
         self._validate_version(version)
         self._repository.save_version(version)
         self._touch_definition(definition)
-        return self.get_policy_detail(policy_id)
+        detail = self.get_policy_detail(policy_id)
+        self._publish_policy_event("PolicyVersionCreated", definition)
+        return detail
 
     def update_draft_version(
         self,
@@ -299,8 +307,11 @@ class PolicyAdministrationService:
         )
         self._validate_version(updated)
         self._repository.save_version(updated)
-        self._touch_definition(self._get_definition(policy_id))
-        return self.get_policy_detail(policy_id)
+        definition = self._get_definition(policy_id)
+        self._touch_definition(definition)
+        detail = self.get_policy_detail(policy_id)
+        self._publish_policy_event("PolicyVersionUpdated", definition)
+        return detail
 
     def activate_version(
         self,
@@ -341,8 +352,11 @@ class PolicyAdministrationService:
                 },
             )
         )
-        self._touch_definition(self._get_definition(policy_id))
-        return self.get_policy_detail(policy_id)
+        definition = self._get_definition(policy_id)
+        self._touch_definition(definition)
+        detail = self.get_policy_detail(policy_id)
+        self._publish_policy_event("PolicyVersionActivated", definition)
+        return detail
 
     def archive_version(
         self,
@@ -366,8 +380,40 @@ class PolicyAdministrationService:
                 },
             )
         )
-        self._touch_definition(self._get_definition(policy_id))
-        return self.get_policy_detail(policy_id)
+        definition = self._get_definition(policy_id)
+        self._touch_definition(definition)
+        detail = self.get_policy_detail(policy_id)
+        self._publish_policy_event("PolicyVersionArchived", definition)
+        return detail
+
+    def _publish_policy_event(
+        self,
+        event_type: str,
+        definition: PolicyDefinition,
+    ) -> None:
+        if self._ontology_event_publisher is None:
+            return
+        active_version = self._repository.get_active_version(definition.policy_id)
+        self._ontology_event_publisher.publish_entity_event(
+            event_type,
+            entity_type=EntityType.POLICY.value,
+            entity_id=definition.policy_id,
+            scope_identifier="policy_administration",
+            payload={
+                "policy_id": definition.policy_id,
+                "name": definition.name,
+                "status": (
+                    active_version.status.value
+                    if active_version is not None
+                    else "DRAFT"
+                ),
+                "active_version": (
+                    active_version.version if active_version is not None else None
+                ),
+            },
+            organization_id=definition.organization_id,
+            project_id=definition.project_id,
+        )
 
     def list_policies(
         self,

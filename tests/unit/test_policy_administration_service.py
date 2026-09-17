@@ -20,6 +20,14 @@ from ai_governance.services.policies import (
 )
 
 
+class _RecordingOntologyEventPublisher:
+    def __init__(self) -> None:
+        self.events: list[dict[str, object]] = []
+
+    def publish_entity_event(self, event_type: str, **kwargs: object) -> None:
+        self.events.append({"event_type": event_type, **kwargs})
+
+
 def _service() -> PolicyAdministrationService:
     current = datetime(2026, 7, 4, 12, 0, tzinfo=UTC)
 
@@ -82,6 +90,53 @@ def test_create_policy_creates_definition_and_initial_draft() -> None:
     assert detail.draft_version.status == PolicyStatus.DRAFT
     assert detail.active_version is None
     assert detail.metadata == {"team": "studio"}
+
+
+def test_policy_lifecycle_emits_tenant_scoped_ontology_events() -> None:
+    publisher = _RecordingOntologyEventPublisher()
+    service = PolicyAdministrationService(
+        InMemoryPolicyAdministrationRepository(),
+        id_generator=lambda: "policy-1",
+        ontology_event_publisher=publisher,
+    )
+
+    _create(service)
+    service.activate_version(
+        policy_id="policy-1",
+        version="1",
+        activated_by="admin",
+    )
+
+    assert publisher.events == [
+        {
+            "event_type": "PolicyCreated",
+            "entity_type": "Policy",
+            "entity_id": "policy-1",
+            "scope_identifier": "policy_administration",
+            "payload": {
+                "policy_id": "policy-1",
+                "name": "Release gate",
+                "status": "DRAFT",
+                "active_version": None,
+            },
+            "organization_id": "org-1",
+            "project_id": "project-1",
+        },
+        {
+            "event_type": "PolicyVersionActivated",
+            "entity_type": "Policy",
+            "entity_id": "policy-1",
+            "scope_identifier": "policy_administration",
+            "payload": {
+                "policy_id": "policy-1",
+                "name": "Release gate",
+                "status": "ACTIVE",
+                "active_version": "1",
+            },
+            "organization_id": "org-1",
+            "project_id": "project-1",
+        },
+    ]
 
 
 def test_activate_draft_and_reject_active_update() -> None:

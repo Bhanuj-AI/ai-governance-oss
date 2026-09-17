@@ -24,6 +24,11 @@ from ai_governance.api.logging import (
     formatter_for,
     request_logging_middleware,
 )
+from ai_governance.api.openapi import (
+    ApiVisibility,
+    install_openapi_security_scheme,
+    mark_router_visibility,
+)
 from ai_governance.api.routers import (
     agent_execution_router,
     audit_router,
@@ -165,6 +170,7 @@ def create_app(*, plugins: Iterable[AIGovernancePlugin] = ()) -> FastAPI:
         version="v1",
         lifespan=lifespan,
     )
+    install_openapi_security_scheme(app)
     extension_registry = create_plugin_registry(plugins=plugins)
     app.state.extension_registry = extension_registry
     app.state.plugin_metrics = {}
@@ -179,6 +185,52 @@ def create_app(*, plugins: Iterable[AIGovernancePlugin] = ()) -> FastAPI:
 
     register_exception_handlers(app)
     app.middleware("http")(request_logging_middleware)
+
+    # Visibility is written onto each FastAPI route's OpenAPI metadata before
+    # inclusion. The static API reference derives solely from that emitted
+    # contract; routes without this metadata (including plugin routes) are
+    # conservatively excluded.
+    mark_router_visibility(providers_router, ApiVisibility.PUBLIC)
+    for router in (
+        audit_router,
+        dashboard_router,
+        provider_installations_router,
+        runtime_connections_router,
+        prompts_router,
+        models_router,
+        ontology_graph_router,
+        ontology_sync_router,
+        policies_router,
+        datasets_router,
+        decisions_router,
+        evaluations_router,
+        experiments_router,
+        governance_router,
+        replay_executions_router,
+        replays_router,
+        jobs_router,
+        agent_execution_router,
+        causal_audits_router,
+        evidence_fidelity_router,
+        evidence_intervention_policies_router,
+        ontology_projection_router,
+        runtime_findings_router,
+        mcp_audit_router,
+        investigations_router,
+        reports_router,
+        metadata_router,
+        tenancy_router,
+        settings_router,
+    ):
+        mark_router_visibility(router, ApiVisibility.OPERATOR)
+    for router in (
+        health_router,
+        extensions_router,
+        local_demo_router,
+        telemetry_router,
+    ):
+        mark_router_visibility(router, ApiVisibility.INTERNAL)
+
     app.include_router(health_router)
     app.include_router(metadata_router)
     app.include_router(extensions_router)

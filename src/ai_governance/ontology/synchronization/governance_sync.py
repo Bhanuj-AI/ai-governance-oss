@@ -192,6 +192,26 @@ class GovernanceDecisionOntologySynchronizer(
                         created_by=entity.created_by,
                     )
                 )
+                # Evidence graphs are rooted at the decision target.  Materialize the
+                # policy applicability on that target as well as retaining the
+                # GovernanceDecision -> Policy lineage edge above.  This is a
+                # provider-neutral fact: a policy used to decide a target governs
+                # that target.
+                if self._ontology_service.get_entity(
+                    entity.target_entity_type,
+                    entity.target_entity_id,
+                ):
+                    relationship_ids.append(
+                        sync_relationship(
+                            self._ontology_service,
+                            source_type=entity.target_entity_type,
+                            source_id=entity.target_entity_id,
+                            relationship_type=RelationshipType.GOVERNED_BY,
+                            target_type=policy_type,
+                            target_id=policy_id,
+                            created_by=entity.created_by,
+                        )
+                    )
 
         for evidence_type, evidence_id in entity.evidence_refs:
             if self._ontology_service.get_entity(evidence_type, evidence_id):
