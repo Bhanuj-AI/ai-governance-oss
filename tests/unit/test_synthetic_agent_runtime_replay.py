@@ -26,6 +26,8 @@ from ai_governance.services.synthetic_agent_runtime_replay import (
 
 NOW = datetime(2026, 8, 26, tzinfo=UTC)
 ENDPOINT = "https://synthetic-runtime.example.test/replay"
+INTERVENTION_PROVENANCE_DIGEST = "sha256:" + ("a" * 64)
+RUNTIME_COUNTERFACTUAL_EVIDENCE_DIGEST = "sha256:" + ("b" * 64)
 
 
 class _Transport:
@@ -65,8 +67,19 @@ def test_synthetic_adapter_replays_each_supported_intervention(strategy):
     request = transport.requests[0][1]
     assert request["intervention"] == strategy.value
     assert request["replay_reference"] == "synthetic://replays/run-123"
+    assert "replacement_evidence_digest" not in request
     if strategy is ControlledEvidenceStrategy.REPLACE:
-        assert request["replacement_evidence_digest"] == "sha256:replacement"
+        assert (
+            request["intervention_provenance_digest"] == INTERVENTION_PROVENANCE_DIGEST
+        )
+    assert (
+        replay.final_state["counterfactual_evidence_digest"]
+        == RUNTIME_COUNTERFACTUAL_EVIDENCE_DIGEST
+    )
+    assert (
+        replay.metadata["synthetic_runtime"]["counterfactual_evidence_digest"]
+        == RUNTIME_COUNTERFACTUAL_EVIDENCE_DIGEST
+    )
 
 
 def test_adapter_rejects_unsupported_intervention_before_calling_runtime():
@@ -131,6 +144,25 @@ def test_adapter_does_not_retry_an_authentication_or_validation_response():
     assert len(transport.requests) == 1
 
 
+def test_adapter_uses_configured_synthetic_runtime_replay_bearer(monkeypatch):
+    monkeypatch.setenv(
+        "AI_GOVERNANCE_SYNTHETIC_RUNTIME_REPLAY_AUTH_TOKEN",
+        "runtime-replay-secret",
+    )
+    transport = _Transport([_response(ControlledEvidenceStrategy.REPLACE)])
+    adapter = SyntheticAgentRuntimeReplayAdapter(
+        approved_endpoint=ENDPOINT,
+        transport=transport,
+        max_attempts=1,
+    )
+
+    adapter.replay(
+        _source(), _configuration(), _context(ControlledEvidenceStrategy.REPLACE)
+    )
+
+    assert transport.requests[0][2]["Authorization"] == ("Bearer runtime-replay-secret")
+
+
 def test_adapter_fails_closed_for_runtime_error_or_malformed_response():
     unavailable = _adapter(
         _Transport(
@@ -163,6 +195,16 @@ def test_adapter_fails_closed_for_runtime_error_or_malformed_response():
     )
     with pytest.raises(SyntheticAgentRuntimeReplayError, match="unsafe or malformed"):
         malformed.replay(
+            _source(), _configuration(), _context(ControlledEvidenceStrategy.REPLACE)
+        )
+
+    missing_digest_payload = dict(_response(ControlledEvidenceStrategy.REPLACE).payload)
+    missing_digest_payload.pop("counterfactual_evidence_digest")
+    missing_digest = _adapter(
+        _Transport([SyntheticReplayHttpResponse(200, missing_digest_payload)])
+    )
+    with pytest.raises(SyntheticAgentRuntimeReplayError, match="unsafe or malformed"):
+        missing_digest.replay(
             _source(), _configuration(), _context(ControlledEvidenceStrategy.REPLACE)
         )
 
@@ -216,8 +258,10 @@ def _source(
         events=[
             {
                 "event_id": "tool-call-1",
+                "runtime_tool_call_id": "run-123:tool:1",
+                "tool_call_group_id": "claim-inputs",
+                "depends_on_tool_call_ids": [],
                 "evidence_references": ["artifact://claim/1"],
-                "external_tool_call_id": "run-123:tool:1",
             }
         ],
         organization_id="org-a",
@@ -272,7 +316,7 @@ def _context(strategy: ControlledEvidenceStrategy) -> ReplayExecutionContext:
             "artifact://claim/1",
             target_event_id="tool-call-1",
             counterfactual_evidence_reference="artifact://claim/1/replacement",
-            counterfactual_evidence_digest="sha256:replacement",
+            counterfactual_evidence_digest=INTERVENTION_PROVENANCE_DIGEST,
             policy_id="policy-1",
             policy_version=1,
             provider_id="structured-json",
@@ -291,8 +335,9 @@ def _response(strategy: ControlledEvidenceStrategy) -> SyntheticReplayHttpRespon
             "replay_reference": "synthetic://replays/run-123",
             "intervention": strategy.value,
             "external_execution_id": "run-123",
-            "external_tool_call_id": "run-123:tool:1",
+            "runtime_tool_call_id": "run-123:tool:1",
             "source_evidence_digest": "sha256:original",
+            "counterfactual_evidence_digest": RUNTIME_COUNTERFACTUAL_EVIDENCE_DIGEST,
             "outcome_score": 0.35,
         },
     )

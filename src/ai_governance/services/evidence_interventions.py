@@ -225,7 +225,8 @@ class OpaqueReferenceEvidenceInterventionProvider:
 
     An external runtime can validate and apply the actual change within its
     isolated replay boundary. Core retains only a policy-authorized opaque
-    reference, digest, and stable external runtime tool-call identifier.
+    reference and digest. The target runtime tool-call identity is owned by
+    the typed execution event context, never evidence-descriptor metadata.
     """
 
     provider_id = "opaque-reference"
@@ -234,10 +235,7 @@ class OpaqueReferenceEvidenceInterventionProvider:
     def supports(
         self, descriptor: ToolEvidenceDescriptor, strategy: ControlledEvidenceStrategy
     ) -> bool:
-        target = descriptor.metadata.get("external_tool_call_id")
-        return isinstance(target, str) and bool(target.strip()) and strategy in set(
-            ControlledEvidenceStrategy
-        )
+        return strategy in set(ControlledEvidenceStrategy)
 
     def validate_policy(
         self, policy: EvidenceInterventionPolicy, context: TenantContext

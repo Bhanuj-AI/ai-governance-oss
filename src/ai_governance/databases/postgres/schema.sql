@@ -872,6 +872,10 @@ CREATE TABLE IF NOT EXISTS agent_execution_event (
     step_lifecycle TEXT,
     parent_step_id TEXT,
     source_kind TEXT,
+    tool_call_context_schema_version TEXT,
+    runtime_tool_call_id TEXT,
+    tool_call_group_id TEXT,
+    depends_on_tool_call_ids_json JSONB NOT NULL DEFAULT '[]',
     resource_references_json JSONB NOT NULL DEFAULT '[]',
     evidence_references_json JSONB NOT NULL DEFAULT '[]',
     attributes_json JSONB NOT NULL DEFAULT '{}',
@@ -1031,3 +1035,10 @@ ALTER TABLE agent_execution_event ADD COLUMN IF NOT EXISTS step_name TEXT;
 ALTER TABLE agent_execution_event ADD COLUMN IF NOT EXISTS step_lifecycle TEXT;
 ALTER TABLE agent_execution_event ADD COLUMN IF NOT EXISTS parent_step_id TEXT;
 ALTER TABLE agent_execution_event ADD COLUMN IF NOT EXISTS source_kind TEXT;
+ALTER TABLE agent_execution_event ADD COLUMN IF NOT EXISTS tool_call_context_schema_version TEXT;
+ALTER TABLE agent_execution_event ADD COLUMN IF NOT EXISTS runtime_tool_call_id TEXT;
+ALTER TABLE agent_execution_event ADD COLUMN IF NOT EXISTS tool_call_group_id TEXT;
+ALTER TABLE agent_execution_event ADD COLUMN IF NOT EXISTS depends_on_tool_call_ids_json JSONB NOT NULL DEFAULT '[]';
+CREATE UNIQUE INDEX IF NOT EXISTS uq_agent_execution_event_runtime_tool_call
+ON agent_execution_event(execution_id, runtime_tool_call_id)
+WHERE runtime_tool_call_id IS NOT NULL;

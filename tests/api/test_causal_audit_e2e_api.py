@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -10,24 +11,24 @@ from ai_governance.api.app import create_app
 from ai_governance.api.dependencies.agent_execution import get_agent_execution_service
 from ai_governance.api.dependencies.causal_audit import get_causal_audit_service
 from ai_governance.api.dependencies.evidence_intervention_policy import (
-    get_evidence_intervention_runtime,
     get_evidence_intervention_policy_service,
+    get_evidence_intervention_runtime,
 )
+from ai_governance.api.dependencies.replay import get_replay_source_resolver
 from ai_governance.api.dependencies.repositories import (
     get_agent_execution_repository,
     get_causal_audit_repository,
     get_job_repository,
     get_replay_repository,
 )
-from ai_governance.api.dependencies.replay import get_replay_source_resolver
 from ai_governance.api.dependencies.runtime_finding_repo import (
     get_runtime_finding_repository,
 )
 from ai_governance.domain.jobs import JobType
-from ai_governance.services.causal_audit_service import CausalAuditJobHandler
 from ai_governance.services.agent_runtime_controlled_replay import (
     DeterministicAgentRuntimeReplayAdapter,
 )
+from ai_governance.services.causal_audit_service import CausalAuditJobHandler
 from ai_governance.services.job_api_service import JobApiService
 from ai_governance.services.job_executor import JobExecutor
 from ai_governance.services.replay_execution import (
@@ -38,19 +39,19 @@ from ai_governance.services.synthetic_agent_runtime_replay import (
     SyntheticAgentRuntimeReplayAdapter,
     SyntheticReplayHttpResponse,
 )
-from ai_governance.workers.job_worker import JobWorker
 from ai_governance.tenancy.domain import TenantContext
+from ai_governance.workers.job_worker import JobWorker
 from tests.external_adapters.schema_driven_agent_runtime import (
     SchemaDrivenAgentRuntimeAdapter,
 )
 
-
 CONTEXT = TenantContext("org_default", "project_default", "test", "test")
+RUNTIME_COUNTERFACTUAL_EVIDENCE_DIGEST = "sha256:" + ("c" * 64)
 
 
 def test_causal_audit_demos_complete_through_rest_and_worker() -> None:
     class _SimulatorTransport:
-        scores = {
+        scores: ClassVar[dict[str, float]] = {
             "synthetic://replays/cwl": 0.9,
             "synthetic://replays/calibrated": 0.2,
             "synthetic://replays/lwp": 0.2,
@@ -65,8 +66,9 @@ def test_causal_audit_demos_complete_through_rest_and_worker() -> None:
                     "replay_reference": payload["replay_reference"],
                     "intervention": payload["intervention"],
                     "external_execution_id": payload["external_execution_id"],
-                    "external_tool_call_id": payload["external_tool_call_id"],
+                    "runtime_tool_call_id": payload["runtime_tool_call_id"],
                     "source_evidence_digest": payload["source_evidence_digest"],
+                    "counterfactual_evidence_digest": RUNTIME_COUNTERFACTUAL_EVIDENCE_DIGEST,
                     "outcome_score": self.scores[payload["replay_reference"]],
                 },
             )
@@ -85,7 +87,9 @@ def test_causal_audit_demos_complete_through_rest_and_worker() -> None:
                 replay_adapter_id=SyntheticAgentRuntimeReplayAdapter.name,
                 runtime_type="synthetic-agent-runtime",
                 replay_reference="synthetic://replays/calibrated",
-                capability_metadata={"endpoint": "https://synthetic.example.test/replay"},
+                capability_metadata={
+                    "endpoint": "https://synthetic.example.test/replay"
+                },
             ),
             "OVER_EXTENDED": _record_execution(
                 client,
@@ -94,7 +98,9 @@ def test_causal_audit_demos_complete_through_rest_and_worker() -> None:
                 replay_adapter_id=SyntheticAgentRuntimeReplayAdapter.name,
                 runtime_type="synthetic-agent-runtime",
                 replay_reference="synthetic://replays/lwp",
-                capability_metadata={"endpoint": "https://synthetic.example.test/replay"},
+                capability_metadata={
+                    "endpoint": "https://synthetic.example.test/replay"
+                },
             ),
             "NO_TOOL_EVIDENCE": _record_synthetic_execution(client, "no-call", []),
         }
@@ -198,8 +204,9 @@ def test_synthetic_runtime_adapter_completes_the_causal_audit_path() -> None:
                     "replay_reference": payload["replay_reference"],
                     "intervention": payload["intervention"],
                     "external_execution_id": payload["external_execution_id"],
-                    "external_tool_call_id": payload["external_tool_call_id"],
+                    "runtime_tool_call_id": payload["runtime_tool_call_id"],
                     "source_evidence_digest": payload["source_evidence_digest"],
+                    "counterfactual_evidence_digest": RUNTIME_COUNTERFACTUAL_EVIDENCE_DIGEST,
                     "outcome_score": 0.2,
                 },
             )
@@ -214,9 +221,7 @@ def test_synthetic_runtime_adapter_completes_the_causal_audit_path() -> None:
             replay_adapter_id=SyntheticAgentRuntimeReplayAdapter.name,
             runtime_type="synthetic-agent-runtime",
             replay_reference="synthetic://replays/causal-e2e-synthetic-runtime",
-            capability_metadata={
-                "endpoint": "https://synthetic.example.test/replay"
-            },
+            capability_metadata={"endpoint": "https://synthetic.example.test/replay"},
             tool_name="synthetic.lookup",
             schema_id="synthetic-result",
             register_evidence=False,
@@ -246,6 +251,10 @@ def test_synthetic_runtime_adapter_completes_the_causal_audit_path() -> None:
         lineage = payload["tool_call_results"][0]["counterfactual_lineage"]
         assert lineage[0]["replay_status"] == "EXECUTION_COMPLETED"
         assert lineage[0]["evaluator_score"]["value"] == 0.2
+        assert (
+            lineage[0]["counterfactual_evidence_digest"]
+            == RUNTIME_COUNTERFACTUAL_EVIDENCE_DIGEST
+        )
     finally:
         _clear_dependencies()
 
@@ -279,7 +288,9 @@ def _record_execution(
                     "replay_reference": replay_reference
                     or f"artifact://causal-e2e/{suffix}",
                     "supported_interventions": ["REPLACE"],
-                    **({"metadata": capability_metadata} if capability_metadata else {}),
+                    **(
+                        {"metadata": capability_metadata} if capability_metadata else {}
+                    ),
                 }
             },
         },
@@ -298,6 +309,12 @@ def _record_execution(
                 "event_type": "TOOL_CALL",
                 "actor_id": f"demo-tool-{position}",
                 "actor_type": "TOOL",
+                "tool_call_context": {
+                    "schema_version": "1",
+                    "runtime_tool_call_id": f"{suffix}:tool:{position}",
+                    "tool_call_group_id": "risk-inputs",
+                    "depends_on_tool_call_ids": [],
+                },
                 "evidence_references": [evidence_ref],
                 "attributes": {
                     "tool": tool_name,
@@ -310,9 +327,7 @@ def _record_execution(
                             "schema_id": schema_id,
                             "schema_version": "1",
                             "replay_adapter_id": replay_adapter_id,
-                            "metadata": {
-                                "external_tool_call_id": f"{suffix}:tool:{position}"
-                            },
+                            "metadata": {},
                         },
                         "counterfactual_outcomes_by_digest": {
                             runtime.resolver.digest({"counterfactual": True}): scores
@@ -350,9 +365,7 @@ def _create_policy(
 ) -> dict[str, object]:
     runtime = get_evidence_intervention_runtime()
     if provider_id == "structured-json":
-        runtime.resolver.register(
-            replacement_ref, {"counterfactual": True}, CONTEXT
-        )
+        runtime.resolver.register(replacement_ref, {"counterfactual": True}, CONTEXT)
         strategy_configuration = {
             "json_schema": {"type": "object"},
             "replacement_references": [replacement_ref],

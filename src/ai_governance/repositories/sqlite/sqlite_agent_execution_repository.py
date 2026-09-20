@@ -13,6 +13,7 @@ from ai_governance.domain.agent_execution import (
     AgentExecutionEvent,
     AgentExecutionStatus,
     EventType,
+    ToolCallContext,
     WorkflowStep,
     WorkflowStepLifecycle,
 )
@@ -20,6 +21,7 @@ from ai_governance.domain.agent_execution.agent_execution_event import ActorType
 from ai_governance.domain.agent_execution.errors import (
     AgentExecutionConcurrencyConflict,
     AgentExecutionIdempotencyConflict,
+    AgentExecutionRuntimeToolCallConflict,
 )
 from ai_governance.repositories.agent_execution_repository import (
     AgentExecutionAgentListFilters,
@@ -276,10 +278,12 @@ class SQLiteAgentExecutionEventRepository(AgentExecutionEventRepository):
                             event_type, sequence_number, occurred_at, received_at, late_for_runtime_findings, runtime_findings_finalization_cutoff_at, runtime_findings_lateness_policy_hours,
                             correlation_id, causation_id, actor_id, actor_type,
                             step_id, step_name, step_lifecycle, parent_step_id, source_kind,
+                            tool_call_context_schema_version, runtime_tool_call_id,
+                            tool_call_group_id, depends_on_tool_call_ids_json,
                             resource_references_json, evidence_references_json,
                             attributes_json, event_schema_version, idempotency_key,
                             created_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                     (
                         event.event_id,
@@ -291,7 +295,9 @@ class SQLiteAgentExecutionEventRepository(AgentExecutionEventRepository):
                         event.occurred_at.isoformat(),
                         event.received_at.isoformat(),
                         int(event.late_for_runtime_findings),
-                        event.runtime_findings_finalization_cutoff_at.isoformat() if event.runtime_findings_finalization_cutoff_at else None,
+                        event.runtime_findings_finalization_cutoff_at.isoformat()
+                        if event.runtime_findings_finalization_cutoff_at
+                        else None,
                         event.runtime_findings_lateness_policy_hours,
                         event.correlation_id,
                         event.causation_id,
@@ -309,7 +315,30 @@ class SQLiteAgentExecutionEventRepository(AgentExecutionEventRepository):
                             if event.workflow_step
                             else None
                         ),
-                        event.workflow_step.source_kind if event.workflow_step else None,
+                        event.workflow_step.source_kind
+                        if event.workflow_step
+                        else None,
+                        (
+                            event.tool_call_context.schema_version
+                            if event.tool_call_context
+                            else None
+                        ),
+                        (
+                            event.tool_call_context.runtime_tool_call_id
+                            if event.tool_call_context
+                            else None
+                        ),
+                        (
+                            event.tool_call_context.tool_call_group_id
+                            if event.tool_call_context
+                            else None
+                        ),
+                        json.dumps(
+                            list(event.tool_call_context.depends_on_tool_call_ids)
+                            if event.tool_call_context
+                            else [],
+                            separators=(",", ":"),
+                        ),
                         json.dumps(
                             list(event.resource_references), separators=(",", ":")
                         ),
@@ -324,6 +353,11 @@ class SQLiteAgentExecutionEventRepository(AgentExecutionEventRepository):
                 )
                 connection.commit()
             except Exception as exc:
+                if "runtime_tool_call" in str(exc).lower():
+                    raise AgentExecutionRuntimeToolCallConflict(
+                        "Runtime tool-call ID conflict for execution "
+                        f"'{event.execution_id}'."
+                    ) from exc
                 if "unique" in str(exc).lower() or "duplicate" in str(exc).lower():
                     existing = self.find_by_idempotency_key(
                         idempotency_key or "",
@@ -336,6 +370,7 @@ class SQLiteAgentExecutionEventRepository(AgentExecutionEventRepository):
                             existing.event_type is event.event_type
                             and dict(existing.attributes) == dict(event.attributes)
                             and existing.workflow_step == event.workflow_step
+                            and existing.tool_call_context == event.tool_call_context
                         ):
                             return existing
                         raise AgentExecutionIdempotencyConflict(
@@ -479,13 +514,20 @@ def _event_from_row(row: dict) -> AgentExecutionEvent:
         occurred_at=datetime.fromisoformat(row["occurred_at"]),
         received_at=datetime.fromisoformat(row["received_at"]),
         late_for_runtime_findings=bool(row.get("late_for_runtime_findings", False)),
-        runtime_findings_finalization_cutoff_at=datetime.fromisoformat(row["runtime_findings_finalization_cutoff_at"]) if row.get("runtime_findings_finalization_cutoff_at") else None,
-        runtime_findings_lateness_policy_hours=row.get("runtime_findings_lateness_policy_hours"),
+        runtime_findings_finalization_cutoff_at=datetime.fromisoformat(
+            row["runtime_findings_finalization_cutoff_at"]
+        )
+        if row.get("runtime_findings_finalization_cutoff_at")
+        else None,
+        runtime_findings_lateness_policy_hours=row.get(
+            "runtime_findings_lateness_policy_hours"
+        ),
         correlation_id=row["correlation_id"],
         causation_id=row["causation_id"],
         actor_id=row["actor_id"],
         actor_type=ActorType(row["actor_type"]) if row.get("actor_type") else None,
         workflow_step=_workflow_step_from_row(row),
+        tool_call_context=_tool_call_context_from_row(row),
         resource_references=json.loads(row["resource_references_json"])
         if row.get("resource_references_json")
         else [],
@@ -508,4 +550,19 @@ def _workflow_step_from_row(row: dict) -> WorkflowStep | None:
         lifecycle=WorkflowStepLifecycle(row["step_lifecycle"]),
         parent_step_id=row.get("parent_step_id"),
         source_kind=row.get("source_kind"),
+    )
+
+
+def _tool_call_context_from_row(row: dict) -> ToolCallContext | None:
+    if row.get("runtime_tool_call_id") is None:
+        return None
+    return ToolCallContext(
+        schema_version=row["tool_call_context_schema_version"],
+        runtime_tool_call_id=row["runtime_tool_call_id"],
+        tool_call_group_id=row["tool_call_group_id"],
+        depends_on_tool_call_ids=tuple(
+            json.loads(row["depends_on_tool_call_ids_json"])
+            if row.get("depends_on_tool_call_ids_json")
+            else []
+        ),
     )

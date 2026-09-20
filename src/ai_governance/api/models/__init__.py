@@ -12,6 +12,8 @@ from ai_governance.api.models.agent_execution import (
     AgentExecutionStartedResponse,
     AgentExecutionStartRequest,
     AgentExecutionSummaryResponse,
+    ToolCallContextRequest,
+    ToolCallContextResponse,
 )
 from ai_governance.api.models.audit import (
     AuditDetailResponse,
@@ -262,6 +264,9 @@ __all__ = [
     "EvaluationMetricComparisonResponse",
     "EvaluationMetricResponse",
     "EvaluationMetricSpecRequest",
+    "EvaluationReportCallRoleResponse",
+    "EvaluationReportResponse",
+    "EvaluationReportRowResponse",
     "EvaluationResponse",
     "EvaluationRunItemResultResponse",
     "EvaluationRunResponse",
@@ -359,5 +364,7 @@ __all__ = [
     "RuntimeConnectionUpdateRequest",
     "RuntimeConnectionValidationResponse",
     "RuntimeModelProviderResponse",
+    "ToolCallContextRequest",
+    "ToolCallContextResponse",
     "UpdateDraftPolicyVersionRequest",
 ]

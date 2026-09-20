@@ -23,6 +23,33 @@ class AgentExecutionStartRequest(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class ToolCallContextRequest(BaseModel):
+    """Provider-neutral execution context for a TOOL_CALL event."""
+
+    schema_version: str = Field(..., min_length=1, max_length=32)
+    runtime_tool_call_id: str = Field(..., min_length=1, max_length=256)
+    tool_call_group_id: str = Field(..., min_length=1, max_length=256)
+    depends_on_tool_call_ids: list[str] = Field(default_factory=list, max_length=64)
+
+    @model_validator(mode="after")
+    def validate_dependencies(self) -> ToolCallContextRequest:
+        if self.schema_version != "1":
+            raise ValueError("schema_version must be '1'.")
+        if any(not value.strip() for value in self.depends_on_tool_call_ids):
+            raise ValueError("depends_on_tool_call_ids must not contain blank values.")
+        if any(len(value) > 256 for value in self.depends_on_tool_call_ids):
+            raise ValueError(
+                "depends_on_tool_call_ids values must not exceed 256 characters."
+            )
+        if len(set(self.depends_on_tool_call_ids)) != len(
+            self.depends_on_tool_call_ids
+        ):
+            raise ValueError("depends_on_tool_call_ids must be unique.")
+        if self.runtime_tool_call_id in self.depends_on_tool_call_ids:
+            raise ValueError("runtime_tool_call_id must not depend on itself.")
+        return self
+
+
 class AgentExecutionEventRequest(BaseModel):
     """Ingest a runtime event, including optional typed workflow-step evidence."""
 
@@ -68,6 +95,13 @@ class AgentExecutionEventRequest(BaseModel):
         max_length=256,
         description="Optional namespaced source concept, for example langgraph.node.",
     )
+    tool_call_context: ToolCallContextRequest | None = Field(
+        None,
+        description=(
+            "Optional provider-neutral tool invocation identity, logical group, "
+            "and explicit dependencies. Valid only for TOOL_CALL."
+        ),
+    )
     resource_references: list[str] = Field(
         default_factory=list, description="References to governed resources touched by this event."
     )
@@ -104,6 +138,10 @@ class AgentExecutionEventRequest(BaseModel):
         elif any(value is not None for value in workflow_fields):
             raise ValueError(
                 "step fields are valid only when event_type is WORKFLOW_STEP."
+            )
+        if self.event_type != "TOOL_CALL" and self.tool_call_context is not None:
+            raise ValueError(
+                "tool_call_context is valid only when event_type is TOOL_CALL."
             )
         return self
 
@@ -184,6 +222,15 @@ class AgentExecutionAgentListResponse(BaseModel):
     next_offset: int | None = None
 
 
+class ToolCallContextResponse(BaseModel):
+    """Persisted provider-neutral execution context for one TOOL_CALL."""
+
+    schema_version: str
+    runtime_tool_call_id: str
+    tool_call_group_id: str
+    depends_on_tool_call_ids: list[str] = Field(default_factory=list)
+
+
 class AgentExecutionEventResponse(BaseModel):
     """One event in the execution timeline."""
 
@@ -205,6 +252,7 @@ class AgentExecutionEventResponse(BaseModel):
     lifecycle: str | None = None
     parent_step_id: str | None = None
     source_kind: str | None = None
+    tool_call_context: ToolCallContextResponse | None = None
     resource_references: list[str] = Field(default_factory=list)
     evidence_references: list[str] = Field(default_factory=list)
     attributes: dict[str, Any] = Field(default_factory=dict)

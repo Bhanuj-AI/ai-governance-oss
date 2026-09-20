@@ -19,6 +19,7 @@ from ai_governance.domain.agent_execution import (
     AgentExecutionEvent,
     AgentExecutionStatus,
     EventType,
+    ToolCallContext,
     WorkflowStep,
     WorkflowStepLifecycle,
 )
@@ -295,6 +296,7 @@ class AgentExecutionService:
         actor_id: str | None = None,
         actor_type: ActorType | None = None,
         workflow_step: WorkflowStep | None = None,
+        tool_call_context: ToolCallContext | None = None,
         resource_references: list[str] | None = None,
         evidence_references: list[str] | None = None,
         occurred_at: datetime | None = None,
@@ -331,6 +333,7 @@ class AgentExecutionService:
                     existing.event_type is not event_type
                     or dict(existing.attributes) != attributes
                     or existing.workflow_step != workflow_step
+                    or existing.tool_call_context != tool_call_context
                 ):
                     raise AgentExecutionIdempotencyConflict(
                         f"Idempotency key conflict for execution '{execution_id}'."
@@ -380,6 +383,7 @@ class AgentExecutionService:
             actor_id=actor_id,
             actor_type=actor_type,
             workflow_step=workflow_step,
+            tool_call_context=tool_call_context,
             resource_references=tuple(resource_references or []),
             evidence_references=tuple(evidence_references or []),
             attributes=attributes,

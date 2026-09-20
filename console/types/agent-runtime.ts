@@ -42,6 +42,13 @@ export type AgentExecutionListDto = {
   next_cursor: string | null;
 };
 
+export type ToolCallContextDto = {
+  schema_version: string;
+  runtime_tool_call_id: string;
+  tool_call_group_id: string;
+  depends_on_tool_call_ids: string[];
+};
+
 export type AgentExecutionEventDto = {
   event_id: string;
   execution_id: string;
@@ -61,6 +68,7 @@ export type AgentExecutionEventDto = {
   lifecycle: "STARTED" | "COMPLETED" | "FAILED" | null;
   parent_step_id: string | null;
   source_kind: string | null;
+  tool_call_context: ToolCallContextDto | null;
   resource_references: string[];
   evidence_references: string[];
   attributes: Record<string, unknown>;

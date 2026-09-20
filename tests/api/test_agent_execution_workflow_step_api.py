@@ -108,9 +108,7 @@ def test_ingests_and_round_trips_workflow_step_evidence() -> None:
     assert completed.status_code == 201
     assert completed.json()["event"]["sequence_number"] == 2
 
-    detail = client.get(
-        f"/api/v1/agent-executions/{execution_id}", headers=_headers()
-    )
+    detail = client.get(f"/api/v1/agent-executions/{execution_id}", headers=_headers())
     assert detail.status_code == 200
     events = detail.json()["events"]
     assert [event["sequence_number"] for event in events] == [0, 1, 2]
@@ -172,3 +170,35 @@ def test_workflow_step_isolation_and_tool_call_compatibility() -> None:
 
     assert foreign_organization.status_code == 404
     assert foreign_project.status_code == 404
+
+
+def test_tool_call_context_round_trips_through_the_runtime_event_api() -> None:
+    client = _client()
+    execution_id = _start_execution(client)
+    payload = {
+        "event_type": "TOOL_CALL",
+        "actor_id": "transaction-risk.score",
+        "actor_type": "TOOL",
+        "evidence_references": ["runtime://evidence/call-risk"],
+        "attributes": {"tool": "transaction-risk.score"},
+        "tool_call_context": {
+            "schema_version": "1",
+            "runtime_tool_call_id": "call-risk",
+            "tool_call_group_id": "risk-decision",
+            "depends_on_tool_call_ids": ["call-device", "call-profile"],
+        },
+    }
+
+    response = client.post(
+        f"/api/v1/agent-executions/{execution_id}/events",
+        headers=_headers(),
+        json=payload,
+    )
+
+    assert response.status_code == 201
+    context = response.json()["event"]["tool_call_context"]
+    assert context == payload["tool_call_context"]
+
+    detail = client.get(f"/api/v1/agent-executions/{execution_id}", headers=_headers())
+    assert detail.status_code == 200
+    assert detail.json()["events"][-1]["tool_call_context"] == context

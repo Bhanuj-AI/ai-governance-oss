@@ -824,12 +824,12 @@ Synthetic Runtime
 
 There is no silent fallback to another adapter.
 
-For a causal replay, each eligible `TOOL_CALL` also supplies its existing
-reference-only evidence descriptor. Its safe metadata contains the
-runtime-native `external_tool_call_id` (for example OpenAI `call_id`,
-LangGraph tool-call `id`, or Anthropic `tool_use.id`) together with the
-observed `external_execution_id`; Core-generated event IDs are never used as
-an external runtime command. The adapter sends those identifiers plus the
+For a causal replay, each eligible `TOOL_CALL` carries a first-class,
+reference-only `ToolCallContext`. Its runtime-native
+`runtime_tool_call_id` (for example OpenAI `call_id`, LangGraph tool-call
+`id`, or Anthropic `tool_use.id`) is paired with the observed
+`external_execution_id`; Core-generated event IDs are never used as an
+external runtime command. The adapter sends those identifiers plus the
 original and counterfactual evidence digests to `/replay`. Prompts, tool
 arguments, tool results, responses, and reasoning remain outside Core.
 
@@ -837,13 +837,34 @@ In everyday terms, these are the only identifiers Core needs:
 
 ```text
 external_execution_id = “which original agent run?”
-external_tool_call_id = “which exact tool call inside that run?”
+runtime_tool_call_id = “which exact tool call inside that run?”
 ```
 
 They come from the runtime itself. For example, this is OpenAI's `call_id`, a
 LangGraph tool-call `id`, or an Anthropic `tool_use.id`. The replay produces a
 new run and may receive new IDs; Core never assumes the new run reuses the
 old ones.
+
+## Tool-call execution context
+
+`ToolCallContext` is the provider-neutral observation of one tool call's
+runtime execution structure. It is optional during ordinary ingestion, because
+a runtime may expose only a partial trace, but a controlled-replay target must
+provide it.
+
+```text
+sequence_number          = stable observed timeline position
+runtime_tool_call_id     = runtime-native identity for one invocation
+tool_call_group_id       = logical batch/group, not proof of wall-clock overlap
+depends_on_tool_call_ids = explicit dependencies in this execution
+causation_id             = event-level provenance link
+```
+
+Core does not infer dependencies from sequence numbers or timestamps. During
+replay preparation it validates the explicit graph and fails closed for missing
+references, duplicate runtime IDs, and cycles. The captured graph is source
+provenance, not a replay script: a counterfactual execution may take a
+different downstream path.
 
 When a runtime cannot disclose evidence contents, an operator can select the
 `opaque-reference/v1` intervention provider. It produces only a governed
@@ -878,6 +899,17 @@ Replay
 ```
 
 This prevents replay metadata from becoming an SSRF-style arbitrary network-call mechanism.
+
+An optional service-to-service replay credential can protect the synthetic
+runtime boundary:
+
+```text
+AI_GOVERNANCE_SYNTHETIC_RUNTIME_REPLAY_AUTH_TOKEN
+```
+
+The replay worker sends it as a Bearer token. It is not a Studio user token or
+the Keycloak browser token; the runtime must configure the same secret for its
+`/replay` endpoint.
 
 ---
 
