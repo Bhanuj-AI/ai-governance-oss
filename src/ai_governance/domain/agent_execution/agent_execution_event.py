@@ -51,6 +51,9 @@ _SOURCE_KIND_PATTERN = re.compile(
     r"^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$"
 )
 _WORKFLOW_STEP_FIELD_MAX_LENGTH = 256
+_TOOL_CALL_CONTEXT_FIELD_MAX_LENGTH = 256
+_TOOL_CALL_CONTEXT_MAX_DEPENDENCIES = 64
+_SUPPORTED_TOOL_CALL_CONTEXT_SCHEMA_VERSIONS = frozenset({"1"})
 
 
 @dataclass(frozen=True)
@@ -105,6 +108,57 @@ class WorkflowStep:
         object.__setattr__(self, "lifecycle", lifecycle)
 
 
+@dataclass(frozen=True)
+class ToolCallContext:
+    """Provider-neutral execution structure observed for a tool invocation."""
+
+    schema_version: str
+    runtime_tool_call_id: str
+    tool_call_group_id: str
+    depends_on_tool_call_ids: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if self.schema_version not in _SUPPORTED_TOOL_CALL_CONTEXT_SCHEMA_VERSIONS:
+            raise ValueError(
+                "Unsupported tool-call context schema version "
+                f"'{self.schema_version}'; supported versions: "
+                f"{sorted(_SUPPORTED_TOOL_CALL_CONTEXT_SCHEMA_VERSIONS)}."
+            )
+        for name, value in (
+            ("runtime_tool_call_id", self.runtime_tool_call_id),
+            ("tool_call_group_id", self.tool_call_group_id),
+        ):
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{name} must not be blank.")
+            if len(value) > _TOOL_CALL_CONTEXT_FIELD_MAX_LENGTH:
+                raise ValueError(
+                    f"{name} must not exceed "
+                    f"{_TOOL_CALL_CONTEXT_FIELD_MAX_LENGTH} characters."
+                )
+
+        dependencies = tuple(self.depends_on_tool_call_ids)
+        if len(dependencies) > _TOOL_CALL_CONTEXT_MAX_DEPENDENCIES:
+            raise ValueError(
+                "depends_on_tool_call_ids must not contain more than "
+                f"{_TOOL_CALL_CONTEXT_MAX_DEPENDENCIES} items."
+            )
+        if len(set(dependencies)) != len(dependencies):
+            raise ValueError("depends_on_tool_call_ids must be unique.")
+        for dependency_id in dependencies:
+            if not isinstance(dependency_id, str) or not dependency_id.strip():
+                raise ValueError(
+                    "depends_on_tool_call_ids must not contain blank values."
+                )
+            if len(dependency_id) > _TOOL_CALL_CONTEXT_FIELD_MAX_LENGTH:
+                raise ValueError(
+                    "depends_on_tool_call_ids values must not exceed "
+                    f"{_TOOL_CALL_CONTEXT_FIELD_MAX_LENGTH} characters."
+                )
+            if dependency_id == self.runtime_tool_call_id:
+                raise ValueError("runtime_tool_call_id must not depend on itself.")
+        object.__setattr__(self, "depends_on_tool_call_ids", dependencies)
+
+
 # Fields that must never be persisted in event attributes.
 _PROHIBITED_KEYS = frozenset(
     {
@@ -129,6 +183,9 @@ _PROHIBITED_KEYS = frozenset(
         "tool_output",
         "tool_arguments",
         "tool_result",
+        # Reject the removed descriptor-metadata identity path so a second
+        # runtime tool-call identity cannot reappear in attributes.
+        "external_tool_call_id",
     }
 )
 
@@ -196,6 +253,7 @@ class AgentExecutionEvent:
     actor_id: str | None
     actor_type: ActorType | None
     workflow_step: WorkflowStep | None = None
+    tool_call_context: ToolCallContext | None = None
     late_for_runtime_findings: bool = False
     runtime_findings_finalization_cutoff_at: datetime | None = None
     runtime_findings_lateness_policy_hours: int | None = None
@@ -232,6 +290,13 @@ class AgentExecutionEvent:
             raise ValueError(
                 "workflow_step evidence is valid only for WORKFLOW_STEP events."
             )
+        if self.event_type is EventType.TOOL_CALL:
+            if self.tool_call_context is not None and not isinstance(
+                self.tool_call_context, ToolCallContext
+            ):
+                raise TypeError("tool_call_context must be a ToolCallContext.")
+        elif self.tool_call_context is not None:
+            raise ValueError("tool_call_context is valid only for TOOL_CALL events.")
         # Validate resource/evidence references are non-empty strings.
         for ref in self.resource_references:
             if not str(ref).strip():

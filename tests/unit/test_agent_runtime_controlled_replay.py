@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, datetime
 
 import pytest
@@ -8,6 +9,7 @@ from ai_governance.domain.agent_execution import (
     AgentExecutionEvent,
     AgentExecutionStatus,
     EventType,
+    ToolCallContext,
 )
 from ai_governance.domain.replay import (
     ControlledEvidenceIntervention,
@@ -23,7 +25,6 @@ from ai_governance.services.replay_execution_discovery import (
     InMemoryReplaySourceResolver,
 )
 from ai_governance.tenancy.domain import TenantContext
-
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
 CONTEXT = TenantContext("org-a", "project-a", "auditor", "request-a")
@@ -46,7 +47,7 @@ def test_bridge_prepares_reference_only_source_and_adapter_replays_intervention(
         original_evidence_digest="sha256:original",
         counterfactual_evidence_digest="sha256:clean",
     )
-    adapter = DeterministicAgentRuntimeReplayAdapter()
+    adapter = DeterministicAgentRuntimeReplayAdapter(lambda _event, _intervention: 0.28)
     adapter.validate_configuration(prepared.source_execution, object())
     replay = adapter.replay(
         prepared.source_execution,
@@ -69,6 +70,14 @@ def test_bridge_prepares_reference_only_source_and_adapter_replays_intervention(
 
     assert prepared.capability.adapter_id == adapter.name
     assert prepared.source_execution.input == {}
+    assert set(prepared.source_execution.events[0]) == {
+        "event_id",
+        "runtime_tool_call_id",
+        "tool_call_group_id",
+        "depends_on_tool_call_ids",
+        "evidence_references",
+        "evidence_digest",
+    }
     assert replay.final_state["causal_audit_outcome_score"] == 0.28
     assert replay.runtime_parameters == {"isolated": True}
 
@@ -105,6 +114,35 @@ def test_bridge_fails_closed_without_explicit_capability():
         AgentRuntimeReplaySourceBridge(InMemoryReplaySourceResolver()).prepare(
             execution, [_tool_event()], CONTEXT
         )
+
+
+def test_bridge_fails_closed_for_missing_or_cyclic_tool_dependencies():
+    bridge = AgentRuntimeReplaySourceBridge(InMemoryReplaySourceResolver())
+    with pytest.raises(AgentRuntimeReplayNotAvailable, match="runtime_tool_call_id"):
+        bridge.prepare(
+            _execution(), [replace(_tool_event(), tool_call_context=None)], CONTEXT
+        )
+    missing_dependency = replace(
+        _tool_event(),
+        tool_call_context=ToolCallContext(
+            "1", "call-risk", "risk-decision", ("call-missing",)
+        ),
+    )
+    with pytest.raises(AgentRuntimeReplayNotAvailable, match="outside"):
+        bridge.prepare(_execution(), [missing_dependency], CONTEXT)
+
+    first = replace(
+        _tool_event(),
+        event_id="tool-call-a",
+        tool_call_context=ToolCallContext("1", "call-a", "risk-inputs", ("call-b",)),
+    )
+    second = replace(
+        _tool_event(),
+        event_id="tool-call-b",
+        tool_call_context=ToolCallContext("1", "call-b", "risk-inputs", ("call-a",)),
+    )
+    with pytest.raises(AgentRuntimeReplayNotAvailable, match="cycle"):
+        bridge.prepare(_execution(), [first, second], CONTEXT)
 
 
 class _NotCancelled:
@@ -158,6 +196,11 @@ def _tool_event():
         causation_id=None,
         actor_id="claim_history.lookup",
         actor_type=ActorType.TOOL,
+        tool_call_context=ToolCallContext(
+            schema_version="1",
+            runtime_tool_call_id="claim-history-call",
+            tool_call_group_id="claim-inputs",
+        ),
         evidence_references=["artifact://claims/history"],
         attributes={
             "causal_replay": {

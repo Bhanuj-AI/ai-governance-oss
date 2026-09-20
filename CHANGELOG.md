@@ -9,6 +9,21 @@ This project follows Semantic Versioning.
 
 ## Unreleased
 
+### [1.1.5] - 2026-09-20
+
+### Added
+
+- Added first-class, provider-neutral `ToolCallContext` for `TOOL_CALL`
+  observations. It persists runtime-native tool-call identity, logical groups,
+  and explicit dependencies across in-memory, SQLite, and PostgreSQL stores,
+  with execution-scoped uniqueness and replay-time graph validation.
+
+### Changed
+
+- Controlled Replay now identifies a target through
+  `external_execution_id` plus `tool_call_context.runtime_tool_call_id`.
+  Evidence-descriptor metadata no longer carries runtime tool-call identity.
+
 ### [1.1.4] - 2026-09-17
 
 - Added a generated, static Scalar REST API reference with explicit

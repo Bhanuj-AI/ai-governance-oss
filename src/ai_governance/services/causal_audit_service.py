@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
@@ -245,17 +245,22 @@ class CausalAuditService:
                     len(calls),
                 )
             try:
-                for event in calls:
-                    self._counterfactual_generator.validate(
-                        event,
-                        ControlledEvidenceStrategy(intervention_strategy.value),
-                        intervention_policy_id,
-                        intervention_policy_version,
-                        context,
-                    )
+                audited_calls = self._audited_tool_calls(
+                    calls,
+                    ControlledEvidenceStrategy(intervention_strategy.value),
+                    intervention_policy_id,
+                    intervention_policy_version,
+                    context,
+                )
             except Exception as error:  # noqa: BLE001 - report eligibility without leaking a provider failure.
                 return CausalAuditEligibility(
                     _eligibility_code(error), str(error), len(calls)
+                )
+            if not audited_calls:
+                return CausalAuditEligibility(
+                    CausalAuditEligibilityCode.UNSUPPORTED_INTERVENTION,
+                    "The selected intervention policy does not authorize any tool calls in this execution.",
+                    len(calls),
                 )
         return CausalAuditEligibility(
             CausalAuditEligibilityCode.ELIGIBLE,
@@ -386,9 +391,16 @@ class CausalAuditService:
                 and isinstance(event.attributes.get("score"), (int, float))
             )
             baseline = scorer.score_baseline(audit.execution_id, baseline_event)
-            calls = [
+            all_calls = [
                 event for event in events if event.event_type is EventType.TOOL_CALL
             ]
+            calls = self._audited_tool_calls(
+                all_calls,
+                ControlledEvidenceStrategy(audit.intervention.strategy.value),
+                audit.intervention.intervention_policy_id,
+                audit.intervention.intervention_policy_version,
+                context,
+            )
             planned = _planned_replays(audit)
             if calls and not planned:
                 audit = self._queue_controlled_replays(audit, events, calls, context)
@@ -493,6 +505,36 @@ class CausalAuditService:
                 current.mark_failed(code, str(error), self._clock()),
                 expected_version=current.version,
             )
+
+    def _audited_tool_calls(
+        self,
+        calls,
+        strategy: ControlledEvidenceStrategy,
+        intervention_policy_id: str | None,
+        intervention_policy_version: int | None,
+        context: TenantContext,
+    ):
+        """Return only calls governed by an explicitly selected policy."""
+        assert self._counterfactual_generator is not None
+        selected = calls
+        if intervention_policy_id is not None:
+            if intervention_policy_version is None:
+                raise ValueError("An explicit intervention policy requires a version.")
+            policy = self._intervention_policies.get(
+                intervention_policy_id, intervention_policy_version, context
+            )
+            selected = [
+                event for event in calls if _policy_matches_tool_evidence(policy, event)
+            ]
+        for event in selected:
+            self._counterfactual_generator.validate(
+                event,
+                strategy,
+                intervention_policy_id,
+                intervention_policy_version,
+                context,
+            )
+        return selected
 
     def _controlled_replay_available(
         self,
@@ -692,6 +734,15 @@ class CausalAuditService:
                 if output is not None
                 else None
             )
+            counterfactual_evidence_digest = (
+                output.final_state.get("counterfactual_evidence_digest")
+                if output is not None
+                else None
+            )
+            if not isinstance(counterfactual_evidence_digest, str):
+                counterfactual_evidence_digest = str(
+                    item["counterfactual_evidence_digest"]
+                )
             if not isinstance(value, (int, float)):
                 raise InsufficientCounterfactualEvidence(
                     "Controlled Replay produced no evaluable outcome score."
@@ -727,9 +778,7 @@ class CausalAuditService:
                         counterfactual_evidence_reference=str(
                             item["counterfactual_evidence_reference"]
                         ),
-                        counterfactual_evidence_digest=str(
-                            item["counterfactual_evidence_digest"]
-                        ),
+                        counterfactual_evidence_digest=counterfactual_evidence_digest,
                         intervention_digest=str(item["intervention_digest"]),
                         evaluator_score=score,
                     )
@@ -921,6 +970,22 @@ def _eligibility_code(error: Exception) -> CausalAuditEligibilityCode:
         return CausalAuditEligibilityCode(code)
     except ValueError:
         return CausalAuditEligibilityCode.UNSUPPORTED_INTERVENTION
+
+
+def _policy_matches_tool_evidence(policy, event) -> bool:
+    """Whether an event's bounded descriptor identifies evidence governed by policy."""
+    raw = event.attributes.get("causal_replay")
+    descriptor = raw.get("evidence_descriptor") if isinstance(raw, Mapping) else None
+    if not isinstance(descriptor, Mapping):
+        return False
+    tool_name = (
+        descriptor.get("tool_name") or event.attributes.get("tool") or event.actor_id
+    )
+    return (
+        tool_name == policy.tool_name
+        and descriptor.get("schema_id") == policy.schema_id
+        and descriptor.get("schema_version") == policy.schema_version
+    )
 
 
 def _planned_provenance(

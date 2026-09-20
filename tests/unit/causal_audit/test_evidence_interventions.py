@@ -16,7 +16,6 @@ from ai_governance.services.evidence_interventions import (
 )
 from ai_governance.tenancy.domain import TenantContext
 
-
 CONTEXT = TenantContext("org-a", "project-a", "operator", "request-a")
 NOW = datetime(2026, 8, 22, tzinfo=UTC)
 
@@ -160,7 +159,7 @@ def test_opaque_reference_provider_never_materialises_external_evidence():
         "risk-schema",
         "1",
         "synthetic-agent-runtime/v1",
-        {"external_tool_call_id": "run:tool:1"},
+        {},
     )
     policy = EvidenceInterventionPolicy(
         "policy-opaque",

@@ -105,8 +105,42 @@ function EventTimelineItem({ event }: { event: AgentExecutionEventDto }) {
         ["Source kind", event.source_kind],
       ]
     : [];
+  const toolCallFacts: Array<[string, string | null]> = event.tool_call_context
+    ? [
+        ["Tool call", event.tool_call_context.runtime_tool_call_id],
+        ["Group", event.tool_call_context.tool_call_group_id],
+        [
+          "Depends on",
+          event.tool_call_context.depends_on_tool_call_ids.length
+            ? event.tool_call_context.depends_on_tool_call_ids.join(", ")
+            : null,
+        ],
+      ]
+    : [];
 
-  return <details className="group px-4 py-3" open={event.event_type === "ERROR"}><summary className="cursor-pointer list-none"><div className="flex flex-wrap items-start gap-x-3 gap-y-1"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted font-mono text-[11px] text-muted-foreground">{event.sequence_number}</span><div className="min-w-0 flex-1"><span className="font-medium">{eventLabel}</span><span className="ml-2 text-xs text-muted-foreground">{formatDateTime(event.occurred_at)}</span></div>{event.late_for_runtime_findings ? <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200"><FileWarning className="mr-1 h-3 w-3" />Late for findings</Badge> : null}</div></summary><div className="ml-9 mt-3 grid gap-3 border-l pl-4 text-sm sm:grid-cols-2">{workflowFacts.length ? <FactList title="Workflow step" entries={workflowFacts} /> : null}{operationalFacts.length ? <FactList title="Operational facts" entries={operationalFacts} /> : null}{event.actor_id || event.correlation_id || event.causation_id ? <FactList title="Trace links" entries={[["Actor", event.actor_id ? `${event.actor_type ?? "Actor"}: ${event.actor_id}` : null], ["Correlation", event.correlation_id], ["Caused by", event.causation_id]]} /> : null}{event.resource_references.length ? <ReferenceList title="Resources" references={event.resource_references} /> : null}{event.evidence_references.length ? <ReferenceList title="Evidence references" references={event.evidence_references} /> : null}{event.late_for_runtime_findings ? <div className="sm:col-span-2 rounded-md bg-amber-500/10 px-3 py-2 text-xs text-amber-950 dark:text-amber-100"><span className="font-medium">Excluded from finalized runtime-finding windows.</span>{event.runtime_findings_finalization_cutoff_at ? ` The evidence window finalized at ${formatDateTime(event.runtime_findings_finalization_cutoff_at)}.` : ""}</div> : null}</div></details>;
+  return (
+    <details className="group px-4 py-3" open={event.event_type === "ERROR"}>
+      <summary className="cursor-pointer list-none">
+        <div className="flex flex-wrap items-start gap-x-3 gap-y-1">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted font-mono text-[11px] text-muted-foreground">{event.sequence_number}</span>
+          <div className="min-w-0 flex-1">
+            <span className="font-medium">{eventLabel}</span>
+            <span className="ml-2 text-xs text-muted-foreground">{formatDateTime(event.occurred_at)}</span>
+          </div>
+          {event.late_for_runtime_findings ? <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200"><FileWarning className="mr-1 h-3 w-3" />Late for findings</Badge> : null}
+        </div>
+      </summary>
+      <div className="ml-9 mt-3 grid gap-3 border-l pl-4 text-sm sm:grid-cols-2">
+        {workflowFacts.length ? <FactList title="Workflow step" entries={workflowFacts} /> : null}
+        {toolCallFacts.length ? <FactList title="Tool-call context" entries={toolCallFacts} /> : null}
+        {operationalFacts.length ? <FactList title="Operational facts" entries={operationalFacts} /> : null}
+        {event.actor_id || event.correlation_id || event.causation_id ? <FactList title="Trace links" entries={[["Actor", event.actor_id ? `${event.actor_type ?? "Actor"}: ${event.actor_id}` : null], ["Correlation", event.correlation_id], ["Caused by", event.causation_id]]} /> : null}
+        {event.resource_references.length ? <ReferenceList title="Resources" references={event.resource_references} /> : null}
+        {event.evidence_references.length ? <ReferenceList title="Evidence references" references={event.evidence_references} /> : null}
+        {event.late_for_runtime_findings ? <div className="sm:col-span-2 rounded-md bg-amber-500/10 px-3 py-2 text-xs text-amber-950 dark:text-amber-100"><span className="font-medium">Excluded from finalized runtime-finding windows.</span>{event.runtime_findings_finalization_cutoff_at ? ` The evidence window finalized at ${formatDateTime(event.runtime_findings_finalization_cutoff_at)}.` : ""}</div> : null}
+      </div>
+    </details>
+  );
 }
 
 function FactList({ title, entries }: { title: string; entries: Array<[string, string | null]> }) {

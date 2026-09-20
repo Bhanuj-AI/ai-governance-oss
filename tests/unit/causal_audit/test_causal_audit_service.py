@@ -7,6 +7,7 @@ from ai_governance.domain.agent_execution import (
     AgentExecutionEvent,
     AgentExecutionStatus,
     EventType,
+    ToolCallContext,
 )
 from ai_governance.domain.causal_audit import (
     CausalAuditClassification,
@@ -39,7 +40,6 @@ from ai_governance.services.causal_audit_service import (
     CausalAuditService,
     CausalAuditSettings,
 )
-from ai_governance.services.job_api_service import JobApiService
 from ai_governance.services.evidence_intervention_policy_service import (
     EvidenceInterventionPolicyService,
 )
@@ -49,6 +49,7 @@ from ai_governance.services.evidence_interventions import (
     InMemoryEvidenceValueResolver,
     StructuredJsonEvidenceInterventionProvider,
 )
+from ai_governance.services.job_api_service import JobApiService
 from ai_governance.services.job_executor import JobExecutor
 from ai_governance.services.replay_application_service import ReplayApplicationService
 from ai_governance.services.replay_execution import (
@@ -65,9 +66,9 @@ from ai_governance.services.synthetic_agent_runtime_replay import (
 from ai_governance.tenancy.domain import TenantContext
 from ai_governance.workers.job_worker import JobWorker
 
-
 NOW = datetime(2026, 8, 19, tzinfo=UTC)
 CONTEXT = TenantContext("org-a", "project-a", "auditor", "request-a")
+RUNTIME_COUNTERFACTUAL_EVIDENCE_DIGEST = "sha256:" + ("d" * 64)
 
 
 @dataclass
@@ -79,14 +80,19 @@ class _Setup:
 def _service(
     counterfactual_scores: list[float],
     tool_calls: int = 1,
+    tool_names: tuple[str, ...] | None = None,
     baseline_score: float = 0.9,
     replay_capable: bool = True,
     settings: CausalAuditSettings | None = None,
     replacement_count: int = 1,
     replay_adapter=None,
 ) -> _Setup:
+    tool_names = tool_names or ("lookup",) * tool_calls
+    assert len(tool_names) == tool_calls
     adapter_id = (
-        replay_adapter.name if replay_adapter is not None else "deterministic-agent-runtime/v1"
+        replay_adapter.name
+        if replay_adapter is not None
+        else "deterministic-agent-runtime/v1"
     )
     runtime_type = (
         "synthetic-agent-runtime" if replay_adapter is not None else "deterministic"
@@ -151,6 +157,7 @@ def _service(
         }
     )
     for index in range(tool_calls):
+        tool_name = tool_names[index]
         evidence_ref = f"artifact://evidence/{index}"
         events.save(
             AgentExecutionEvent(
@@ -166,9 +173,14 @@ def _service(
                 None,
                 f"tool-{index}",
                 ActorType.TOOL,
+                tool_call_context=ToolCallContext(
+                    "1",
+                    f"execution-a:tool:{index}",
+                    "risk-inputs",
+                ),
                 evidence_references=(evidence_ref,),
                 attributes={
-                    "tool": "lookup",
+                    "tool": tool_name,
                     "causal_replay": {
                         "counterfactual_outcomes_by_digest": {
                             resolver.digest(
@@ -177,16 +189,14 @@ def _service(
                             for replacement_index in range(replacement_count)
                         },
                         "evidence_descriptor": {
-                            "tool_name": "lookup",
+                            "tool_name": tool_name,
                             "evidence_ref": evidence_ref,
                             "evidence_digest": resolver.digest({"value": index}),
                             "content_type": "application/json",
                             "schema_id": "lookup-result",
                             "schema_version": "1",
                             "replay_adapter_id": adapter_id,
-                            "metadata": {
-                                "external_tool_call_id": f"execution-a:tool:{index}"
-                            },
+                            "metadata": {},
                         },
                     },
                 },
@@ -264,7 +274,14 @@ def _service(
         intervention_policy_service=policy_service,
     )
     registry = ReplayExecutionAdapterRegistry()
-    registry.register(replay_adapter or DeterministicAgentRuntimeReplayAdapter())
+    registry.register(
+        replay_adapter
+        or DeterministicAgentRuntimeReplayAdapter(
+            lambda _event, intervention: counterfactual_scores[
+                int(intervention.configuration["sample_index"])
+            ]
+        )
+    )
     replay_handler = ReplayJobHandler(
         replays,
         source_store,
@@ -336,6 +353,33 @@ def test_classifies_evidence_aligned_when_replay_changes_score_and_agent_stops()
     assert len(audit.tool_call_results[0].counterfactual_execution_ids) == 1
 
 
+def test_explicit_policy_scopes_audit_to_matching_tool_calls():
+    audit = _run(
+        _service(
+            [0.1, 0.2, 0.3],
+            tool_calls=2,
+            tool_names=("lookup", "unrelated.lookup"),
+        )
+    )
+
+    assert audit.classification is CausalAuditClassification.EVIDENCE_ALIGNED
+    assert [item.tool_name for item in audit.tool_call_results] == ["lookup"]
+
+
+def test_explicit_policy_evaluates_every_matching_tool_call():
+    audit = _run(_service([0.1, 0.2, 0.3], tool_calls=2))
+
+    assert [item.tool_call_id for item in audit.tool_call_results] == [
+        "tool-0",
+        "tool-1",
+    ]
+    assert all(
+        len(item.counterfactual_replay_ids) == 1
+        and len(item.counterfactual_execution_ids) == 1
+        for item in audit.tool_call_results
+    )
+
+
 def test_causal_audit_consumes_successful_synthetic_runtime_replay():
     class _Transport:
         def post(self, _endpoint, payload, _headers, _timeout):
@@ -347,8 +391,9 @@ def test_causal_audit_consumes_successful_synthetic_runtime_replay():
                     "replay_reference": "synthetic://replays/execution-a",
                     "intervention": "REPLACE",
                     "external_execution_id": payload["external_execution_id"],
-                    "external_tool_call_id": payload["external_tool_call_id"],
+                    "runtime_tool_call_id": payload["runtime_tool_call_id"],
                     "source_evidence_digest": payload["source_evidence_digest"],
+                    "counterfactual_evidence_digest": RUNTIME_COUNTERFACTUAL_EVIDENCE_DIGEST,
                     "outcome_score": 0.1,
                 },
             )
@@ -364,6 +409,9 @@ def test_causal_audit_consumes_successful_synthetic_runtime_replay():
     assert audit.classification is CausalAuditClassification.EVIDENCE_ALIGNED
     lineage = audit.tool_call_results[0].counterfactual_lineage[0]
     assert lineage.replay_status == "EXECUTION_COMPLETED"
+    assert (
+        lineage.counterfactual_evidence_digest == RUNTIME_COUNTERFACTUAL_EVIDENCE_DIGEST
+    )
 
 
 def test_classifies_over_extended_after_saturation():

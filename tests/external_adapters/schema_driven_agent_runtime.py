@@ -7,8 +7,8 @@ does not import Causal Audit orchestration or alter Replay core behavior.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import UTC, datetime
-from typing import Mapping
 
 from ai_governance.domain.replay import ReplayConfiguration
 from ai_governance.domain.workflow_execution import WorkflowExecution
@@ -28,8 +28,13 @@ class SchemaDrivenAgentRuntimeAdapter:
         capability = (source_execution.runtime_parameters or {}).get(
             "agent_runtime_replay", {}
         )
-        if not isinstance(capability, Mapping) or capability.get("adapter_id") != self.name:
-            raise ValueError("Replay source does not declare the external runtime adapter.")
+        if (
+            not isinstance(capability, Mapping)
+            or capability.get("adapter_id") != self.name
+        ):
+            raise ValueError(
+                "Replay source does not declare the external runtime adapter."
+            )
 
     def replay(
         self,
@@ -57,22 +62,11 @@ class SchemaDrivenAgentRuntimeAdapter:
             ),
             None,
         )
-        outcomes = (
-            event.get("counterfactual_outcomes_by_digest", {})
-            if isinstance(event, Mapping)
-            else {}
-        )
-        values = (
-            outcomes.get(intervention.counterfactual_evidence_digest)
-            if isinstance(outcomes, Mapping)
-            else None
-        )
-        sample_index = int(intervention.configuration.get("sample_index", 0))
-        if not isinstance(values, list) or sample_index >= len(values):
-            raise ValueError("No isolated outcome is available for this intervention.")
-        score = values[sample_index]
-        if not isinstance(score, (int, float)):
-            raise ValueError("External runtime outcome score is invalid.")
+        if not isinstance(event, Mapping) or not isinstance(
+            event.get("runtime_tool_call_id"), str
+        ):
+            raise TypeError("External replay target lacks a runtime tool-call ID.")
+        score = 0.2
         return WorkflowExecution(
             workflow_id=source_execution.workflow_id,
             execution_id=context.new_execution_id,

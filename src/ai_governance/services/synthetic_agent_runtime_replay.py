@@ -103,6 +103,7 @@ class SyntheticAgentRuntimeReplayAdapter:
 
     name = "synthetic-agent-runtime/v1"
     _REFERENCE = re.compile(r"^synthetic://replays/[A-Za-z0-9_-]+$")
+    _SHA256_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 
     def __init__(
         self,
@@ -119,7 +120,7 @@ class SyntheticAgentRuntimeReplayAdapter:
             else os.getenv("AI_GOVERNANCE_SYNTHETIC_RUNTIME_REPLAY_ENDPOINT")
         )
         self._transport = transport or UrlLibSyntheticReplayTransport()
-        self._token_provider = token_provider or _synthetic_runtime_token_from_environment
+        self._token_provider = token_provider or _runtime_replay_bearer_from_environment
         self._timeout_seconds = timeout_seconds
         self._max_attempts = max_attempts
 
@@ -208,12 +209,11 @@ class SyntheticAgentRuntimeReplayAdapter:
             and not intervention.counterfactual_evidence_digest
         ):
             raise AgentRuntimeReplayNotAvailable(
-                "Synthetic REPLACE replay requires a replacement evidence digest."
+                "Synthetic REPLACE replay requires intervention provenance."
             )
-        external_tool_call_id = target.get("external_tool_call_id")
-        if (
-            not isinstance(external_tool_call_id, str)
-            or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9:_-]{0,255}", external_tool_call_id)
+        runtime_tool_call_id = target.get("runtime_tool_call_id")
+        if not isinstance(runtime_tool_call_id, str) or not re.fullmatch(
+            r"[A-Za-z0-9][A-Za-z0-9:_-]{0,255}", runtime_tool_call_id
         ):
             raise AgentRuntimeReplayNotAvailable(
                 "Synthetic controlled Replay target lacks a safe runtime tool-call ID."
@@ -239,9 +239,9 @@ class SyntheticAgentRuntimeReplayAdapter:
                 "replay_reference": capability["replay_reference"],
                 "intervention": intervention.strategy.value,
                 "external_execution_id": external_execution_id,
-                "external_tool_call_id": external_tool_call_id,
+                "runtime_tool_call_id": runtime_tool_call_id,
                 "source_evidence_digest": intervention.original_evidence_digest,
-                "replacement_evidence_digest": intervention.counterfactual_evidence_digest,
+                "intervention_provenance_digest": intervention.counterfactual_evidence_digest,
             },
             context.replay_id,
         )
@@ -252,7 +252,7 @@ class SyntheticAgentRuntimeReplayAdapter:
             intervention,
             response,
             external_execution_id,
-            external_tool_call_id,
+            runtime_tool_call_id,
         )
 
     def _call_runtime(
@@ -348,6 +348,14 @@ def _synthetic_runtime_token_from_environment() -> str | None:
     )
 
 
+def _runtime_replay_bearer_from_environment() -> str | None:
+    """Prefer the explicit replay-boundary bearer secret when configured."""
+    token = os.getenv("AI_GOVERNANCE_SYNTHETIC_RUNTIME_REPLAY_AUTH_TOKEN", "").strip()
+    if token:
+        return token
+    return _synthetic_runtime_token_from_environment()
+
+
 def _workflow_execution(
     source_execution: WorkflowExecution,
     context: ReplayExecutionContext,
@@ -355,22 +363,27 @@ def _workflow_execution(
     intervention,
     response: SyntheticReplayHttpResponse,
     external_execution_id: str,
-    external_tool_call_id: str,
+    runtime_tool_call_id: str,
 ) -> WorkflowExecution:
     payload = response.payload
     score = payload.get("outcome_score")
+    counterfactual_evidence_digest = payload.get("counterfactual_evidence_digest")
     if (
         payload.get("execution_status") != "COMPLETED"
         or payload.get("isolated") is not True
         or payload.get("replay_reference") != capability["replay_reference"]
         or payload.get("intervention") != intervention.strategy.value
         or payload.get("external_execution_id") != external_execution_id
-        or payload.get("external_tool_call_id") != external_tool_call_id
+        or payload.get("runtime_tool_call_id") != runtime_tool_call_id
         or payload.get("source_evidence_digest")
         != intervention.original_evidence_digest
         or not isinstance(score, (int, float))
         or isinstance(score, bool)
         or not math.isfinite(float(score))
+        or not isinstance(counterfactual_evidence_digest, str)
+        or not SyntheticAgentRuntimeReplayAdapter._SHA256_DIGEST.fullmatch(
+            counterfactual_evidence_digest
+        )
     ):
         raise SyntheticAgentRuntimeReplayError(
             "Synthetic runtime returned an unsafe or malformed replay response."
@@ -389,6 +402,7 @@ def _workflow_execution(
         final_state={
             "causal_audit_outcome_score": float(score),
             "outcome_ref": outcome_ref,
+            "counterfactual_evidence_digest": counterfactual_evidence_digest,
         },
         events=[
             {
@@ -396,6 +410,7 @@ def _workflow_execution(
                 "adapter_id": SyntheticAgentRuntimeReplayAdapter.name,
                 "adapter_version": capability["adapter_version"],
                 "intervention_digest": intervention.intervention_digest,
+                "counterfactual_evidence_digest": counterfactual_evidence_digest,
             }
         ],
         organization_id=context.organization_id,
@@ -409,6 +424,7 @@ def _workflow_execution(
                 "replay_reference": capability["replay_reference"],
                 "outcome_ref": outcome_ref,
                 "intervention_digest": intervention.intervention_digest,
+                "counterfactual_evidence_digest": counterfactual_evidence_digest,
                 "diagnostics": {"response_status": "COMPLETED"},
             }
         },

@@ -24,6 +24,7 @@ from ai_governance.domain.agent_execution import (
     AgentExecutionEvent,
     AgentExecutionStatus,
     EventType,
+    ToolCallContext,
 )
 from ai_governance.domain.agent_execution.agent_execution_event import ActorType
 from ai_governance.domain.causal_audit import (
@@ -256,7 +257,8 @@ def _auditable_tool_call(
     counterfactual_outcomes_by_evidence: tuple[
         tuple[dict[str, Any], tuple[float, ...]], ...
     ] = (),
-) -> tuple[str, str, dict[str, Any], tuple[str, ...]]:
+    tool_call_context: ToolCallContext | None = None,
+) -> tuple[Any, ...]:
     """Build a descriptor-bearing demo tool-call event.
 
     The descriptor is intentionally metadata-only: it identifies externally
@@ -295,7 +297,7 @@ def _auditable_tool_call(
             _evidence_digest(evidence): list(scores)
             for evidence, scores in counterfactual_outcomes_by_evidence
         }
-    return (
+    event_definition = (
         "TOOL_CALL",
         "TOOL",
         {
@@ -304,6 +306,11 @@ def _auditable_tool_call(
             "causal_replay": causal_replay,
         },
         (evidence_reference,),
+    )
+    return (
+        (*event_definition, tool_call_context)
+        if tool_call_context is not None
+        else event_definition
     )
 
 
@@ -589,6 +596,9 @@ _EXECUTION_SCENARIOS: list[dict[str, Any]] = [
                 340,
                 "artifact://demo/fraud/transactions",
                 "transaction-record",
+                tool_call_context=ToolCallContext(
+                    "1", "call-device", "risk-inputs", ()
+                ),
             ),
             ("MODEL_CALL", "MODEL", {"model": "gpt-4o-2024-11-20", "tokens": 5600}),
             _auditable_tool_call(
@@ -596,12 +606,21 @@ _EXECUTION_SCENARIOS: list[dict[str, Any]] = [
                 89,
                 "artifact://demo/fraud/history",
                 "account-history",
+                tool_call_context=ToolCallContext(
+                    "1", "call-profile", "risk-inputs", ()
+                ),
             ),
             _auditable_tool_call(
                 "verify_merchant",
                 110,
                 "artifact://demo/fraud/merchant",
                 "merchant-verification",
+                tool_call_context=ToolCallContext(
+                    "1",
+                    "call-risk",
+                    "risk-decision",
+                    ("call-device", "call-profile"),
+                ),
             ),
             (
                 "GOVERNANCE_DECISION",
@@ -781,6 +800,9 @@ _EXECUTION_SCENARIOS: list[dict[str, Any]] = [
                 counterfactual_outcomes_by_evidence=(
                     (_LOCAL_PERTURBED_EVIDENCE, (0.270, 0.270, 0.270)),
                 ),
+                tool_call_context=ToolCallContext(
+                    "1", "call-risk", "risk-decision", ()
+                ),
             ),
             ("EVALUATION", "EVALUATOR", {"evaluator": "risk-scorer", "score": 0.87}),
             ("EXECUTION_COMPLETED", "AGENT", {"result": "flagged"}),
@@ -849,6 +871,7 @@ def _seed_execution(
     for event_definition in scenario["events"]:
         event_type_str, actor_type_str, attrs, *references = event_definition
         evidence_references = tuple(references[0]) if references else ()
+        tool_call_context = references[1] if len(references) > 1 else None
         event_id = f"demo-event-{scenario['external_id']}-{seq:03d}"
         event = AgentExecutionEvent(
             event_id=event_id,
@@ -867,6 +890,7 @@ def _seed_execution(
             else None,
             actor_id=attrs.get("tool") or attrs.get("model") or "system",
             actor_type=ActorType(actor_type_str),
+            tool_call_context=tool_call_context,
             resource_references=[],
             evidence_references=evidence_references,
             attributes=attrs,

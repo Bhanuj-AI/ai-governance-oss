@@ -134,6 +134,10 @@ class SQLiteDatabase:
                     step_lifecycle TEXT,
                     parent_step_id TEXT,
                     source_kind TEXT,
+                    tool_call_context_schema_version TEXT,
+                    runtime_tool_call_id TEXT,
+                    tool_call_group_id TEXT,
+                    depends_on_tool_call_ids_json TEXT NOT NULL DEFAULT '[]',
                     resource_references_json TEXT NOT NULL DEFAULT '[]',
                     evidence_references_json TEXT NOT NULL DEFAULT '[]',
                     attributes_json TEXT NOT NULL DEFAULT '{}',
@@ -161,8 +165,16 @@ class SQLiteDatabase:
                 "CREATE INDEX idx_agent_execution_event_actor "
                 "ON agent_execution_event(organization_id, project_id, execution_id, actor_id)"
             )
+            connection.execute(
+                "CREATE UNIQUE INDEX uq_agent_execution_event_runtime_tool_call "
+                "ON agent_execution_event(execution_id, runtime_tool_call_id) "
+                "WHERE runtime_tool_call_id IS NOT NULL"
+            )
 
-        event_columns = {row[1] for row in connection.execute("PRAGMA table_info(agent_execution_event)")}
+        event_columns = {
+            row[1]
+            for row in connection.execute("PRAGMA table_info(agent_execution_event)")
+        }
         for name, definition in {
             "late_for_runtime_findings": "INTEGER NOT NULL DEFAULT 0",
             "runtime_findings_finalization_cutoff_at": "TEXT",
@@ -172,9 +184,21 @@ class SQLiteDatabase:
             "step_lifecycle": "TEXT",
             "parent_step_id": "TEXT",
             "source_kind": "TEXT",
+            "tool_call_context_schema_version": "TEXT",
+            "runtime_tool_call_id": "TEXT",
+            "tool_call_group_id": "TEXT",
+            "depends_on_tool_call_ids_json": "TEXT NOT NULL DEFAULT '[]'",
         }.items():
             if name not in event_columns:
-                connection.execute(f"ALTER TABLE agent_execution_event ADD COLUMN {name} {definition}")
+                connection.execute(
+                    f"ALTER TABLE agent_execution_event ADD COLUMN {name} {definition}"
+                )
+        connection.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS "
+            "uq_agent_execution_event_runtime_tool_call "
+            "ON agent_execution_event(execution_id, runtime_tool_call_id) "
+            "WHERE runtime_tool_call_id IS NOT NULL"
+        )
 
     @staticmethod
     def _ensure_evidence_fidelity_table(connection: sqlite3.Connection) -> None:
@@ -199,7 +223,6 @@ class SQLiteDatabase:
             "CREATE INDEX IF NOT EXISTS idx_evidence_fidelity_execution "
             "ON evidence_fidelity_comparison(organization_id, project_id, source_execution_id, created_at DESC)"
         )
-
 
     @staticmethod
     def _ensure_agent_evaluation_columns(
@@ -233,7 +256,9 @@ class SQLiteDatabase:
         are moved to explicit scope parameters. Control-plane tables themselves
         are excluded because they already define their ownership constraints.
         """
-        organization_id = os.getenv("AI_GOVERNANCE_BOOTSTRAP_ORGANIZATION_ID", "org_default")
+        organization_id = os.getenv(
+            "AI_GOVERNANCE_BOOTSTRAP_ORGANIZATION_ID", "org_default"
+        )
         project_id = os.getenv("AI_GOVERNANCE_BOOTSTRAP_PROJECT_ID", "project_default")
         organization_default = organization_id.replace("'", "''")
         project_default = project_id.replace("'", "''")
@@ -346,11 +371,15 @@ class SQLiteDatabase:
         """
         columns = {
             row["name"]: row
-            for row in connection.execute("PRAGMA table_info(prompt_registry)").fetchall()
+            for row in connection.execute(
+                "PRAGMA table_info(prompt_registry)"
+            ).fetchall()
         }
         if not columns or not columns["template"]["notnull"]:
             return
-        connection.execute("ALTER TABLE prompt_registry RENAME TO prompt_registry_legacy")
+        connection.execute(
+            "ALTER TABLE prompt_registry RENAME TO prompt_registry_legacy"
+        )
         connection.execute(
             """
             CREATE TABLE prompt_registry (
@@ -414,15 +443,13 @@ class SQLiteDatabase:
     @staticmethod
     def _ensure_experiment_columns(connection: sqlite3.Connection) -> None:
         columns = {
-            row["name"]
-            for row in connection.execute("PRAGMA table_info(experiment)")
+            row["name"] for row in connection.execute("PRAGMA table_info(experiment)")
         }
         if columns and "updated_at" not in columns:
             connection.execute("ALTER TABLE experiment ADD COLUMN updated_at TEXT")
         if columns:
             connection.execute(
-                "UPDATE experiment SET updated_at=created_at "
-                "WHERE updated_at IS NULL"
+                "UPDATE experiment SET updated_at=created_at WHERE updated_at IS NULL"
             )
 
     @staticmethod
@@ -495,8 +522,7 @@ class SQLiteDatabase:
     def _ensure_runtime_finding_columns(connection: sqlite3.Connection) -> None:
         """Add durable reconciliation and review state to existing findings."""
         columns = {
-            row[1]
-            for row in connection.execute("PRAGMA table_info(runtime_finding)")
+            row[1] for row in connection.execute("PRAGMA table_info(runtime_finding)")
         }
         for name, definition in {
             "consecutive_normal_windows": "INTEGER NOT NULL DEFAULT 0",
@@ -506,7 +532,9 @@ class SQLiteDatabase:
             "reviews_json": "TEXT NOT NULL DEFAULT '[]'",
         }.items():
             if columns and name not in columns:
-                connection.execute(f"ALTER TABLE runtime_finding ADD COLUMN {name} {definition}")
+                connection.execute(
+                    f"ALTER TABLE runtime_finding ADD COLUMN {name} {definition}"
+                )
         # Causal findings written before the lifecycle field existed are
         # completed-execution cases, not operational recovery candidates.
         connection.execute(
@@ -522,7 +550,9 @@ class SQLiteDatabase:
             for row in connection.execute("PRAGMA table_info(runtime_setting)")
         }
         if columns and "scope_type" not in columns:
-            connection.execute("ALTER TABLE runtime_setting RENAME TO runtime_setting_global")
+            connection.execute(
+                "ALTER TABLE runtime_setting RENAME TO runtime_setting_global"
+            )
             connection.execute(
                 "CREATE TABLE runtime_setting (key TEXT NOT NULL, scope_type TEXT NOT NULL, "
                 "scope_id TEXT NOT NULL, value_json TEXT NOT NULL, version INTEGER NOT NULL, "

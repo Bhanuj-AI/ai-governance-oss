@@ -1,6 +1,6 @@
 [project]
 name = "ai-governance"
-version = "1.1.4"
+version = "1.1.5"
 description = "AI Governance Control Plane for execution audit, workflow replay, evaluation, decision-drift analysis, and governance controls for AI systems."
 readme = "README.md"
 requires-python = ">=3.12"

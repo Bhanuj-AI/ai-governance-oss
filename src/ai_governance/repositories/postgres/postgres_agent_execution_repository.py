@@ -16,6 +16,7 @@ from ai_governance.domain.agent_execution import (
     AgentExecutionEvent,
     AgentExecutionStatus,
     EventType,
+    ToolCallContext,
     WorkflowStep,
     WorkflowStepLifecycle,
 )
@@ -23,6 +24,7 @@ from ai_governance.domain.agent_execution.agent_execution_event import ActorType
 from ai_governance.domain.agent_execution.errors import (
     AgentExecutionConcurrencyConflict,
     AgentExecutionIdempotencyConflict,
+    AgentExecutionRuntimeToolCallConflict,
 )
 from ai_governance.repositories.agent_execution_repository import (
     AgentExecutionAgentListFilters,
@@ -349,6 +351,26 @@ class PostgresAgentExecutionEventRepository(AgentExecutionEventRepository):
         level — no TOCTOU window between INSERT and SELECT.
         """
         with self._database.connect() as connection:
+            if event.tool_call_context is not None:
+                existing_runtime_call = connection.execute(
+                    """
+                    SELECT event_id
+                    FROM agent_execution_event
+                    WHERE execution_id=%(execution_id)s
+                      AND runtime_tool_call_id=%(runtime_tool_call_id)s
+                    """,
+                    {
+                        "execution_id": event.execution_id,
+                        "runtime_tool_call_id": (
+                            event.tool_call_context.runtime_tool_call_id
+                        ),
+                    },
+                ).fetchone()
+                if existing_runtime_call is not None:
+                    raise AgentExecutionRuntimeToolCallConflict(
+                        "Runtime tool-call ID conflict for execution "
+                        f"'{event.execution_id}'."
+                    )
             result = connection.execute(
                 """
                 INSERT INTO agent_execution_event (
@@ -356,6 +378,8 @@ class PostgresAgentExecutionEventRepository(AgentExecutionEventRepository):
                     event_type, sequence_number, occurred_at, received_at, late_for_runtime_findings, runtime_findings_finalization_cutoff_at, runtime_findings_lateness_policy_hours,
                     correlation_id, causation_id, actor_id, actor_type,
                     step_id, step_name, step_lifecycle, parent_step_id, source_kind,
+                    tool_call_context_schema_version, runtime_tool_call_id,
+                    tool_call_group_id, depends_on_tool_call_ids_json,
                     resource_references_json, evidence_references_json,
                     attributes_json, event_schema_version, idempotency_key,
                     created_at
@@ -365,16 +389,21 @@ class PostgresAgentExecutionEventRepository(AgentExecutionEventRepository):
                     %(occurred_at)s, %(received_at)s, %(late_for_runtime_findings)s, %(runtime_findings_finalization_cutoff_at)s, %(runtime_findings_lateness_policy_hours)s, %(correlation_id)s,
                     %(causation_id)s, %(actor_id)s, %(actor_type)s,
                     %(step_id)s, %(step_name)s, %(step_lifecycle)s, %(parent_step_id)s, %(source_kind)s,
+                    %(tool_call_context_schema_version)s, %(runtime_tool_call_id)s,
+                    %(tool_call_group_id)s, %(depends_on_tool_call_ids_json)s,
                     %(resource_references_json)s, %(evidence_references_json)s,
                     %(attributes_json)s, %(event_schema_version)s,
                     %(idempotency_key)s, %(created_at)s
                 ) ON CONFLICT (organization_id, project_id, execution_id, idempotency_key)
+                WHERE idempotency_key IS NOT NULL
                 DO NOTHING
                 RETURNING event_id, execution_id, organization_id, project_id,
                           event_type, sequence_number, occurred_at, received_at,
                           late_for_runtime_findings, runtime_findings_finalization_cutoff_at, runtime_findings_lateness_policy_hours,
                           correlation_id, causation_id, actor_id, actor_type,
                           step_id, step_name, step_lifecycle, parent_step_id, source_kind,
+                          tool_call_context_schema_version, runtime_tool_call_id,
+                          tool_call_group_id, depends_on_tool_call_ids_json,
                           resource_references_json, evidence_references_json,
                           attributes_json, event_schema_version, idempotency_key,
                           created_at
@@ -409,6 +438,27 @@ class PostgresAgentExecutionEventRepository(AgentExecutionEventRepository):
                     ),
                     "source_kind": (
                         event.workflow_step.source_kind if event.workflow_step else None
+                    ),
+                    "tool_call_context_schema_version": (
+                        event.tool_call_context.schema_version
+                        if event.tool_call_context
+                        else None
+                    ),
+                    "runtime_tool_call_id": (
+                        event.tool_call_context.runtime_tool_call_id
+                        if event.tool_call_context
+                        else None
+                    ),
+                    "tool_call_group_id": (
+                        event.tool_call_context.tool_call_group_id
+                        if event.tool_call_context
+                        else None
+                    ),
+                    "depends_on_tool_call_ids_json": json.dumps(
+                        list(event.tool_call_context.depends_on_tool_call_ids)
+                        if event.tool_call_context
+                        else [],
+                        separators=(",", ":"),
                     ),
                     "resource_references_json": json.dumps(
                         list(event.resource_references),
@@ -445,6 +495,7 @@ class PostgresAgentExecutionEventRepository(AgentExecutionEventRepository):
                 existing.event_type is not event.event_type
                 or dict(existing.attributes) != dict(event.attributes)
                 or existing.workflow_step != event.workflow_step
+                or existing.tool_call_context != event.tool_call_context
             ):
                 raise AgentExecutionIdempotencyConflict(
                     f"Idempotency key conflict for execution '{event.execution_id}'."
@@ -470,6 +521,8 @@ class PostgresAgentExecutionEventRepository(AgentExecutionEventRepository):
                        late_for_runtime_findings, runtime_findings_finalization_cutoff_at, runtime_findings_lateness_policy_hours,
                        correlation_id, causation_id, actor_id, actor_type,
                        step_id, step_name, step_lifecycle, parent_step_id, source_kind,
+                       tool_call_context_schema_version, runtime_tool_call_id,
+                       tool_call_group_id, depends_on_tool_call_ids_json,
                        resource_references_json, evidence_references_json,
                        attributes_json, event_schema_version, idempotency_key,
                        created_at
@@ -539,6 +592,8 @@ class PostgresAgentExecutionEventRepository(AgentExecutionEventRepository):
                    late_for_runtime_findings, runtime_findings_finalization_cutoff_at, runtime_findings_lateness_policy_hours,
                    correlation_id, causation_id, actor_id, actor_type,
                    step_id, step_name, step_lifecycle, parent_step_id, source_kind,
+                   tool_call_context_schema_version, runtime_tool_call_id,
+                   tool_call_group_id, depends_on_tool_call_ids_json,
                    resource_references_json, evidence_references_json,
                    attributes_json, event_schema_version, idempotency_key,
                    created_at
@@ -568,6 +623,8 @@ class PostgresAgentExecutionEventRepository(AgentExecutionEventRepository):
                        late_for_runtime_findings, runtime_findings_finalization_cutoff_at, runtime_findings_lateness_policy_hours,
                        correlation_id, causation_id, actor_id, actor_type,
                        step_id, step_name, step_lifecycle, parent_step_id, source_kind,
+                       tool_call_context_schema_version, runtime_tool_call_id,
+                       tool_call_group_id, depends_on_tool_call_ids_json,
                        resource_references_json, evidence_references_json,
                        attributes_json, event_schema_version, idempotency_key,
                        created_at
@@ -630,7 +687,9 @@ def _execution_from_row(row: dict) -> AgentExecution:
         completed_at=row["completed_at"],
         correlation_id=row["correlation_id"],
         parent_execution_id=row["parent_execution_id"],
-        metadata=json.loads(row["metadata_json"]) if row.get("metadata_json") else {},
+        metadata=_decode_json_column(row["metadata_json"])
+        if row.get("metadata_json")
+        else {},
         version=row["version"],
         created_at=row["created_at"],
         updated_at=row["updated_at"],
@@ -655,13 +714,14 @@ def _event_from_row(row: dict) -> AgentExecutionEvent:
         actor_id=row["actor_id"],
         actor_type=ActorType(row["actor_type"]) if row.get("actor_type") else None,
         workflow_step=_workflow_step_from_row(row),
-        resource_references=json.loads(row["resource_references_json"])
+        tool_call_context=_tool_call_context_from_row(row),
+        resource_references=_decode_json_column(row["resource_references_json"])
         if row.get("resource_references_json")
         else [],
-        evidence_references=json.loads(row["evidence_references_json"])
+        evidence_references=_decode_json_column(row["evidence_references_json"])
         if row.get("evidence_references_json")
         else [],
-        attributes=json.loads(row["attributes_json"])
+        attributes=_decode_json_column(row["attributes_json"])
         if row.get("attributes_json")
         else {},
         event_schema_version=row.get("event_schema_version", "1"),
@@ -678,3 +738,25 @@ def _workflow_step_from_row(row: dict) -> WorkflowStep | None:
         parent_step_id=row.get("parent_step_id"),
         source_kind=row.get("source_kind"),
     )
+
+
+def _tool_call_context_from_row(row: dict) -> ToolCallContext | None:
+    if row.get("runtime_tool_call_id") is None:
+        return None
+    return ToolCallContext(
+        schema_version=row["tool_call_context_schema_version"],
+        runtime_tool_call_id=row["runtime_tool_call_id"],
+        tool_call_group_id=row["tool_call_group_id"],
+        depends_on_tool_call_ids=tuple(
+            _decode_json_column(row["depends_on_tool_call_ids_json"])
+            if row.get("depends_on_tool_call_ids_json")
+            else []
+        ),
+    )
+
+
+def _decode_json_column(value: object) -> object:
+    """Accept psycopg-decoded JSONB values and serialized values."""
+    if isinstance(value, (str, bytes, bytearray)):
+        return json.loads(value)
+    return value

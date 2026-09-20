@@ -27,6 +27,10 @@ class AgentExecutionEventNotFound(AgentExecutionError):
     """Requested event was not found within the execution."""
 
 
+class AgentExecutionRuntimeToolCallConflict(AgentExecutionError):
+    """A runtime tool-call ID is already recorded for this execution."""
+
+
 class AgentExecutionSchemaVersionUnsupported(AgentExecutionError):
     """Event schema version is not supported by this platform version."""
 

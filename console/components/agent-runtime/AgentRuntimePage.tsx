@@ -33,11 +33,14 @@ export function AgentRuntimePage() {
       void queryClient.invalidateQueries({ queryKey: ["agent-executions"] });
       void queryClient.invalidateQueries({ queryKey: ["runtime-agents"] });
       void queryClient.invalidateQueries({ queryKey: ["runtime-findings"] });
+      void queryClient.invalidateQueries({ queryKey: ["causal-audits"] });
+      void queryClient.invalidateQueries({ queryKey: ["evidence-intervention-policies"] });
       void queryClient.invalidateQueries({ queryKey: ["agent-runtime-demo-status"] });
     },
   });
 
   const isDemoReady = demoStatusQuery.data?.seeded === true;
+  const demoDataPending = seedMutation.isPending;
 
   return (
     <StudioShell>
@@ -79,8 +82,8 @@ export function AgentRuntimePage() {
 
           {demoStatusQuery.isSuccess && (!isDemoReady || showDemoReadyBanner) && (
             <div className={`rounded-lg border px-4 py-3 text-sm ${demoStatusQuery.data.seeded ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200" : "border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-100"}`}>
-              <p className="font-medium">{demoStatusQuery.data.seeded ? "Local demo data is ready." : "No local demo data is loaded."}</p>
-              <p className="mt-0.5 opacity-90">{demoStatusQuery.data.seeded ? "The sample is available to explore. The load action is disabled to keep it idempotent." : "This is expected on a new local environment. Load the sample dataset to explore agents, executions, and findings."}</p>
+              <p className="font-medium">{demoStatusQuery.data.seeded ? "Built-in demo dataset is ready." : "Built-in demo dataset is not loaded."}</p>
+              <p className="mt-0.5 opacity-90">{demoStatusQuery.data.seeded ? "The bundled sample is available to explore. The load action is disabled to keep it idempotent." : "External runtime data can still appear below. Load the bundled sample only if you want the built-in demo."}</p>
             </div>
           )}
 
@@ -91,7 +94,7 @@ export function AgentRuntimePage() {
               <TabButton active={activeTab === "causal-audit"} onClick={() => setActiveTab("causal-audit")}>Causal Audit</TabButton>
             </nav>
             <div className="p-4 sm:p-5">
-              {activeTab === "executions" ? <AgentExecutionsPage demoDataPending={demoStatusQuery.data?.seeded === false} /> : activeTab === "findings" ? <AgentFindingsPage demoDataPending={demoStatusQuery.data?.seeded === false} /> : <CausalAuditPage demoDataPending={demoStatusQuery.data?.seeded === false} />}
+              {activeTab === "executions" ? <AgentExecutionsPage demoDataPending={demoDataPending} /> : activeTab === "findings" ? <AgentFindingsPage demoDataPending={demoDataPending} /> : <CausalAuditPage demoDataPending={demoDataPending} />}
             </div>
           </section>
 

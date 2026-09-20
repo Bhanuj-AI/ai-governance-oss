@@ -374,7 +374,9 @@ class TestSeedAgentRuntimeData:
         events = event_repo.list_by_execution(
             "demo-exec-ext-fraud-001", "org_test", "project_test"
         )
-        tool_events = [event for event in events if event.event_type.value == "TOOL_CALL"]
+        tool_events = [
+            event for event in events if event.event_type.value == "TOOL_CALL"
+        ]
 
         assert [event.attributes["tool"] for event in tool_events] == [
             "query_transaction_db",
@@ -386,6 +388,15 @@ class TestSeedAgentRuntimeData:
             for event in tool_events
         ] == ["transaction-record", "account-history", "merchant-verification"]
         assert all(event.evidence_references for event in tool_events)
+        contexts = [event.tool_call_context for event in tool_events]
+        assert all(context is not None for context in contexts)
+        assert contexts[0].tool_call_group_id == "risk-inputs"
+        assert contexts[1].tool_call_group_id == "risk-inputs"
+        assert contexts[1].depends_on_tool_call_ids == ()
+        assert contexts[2].depends_on_tool_call_ids == (
+            "call-device",
+            "call-profile",
+        )
 
         for execution_id in (
             "demo-exec-ext-claims-001",
@@ -407,7 +418,9 @@ class TestSeedAgentRuntimeData:
                 assert descriptor["metadata"]["json_schema"]["properties"]
                 assert event.evidence_references == (descriptor["evidence_ref"],)
 
-    def test_replay_capable_demo_source_declares_controlled_replay_contract(self, repos):
+    def test_replay_capable_demo_source_declares_controlled_replay_contract(
+        self, repos
+    ):
         execution_repo, event_repo, finding_repo = repos
         seed_agent_runtime_data(
             execution_repo,
@@ -428,10 +441,13 @@ class TestSeedAgentRuntimeData:
         events = event_repo.list_by_execution(
             execution.execution_id, "org_test", "project_test"
         )
-        tool_event = next(event for event in events if event.event_type.value == "TOOL_CALL")
+        tool_event = next(
+            event for event in events if event.event_type.value == "TOOL_CALL"
+        )
         replay = tool_event.attributes["causal_replay"]
         assert replay["evidence_descriptor"]["evidence_digest"].startswith("sha256:")
-        assert replay["counterfactual_outcomes_by_digest"]
+        assert tool_event.tool_call_context is not None
+        assert tool_event.tool_call_context.runtime_tool_call_id
 
     def test_finding_has_consecutive_normal_windows(self, repos):
         execution_repo, event_repo, finding_repo = repos

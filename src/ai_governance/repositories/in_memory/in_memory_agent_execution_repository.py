@@ -14,6 +14,7 @@ from ai_governance.domain.agent_execution import (
 from ai_governance.domain.agent_execution.errors import (
     AgentExecutionConcurrencyConflict,
     AgentExecutionIdempotencyConflict,
+    AgentExecutionRuntimeToolCallConflict,
 )
 from ai_governance.repositories.agent_execution_repository import (
     AgentExecutionAgentListFilters,
@@ -185,6 +186,9 @@ class InMemoryAgentExecutionEventRepository(AgentExecutionEventRepository):
         self._events_by_id: dict[str, AgentExecutionEvent] = {}
         self._events_by_execution: dict[str, list[AgentExecutionEvent]] = {}
         self._events_by_idempotency: dict[tuple[str, str], AgentExecutionEvent] = {}
+        self._events_by_runtime_tool_call: dict[
+            tuple[str, str], AgentExecutionEvent
+        ] = {}
         self._lock = Lock()
 
     def save(
@@ -204,12 +208,31 @@ class InMemoryAgentExecutionEventRepository(AgentExecutionEventRepository):
                         existing.event_type is not event.event_type
                         or dict(existing.attributes) != dict(event.attributes)
                         or existing.workflow_step != event.workflow_step
+                        or existing.tool_call_context != event.tool_call_context
                     ):
                         raise AgentExecutionIdempotencyConflict(
                             f"Idempotency key '{idempotency_key}' reused with "
                             f"different payload for execution '{event.execution_id}'."
                         )
                     return existing
+
+            tool_call_context = event.tool_call_context
+            if tool_call_context is not None:
+                runtime_key = (
+                    event.execution_id,
+                    tool_call_context.runtime_tool_call_id,
+                )
+                existing_runtime_call = self._events_by_runtime_tool_call.get(
+                    runtime_key
+                )
+                if (
+                    existing_runtime_call is not None
+                    and existing_runtime_call.event_id != event.event_id
+                ):
+                    raise AgentExecutionRuntimeToolCallConflict(
+                        "Runtime tool-call ID conflict for execution "
+                        f"'{event.execution_id}'."
+                    )
 
             self._events_by_id[event.event_id] = event
             exec_events = self._events_by_execution.setdefault(
@@ -219,6 +242,11 @@ class InMemoryAgentExecutionEventRepository(AgentExecutionEventRepository):
             if not any(e.event_id == event.event_id for e in exec_events):
                 exec_events.append(event)
                 exec_events.sort(key=lambda e: e.sequence_number)
+
+            if tool_call_context is not None:
+                self._events_by_runtime_tool_call[
+                    (event.execution_id, tool_call_context.runtime_tool_call_id)
+                ] = event
 
             if idempotency_key is not None:
                 self._events_by_idempotency[

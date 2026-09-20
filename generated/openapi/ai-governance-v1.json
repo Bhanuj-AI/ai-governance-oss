@@ -318,6 +318,17 @@
             ],
             "description": "Human-readable workflow-step name. Required for WORKFLOW_STEP.",
             "title": "Step Name"
+          },
+          "tool_call_context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToolCallContextRequest"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional provider-neutral tool invocation identity, logical group, and explicit dependencies. Valid only for TOOL_CALL."
           }
         },
         "required": [
@@ -505,6 +516,16 @@
               }
             ],
             "title": "Step Name"
+          },
+          "tool_call_context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToolCallContextResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -11790,6 +11811,75 @@
           "parsed_value"
         ],
         "title": "SettingValidationResponse",
+        "type": "object"
+      },
+      "ToolCallContextRequest": {
+        "description": "Provider-neutral execution context for a TOOL_CALL event.",
+        "properties": {
+          "depends_on_tool_call_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 64,
+            "title": "Depends On Tool Call Ids",
+            "type": "array"
+          },
+          "runtime_tool_call_id": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Runtime Tool Call Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "tool_call_group_id": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Tool Call Group Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "runtime_tool_call_id",
+          "tool_call_group_id"
+        ],
+        "title": "ToolCallContextRequest",
+        "type": "object"
+      },
+      "ToolCallContextResponse": {
+        "description": "Persisted provider-neutral execution context for one TOOL_CALL.",
+        "properties": {
+          "depends_on_tool_call_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Depends On Tool Call Ids",
+            "type": "array"
+          },
+          "runtime_tool_call_id": {
+            "title": "Runtime Tool Call Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "tool_call_group_id": {
+            "title": "Tool Call Group Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "runtime_tool_call_id",
+          "tool_call_group_id"
+        ],
+        "title": "ToolCallContextResponse",
         "type": "object"
       },
       "ToolEvidenceInfluenceResponse": {

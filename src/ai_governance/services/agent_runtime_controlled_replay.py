@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Protocol
@@ -47,8 +47,8 @@ class AgentRuntimeReplaySourceBridge:
     """Prepare a reference-only Replay source from an observed execution.
 
     The bridge persists no prompt, response, credential, or tool payload. It
-    transfers only the runtime-declared opaque replay reference, durable
-    evidence references, and bounded deterministic reference-adapter fixtures.
+    transfers only the runtime-declared opaque replay reference, bounded
+    tool-call context, and durable evidence references.
     """
 
     def __init__(self, source_store) -> None:
@@ -120,30 +120,51 @@ class AgentRuntimeReplaySourceBridge:
                 "Observed execution is outside the current tenant scope."
             )
         capability = _capability_from_metadata(execution.metadata)
-        tool_calls = [
+        all_tool_calls = [
             event for event in events if event.event_type is EventType.TOOL_CALL
+        ]
+        if any(
+            event.evidence_references and event.tool_call_context is None
+            for event in all_tool_calls
+        ):
+            raise AgentRuntimeReplayNotAvailable(
+                "A replay-relevant tool call lacks a runtime_tool_call_id."
+            )
+        tool_calls = [
+            event for event in all_tool_calls if event.tool_call_context is not None
         ]
         if not tool_calls:
             raise AgentRuntimeReplayNotAvailable(
-                "Observed execution has no evidence-producing tool calls."
+                "Observed execution has no replay-identifiable tool calls."
+            )
+        if any(event.execution_id != execution.execution_id for event in tool_calls):
+            raise AgentRuntimeReplayNotAvailable(
+                "Tool-call context references an event outside the observed execution."
             )
         if any(not event.evidence_references for event in tool_calls):
             raise AgentRuntimeReplayNotAvailable(
                 "A tool call is missing a durable evidence reference."
             )
+        _validate_tool_call_graph(tool_calls)
         return capability, tool_calls
 
 
 class DeterministicAgentRuntimeReplayAdapter:
     """Isolated reference adapter proving controlled Replay architecture.
 
-    It consumes only predeclared, bounded deterministic outcomes in a replay
-    fixture. It performs no network or tool I/O and therefore cannot create a
-    production side effect. Runtime integrations replace this adapter through
-    the normal Replay adapter registry.
+    An injected deterministic scorer is a test seam; it is not copied from
+    the observed source event. The adapter performs no network or tool I/O and
+    therefore cannot create a production side effect. Runtime integrations
+    replace this adapter through the normal Replay adapter registry.
     """
 
     name = "deterministic-agent-runtime/v1"
+
+    def __init__(
+        self,
+        outcome_scorer: Callable[[Mapping[str, Any], Any], float] | None = None,
+    ) -> None:
+        self._outcome_scorer = outcome_scorer or (lambda _event, _intervention: 0.0)
 
     def validate_configuration(self, source_execution, configuration) -> None:
         capability = (source_execution.runtime_parameters or {}).get(
@@ -195,23 +216,20 @@ class DeterministicAgentRuntimeReplayAdapter:
             raise AgentRuntimeReplayNotAvailable(
                 "Target tool-call event is unavailable."
             )
-        outcomes_by_digest = event.get("counterfactual_outcomes_by_digest", {})
-        values = (
-            outcomes_by_digest.get(intervention.counterfactual_evidence_digest)
-            if isinstance(outcomes_by_digest, Mapping)
-            and intervention.counterfactual_evidence_digest is not None
-            else None
-        )
-        sample_index = int(intervention.configuration.get("sample_index", 0))
-        if not isinstance(values, list) or sample_index >= len(values):
+        runtime_tool_call_id = event.get("runtime_tool_call_id")
+        if (
+            not isinstance(runtime_tool_call_id, str)
+            or not runtime_tool_call_id.strip()
+        ):
             raise AgentRuntimeReplayNotAvailable(
-                "Controlled replay outcome is unavailable for the generated counterfactual evidence."
+                "Target tool-call lacks a runtime_tool_call_id."
             )
-        score = values[sample_index]
-        if not isinstance(score, (int, float)):
+        score = self._outcome_scorer(event, intervention)
+        if not isinstance(score, (int, float)) or isinstance(score, bool):
             raise AgentRuntimeReplayNotAvailable(
                 "Controlled replay outcome score is invalid."
             )
+        sample_index = int(intervention.configuration.get("sample_index", 0))
         return WorkflowExecution(
             workflow_id=source_execution.workflow_id,
             execution_id=context.new_execution_id,
@@ -275,35 +293,75 @@ def _capability_from_metadata(
 
 def _safe_event(event: AgentExecutionEvent) -> dict[str, Any]:
     replay = event.attributes.get("causal_replay")
-    descriptor = replay.get("evidence_descriptor") if isinstance(replay, Mapping) else None
-    descriptor_metadata = (
-        descriptor.get("metadata") if isinstance(descriptor, Mapping) else None
+    descriptor = (
+        replay.get("evidence_descriptor") if isinstance(replay, Mapping) else None
     )
-    external_tool_call_id = (
-        descriptor_metadata.get("external_tool_call_id")
-        if isinstance(descriptor_metadata, Mapping)
-        else None
-    )
+    context = event.tool_call_context
+    if context is None:
+        raise AgentRuntimeReplayNotAvailable(
+            "Replay-relevant tool call lacks a runtime_tool_call_id."
+        )
     return {
         "event_id": event.event_id,
+        "runtime_tool_call_id": context.runtime_tool_call_id,
+        "tool_call_group_id": context.tool_call_group_id,
+        "depends_on_tool_call_ids": list(context.depends_on_tool_call_ids),
         "evidence_references": list(event.evidence_references),
-        "external_tool_call_id": (
-            external_tool_call_id
-            if isinstance(external_tool_call_id, str) and external_tool_call_id.strip()
-            else None
-        ),
         "evidence_digest": (
             descriptor.get("evidence_digest")
             if isinstance(descriptor, Mapping)
             and isinstance(descriptor.get("evidence_digest"), str)
             else None
         ),
-        "counterfactual_outcomes_by_digest": (
-            replay.get("counterfactual_outcomes_by_digest", {})
-            if isinstance(replay, Mapping)
-            else {}
-        ),
     }
+
+
+def _validate_tool_call_graph(tool_calls: list[AgentExecutionEvent]) -> None:
+    """Fail closed only when preparing a replay-capable source graph."""
+
+    contexts = [event.tool_call_context for event in tool_calls]
+    assert all(context is not None for context in contexts)
+    context_by_id = {
+        context.runtime_tool_call_id: context
+        for context in contexts
+        if context is not None
+    }
+    if len(context_by_id) != len(tool_calls):
+        raise AgentRuntimeReplayNotAvailable(
+            "Runtime tool-call IDs must be unique within an execution."
+        )
+    for context in contexts:
+        assert context is not None
+        missing = [
+            dependency_id
+            for dependency_id in context.depends_on_tool_call_ids
+            if dependency_id not in context_by_id
+        ]
+        if missing:
+            raise AgentRuntimeReplayNotAvailable(
+                "Tool-call dependency references a tool call outside the observed execution."
+            )
+
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit(runtime_tool_call_id: str) -> None:
+        if runtime_tool_call_id in visiting:
+            raise AgentRuntimeReplayNotAvailable(
+                "Tool-call dependency graph contains a cycle."
+            )
+        if runtime_tool_call_id in visited:
+            return
+        visiting.add(runtime_tool_call_id)
+        for dependency_id in context_by_id[
+            runtime_tool_call_id
+        ].depends_on_tool_call_ids:
+            visit(dependency_id)
+        visiting.remove(runtime_tool_call_id)
+        visited.add(runtime_tool_call_id)
+
+    for runtime_tool_call_id in context_by_id:
+        visit(runtime_tool_call_id)
 
 
 def _capability_endpoint(capability: AgentRuntimeReplayCapability) -> str | None:

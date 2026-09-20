@@ -25,10 +25,12 @@ from ai_governance.api.models.agent_execution import (
     AgentExecutionStartedResponse,
     AgentExecutionStartRequest,
     AgentExecutionSummaryResponse,
+    ToolCallContextResponse,
 )
 from ai_governance.domain.agent_execution import (
     AgentExecutionStatus,
     EventType,
+    ToolCallContext,
     WorkflowStep,
     WorkflowStepLifecycle,
 )
@@ -126,6 +128,16 @@ def ingest_event(
                 parent_step_id=body.parent_step_id,
                 source_kind=body.source_kind,
             )
+        tool_call_context = None
+        if body.tool_call_context is not None:
+            tool_call_context = ToolCallContext(
+                schema_version=body.tool_call_context.schema_version,
+                runtime_tool_call_id=body.tool_call_context.runtime_tool_call_id,
+                tool_call_group_id=body.tool_call_context.tool_call_group_id,
+                depends_on_tool_call_ids=tuple(
+                    body.tool_call_context.depends_on_tool_call_ids
+                ),
+            )
 
         event = service.ingest_event(
             execution_id=execution_id,
@@ -138,6 +150,7 @@ def ingest_event(
             actor_id=body.actor_id,
             actor_type=actor_type,
             workflow_step=workflow_step,
+            tool_call_context=tool_call_context,
             resource_references=body.resource_references,
             evidence_references=body.evidence_references,
             occurred_at=body.occurred_at,
@@ -396,6 +409,18 @@ def _event_to_response(event: Any) -> Any:
             event.workflow_step.parent_step_id if event.workflow_step else None
         ),
         source_kind=event.workflow_step.source_kind if event.workflow_step else None,
+        tool_call_context=(
+            ToolCallContextResponse(
+                schema_version=event.tool_call_context.schema_version,
+                runtime_tool_call_id=event.tool_call_context.runtime_tool_call_id,
+                tool_call_group_id=event.tool_call_context.tool_call_group_id,
+                depends_on_tool_call_ids=list(
+                    event.tool_call_context.depends_on_tool_call_ids
+                ),
+            )
+            if event.tool_call_context is not None
+            else None
+        ),
         resource_references=list(event.resource_references) if hasattr(event.resource_references, "__iter__") else [],
         evidence_references=list(event.evidence_references) if hasattr(event.evidence_references, "__iter__") else [],
         attributes=dict(event.attributes) if hasattr(event.attributes, "items") else event.attributes,
