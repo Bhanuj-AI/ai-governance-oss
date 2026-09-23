@@ -21,6 +21,7 @@ from ai_governance.services.replay_execution import (
 )
 from ai_governance.spi.replay import (
     REPLAY_INTERVENTION_ENVELOPE_SCHEMA_VERSION,
+    ReplayExecutionResult,
     ReplayInterventionEnvelope,
 )
 from ai_governance.tenancy.domain import TenantContext
@@ -117,6 +118,72 @@ def test_replay_job_handler_persists_new_execution_and_lineage() -> None:
         repository.get("replay-1", "organization-1", "project-1").status
         is ReplayStatus.EXECUTION_COMPLETED
     )
+
+
+def test_replay_job_handler_materialises_an_external_plugin_result() -> None:
+    source = WorkflowExecution(
+        workflow_id="workflow-1",
+        execution_id="source-1",
+        workflow_name="workflow",
+        workflow_version="1.0.0",
+        execution_status="COMPLETED",
+        input={"source": True},
+        final_state={},
+        events=[],
+        organization_id="organization-1",
+        project_id="project-1",
+    )
+    repository = InMemoryReplayRepository()
+    context = TenantContext("organization-1", "project-1", "actor-1", "request-1")
+    replay = ReplayApplicationService(
+        repository,
+        _SourceResolver(source),
+        id_generator=lambda: "replay-1",
+        clock=lambda: datetime(2026, 1, 1, tzinfo=UTC),
+    ).create(
+        source_execution_id="source-1",
+        context=context,
+        idempotency_key="key-1",
+        mode=ReplayMode.FULL,
+    )
+    repository.update(
+        replay.mark_queued("job-1", datetime(2026, 1, 1, tzinfo=UTC)), replay.version
+    )
+
+    class _ExternalAdapter:
+        name = "historical"
+
+        def validate_configuration(self, source_execution, configuration) -> None:
+            return None
+
+        def replay(self, source_execution, configuration, context):
+            return ReplayExecutionResult(
+                execution_status="COMPLETED",
+                final_state={"external": True},
+                events=({"type": "EXTERNAL_RUNTIME_REPLAY_COMPLETED"},),
+                artifact_refs=("runtime://counterfactual",),
+                metadata={"runtime_owned": True},
+            )
+
+    registry = ReplayExecutionAdapterRegistry()
+    registry.register(_ExternalAdapter())
+    store = _Store()
+
+    result = ReplayJobHandler(
+        repository,
+        _SourceResolver(source),
+        store,
+        registry,
+        execution_id_generator=lambda: "replay-execution-1",
+        clock=lambda: datetime(2026, 1, 1, tzinfo=UTC),
+    ).handle(_job())
+
+    assert result.status is JobStatus.SUCCEEDED
+    assert store.executions[0].execution_id == "replay-execution-1"
+    assert store.executions[0].workflow_id == "workflow-1"
+    assert store.executions[0].final_state == {"external": True}
+    assert store.executions[0].artifact_refs == ["runtime://counterfactual"]
+    assert store.executions[0].metadata["runtime_owned"] is True
 
 
 def test_replay_passes_typed_controlled_evidence_to_the_execution_adapter() -> None:
@@ -245,7 +312,7 @@ def test_replay_passes_only_governed_intervention_metadata_to_an_external_adapte
     assert envelope.runtime_tool_call_id == "provider-call-1"
     assert envelope.intervention_provider == "opaque-reference"
     assert envelope.intervention_provider_version == "v1"
-    assert envelope.strategy is ControlledEvidenceStrategy.REPLACE
+    assert envelope.strategy == ControlledEvidenceStrategy.REPLACE.value
     assert envelope.original_evidence_digest == "sha256:original"
     assert envelope.counterfactual_reference == "runtime://counterfactual/low-risk"
     assert envelope.counterfactual_digest == "sha256:counterfactual"

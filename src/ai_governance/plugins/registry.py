@@ -9,18 +9,24 @@ from dataclasses import asdict, dataclass
 from importlib.metadata import EntryPoint, entry_points
 from typing import Any, TypeVar
 
+from bhanuj_governance_plugin_api import (
+    CANONICAL_PLUGIN_ENTRY_POINT_GROUP,
+    LEGACY_CONTRACT_VERSION,
+    LEGACY_PLUGIN_ENTRY_POINT_GROUP,
+    SPI_VERSION,
+    AIGovernancePlugin,
+    PluginMetadata,
+    PluginStatus,
+    ReplayExecutionAdapterContribution,
+)
 from packaging.specifiers import SpecifierSet
 from packaging.version import Version
 
 from ai_governance.events import EventPublisher
 from ai_governance.hooks import FailurePolicy, HookHandler, HookRegistry
 from ai_governance.plugins.contracts import (
-    CONTRACT_VERSION,
     MiddlewareDefinition,
-    ReplayExecutionAdapterContribution,
 )
-from ai_governance.plugins.lifecycle import AIGovernancePlugin
-from ai_governance.plugins.metadata import PluginMetadata, PluginStatus
 from ai_governance.plugins.routes import PluginRouteContext, RouteRegistry
 from ai_governance.version import __version__
 
@@ -431,16 +437,26 @@ class PluginRegistry:
             )
         self._records[metadata.name] = _PluginRecord(plugin=plugin, metadata=metadata)
 
-    def discover(self, group: str = "ai_governance.plugins") -> None:
+    def discover(self, group: str | None = None) -> None:
         """Load plugins from a Python packaging entry-point group.
 
         Each entry point must resolve to a plugin instance or a zero-argument
-        plugin class. Discovery is deliberately explicit and generic; OSS does
-        not import, name, or conditionally detect an enterprise distribution.
+        plugin class. New plugins use the canonical Plugin API group. The
+        legacy group remains a bounded compatibility input to this same
+        registry, rather than a second plugin system.
         """
-        selected = entry_points().select(group=group)
-        for entry_point in sorted(selected, key=lambda item: item.name):
-            self._register_entry_point(entry_point)
+        groups = (
+            (group,)
+            if group is not None
+            else (
+                CANONICAL_PLUGIN_ENTRY_POINT_GROUP,
+                LEGACY_PLUGIN_ENTRY_POINT_GROUP,
+            )
+        )
+        for entry_point_group in groups:
+            selected = entry_points().select(group=entry_point_group)
+            for entry_point in sorted(selected, key=lambda item: item.name):
+                self._register_entry_point(entry_point)
 
     def initialize(self) -> None:
         """Validate and register every discovered plugin before app startup.
@@ -518,10 +534,17 @@ class PluginRegistry:
             "events": self.events.diagnostics(),
             "routes": self.routes.diagnostics(),
             "contributions": self.contributions.diagnostics(),
-            "contract_version": CONTRACT_VERSION,
+            "contract_version": LEGACY_CONTRACT_VERSION,
+            "spi_version": SPI_VERSION,
         }
 
     def _validate(self, record: _PluginRecord, context: PluginContext) -> None:
+        if record.metadata.spi_version != SPI_VERSION:
+            record.status = PluginStatus.INCOMPATIBLE
+            raise ExtensionError(
+                f"Plugin '{record.metadata.name}' requires Plugin API SPI "
+                f"{record.metadata.spi_version}, host supports {SPI_VERSION}."
+            )
         try:
             compatible = Version(self._ai_governance_version) in SpecifierSet(
                 record.metadata.required_ai_governance_version

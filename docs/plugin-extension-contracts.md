@@ -1,10 +1,16 @@
 # Plugin Extension Contracts
 
-AI Governance Control Plane exposes versioned (`v1`) generic plugin contribution contracts. A
-plugin registers them during `register(context)` through
+AI Governance Control Plane exposes versioned generic plugin contribution contracts. A
+runtime plugin registers them during `register(context)` through
 `context.contributions`. Registration is single-threaded during application
 construction; duplicate identities fail startup. Contributions are optional,
 and an installation without plugins keeps the prior runtime behavior.
+
+Standalone runtime plugins consume the independently publishable
+`bhanuj-governance-plugin-api` package (`>=1.0,<2`) and declare Plugin API SPI
+major `1`. It contains no Core implementation imports. The canonical entry
+point is `bhanuj.governance.plugins`; `ai_governance.plugins` remains a bounded
+legacy discovery alias only.
 
 - `permissions`, `settings`, and `job_handlers` identify additions by name,
   setting key and job type respectively.
@@ -26,7 +32,7 @@ contracts intentionally contain no product-tier or vendor concepts.
 
 An external runtime package contributes a
 `ReplayExecutionAdapterContribution(adapter_id, adapter_version, adapter)` from
-its `ai_governance.plugins` entry point. The adapter's `name` must exactly equal
+its `bhanuj.governance.plugins` entry point. The adapter's `name` must exactly equal
 the contributed `adapter_id/adapter_version`; the replay worker rejects any
 collision with a built-in or another plugin adapter at startup.
 
@@ -38,6 +44,10 @@ digest, and intervention digest. It intentionally contains no raw evidence,
 prompt, response, tool arguments, or reasoning. The external runtime resolves
 the reference and must fail closed when its content does not match the supplied
 digest.
+
+An external adapter returns `ReplayExecutionResult`, not Core's persisted
+`WorkflowExecution` model. Core materialises the result and retains workflow
+identity, tenant ownership, snapshots, persistence, and durable lineage.
 
 For the process-level lifecycle, including why standalone workers bootstrap
 plugins and receive the generic event publisher, see

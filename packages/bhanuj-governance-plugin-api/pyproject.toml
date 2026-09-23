@@ -1,0 +1,27 @@
+[project]
+name = "bhanuj-governance-plugin-api"
+version = "1.0.0"
+description = "Public, provider-neutral plugin contracts for BHANUJ AI Governance."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+authors = [{ name = "BHANUJ AI" }]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://governance.bhanuj.ai"
+Documentation = "https://governance.bhanuj.ai/docs"
+Repository = "https://github.com/Bhanuj-AI/ai-governance-oss"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bhanuj_governance_plugin_api"]

@@ -1,11 +1,12 @@
 [project]
 name = "ai-governance"
-version = "1.1.6"
+version = "1.1.7"
 description = "AI Governance Control Plane for execution audit, workflow replay, evaluation, decision-drift analysis, and governance controls for AI systems."
 readme = "README.md"
 requires-python = ">=3.12"
 
 dependencies = [
+    "bhanuj-governance-plugin-api>=1.0,<2",
     "anthropic>=0.89.0",
     "boto3>=1.43.69",
     "fastapi>=0.138.1",
@@ -52,6 +53,9 @@ dev = [
     "pytest-cov>=7.1.0",
     "ruff>=0.16.2",
 ]
+
+[tool.uv.sources]
+bhanuj-governance-plugin-api = { path = "packages/bhanuj-governance-plugin-api", editable = true }
 
 [build-system]
 requires = ["hatchling"]

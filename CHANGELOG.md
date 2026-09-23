@@ -9,6 +9,21 @@ This project follows Semantic Versioning.
 
 ## Unreleased
 
+### [1.1.7] - 2026-09-23
+
+### Added
+
+- Added the independently publishable, dependency-free
+  `bhanuj-governance-plugin-api` v1 package for external runtime replay
+  plugins. Core and external plugins now share that contract without requiring
+  an external plugin to install or source-link the Core repository.
+
+### Changed
+
+- Moved canonical plugin discovery to `bhanuj.governance.plugins`, retaining
+  `ai_governance.plugins` as a bounded compatibility input to the same
+  registry. Unsupported Plugin API SPI majors now fail before plugin startup.
+
 ### [1.1.6] - 2026-09-23
 
 ### Added

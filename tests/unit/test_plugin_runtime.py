@@ -40,10 +40,11 @@ class _LifecyclePlugin:
 def test_plugin_registry_bootstrap_has_a_complete_lifecycle(monkeypatch) -> None:
     """Standalone hosts discover/register/start/stop through one helper."""
     plugin = _LifecyclePlugin()
+    groups: list[str] = []
 
     class _EntryPoints:
         def select(self, *, group: str):
-            assert group == "ai_governance.plugins"
+            groups.append(group)
             return ()
 
     monkeypatch.setattr(
@@ -54,6 +55,10 @@ def test_plugin_registry_bootstrap_has_a_complete_lifecycle(monkeypatch) -> None
     registry.stop()
 
     assert plugin.calls == ["validate", "register", "start", "stop"]
+    assert groups == [
+        "bhanuj.governance.plugins",
+        "ai_governance.plugins",
+    ]
 
 
 class _ReplayAdapter:
@@ -116,3 +121,17 @@ def test_replay_adapter_contribution_rejects_dynamic_module_like_identifiers() -
 
     with pytest.raises(ValueError, match="lowercase, hyphen-delimited"):
         ReplayExecutionAdapterContribution("untrusted.module", "v1", _UnsafeAdapter())
+
+
+def test_unsupported_plugin_api_spi_major_fails_explicitly() -> None:
+    class _FuturePlugin(_LifecyclePlugin):
+        metadata = PluginMetadata(
+            name="future-plugin",
+            version="1.0.0",
+            required_ai_governance_version=">=0",
+            spi_version="2",
+            contract_version="v2",
+        )
+
+    with pytest.raises(ExtensionError, match="Plugin API SPI 2"):
+        create_plugin_registry(plugins=(_FuturePlugin(),))

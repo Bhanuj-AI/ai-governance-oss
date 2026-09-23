@@ -19,7 +19,13 @@ For an API-orchestrated product walkthrough, see the
 
 ## Extension API
 
-The stable open-core extension surface is intentionally package-scoped:
+The independently publishable runtime-plugin surface is intentionally small:
+
+- `bhanuj-governance-plugin-api`: versioned runtime plugin metadata,
+  contribution, replay context/result, and governed intervention-envelope
+  contracts. It has no dependency on `ai-governance`.
+
+Core retains the following in-process extension compatibility APIs:
 
 - `ai_governance.spi`: provider contracts, including `SearchProvider` and
   `EvaluationProvider`
