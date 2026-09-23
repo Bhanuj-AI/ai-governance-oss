@@ -15,10 +15,11 @@ resolution-markers = [
 
 [[package]]
 name = "ai-governance"
-version = "1.1.6"
+version = "1.1.7"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
+    { name = "bhanuj-governance-plugin-api" },
     { name = "boto3" },
     { name = "fastapi" },
     { name = "jsonschema" },
@@ -56,6 +57,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "anthropic", specifier = ">=0.89.0" },
+    { name = "bhanuj-governance-plugin-api", editable = "packages/bhanuj-governance-plugin-api" },
     { name = "boto3", specifier = ">=1.43.69" },
     { name = "fastapi", specifier = ">=0.138.1" },
     { name = "inspect-ai", marker = "extra == 'inspect'", specifier = ">=0.3" },
@@ -449,6 +451,11 @@ sdist = { url = "https://files.pythonhosted.org/packages/43/65/318323f98dbee45d4
 wheels = [
     { url = "https://files.pythonhosted.org/packages/88/c6/92fcd42f1ba33e1184263f25bfabf3d27c383410470f169e4b8163bf9c17/beautifulsoup4-4.15.0-py3-none-any.whl", hash = "sha256:d6f88de62e1d4e38ecb1077eb9724cd0eff29d2a08ca16a401e9b9e93f117cf9", size = 109924, upload-time = "2026-06-07T16:44:21.566Z" },
 ]
+
+[[package]]
+name = "bhanuj-governance-plugin-api"
+version = "1.0.0"
+source = { editable = "packages/bhanuj-governance-plugin-api" }
 
 [[package]]
 name = "bleach"

@@ -8,13 +8,18 @@ instead of bypassing them.
 
 ## Open-Core Plugin Framework
 
-The OSS package owns the extension contracts consumed by separately released
-plugins, including a future `ai-governance-enterprise` package. The dependency flow is
-one way: an extension may import `ai_governance.spi`, `ai_governance.plugins`,
-`ai_governance.hooks`, and `ai_governance.events`; AI Governance Control Plane OSS never imports or detects a
-specific extension package.
+The independently published `bhanuj-governance-plugin-api` package owns the
+runtime-plugin contracts consumed by separately released runtime packages. Its
+dependency direction is one way: both the Core host and external runtime
+plugins depend on the Plugin API; the Plugin API never imports Core. Core never
+imports or detects a specific plugin package.
 
-Plugins are loaded from the `ai_governance.plugins` Python entry-point group and may
+The v1 Plugin API deliberately contains the existing runtime adapter lifecycle,
+metadata, contribution, governed replay context, and result contracts only.
+Core's provider, hook, event, and route extension surfaces remain available for
+in-process Core extensions; they are not copied into a generic SDK.
+
+Runtime plugins are loaded from the `bhanuj.governance.plugins` Python entry-point group and may
 also be passed directly to `create_app(plugins=[...])` in an embedding
 application. Every plugin declares immutable `PluginMetadata`, including its
 compatible AI Governance Control Plane version range and requested capabilities. Startup fails for
@@ -26,49 +31,37 @@ standard Python package metadata—there is no OSS source modification or
 enterprise-specific import:
 
 ```toml
-# ai-governance-enterprise/pyproject.toml
+# my-runtime/pyproject.toml
 [project]
-dependencies = ["ai-governance>=1.2,<1.3"]
+dependencies = ["bhanuj-governance-plugin-api>=1.0,<2"]
 
-[project.entry-points."ai_governance.plugins"]
-enterprise-quality = "ai_governance_enterprise.plugins.quality:QualityPlugin"
+[project.entry-points."bhanuj.governance.plugins"]
+my-runtime = "my_runtime.plugin:MyRuntimePlugin"
 ```
 
 ```python
-from ai_governance.events import EvaluationCompleted
-from ai_governance.hooks import FailurePolicy
-from ai_governance.plugins import AIGovernancePlugin, PluginMetadata
-from ai_governance.spi.search import SearchProvider
+from bhanuj_governance_plugin_api import (
+    PluginMetadata,
+    ReplayExecutionAdapterContribution,
+)
 
 
-class QualityPlugin(AIGovernancePlugin):
+class MyRuntimePlugin:
     metadata = PluginMetadata(
-        name="quality-plugin",
+        name="my-runtime",
         version="1.0.0",
-        required_ai_governance_version=">=1.2,<1.3",
-        capabilities=("search.read",),
+        required_ai_governance_version=">=1.1,<2",
+        capabilities=("replay.execute",),
+        spi_version="1",
     )
 
     def validate(self, context):
         pass
 
     def register(self, context):
-        context.providers.register(SearchProvider, EnterpriseSearch(), replace=True)
-        context.hooks.register(
-            name="after_execution",
-            handler=self.record_execution,
-            order=100,
-            failure_policy=FailurePolicy.ISOLATE_AND_CONTINUE,
-        )
-        context.events.subscribe(
-            event_type=EvaluationCompleted,
-            handler=self.analyze_evaluation,
-        )
-        context.routes.add(
-            method="GET",
-            path="/api/v1/intelligence/findings",
-            handler=self.list_findings,
-        )
+        context.contributions.replay_execution_adapters((
+            ReplayExecutionAdapterContribution("my-runtime", "v1", MyRuntimeAdapter()),
+        ))
 
     def start(self, context):
         pass
@@ -76,6 +69,11 @@ class QualityPlugin(AIGovernancePlugin):
     def stop(self, context):
         pass
 ```
+
+The legacy `ai_governance.plugins` group is temporarily read into the same
+registry for existing OSS extensions. New external runtime packages must use
+the canonical Plugin API group. See [Plugin API](PLUGIN_API.md) for the exact
+contract and publication guidance.
 
 Provider replacement always requires `replace=True`; decorators compose around
 the currently resolved provider. Hooks and event subscriptions are ordered by

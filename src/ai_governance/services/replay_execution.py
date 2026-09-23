@@ -37,6 +37,7 @@ from ai_governance.services.replay_application_service import ReplaySourceResolv
 from ai_governance.spi.replay import (
     ReplayExecutionAdapter,
     ReplayExecutionContext,
+    ReplayExecutionResult,
     ReplayInterventionEnvelope,
 )
 from ai_governance.tenancy.domain import TenantContext
@@ -296,6 +297,14 @@ class ReplayJobHandler:
                 raise
             if token.is_cancelled:
                 return self._cancel(replay, job)
+            if isinstance(execution, ReplayExecutionResult):
+                execution = _materialise_plugin_execution(
+                    execution, source, configuration, replay.replay_execution_id
+                )
+            if not isinstance(execution, WorkflowExecution):
+                raise ReplayReconstructionFailed(
+                    "Replay adapter returned an unsupported execution result."
+                )
             if execution.execution_id != replay.replay_execution_id:
                 raise ReplayExecutionIdentityConflict(
                     "Adapter returned an unexpected execution ID."
@@ -468,11 +477,46 @@ def _intervention_envelope(
         runtime_tool_call_id=runtime_tool_call_id,
         intervention_provider=intervention.provider_id,
         intervention_provider_version=intervention.provider_version,
-        strategy=intervention.strategy,
+        strategy=intervention.strategy.value,
         original_evidence_digest=intervention.original_evidence_digest,
         counterfactual_reference=intervention.counterfactual_evidence_reference,
         counterfactual_digest=intervention.counterfactual_evidence_digest,
         intervention_digest=intervention.intervention_digest,
+    )
+
+
+def _materialise_plugin_execution(
+    result: ReplayExecutionResult,
+    source: WorkflowExecution,
+    configuration: ReplayConfiguration,
+    execution_id: str,
+) -> WorkflowExecution:
+    """Materialise the Core-owned workflow record from an external result.
+
+    The plugin API deliberately never exposes Core's persistence model. This
+    one-way conversion keeps workflow identity, snapshots, tenant ownership,
+    and durable replay lineage under the host's control.
+    """
+    return WorkflowExecution(
+        workflow_id=source.workflow_id,
+        execution_id=execution_id,
+        workflow_name=source.workflow_name,
+        workflow_version=source.workflow_version,
+        execution_status=result.execution_status,
+        input=dict(result.input),
+        final_state=dict(result.final_state),
+        events=[dict(event) for event in result.events],
+        execution_adapter=configuration.execution_adapter,
+        input_snapshot_ref=configuration.input_snapshot_ref,
+        state_snapshot_ref=configuration.state_snapshot_ref,
+        artifact_refs=list(result.artifact_refs),
+        prompt_refs=list(configuration.prompt_refs),
+        model_refs=list(configuration.model_refs),
+        dataset_refs=list(configuration.dataset_refs),
+        policy_refs=list(configuration.policy_refs),
+        runtime_parameters=dict(result.runtime_parameters),
+        metadata=dict(result.metadata),
+        created_at=result.created_at,
     )
 
 

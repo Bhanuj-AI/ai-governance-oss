@@ -69,6 +69,7 @@ def test_plugin_route_lifecycle_and_runtime_diagnostics() -> None:
             "version": "1.0.0",
             "required_ai_governance_version": ">=0",
             "capabilities": ["search.read"],
+            "spi_version": "1",
             "contract_version": "v1",
             "status": "active",
             "failure_reason": None,
@@ -146,7 +147,9 @@ def test_hooks_and_events_have_deterministic_order_and_immutable_context() -> No
         handler=lambda event: event_order.append("later"),
     )
     event = EvaluationCompleted(
-        evaluation_id="evaluation-1", result={"score": 1}, tenant={"project_id": "project"}
+        evaluation_id="evaluation-1",
+        result={"score": 1},
+        tenant={"project_id": "project"},
     )
     asyncio.run(registry.events.publish(event))
     assert event_order == ["first", "later"]
@@ -156,9 +159,7 @@ def test_hooks_and_events_have_deterministic_order_and_immutable_context() -> No
 
 def test_plugin_compatibility_capabilities_and_route_conflicts_fail_fast() -> None:
     plugin = _RoutePlugin()
-    registry = PluginRegistry(
-        supported_capabilities=(), ai_governance_version="1.2.4"
-    )
+    registry = PluginRegistry(supported_capabilities=(), ai_governance_version="1.2.4")
     registry.register(plugin)
     with pytest.raises(ExtensionError, match="unsupported capabilities"):
         registry.initialize()
@@ -169,14 +170,19 @@ def test_plugin_compatibility_capabilities_and_route_conflicts_fail_fast() -> No
     incompatible.register(_IncompatiblePlugin())
     with pytest.raises(ExtensionError, match="requires AI Governance Control Plane"):
         incompatible.initialize()
-    assert incompatible.diagnostics()["plugins"][0]["status"] == PluginStatus.INCOMPATIBLE.value
+    assert (
+        incompatible.diagnostics()["plugins"][0]["status"]
+        == PluginStatus.INCOMPATIBLE.value
+    )
 
     routes = PluginRegistry().routes
     routes.add(method="GET", path="/same", handler=lambda: None, plugin_name="one")
     with pytest.raises(RouteConflictError, match="already claimed"):
         routes.add(method="GET", path="/same", handler=lambda: None, plugin_name="two")
     with pytest.raises(RouteConflictError, match="not an authorized"):
-        routes.replace(method="GET", path="/same", handler=lambda: None, plugin_name="one")
+        routes.replace(
+            method="GET", path="/same", handler=lambda: None, plugin_name="one"
+        )
 
 
 def test_plugin_is_discovered_through_the_packaging_entry_point(monkeypatch) -> None:
@@ -185,15 +191,18 @@ def test_plugin_is_discovered_through_the_packaging_entry_point(monkeypatch) -> 
     entry_point = EntryPoint(
         name="route-plugin",
         value="tests.unit.test_extension_framework:_RoutePlugin",
-        group="ai_governance.plugins",
+        group="bhanuj.governance.plugins",
     )
+    groups: list[str] = []
 
     class _EntryPoints:
         def select(self, *, group: str):
-            assert group == "ai_governance.plugins"
-            return (entry_point,)
+            groups.append(group)
+            return (entry_point,) if group == "bhanuj.governance.plugins" else ()
 
-    monkeypatch.setattr("ai_governance.plugins.registry.entry_points", lambda: _EntryPoints())
+    monkeypatch.setattr(
+        "ai_governance.plugins.registry.entry_points", lambda: _EntryPoints()
+    )
     registry = PluginRegistry(
         supported_capabilities={"search.read"}, ai_governance_version="1.2.4"
     )
@@ -203,3 +212,33 @@ def test_plugin_is_discovered_through_the_packaging_entry_point(monkeypatch) -> 
 
     assert registry.diagnostics()["plugins"][0]["name"] == "route-plugin"
     assert registry.diagnostics()["routes"][0]["path"] == "/api/v1/enterprise/example"
+    assert groups == [
+        "bhanuj.governance.plugins",
+        "ai_governance.plugins",
+    ]
+
+
+def test_legacy_plugin_entry_point_remains_a_bounded_compatibility_input(
+    monkeypatch,
+) -> None:
+    entry_point = EntryPoint(
+        name="legacy-route-plugin",
+        value="tests.unit.test_extension_framework:_RoutePlugin",
+        group="ai_governance.plugins",
+    )
+
+    class _EntryPoints:
+        def select(self, *, group: str):
+            return (entry_point,) if group == "ai_governance.plugins" else ()
+
+    monkeypatch.setattr(
+        "ai_governance.plugins.registry.entry_points", lambda: _EntryPoints()
+    )
+    registry = PluginRegistry(
+        supported_capabilities={"search.read"}, ai_governance_version="1.2.4"
+    )
+
+    registry.discover()
+    registry.initialize()
+
+    assert registry.diagnostics()["plugins"][0]["name"] == "route-plugin"

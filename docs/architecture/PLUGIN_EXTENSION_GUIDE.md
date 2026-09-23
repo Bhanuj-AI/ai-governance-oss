@@ -19,7 +19,8 @@ power socket:
 This keeps the dependency direction safe:
 
 ```text
-Plugin package  ──uses public contracts──>  AI Governance Control Plane OSS
+Plugin package  ──uses Plugin API contracts──>  BHANUJ Plugin API
+AI Governance Control Plane OSS ──────────────>  BHANUJ Plugin API
 AI Governance Control Plane OSS      ──never imports──────────>  a plugin package
 ```
 
@@ -40,7 +41,7 @@ starting a half-configured process.
 
 ## How a plugin becomes available?
 
-The plugin package declares a `ai_governance.plugins` Python entry point. When a
+The plugin package declares a `bhanuj.governance.plugins` Python entry point. When a
 AI Governance Control Plane process starts, the registry asks Python which installed packages
 declared an entry point in that group. It does not scan source folders and it
 does not import a product edition by name.
@@ -55,7 +56,7 @@ sequenceDiagram
 
     Deploy->>Python: Install AI Governance Control Plane and plugin distribution
     Host->>Registry: create_plugin_registry()
-    Registry->>Python: Discover ai_governance.plugins entry points
+    Registry->>Python: Discover bhanuj.governance.plugins entry points
     Python-->>Registry: Plugin instance or plugin class
     Registry->>Plugin: Check version and requested capabilities
     Registry->>Plugin: validate(context)
@@ -67,6 +68,9 @@ sequenceDiagram
 
 The API and the standalone replay worker use this same bootstrap. That detail
 matters whenever a plugin listens to facts created by a worker.
+
+The older `ai_governance.plugins` group is read temporarily for compatibility,
+but it feeds this same registry. New packages must use the canonical group.
 
 ## What a plugin is allowed to do?
 

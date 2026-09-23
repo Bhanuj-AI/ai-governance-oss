@@ -44,6 +44,7 @@ from ai_governance.spi.replay import (
     ReplayCancellationToken,
     ReplayExecutionAdapter,
     ReplayExecutionContext,
+    ReplayExecutionResult,
     ReplayInterventionEnvelope,
 )
 from ai_governance.spi.search import SearchProvider, SearchRequest, SearchResult
@@ -89,6 +90,7 @@ __all__ = [
     "ReplayCancellationToken",
     "ReplayExecutionAdapter",
     "ReplayExecutionContext",
+    "ReplayExecutionResult",
     "ReplayInterventionEnvelope",
     "SearchProvider",
     "SearchRequest",
