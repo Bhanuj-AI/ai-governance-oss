@@ -6,6 +6,7 @@ cd "$ROOT_DIR"
 
 COMPOSE=(
   docker compose
+  --env-file "$ROOT_DIR/.env.platform"
   --project-directory "$ROOT_DIR"
   -f "$ROOT_DIR/docker-compose.yml"
 )

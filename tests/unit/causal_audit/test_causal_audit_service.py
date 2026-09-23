@@ -353,6 +353,40 @@ def test_classifies_evidence_aligned_when_replay_changes_score_and_agent_stops()
     assert len(audit.tool_call_results[0].counterfactual_execution_ids) == 1
 
 
+def test_terminal_controlled_replay_failure_transitions_audit_to_failed():
+    class _FailingReplayAdapter:
+        name = "deterministic-agent-runtime/v1"
+
+        def validate_configuration(self, *_args, **_kwargs):
+            return None
+
+        def replay(self, *_args, **_kwargs):
+            raise RuntimeError("adapter rejected the governed request")
+
+    setup = _service([0.1], replay_adapter=_FailingReplayAdapter())
+    audit = setup.service.start(
+        "execution-a",
+        "recorded-outcome/v1",
+        InterventionConfiguration(
+            EvidenceInterventionStrategy.REPLACE,
+            1,
+            intervention_policy_id="policy-a",
+            intervention_policy_version=1,
+        ),
+        CONTEXT,
+    )
+    assert setup.service.execute(audit.audit_id, CONTEXT).status.value == "RUNNING"
+    failed_job = setup.replay_worker.run_once()
+    assert failed_job is not None and failed_job.status is JobStatus.FAILED
+
+    reconciled = setup.service.execute(audit.audit_id, CONTEXT)
+
+    assert reconciled.status.value == "FAILED"
+    assert reconciled.failure_code == "CONTROLLED_REPLAY_FAILED"
+    assert "adapter rejected the governed request" in reconciled.failure_reason
+    assert reconciled.diagnostics["counterfactual_replays"][0]["replay_id"]
+
+
 def test_explicit_policy_scopes_audit_to_matching_tool_calls():
     audit = _run(
         _service(
@@ -444,7 +478,7 @@ def test_exact_influence_threshold_is_material():
 def test_partial_counterfactual_failure_fails_without_fabricating_influence():
     audit = _run(_service([0.1, 0.2], replacement_count=3))
     assert audit.status.value == "FAILED"
-    assert audit.failure_code == "INSUFFICIENT_COUNTERFACTUAL_EVIDENCE"
+    assert audit.failure_code == "CONTROLLED_REPLAY_FAILED"
     assert audit.tool_call_results == ()
 
 

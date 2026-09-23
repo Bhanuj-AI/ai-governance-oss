@@ -63,6 +63,28 @@ class InsufficientCounterfactualEvidence(ValueError):
     pass
 
 
+class ControlledReplayTerminalFailure(InsufficientCounterfactualEvidence):
+    """A governed Replay reached a terminal state without an outcome.
+
+    The audit retains its pre-planned counterfactual lineage in diagnostics;
+    this error supplies the terminal audit failure code and bounded reason.
+    """
+
+    def __init__(self, replay) -> None:
+        if replay.status is ReplayStatus.CANCELLED:
+            self.code = "CONTROLLED_REPLAY_CANCELLED"
+            reason = "Controlled Replay was cancelled."
+        else:
+            self.code = "CONTROLLED_REPLAY_FAILED"
+            failure = replay.failure
+            reason = (
+                f"{failure.code}: {failure.message}"
+                if failure is not None
+                else "Controlled Replay failed without a persisted failure detail."
+            )
+        super().__init__(f"Controlled Replay '{replay.replay_id}' {reason}")
+
+
 class InterventionUnavailable(ValueError):
     """A governed policy was requested but no authorized generator is wired."""
 
@@ -410,8 +432,8 @@ class CausalAuditService:
             results: list[ToolEvidenceInfluence] = []
             saturated = baseline.value >= self._settings.saturation_threshold
             for position, event in enumerate(calls):
-                samples, replay_ids, execution_ids, replay_lineage = self._replay_outcomes(
-                    event.event_id, planned, context
+                samples, replay_ids, execution_ids, replay_lineage = (
+                    self._replay_outcomes(event.event_id, planned, context)
                 )
                 if not samples:
                     raise InsufficientCounterfactualEvidence(
@@ -686,11 +708,7 @@ class CausalAuditService:
                     "A controlled Replay disappeared."
                 )
             if replay.status in {ReplayStatus.FAILED, ReplayStatus.CANCELLED}:
-                raise InsufficientCounterfactualEvidence(
-                    replay.failure.message
-                    if replay.failure is not None
-                    else "A controlled Replay did not complete."
-                )
+                raise ControlledReplayTerminalFailure(replay)
             if replay.status not in {
                 ReplayStatus.EXECUTION_COMPLETED,
                 ReplayStatus.EVALUATING,
@@ -772,9 +790,7 @@ class CausalAuditService:
                         policy_version=int(item["policy_version"]),
                         provider_id=str(item["provider_id"]),
                         provider_version=str(item["provider_version"]),
-                        original_evidence_digest=str(
-                            item["original_evidence_digest"]
-                        ),
+                        original_evidence_digest=str(item["original_evidence_digest"]),
                         counterfactual_evidence_reference=str(
                             item["counterfactual_evidence_reference"]
                         ),

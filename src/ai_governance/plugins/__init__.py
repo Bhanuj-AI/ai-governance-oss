@@ -5,6 +5,7 @@ from ai_governance.plugins.contracts import (
     JobHandlerDefinition,
     MiddlewareDefinition,
     PermissionDefinition,
+    ReplayExecutionAdapterContribution,
 )
 from ai_governance.plugins.lifecycle import AIGovernancePlugin
 from ai_governance.plugins.metadata import PluginMetadata, PluginStatus
@@ -49,6 +50,7 @@ __all__ = [
     "PluginStatus",
     "ProviderRegistry",
     "ProviderResolutionError",
+    "ReplayExecutionAdapterContribution",
     "RouteConflictError",
     "RouteRegistry",
     "create_plugin_registry",
