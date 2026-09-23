@@ -240,6 +240,28 @@ class OpaqueReferenceEvidenceInterventionProvider:
     def validate_policy(
         self, policy: EvidenceInterventionPolicy, context: TenantContext
     ) -> None:
+        del context
+        static_reference = policy.strategy_configuration.get("counterfactual_reference")
+        static_digest = policy.strategy_configuration.get("counterfactual_digest")
+        if static_reference is not None or static_digest is not None:
+            if (
+                policy.allowed_strategies != (ControlledEvidenceStrategy.REPLACE,)
+                or not isinstance(static_reference, str)
+                or not static_reference.strip()
+                or not isinstance(static_digest, str)
+                or not static_digest.strip()
+            ):
+                raise CounterfactualValidationFailed(
+                    "Static opaque counterfactuals require only REPLACE plus a reference and digest."
+                )
+            if (
+                policy.strategy_configuration.get("runtime_attests_validation")
+                is not True
+            ):
+                raise CounterfactualValidationFailed(
+                    "Reference-only policies require runtime_attests_validation=true."
+                )
+            return
         namespace = policy.strategy_configuration.get(
             "counterfactual_reference_namespace"
         )
@@ -263,16 +285,40 @@ class OpaqueReferenceEvidenceInterventionProvider:
         if not self.supports(descriptor, strategy):
             raise UnsupportedEvidenceType("UNSUPPORTED_EVIDENCE_TYPE")
         self.validate_policy(policy, context)
-        digest = "sha256:" + sha256(
-            "|".join(
-                (
-                    descriptor.evidence_digest,
-                    policy.policy_digest,
-                    strategy.value,
-                    str(seed),
-                )
-            ).encode()
-        ).hexdigest()
+        static_reference = policy.strategy_configuration.get("counterfactual_reference")
+        static_digest = policy.strategy_configuration.get("counterfactual_digest")
+        if static_reference is not None or static_digest is not None:
+            if strategy is not ControlledEvidenceStrategy.REPLACE:
+                raise CounterfactualValidationFailed("UNSUPPORTED_INTERVENTION")
+            if static_digest == descriptor.evidence_digest:
+                raise NoEffectiveIntervention("NO_EFFECTIVE_INTERVENTION")
+            return CounterfactualEvidence(
+                strategy=strategy,
+                provider_id=self.provider_id,
+                provider_version=self.provider_version,
+                policy_id=policy.policy_id,
+                policy_version=policy.version,
+                seed=seed,
+                original_evidence_digest=descriptor.evidence_digest,
+                counterfactual_evidence_ref=static_reference,
+                counterfactual_evidence_digest=static_digest,
+                schema_valid=True,
+                semantic_valid=True,
+                generation_metadata={"mode": "runtime-attested-static-reference"},
+            )
+        digest = (
+            "sha256:"
+            + sha256(
+                "|".join(
+                    (
+                        descriptor.evidence_digest,
+                        policy.policy_digest,
+                        strategy.value,
+                        str(seed),
+                    )
+                ).encode()
+            ).hexdigest()
+        )
         namespace = str(
             policy.strategy_configuration["counterfactual_reference_namespace"]
         ).rstrip(":/")

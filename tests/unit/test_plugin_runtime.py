@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
-from ai_governance.plugins import PluginMetadata, create_plugin_registry
+import pytest
+
+from ai_governance.plugins import (
+    ExtensionError,
+    PluginMetadata,
+    ReplayExecutionAdapterContribution,
+    create_plugin_registry,
+)
 
 
 class _LifecyclePlugin:
@@ -47,3 +54,65 @@ def test_plugin_registry_bootstrap_has_a_complete_lifecycle(monkeypatch) -> None
     registry.stop()
 
     assert plugin.calls == ["validate", "register", "start", "stop"]
+
+
+class _ReplayAdapter:
+    name = "external-runtime/v1"
+
+
+class _ReplayAdapterPlugin:
+    metadata = PluginMetadata(
+        name="external-runtime-plugin",
+        version="1.0.0",
+        required_ai_governance_version=">=0",
+        capabilities=("replay.execute",),
+    )
+
+    def validate(self, context) -> None:
+        return None
+
+    def register(self, context) -> None:
+        context.contributions.replay_execution_adapters(
+            (
+                ReplayExecutionAdapterContribution(
+                    "external-runtime", "v1", _ReplayAdapter()
+                ),
+            )
+        )
+
+    def start(self, context) -> None:
+        return None
+
+    def stop(self, context) -> None:
+        return None
+
+
+def test_plugin_can_contribute_a_versioned_replay_adapter() -> None:
+    registry = create_plugin_registry(plugins=(_ReplayAdapterPlugin(),))
+
+    contributions = registry.contributions.replay_execution_adapters()
+
+    assert len(contributions) == 1
+    assert contributions[0].name == "external-runtime/v1"
+    assert contributions[0].adapter.name == "external-runtime/v1"
+
+
+def test_duplicate_versioned_replay_adapter_contributions_fail_during_startup() -> None:
+    class _DuplicatePlugin(_ReplayAdapterPlugin):
+        metadata = PluginMetadata(
+            name="duplicate-external-runtime-plugin",
+            version="1.0.0",
+            required_ai_governance_version=">=0",
+            capabilities=("replay.execute",),
+        )
+
+    with pytest.raises(ExtensionError, match="Duplicate replay_execution_adapters"):
+        create_plugin_registry(plugins=(_ReplayAdapterPlugin(), _DuplicatePlugin()))
+
+
+def test_replay_adapter_contribution_rejects_dynamic_module_like_identifiers() -> None:
+    class _UnsafeAdapter:
+        name = "untrusted.module/v1"
+
+    with pytest.raises(ValueError, match="lowercase, hyphen-delimited"):
+        ReplayExecutionAdapterContribution("untrusted.module", "v1", _UnsafeAdapter())

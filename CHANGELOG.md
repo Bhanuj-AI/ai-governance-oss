@@ -9,6 +9,29 @@ This project follows Semantic Versioning.
 
 ## Unreleased
 
+### [1.1.6] - 2026-09-23
+
+### Added
+
+- Added a versioned, provider-neutral `ReplayExecutionAdapter` plugin
+  contribution point. External runtime adapters are registered at worker
+  startup, and duplicate adapter IDs or versions fail fast.
+- Added the strict `ReplayInterventionEnvelope` contract for governed replay
+  metadata. It deliberately excludes raw evidence, prompts, responses, and
+  reasoning while binding the selected policy, runtime tool call, authorized
+  counterfactual reference, and digests.
+- Added support for policy-authorized static opaque counterfactual references
+  and digests, allowing external runtimes to resolve their own evidence while
+  OSS retains verifiable authorization and provenance only.
+
+### Changed
+
+- Controlled replay workers now reconcile permanently failed or cancelled
+  replays into terminal Causal Audit failures, retaining replay lineage and
+  diagnostics instead of leaving audits in `RUNNING` indefinitely.
+- Expanded Intervention Policy Management to make PERTURB controls and their
+  configured values easier to inspect.
+
 ### [1.1.5] - 2026-09-20
 
 ### Added

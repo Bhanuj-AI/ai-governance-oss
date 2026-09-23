@@ -14,7 +14,11 @@ from packaging.version import Version
 
 from ai_governance.events import EventPublisher
 from ai_governance.hooks import FailurePolicy, HookHandler, HookRegistry
-from ai_governance.plugins.contracts import CONTRACT_VERSION, MiddlewareDefinition
+from ai_governance.plugins.contracts import (
+    CONTRACT_VERSION,
+    MiddlewareDefinition,
+    ReplayExecutionAdapterContribution,
+)
 from ai_governance.plugins.lifecycle import AIGovernancePlugin
 from ai_governance.plugins.metadata import PluginMetadata, PluginStatus
 from ai_governance.plugins.routes import PluginRouteContext, RouteRegistry
@@ -49,6 +53,7 @@ class ProviderRegistration:
     owner after decoration; ``decorated_by`` records the outer wrappers in the
     order in which they were applied.
     """
+
     contract: str
     provider: object
     plugin_name: str
@@ -95,7 +100,9 @@ class ProviderRegistry:
                 f"'{existing.plugin_name}'; use replace=True explicitly."
             )
         self._providers[contract] = ProviderRegistration(
-            contract=_contract_name(contract), provider=provider, plugin_name=plugin_name
+            contract=_contract_name(contract),
+            provider=provider,
+            plugin_name=plugin_name,
         )
 
     def resolve(self, contract: type[T]) -> T:
@@ -207,8 +214,13 @@ class PluginHookContext:
     ) -> None:
         """Register one handler for a named OSS lifecycle interception point."""
         self._registry.register(
-            name=name, handler=handler, plugin_name=self._plugin_name, order=order,
-            failure_policy=failure_policy, timeout_seconds=timeout_seconds, retries=retries,
+            name=name,
+            handler=handler,
+            plugin_name=self._plugin_name,
+            order=order,
+            failure_policy=failure_policy,
+            timeout_seconds=timeout_seconds,
+            retries=retries,
         )
 
 
@@ -234,8 +246,11 @@ class PluginEventContext:
         destabilize the producer's core workflow.
         """
         self._publisher.subscribe(
-            event_type=event_type, handler=handler, plugin_name=self._plugin_name,
-            order=order, failure_policy=failure_policy,
+            event_type=event_type,
+            handler=handler,
+            plugin_name=self._plugin_name,
+            order=order,
+            failure_policy=failure_policy,
         )
 
 
@@ -257,19 +272,40 @@ class PluginContext:
     routes: PluginRouteContext
     contributions: PluginContributionContext
 
+
 class ContributionRegistry:
     """Generic, deterministic registry for optional plugin contributions."""
+
     def __init__(self) -> None:
         self._items: dict[str, list[tuple[str, object]]] = {}
+
     def register(self, kind: str, plugin_name: str, items: Iterable[object]) -> None:
         values = self._items.setdefault(kind, [])
         for item in items:
             identity = _contribution_identity(kind, item)
-            if any(_contribution_identity(kind, existing) == identity for _, existing in values):
+            if any(
+                _contribution_identity(kind, existing) == identity
+                for _, existing in values
+            ):
                 raise ExtensionError(f"Duplicate {kind} contribution: {identity}.")
             values.append((plugin_name, item))
+
     def items(self, kind: str) -> tuple[object, ...]:
         return tuple(item for _, item in self._items.get(kind, ()))
+
+    def replay_execution_adapters(
+        self,
+    ) -> tuple[ReplayExecutionAdapterContribution, ...]:
+        """Return validated, versioned adapters for a replay-worker host."""
+        items = self.items("replay_execution_adapters")
+        if not all(
+            isinstance(item, ReplayExecutionAdapterContribution) for item in items
+        ):
+            raise ExtensionError(
+                "Replay execution adapter contributions must use ReplayExecutionAdapterContribution."
+            )
+        return tuple(items)  # type: ignore[return-value]
+
     def diagnostics(self) -> dict[str, int]:
         return {kind: len(items) for kind, items in sorted(self._items.items())}
 
@@ -277,7 +313,9 @@ class ContributionRegistry:
         """Install application-bound contributions after plugin registration."""
         for item in sorted(self.items("middleware"), key=lambda value: value.priority):
             if not isinstance(item, MiddlewareDefinition):
-                raise ExtensionError("Middleware contributions must use MiddlewareDefinition.")
+                raise ExtensionError(
+                    "Middleware contributions must use MiddlewareDefinition."
+                )
             app.add_middleware(item.middleware)  # type: ignore[attr-defined]
         app.state.plugin_health_contributors = self.items("health")  # type: ignore[attr-defined]
         app.state.plugin_metrics_providers = self.items("metrics")  # type: ignore[attr-defined]
@@ -292,24 +330,49 @@ class ContributionRegistry:
 
     def emit(self, name: str, attributes: dict[str, object]) -> None:
         from ai_governance.plugins.contracts import TelemetryEvent
+
         event = TelemetryEvent(name, dict(attributes))
         for exporter in self.items("telemetry_exporters"):
             try:
                 exporter(event)
             except Exception:
-                logging.getLogger("ai_governance.extensions").exception("plugin_exporter_failed")
+                logging.getLogger("ai_governance.extensions").exception(
+                    "plugin_exporter_failed"
+                )
+
 
 class PluginContributionContext:
     def __init__(self, registry: ContributionRegistry, plugin_name: str) -> None:
         self._registry, self._plugin_name = registry, plugin_name
-    def permissions(self, items: Iterable[object]) -> None: self._registry.register("permissions", self._plugin_name, items)
-    def middleware(self, items: Iterable[object]) -> None: self._registry.register("middleware", self._plugin_name, items)
-    def settings(self, items: Iterable[object]) -> None: self._registry.register("settings", self._plugin_name, items)
-    def job_handlers(self, items: Iterable[object]) -> None: self._registry.register("job_handlers", self._plugin_name, items)
-    def telemetry_exporters(self, items: Iterable[object]) -> None: self._registry.register("telemetry_exporters", self._plugin_name, items)
-    def health(self, items: Iterable[object]) -> None: self._registry.register("health", self._plugin_name, items)
-    def metrics(self, items: Iterable[object]) -> None: self._registry.register("metrics", self._plugin_name, items)
-    def authorization_enforcers(self, items: Iterable[object]) -> None: self._registry.register("authorization_enforcers", self._plugin_name, items)
+
+    def permissions(self, items: Iterable[object]) -> None:
+        self._registry.register("permissions", self._plugin_name, items)
+
+    def middleware(self, items: Iterable[object]) -> None:
+        self._registry.register("middleware", self._plugin_name, items)
+
+    def settings(self, items: Iterable[object]) -> None:
+        self._registry.register("settings", self._plugin_name, items)
+
+    def job_handlers(self, items: Iterable[object]) -> None:
+        self._registry.register("job_handlers", self._plugin_name, items)
+
+    def replay_execution_adapters(
+        self, items: Iterable[ReplayExecutionAdapterContribution]
+    ) -> None:
+        self._registry.register("replay_execution_adapters", self._plugin_name, items)
+
+    def telemetry_exporters(self, items: Iterable[object]) -> None:
+        self._registry.register("telemetry_exporters", self._plugin_name, items)
+
+    def health(self, items: Iterable[object]) -> None:
+        self._registry.register("health", self._plugin_name, items)
+
+    def metrics(self, items: Iterable[object]) -> None:
+        self._registry.register("metrics", self._plugin_name, items)
+
+    def authorization_enforcers(self, items: Iterable[object]) -> None:
+        self._registry.register("authorization_enforcers", self._plugin_name, items)
 
 
 @dataclass
@@ -363,7 +426,9 @@ class PluginRegistry:
         """
         metadata = plugin.metadata
         if metadata.name in self._records:
-            raise DuplicatePluginError(f"Plugin '{metadata.name}' is already registered.")
+            raise DuplicatePluginError(
+                f"Plugin '{metadata.name}' is already registered."
+            )
         self._records[metadata.name] = _PluginRecord(plugin=plugin, metadata=metadata)
 
     def discover(self, group: str = "ai_governance.plugins") -> None:
@@ -503,6 +568,7 @@ class PluginRegistry:
 def _contract_name(contract: type[object]) -> str:
     return f"{contract.__module__}.{contract.__qualname__}"
 
+
 def _contribution_identity(kind: str, item: object) -> str:
     if kind == "middleware":
         return f"{item.middleware.__module__}.{item.middleware.__qualname__}"  # type: ignore[attr-defined]
@@ -512,22 +578,34 @@ def _contribution_identity(kind: str, item: object) -> str:
         return str(item.name)  # type: ignore[attr-defined]
     if kind == "job_handlers":
         return str(item.job_type)  # type: ignore[attr-defined]
+    if kind == "replay_execution_adapters":
+        if not isinstance(item, ReplayExecutionAdapterContribution):
+            raise ExtensionError(
+                "Replay execution adapter contributions must use ReplayExecutionAdapterContribution."
+            )
+        return item.name
     if kind == "health":
         return str(item.name())  # type: ignore[attr-defined]
     return f"{type(item).__module__}.{type(item).__qualname__}"
+
 
 def _install_settings(items: tuple[object, ...]) -> None:
     if not items:
         return
     from ai_governance.settings_control.registry import register_extension_definitions
+
     register_extension_definitions(items)
+
 
 def _install_permissions(items: tuple[object, ...]) -> None:
     if items:
         from ai_governance.tenancy.permissions import register_extension_permissions
+
         register_extension_permissions(items)
+
 
 def _install_job_handlers(items: tuple[object, ...]) -> None:
     if items:
         from ai_governance.services.job_executor import register_extension_handlers
+
         register_extension_handlers(items)

@@ -7,7 +7,7 @@ import logging
 import os
 import signal
 import socket
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from time import sleep
 from uuid import uuid4
 
@@ -22,6 +22,7 @@ from ai_governance.domain.jobs import (
 from ai_governance.domain.replay import ReplayStatus
 from ai_governance.events import EventPublisher
 from ai_governance.plugins import create_plugin_registry
+from ai_governance.plugins.contracts import ReplayExecutionAdapterContribution
 from ai_governance.services.agent_runtime_controlled_replay import (
     DeterministicAgentRuntimeReplayAdapter,
 )
@@ -71,15 +72,30 @@ class _AutoEvaluationReplayHandler:
 
     def handle(self, job: Job) -> JobResult:
         outcome = self._execution_handler.handle(job)
-        if outcome.status is not JobStatus.SUCCEEDED:
-            return outcome
         context = _tenant_context(job)
         replay_id = str(job.input_refs["replay_id"])
         replay = self._replays.get(
             replay_id, context.organization_id, context.project_id or ""
         )
         if replay is None:
-            return JobResult(job.job_id, JobStatus.FAILED, None, "Replay disappeared.")
+            if outcome.status is JobStatus.SUCCEEDED:
+                return JobResult(
+                    job.job_id, JobStatus.FAILED, None, "Replay disappeared."
+                )
+            return outcome
+        is_terminal_controlled_replay = (
+            replay.controlled_evidence_intervention is not None
+            and replay.status
+            in {
+                ReplayStatus.EXECUTION_COMPLETED,
+                ReplayStatus.FAILED,
+                ReplayStatus.CANCELLED,
+            }
+        )
+        if outcome.status is not JobStatus.SUCCEEDED:
+            if is_terminal_controlled_replay:
+                self._schedule_causal_audit_finalization(replay, context)
+            return outcome
         if (
             replay.status is ReplayStatus.EXECUTION_COMPLETED
             and replay.controlled_evidence_intervention is None
@@ -100,7 +116,8 @@ class _AutoEvaluationReplayHandler:
         # evaluation baseline and would incorrectly fail these isolated runs.
         # The audit finalization job instead consumes the durable controlled
         # Replay outcome and its governed intervention lineage.
-        self._schedule_causal_audit_finalization(replay, context)
+        if is_terminal_controlled_replay:
+            self._schedule_causal_audit_finalization(replay, context)
         return outcome
 
     def _schedule_causal_audit_finalization(
@@ -168,6 +185,7 @@ def create_replay_worker_runtime(
     lease_seconds: int | None = None,
     evaluation_provider: str | None = None,
     extra_adapters: Callable[[ReplayExecutionAdapterRegistry], None] | None = None,
+    replay_adapter_contributions: Iterable[ReplayExecutionAdapterContribution] = (),
     event_publisher: EventPublisher | None = None,
 ) -> ReplayWorkerRuntime:
     """Build runtime dependencies using the same durable factories as the API."""
@@ -289,6 +307,8 @@ def create_replay_worker_runtime(
     registry.register(HistoricalReplayExecutionAdapter())
     registry.register(DeterministicAgentRuntimeReplayAdapter())
     registry.register(SyntheticAgentRuntimeReplayAdapter())
+    for contribution in replay_adapter_contributions:
+        registry.register(contribution.adapter)
     if extra_adapters is not None:
         extra_adapters(registry)
     execution_handler = ReplayJobHandler(
@@ -373,7 +393,10 @@ def main() -> None:
     extension_registry.start()
     try:
         runtime = create_replay_worker_runtime(
-            event_publisher=extension_registry.events
+            event_publisher=extension_registry.events,
+            replay_adapter_contributions=(
+                extension_registry.contributions.replay_execution_adapters()
+            ),
         )
         signal.signal(signal.SIGINT, runtime.stop)
         signal.signal(signal.SIGTERM, runtime.stop)

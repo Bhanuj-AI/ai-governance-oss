@@ -189,3 +189,48 @@ def test_opaque_reference_provider_never_materialises_external_evidence():
 
     assert result.counterfactual_evidence_ref.startswith("synthetic://counterfactual:")
     assert result.counterfactual_evidence_digest != descriptor.evidence_digest
+
+
+def test_opaque_reference_policy_can_authorize_a_static_reference_and_digest():
+    provider = OpaqueReferenceEvidenceInterventionProvider()
+    descriptor = ToolEvidenceDescriptor(
+        "call-1",
+        "risk.lookup",
+        "runtime://evidence/run/1",
+        "sha256:original",
+        "application/vnd.runtime.evidence+json",
+        "risk-schema",
+        "1",
+        "external-runtime/v1",
+        {},
+    )
+    policy = EvidenceInterventionPolicy(
+        "policy-opaque-static",
+        1,
+        "org-a",
+        "project-a",
+        EvidenceInterventionPolicyStatus.ACTIVE,
+        "risk.lookup",
+        "risk-schema",
+        "1",
+        "opaque-reference",
+        "v1",
+        (ControlledEvidenceStrategy.REPLACE,),
+        {
+            "counterfactual_reference": "runtime://counterfactual/low-risk-v1",
+            "counterfactual_digest": "sha256:counterfactual",
+            "runtime_attests_validation": True,
+        },
+        NOW,
+        "operator",
+        NOW,
+        "operator",
+    )
+
+    result = provider.generate_reference_only(
+        descriptor, policy, ControlledEvidenceStrategy.REPLACE, 7, CONTEXT
+    )
+
+    assert result.counterfactual_evidence_ref == "runtime://counterfactual/low-risk-v1"
+    assert result.counterfactual_evidence_digest == "sha256:counterfactual"
+    assert result.generation_metadata["mode"] == "runtime-attested-static-reference"

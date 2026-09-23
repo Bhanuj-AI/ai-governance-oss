@@ -15,6 +15,7 @@ from ai_governance.domain.jobs import (
 )
 from ai_governance.domain.replay import ReplayStatus
 from ai_governance.domain.workflow_execution import WorkflowExecution
+from ai_governance.plugins import ReplayExecutionAdapterContribution
 from ai_governance.repositories.in_memory import InMemoryJobRepository
 from ai_governance.repositories.in_memory_replay_repository import (
     InMemoryReplayRepository,
@@ -71,7 +72,11 @@ class _Evaluations:
         return self.replay
 
     def get_evaluation(self, evaluation_id, _context):
-        return self.baseline if evaluation_id == self.baseline.evaluation_id else self.replay
+        return (
+            self.baseline
+            if evaluation_id == self.baseline.evaluation_id
+            else self.replay
+        )
 
     def get_history(self, _execution_id, _context):
         return [self.baseline]
@@ -80,10 +85,18 @@ class _Evaluations:
 def test_standalone_worker_uses_the_plugin_event_publisher(monkeypatch) -> None:
     """Worker lifecycle events use the generic publisher from extensions."""
     publisher = object()
+    contribution = ReplayExecutionAdapterContribution(
+        "external-runtime", "v1", _WorkerReplayAdapter()
+    )
     calls: list[str] = []
 
     class Registry:
         events = publisher
+
+        class contributions:
+            @staticmethod
+            def replay_execution_adapters():
+                return (contribution,)
 
         def start(self) -> None:
             calls.append("start")
@@ -98,8 +111,9 @@ def test_standalone_worker_uses_the_plugin_event_publisher(monkeypatch) -> None:
         def run_once(self) -> None:
             calls.append("run_once")
 
-    def create_runtime(*, event_publisher):
+    def create_runtime(*, event_publisher, replay_adapter_contributions):
         assert event_publisher is publisher
+        assert replay_adapter_contributions == (contribution,)
         return Runtime()
 
     monkeypatch.setattr(replay_worker_runtime, "create_plugin_registry", Registry)
@@ -112,6 +126,10 @@ def test_standalone_worker_uses_the_plugin_event_publisher(monkeypatch) -> None:
     replay_worker_runtime.main()
 
     assert calls == ["start", "run_once", "stop"]
+
+
+class _WorkerReplayAdapter:
+    name = "external-runtime/v1"
 
 
 def test_worker_wires_runtime_connections_into_async_experiments() -> None:
@@ -136,7 +154,9 @@ def test_worker_wires_a_real_telemetry_collector_into_async_evaluations() -> Non
     )
     evaluation_handler = runtime._worker._executor._handlers[JobType.EVALUATION]
 
-    assert isinstance(evaluation_handler._evaluations._telemetry_collector, TelemetryService)
+    assert isinstance(
+        evaluation_handler._evaluations._telemetry_collector, TelemetryService
+    )
 
 
 def test_worker_dispatches_replay_then_automatically_consumes_evaluation() -> None:
@@ -205,7 +225,9 @@ def test_worker_dispatches_replay_then_automatically_consumes_evaluation() -> No
     assert len(jobs.list_jobs(job_type=JobType.REPLAY_EVALUATION)) == 1
 
 
-def test_controlled_replay_skips_generic_evaluation_and_finalizes_causal_audit() -> None:
+def test_controlled_replay_skips_generic_evaluation_and_finalizes_causal_audit() -> (
+    None
+):
     """Controlled evidence scores belong to Causal Audit, not Replay evaluation."""
 
     evaluation_calls: list[str] = []
@@ -267,6 +289,64 @@ def test_controlled_replay_skips_generic_evaluation_and_finalizes_causal_audit()
     assert finalizations[0].input_refs == {
         "audit_id": "audit-1",
         "trigger_replay_id": "controlled-replay-1",
+    }
+
+
+def test_failed_controlled_replay_still_schedules_causal_audit_finalization() -> None:
+    """Terminal replay failure must reconcile the owning audit, not strand it."""
+    jobs = InMemoryJobRepository()
+    replay = SimpleNamespace(
+        replay_id="controlled-replay-failed",
+        status=ReplayStatus.FAILED,
+        controlled_evidence_intervention=object(),
+        metadata={"causal_audit_id": "audit-failed"},
+    )
+
+    class _ExecutionHandler:
+        def handle(self, job):
+            return JobResult(job.job_id, JobStatus.FAILED, None, "adapter failed")
+
+    class _Replays:
+        def get(self, *_args):
+            return replay
+
+    handler = _AutoEvaluationReplayHandler(
+        _ExecutionHandler(),
+        _Replays(),
+        SimpleNamespace(),
+        "mock",
+        JobApiService(jobs),
+    )
+    job = Job(
+        job_id="replay-job-failed",
+        job_type=JobType.REPLAY_EXECUTION,
+        status=JobStatus.RUNNING,
+        input_refs={"replay_id": replay.replay_id},
+        input_hash="hash",
+        idempotency_key="replay-job-failed",
+        submitted_by="actor-1",
+        attempt_count=1,
+        max_attempts=3,
+        result_ref=None,
+        failure_reason=None,
+        leased_by="worker-1",
+        lease_expires_at=None,
+        heartbeat_at=None,
+        created_at=NOW,
+        updated_at=NOW,
+        started_at=NOW,
+        completed_at=None,
+        execution_context=JobExecutionContext(
+            "org-1", "project-1", "actor-1", "request-1", None
+        ),
+    )
+
+    assert handler.handle(job).status is JobStatus.FAILED
+    finalizations = jobs.list_jobs(job_type=JobType.CAUSAL_AUDIT)
+    assert len(finalizations) == 1
+    assert finalizations[0].input_refs == {
+        "audit_id": "audit-failed",
+        "trigger_replay_id": "controlled-replay-failed",
     }
 
 
@@ -353,7 +433,9 @@ def test_cancellation_is_observed_by_a_claimed_replay_handler() -> None:
 
     assert outcome.status is JobStatus.CANCELLED
     assert adapter.calls == 0
-    assert replays.get("replay-1", "org-1", "project-1").status is ReplayStatus.CANCELLED
+    assert (
+        replays.get("replay-1", "org-1", "project-1").status is ReplayStatus.CANCELLED
+    )
 
 
 def _source() -> WorkflowExecution:

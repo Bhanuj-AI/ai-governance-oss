@@ -10,7 +10,7 @@ belong to the subsequent replay-evaluation job.
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
@@ -34,62 +34,12 @@ from ai_governance.domain.workflow_execution import WorkflowExecution
 from ai_governance.events import EventPublisher, ResourceLifecycleEvent
 from ai_governance.repositories.replay_repository import ReplayRepository
 from ai_governance.services.replay_application_service import ReplaySourceResolver
+from ai_governance.spi.replay import (
+    ReplayExecutionAdapter,
+    ReplayExecutionContext,
+    ReplayInterventionEnvelope,
+)
 from ai_governance.tenancy.domain import TenantContext
-
-
-@dataclass(frozen=True)
-class ReplayExecutionContext:
-    """Immutable inputs supplied to an execution adapter for one job attempt.
-
-    ``new_execution_id`` is reserved by the replay aggregate before adapter
-    invocation. Adapters must return that exact identity and should consult the
-    cancellation token at safe runtime boundaries. ``metadata`` is an adapter
-    extension point; durable lineage is added by the handler after execution.
-    """
-
-    replay_id: str
-    source_execution_id: str
-    new_execution_id: str
-    organization_id: str
-    project_id: str
-    actor_id: str
-    request_id: str
-    correlation_id: str | None
-    attempt: int
-    cancellation_token: ReplayCancellationToken
-    metadata: dict[str, Any]
-    controlled_evidence_intervention: ControlledEvidenceIntervention | None = None
-
-
-class ReplayCancellationToken(Protocol):
-    """Small cooperative-cancellation contract exposed to replay adapters."""
-
-    @property
-    def is_cancelled(self) -> bool: ...
-
-
-class ReplayExecutionAdapter(Protocol):
-    """Adapter boundary for reconstructing one frozen workflow execution.
-
-    Implementations validate replay-specific runtime requirements before
-    running and must return a new ``WorkflowExecution`` with the reserved ID.
-    They never persist the execution or mutate the source; those operations are
-    kept in ``ReplayJobHandler`` so lineage remains consistent across adapters.
-    """
-
-    @property
-    def name(self) -> str: ...
-
-    def validate_configuration(
-        self, source_execution: WorkflowExecution, configuration: ReplayConfiguration
-    ) -> None: ...
-
-    def replay(
-        self,
-        source_execution: WorkflowExecution,
-        configuration: ReplayConfiguration,
-        context: ReplayExecutionContext,
-    ) -> WorkflowExecution: ...
 
 
 class ReplayExecutionAdapterRegistry:
@@ -335,6 +285,9 @@ class ReplayJobHandler:
                         cancellation_token=token,
                         metadata={},
                         controlled_evidence_intervention=replay.controlled_evidence_intervention,
+                        intervention_envelope=_intervention_envelope(
+                            source, replay.controlled_evidence_intervention
+                        ),
                     ),
                 )
             except Exception:
@@ -473,6 +426,54 @@ def _intervention_metadata(
         "counterfactual_evidence_digest": intervention.counterfactual_evidence_digest,
         "intervention_digest": intervention.intervention_digest,
     }
+
+
+def _intervention_envelope(
+    source: WorkflowExecution,
+    intervention: ControlledEvidenceIntervention | None,
+) -> ReplayInterventionEnvelope | None:
+    """Build bounded provenance for an external runtime without evidence values."""
+    if intervention is None or intervention.policy_id is None:
+        return None
+    target = next(
+        (
+            event
+            for event in source.events
+            if isinstance(event, Mapping)
+            and event.get("event_id") == intervention.target_event_id
+        ),
+        None,
+    )
+    external_execution_id = source.metadata.get("external_execution_id")
+    runtime_tool_call_id = target.get("runtime_tool_call_id") if target else None
+    values = (
+        intervention.policy_id,
+        external_execution_id,
+        runtime_tool_call_id,
+        intervention.provider_id,
+        intervention.provider_version,
+        intervention.original_evidence_digest,
+        intervention.counterfactual_evidence_reference,
+        intervention.counterfactual_evidence_digest,
+        intervention.intervention_digest,
+    )
+    if not all(
+        isinstance(value, str) and value.strip() for value in values
+    ) or not isinstance(intervention.policy_version, int):
+        return None
+    return ReplayInterventionEnvelope(
+        policy_id=intervention.policy_id,
+        policy_version=intervention.policy_version,
+        external_execution_id=external_execution_id,
+        runtime_tool_call_id=runtime_tool_call_id,
+        intervention_provider=intervention.provider_id,
+        intervention_provider_version=intervention.provider_version,
+        strategy=intervention.strategy,
+        original_evidence_digest=intervention.original_evidence_digest,
+        counterfactual_reference=intervention.counterfactual_evidence_reference,
+        counterfactual_digest=intervention.counterfactual_evidence_digest,
+        intervention_digest=intervention.intervention_digest,
+    )
 
 
 def _failure_stage(error: Exception) -> ReplayFailureStage:

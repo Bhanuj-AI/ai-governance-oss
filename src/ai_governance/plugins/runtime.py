@@ -16,6 +16,7 @@ DEFAULT_SUPPORTED_EXTENSION_CAPABILITIES = frozenset(
         "notification.send",
         "ontology.write",
         "policy.evaluate",
+        "replay.execute",
         "search.read",
         "settings.read",
     }

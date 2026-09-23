@@ -46,6 +46,14 @@ The domain contract rejects incomplete or mismatched lineage, and persistence
 round-trips that typed record. A partial counterfactual failure fails the audit;
 it never produces a best-effort influence value.
 
+Terminal reconciliation is mandatory. When a controlled Replay succeeds,
+fails, or is cancelled, the Replay worker submits an idempotent Causal Audit
+finalization job. A failed or cancelled Replay moves its still-running audit to
+`FAILED`, retaining the planned counterfactual Replay lineage in diagnostics
+and recording `CONTROLLED_REPLAY_FAILED` or `CONTROLLED_REPLAY_CANCELLED` with
+the persisted Replay failure reason. This prevents a permanent Replay failure
+from leaving an audit indefinitely `RUNNING`.
+
 ## Safety and Eligibility
 
 An audit is eligible only for a succeeded execution with a durable outcome
@@ -132,6 +140,14 @@ For the bundled `structured-json/v1` provider, validation checks:
   `NUMERIC_DELTA`, `NUMERIC_SCALE`, or `REMOVE_OPTIONAL`) with a JSON Pointer
   target; and
 - the provider can enforce the configured schema and its semantic constraints.
+
+For `opaque-reference/v1`, we never resolve protected evidence. A policy
+may either declare a counterfactual-reference namespace for a runtime-attested
+transformation, or, for a fixed `REPLACE` fixture, declare both an opaque
+`counterfactual_reference` and its content `counterfactual_digest`. The latter
+still stores no evidence value: it lets platform prove the approved immutable
+reference while requiring the external runtime to resolve it and verify the
+digest before replay.
 
 Validation is deliberately not a stored lifecycle state: a valid policy
 remains `DRAFT` until activation. **Activate** repeats validation on the
