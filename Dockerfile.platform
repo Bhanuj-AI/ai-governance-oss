@@ -15,8 +15,11 @@ RUN apt-get update && \
         python3-dev && \
     rm -rf /var/lib/apt/lists/*
 
-# Install locked dependencies first so this layer remains cacheable.
+# Install locked dependencies first so this layer remains cacheable.  The lock
+# includes an editable local plugin package, so its source must be present when
+# uv resolves the installation plan.
 COPY pyproject.toml uv.lock ./
+COPY packages/bhanuj-governance-plugin-api/ packages/bhanuj-governance-plugin-api/
 RUN uv sync --frozen --extra inspect --no-install-project
 
 COPY . .
