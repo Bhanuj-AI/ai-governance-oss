@@ -1,8 +1,8 @@
-# BHANUJ
+# BHANUJ - AI Governance Platform
 
-## AI Governance Platform
+## AI Governance Platform (AIGP)
 
-> **Know why an AI action happened, what changed, and whether it is safe to proceed.**
+> **Govern AI actions, test whether evidence actually influenced them, and preserve the proof.**
 
 It is an open-source control plane around AI systems. It records versioned
 assets and runtime evidence, evaluates behaviour, applies deterministic policy,
@@ -10,33 +10,36 @@ and preserves the decision and its lineage—without owning your AI runtime,
 application, or deployment system.
 
 ```text
-Your AI systems → assets + runtime evidence → evaluate → policy → decision + audit trail
+AI runtime → observe → evaluate → govern → intervene → replay → decision + causal evidence
 ```
 
-### Understand BHANUJ - AI Governance Control Platform in 20 seconds
+### Understand BHANUJ AIGP in 20 seconds
 
 Use when your team needs reliable answers to questions such as:
 
+- **Did the evidence actually influence the AI outcome?** Use Causal Audit to
+  apply a governed evidence intervention, run a Controlled Replay in the
+  original runtime, and measure whether the outcome changes—without mutating
+  the original execution.
+- **Why was this AI action approved, rejected, or blocked?** Inspect the
+  policy, evidence, deterministic decision path, and durable lineage.
 - **Which prompt, model, or configuration behaves better?** Run an experiment
   and retain item-level evaluation evidence.
-- **Why was this AI action approved, rejected, or blocked?** Inspect the
-  policy, evidence, and deterministic decision path.
-- **What changed and what does it affect?** Follow the lineage between assets,
-  evaluations, and decisions; use replay to examine historical evidence.
-- **Can we govern AI without replacing our stack?** Connect the runtime and
-  keep applications, frameworks, model providers, and deployments under your
-  ownership.
+- **What changed and what does it affect?** Follow lineage across assets,
+  evaluations, policies, executions, and decisions.
+- **Can we govern AI without replacing our stack?** Keep applications,
+  frameworks, model providers, and deployments under your ownership.
 
 It is **not** model serving, an agent framework, a workflow orchestrator,
 or a generic GRC system. It is the governance layer that makes AI activity
 reviewable, explainable, and auditable.
 
-**Modern AI frameworks help build agents. BHANUJ - AI Governance Control Platform governs the evidence and decisions around them.**
+**Modern AI frameworks help build agents. BHANUJ AIGP governs the evidence and decisions around them.**
 
 > **Enterprise capabilities are under active development. Commercial offerings
 > will be announced as they mature.**
 
-![BHANUJ AI Governance Control Plane](assets/Hero.png)
+![BHANUJ AI Governance Platform](assets/Hero.png)
 
 - [Website](https://governance.bhanuj.ai)
 - [Documentation](https://governance.bhanuj.ai/docs)
@@ -47,7 +50,56 @@ reviewable, explainable, and auditable.
 
 ---
 
-## See AI Governance Control Platform Studio
+## Causal Audit — Did the evidence actually matter?
+
+An agent calling a tool does not prove that the returned evidence influenced
+its decision. AIGP Causal Audit tests that relationship directly.
+
+![AIGP Studio Causal Audit overview](assets/Causal%20Audits.png)
+
+```text
+Observed Execution
+       │
+       │ governed evidence
+       ▼
+Original Outcome
+       │
+       │ Evidence Intervention Policy
+       ▼
+Controlled Replay
+       │
+       ▼
+Replay Outcome
+       │
+       ▼
+Measure Influence
+```
+
+Causal Audit:
+
+- preserves the original execution as immutable evidence
+- applies explicit, versioned Evidence Intervention Policies
+- resolves authorized evidence through the runtime boundary
+- performs Controlled Replay in the runtime that owns execution
+- compares original and replay outcomes
+- produces deterministic classifications such as `EVIDENCE_ALIGNED` or `EVIDENCE_IGNORED`
+- persists policy → intervention → replay → score → audit lineage
+
+It does **not** inspect or claim access to private chain-of-thought.
+
+<table>
+  <tr>
+    <td width="50%"><img src="assets/Controlled%20Replay.png" alt="Controlled Replay compares an observed outcome with a counterfactual outcome" /><br /><strong>Controlled Replay</strong> — apply one approved intervention and measure whether the outcome changes.</td>
+    <td width="50%"><img src="assets/Causal%20Finding%20-%20Evidence%20Aligned.png" alt="Causal Audit finding showing evidence aligned" /><br /><strong>Evidence-Aligned Finding</strong> — preserve a reviewable conclusion with the measured influence.</td>
+  </tr>
+</table>
+
+[Read the Causal Audit documentation](https://governance.bhanuj.ai/docs/causal-audit) ·
+[Run the OpenAI Runtime walkthrough](https://governance.bhanuj.ai/guides/openai-runtime-causal-audit)
+
+---
+
+## AIGP Studio
 
 <table>
   <tr>
@@ -60,7 +112,7 @@ reviewable, explainable, and auditable.
   </tr>
 </table>
 
-## Why AI Governance Control Platform?
+## Why BHANUJ?
 
 AI systems are no longer just about selecting the best model. Teams need to
 answer governance questions such as:
@@ -72,13 +124,13 @@ answer governance questions such as:
 - Can quality regressions automatically block promotion?
 - Can governance remain independent of orchestration frameworks and model vendors?
 
-AI Governance Control Platform provides the governance control plane that answers these questions.
+BHANUJ provides the governance control plane that answers these questions.
 
 ---
 
 ## Core Concepts
 
-Everything in AI Governance Control Platform revolves around five fundamental concepts.
+BHANUJ revolves around five fundamental concepts.
 
 ### Governance Asset
 
@@ -106,7 +158,7 @@ An explainable, auditable outcome generated from evidence and policy.
 
 ![AI Governance Control Platform Architecture](assets/Enterprise%20Architecture%20-%20Marketing.png)
 
-At the product level, AI Governance Control Platform is grouped into five OSS capability domains:
+At the product level, BHANUJ is grouped into five OSS capability domains:
 
 - **Access** — authentication, authorization, multi-tenancy, service identity, and tenant context propagation
 - **Governance** — policies, deterministic decisions, compliance, audit, and governance enforcement
