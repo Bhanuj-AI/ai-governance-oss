@@ -56,9 +56,7 @@ def test_prompt_synchronization_is_idempotent_and_projects_relationships() -> No
         "prompt-1",
         direction="outgoing",
     )
-    assert {
-        relationship.relationship_type for relationship in relationships
-    } == {
+    assert {relationship.relationship_type for relationship in relationships} == {
         RelationshipType.VERSION_OF.value,
         RelationshipType.CREATED_BY.value,
         RelationshipType.OWNED_BY.value,
@@ -104,6 +102,9 @@ def test_model_and_dataset_synchronizers_project_version_entities() -> None:
         creator="model-owner",
         created_at=datetime(2026, 6, 30, tzinfo=UTC),
         status=ModelStatus.ACTIVE,
+        tenant_id="org-tenant",
+        organization_id="org-tenant",
+        project_id="project-governed",
     )
     dataset = Dataset(
         dataset_id="dataset-1",
@@ -118,6 +119,8 @@ def test_model_and_dataset_synchronizers_project_version_entities() -> None:
         creator="dataset-owner",
         created_at=datetime(2026, 6, 30, tzinfo=UTC),
         status=DatasetStatus.FROZEN,
+        organization_id="org-tenant",
+        project_id="project-governed",
     )
     model_repository.save(model)
     dataset_repository.save(dataset)
@@ -133,5 +136,28 @@ def test_model_and_dataset_synchronizers_project_version_entities() -> None:
 
     assert model_result.succeeded is True
     assert dataset_result.succeeded is True
-    assert service.get_entity(EntityType.MODEL_VERSION.value, "model-1")
-    assert service.get_entity(EntityType.DATASET_VERSION.value, "dataset-1")
+    assert service.get_entity(
+        EntityType.MODEL_VERSION.value,
+        "model-1",
+        "org-tenant",
+        "project-governed",
+    )
+    assert service.get_entity(
+        EntityType.DATASET_VERSION.value,
+        "dataset-1",
+        "org-tenant",
+        "project-governed",
+    )
+    assert service.get_entity(EntityType.MODEL_VERSION.value, "model-1") is None
+    model_relationships = service.find_relationships(
+        EntityType.MODEL_VERSION.value,
+        "model-1",
+        direction="outgoing",
+        organization_id="org-tenant",
+        project_id="project-governed",
+    )
+    assert {relationship.relationship_type for relationship in model_relationships} == {
+        RelationshipType.VERSION_OF.value,
+        RelationshipType.CREATED_BY.value,
+        RelationshipType.OWNED_BY.value,
+    }

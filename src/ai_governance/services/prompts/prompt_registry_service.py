@@ -21,6 +21,12 @@ from ai_governance.repositories.prompt_repository import PromptRepository
 from ai_governance.tenancy.domain import TenantContext
 
 
+def _content_hash(template: str | None) -> str | None:
+    if template is None:
+        return None
+    return f"sha256:{sha256(template.encode()).hexdigest()}"
+
+
 class PromptNotFoundError(Exception):
     """
     Raised when a prompt registry operation references an unknown prompt.
@@ -71,6 +77,7 @@ class PromptRegistryService:
         variables: Iterable[str],
         created_by: str,
         context: TenantContext,
+        prompt_id: str | None = None,
     ) -> Prompt:
         """
         Register a new prompt version in DRAFT status.
@@ -81,9 +88,19 @@ class PromptRegistryService:
             version=version,
             context=context,
         )
+        if (
+            prompt_id is not None
+            and self._prompt_repository.find_by_id(
+                prompt_id,
+                context.organization_id,
+                self._project_id(context),
+            )
+            is not None
+        ):
+            raise PromptVersionConflictError(f"Prompt ID '{prompt_id}' already exists.")
 
         prompt = Prompt(
-            prompt_id=self._id_generator(),
+            prompt_id=prompt_id or self._id_generator(),
             name=name,
             version=version,
             template=template,
@@ -91,6 +108,7 @@ class PromptRegistryService:
             created_at=self._clock(),
             created_by=created_by,
             status=PromptStatus.DRAFT,
+            content_hash=_content_hash(template),
             tenant_id=context.organization_id,
             organization_id=context.organization_id,
             project_id=self._project_id(context),
@@ -124,11 +142,12 @@ class PromptRegistryService:
             context=context,
         )
 
+        resolved_template = template if template is not None else source.template
         prompt = Prompt(
             prompt_id=self._id_generator(),
             name=source.name,
             version=version,
-            template=template if template is not None else source.template,
+            template=resolved_template,
             variables=(
                 tuple(variables)
                 if variables is not None
@@ -137,6 +156,7 @@ class PromptRegistryService:
             created_at=self._clock(),
             created_by=created_by,
             status=PromptStatus.DRAFT,
+            content_hash=_content_hash(resolved_template),
             tenant_id=context.organization_id,
             organization_id=context.organization_id,
             project_id=self._project_id(context),

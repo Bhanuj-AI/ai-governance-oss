@@ -76,6 +76,10 @@ class DatasetRegistryService:
         Register a new dataset version in DRAFT status.
         """
 
+        if dataset_id is not None and self._dataset_repository.find_by_id(dataset_id):
+            raise DatasetVersionConflictError(
+                f"Dataset ID '{dataset_id}' already exists."
+            )
         self._ensure_version_available(
             name=name,
             version=version,

@@ -7,7 +7,7 @@ import logging
 import os
 import signal
 import socket
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from time import sleep
 from uuid import uuid4
 
@@ -20,6 +20,7 @@ from ai_governance.domain.jobs import (
     JobType,
 )
 from ai_governance.domain.replay import ReplayStatus
+from ai_governance.evaluation.evaluation_metrics import EvaluationMetricSpec
 from ai_governance.events import EventPublisher
 from ai_governance.plugins import create_plugin_registry
 from ai_governance.plugins.contracts import ReplayExecutionAdapterContribution
@@ -110,6 +111,33 @@ class _AutoEvaluationReplayHandler:
                     replay.metadata.get("evaluation_provider")
                     or self._evaluation_provider
                 ),
+                provider_installation_id=_optional_string(
+                    replay.metadata.get("provider_installation_id")
+                ),
+                metric_specs=_metric_specs(
+                    replay.metadata.get("evaluation_metric_specs")
+                ),
+                drift_threshold_policy=_threshold_policy(
+                    replay.metadata.get("evaluation_drift_threshold_policy")
+                ),
+                baseline_strategy=str(
+                    replay.metadata.get("evaluation_baseline_strategy")
+                    or "LATEST_COMPATIBLE"
+                ),
+                baseline_evaluation_id=_optional_string(
+                    replay.metadata.get("evaluation_baseline_evaluation_id")
+                ),
+                governance_context={
+                    key: replay.metadata[key]
+                    for key in (
+                        "contract_id",
+                        "contract_version",
+                        "contract_fingerprint",
+                        "impact_plan_id",
+                        "impact_plan_revision",
+                    )
+                    if key in replay.metadata
+                },
             )
         # A controlled Replay already has its outcome evaluated by the Causal
         # Audit scorer.  Generic Replay evaluation needs a compatible source
@@ -380,6 +408,48 @@ def _tenant_context(job: Job) -> TenantContext:
         context.submitted_request_id,
         context.correlation_id,
     )
+
+
+def _optional_string(value: object) -> str | None:
+    """Return a non-empty metadata string without inventing a default."""
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _metric_specs(value: object) -> list[EvaluationMetricSpec]:
+    """Decode metric specifications carried by a Replay submission."""
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise TypeError("Replay evaluation metric specs must be a list.")
+    specifications: list[EvaluationMetricSpec] = []
+    for item in value:
+        if not isinstance(item, Mapping):
+            raise TypeError("Replay evaluation metric spec entries must be objects.")
+        specifications.append(
+            EvaluationMetricSpec(
+                name=str(item.get("name") or ""),
+                description=str(item["description"])
+                if item.get("description") is not None
+                else None,
+                threshold=float(item["threshold"])
+                if item.get("threshold") is not None
+                else None,
+                weight=float(item["weight"])
+                if item.get("weight") is not None
+                else None,
+                metadata=dict(item.get("metadata") or {}),
+            )
+        )
+    return specifications
+
+
+def _threshold_policy(value: object) -> dict[str, float] | None:
+    """Keep an absent policy absent so the service selects its normal default."""
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise TypeError("Replay evaluation drift threshold policy must be an object.")
+    return {str(metric): float(threshold) for metric, threshold in value.items()}
 
 
 def main() -> None:

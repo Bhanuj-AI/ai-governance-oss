@@ -341,8 +341,10 @@ def test_local_startup_can_seed_demo_data(
     assert response.json()["governance_statistics"][0]["value"] == 4
     assert policies_response.status_code == 200
     policies = policies_response.json()
-    assert policies[0]["policy_id"] == "policy-release-gate"
-    assert policies[0]["status"] == "ACTIVE"
+    release_gate = next(
+        policy for policy in policies if policy["policy_id"] == "policy-release-gate"
+    )
+    assert release_gate["status"] == "ACTIVE"
     assert jobs_response.status_code == 200
     jobs = jobs_response.json()["jobs"]
     assert len(jobs) == 13

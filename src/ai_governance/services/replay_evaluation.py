@@ -10,13 +10,15 @@ makes worker redelivery safe and prevents completed work from being repeated.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from ai_governance.domain.jobs import Job, JobResult, JobStatus
 from ai_governance.domain.replay import ReplayFailure, ReplayFailureStage, ReplayStatus
 from ai_governance.domain.replay.errors import ReplayBaselineUnavailable
+from ai_governance.evaluation.evaluation_metrics import EvaluationMetricSpec
 from ai_governance.repositories.replay_repository import ReplayRepository
 from ai_governance.repositories.replay_result_repository import ReplayResultRepository
 from ai_governance.services.evaluation_api_service import EvaluationApiService
@@ -159,7 +161,10 @@ class ReplayEvaluationJobHandler:
                     replay.replay_evaluation_id, context
                 )
             else:
-                evaluation_kwargs = {"context": context}
+                evaluation_kwargs: dict[str, Any] = {"context": context}
+                metric_specs = _metric_specs(job.input_refs.get("metric_specs"))
+                if metric_specs:
+                    evaluation_kwargs["metric_specs"] = metric_specs
                 if provider_config:
                     evaluation_kwargs["provider_config"] = provider_config
                 replay_evaluation = self._evaluations.submit_evaluation(
@@ -269,7 +274,7 @@ class ReplayEvaluationJobHandler:
                 f"replay_result:{result.result_id}",
                 None,
             )
-        except Exception as error:  # noqa: BLE001 - job failures must be finalized as failed results.
+        except Exception as error:  # noqa: BLE001 - job failures must be finalized.
             return self._fail(replay, job, error)
 
     def _cancel(self, replay, job: Job) -> JobResult:
@@ -324,3 +329,31 @@ class ReplayEvaluationJobHandler:
             scope.submitted_request_id,
             scope.correlation_id,
         )
+
+
+def _metric_specs(value: object) -> list[EvaluationMetricSpec]:
+    """Rehydrate the immutable metric request captured by Replay submission."""
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise TypeError("Replay evaluation metric_specs must be a list.")
+    specifications: list[EvaluationMetricSpec] = []
+    for item in value:
+        if not isinstance(item, Mapping):
+            raise TypeError("Replay evaluation metric_specs entries must be objects.")
+        specifications.append(
+            EvaluationMetricSpec(
+                name=str(item.get("name") or ""),
+                description=str(item["description"])
+                if item.get("description") is not None
+                else None,
+                threshold=float(item["threshold"])
+                if item.get("threshold") is not None
+                else None,
+                weight=float(item["weight"])
+                if item.get("weight") is not None
+                else None,
+                metadata=dict(item.get("metadata") or {}),
+            )
+        )
+    return specifications

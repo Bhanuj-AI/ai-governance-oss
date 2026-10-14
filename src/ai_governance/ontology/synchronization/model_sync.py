@@ -34,7 +34,12 @@ class ModelOntologySynchronizer(BaseOntologySynchronizer[Model]):
 
     def _synchronize(self, entity: Model) -> SynchronizationResult:
         logical_id = logical_model_id(entity.provider, entity.model_name)
-        actor_id = sync_actor(self._ontology_service, entity.creator)
+        actor_id = sync_actor(
+            self._ontology_service,
+            entity.creator,
+            organization_id=entity.organization_id,
+            project_id=entity.project_id,
+        )
 
         self._ontology_service.create_entity(
             entity_id=logical_id,
@@ -53,6 +58,8 @@ class ModelOntologySynchronizer(BaseOntologySynchronizer[Model]):
                 "source_system": entity.source_system,
                 "source_reference": entity.source_reference,
             },
+            organization_id=entity.organization_id,
+            project_id=entity.project_id,
         )
         self._ontology_service.create_entity(
             entity_id=entity.model_id,
@@ -78,6 +85,8 @@ class ModelOntologySynchronizer(BaseOntologySynchronizer[Model]):
                 "source_system": entity.source_system,
                 "source_reference": entity.source_reference,
             },
+            organization_id=entity.organization_id,
+            project_id=entity.project_id,
         )
 
         relationship_ids = [
@@ -89,6 +98,8 @@ class ModelOntologySynchronizer(BaseOntologySynchronizer[Model]):
                 target_type=EntityType.MODEL_VERSION,
                 target_id=entity.model_id,
                 created_by=entity.creator,
+                organization_id=entity.organization_id,
+                project_id=entity.project_id,
             ),
             sync_relationship(
                 self._ontology_service,
@@ -98,6 +109,8 @@ class ModelOntologySynchronizer(BaseOntologySynchronizer[Model]):
                 target_type=EntityType.MODEL,
                 target_id=logical_id,
                 created_by=entity.creator,
+                organization_id=entity.organization_id,
+                project_id=entity.project_id,
             ),
             sync_relationship(
                 self._ontology_service,
@@ -107,6 +120,8 @@ class ModelOntologySynchronizer(BaseOntologySynchronizer[Model]):
                 target_type=EntityType.ACTOR,
                 target_id=actor_id,
                 created_by=entity.creator,
+                organization_id=entity.organization_id,
+                project_id=entity.project_id,
             ),
             sync_relationship(
                 self._ontology_service,
@@ -116,6 +131,8 @@ class ModelOntologySynchronizer(BaseOntologySynchronizer[Model]):
                 target_type=EntityType.ACTOR,
                 target_id=actor_id,
                 created_by=entity.creator,
+                organization_id=entity.organization_id,
+                project_id=entity.project_id,
             ),
         ]
         supersedes_id = self._sync_supersedes(entity)
@@ -159,4 +176,6 @@ class ModelOntologySynchronizer(BaseOntologySynchronizer[Model]):
             target_type=EntityType.MODEL_VERSION,
             target_id=previous.model_id,
             created_by=entity.creator,
+            organization_id=entity.organization_id,
+            project_id=entity.project_id,
         )

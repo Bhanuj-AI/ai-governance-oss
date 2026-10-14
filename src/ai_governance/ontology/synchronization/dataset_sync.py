@@ -36,7 +36,12 @@ class DatasetOntologySynchronizer(BaseOntologySynchronizer[Dataset]):
 
     def _synchronize(self, entity: Dataset) -> SynchronizationResult:
         logical_id = logical_dataset_id(entity.name)
-        actor_id = sync_actor(self._ontology_service, entity.creator)
+        actor_id = sync_actor(
+            self._ontology_service,
+            entity.creator,
+            organization_id=entity.organization_id,
+            project_id=entity.project_id,
+        )
 
         self._ontology_service.create_entity(
             entity_id=logical_id,
@@ -52,6 +57,8 @@ class DatasetOntologySynchronizer(BaseOntologySynchronizer[Dataset]):
                 "source_system": entity.source_system,
                 "source_reference": entity.source_reference,
             },
+            organization_id=entity.organization_id,
+            project_id=entity.project_id,
         )
         self._ontology_service.create_entity(
             entity_id=entity.dataset_id,
@@ -78,6 +85,8 @@ class DatasetOntologySynchronizer(BaseOntologySynchronizer[Dataset]):
                 "source_system": entity.source_system,
                 "source_reference": entity.source_reference,
             },
+            organization_id=entity.organization_id,
+            project_id=entity.project_id,
         )
 
         relationship_ids = [
@@ -89,6 +98,8 @@ class DatasetOntologySynchronizer(BaseOntologySynchronizer[Dataset]):
                 target_type=EntityType.DATASET_VERSION,
                 target_id=entity.dataset_id,
                 created_by=entity.creator,
+                organization_id=entity.organization_id,
+                project_id=entity.project_id,
             ),
             sync_relationship(
                 self._ontology_service,
@@ -98,6 +109,8 @@ class DatasetOntologySynchronizer(BaseOntologySynchronizer[Dataset]):
                 target_type=EntityType.DATASET,
                 target_id=logical_id,
                 created_by=entity.creator,
+                organization_id=entity.organization_id,
+                project_id=entity.project_id,
             ),
             sync_relationship(
                 self._ontology_service,
@@ -107,6 +120,8 @@ class DatasetOntologySynchronizer(BaseOntologySynchronizer[Dataset]):
                 target_type=EntityType.ACTOR,
                 target_id=actor_id,
                 created_by=entity.creator,
+                organization_id=entity.organization_id,
+                project_id=entity.project_id,
             ),
             sync_relationship(
                 self._ontology_service,
@@ -116,6 +131,8 @@ class DatasetOntologySynchronizer(BaseOntologySynchronizer[Dataset]):
                 target_type=EntityType.ACTOR,
                 target_id=actor_id,
                 created_by=entity.creator,
+                organization_id=entity.organization_id,
+                project_id=entity.project_id,
             ),
         ]
         supersedes_id = self._sync_supersedes(entity)
@@ -156,4 +173,6 @@ class DatasetOntologySynchronizer(BaseOntologySynchronizer[Dataset]):
             target_type=EntityType.DATASET_VERSION,
             target_id=previous.dataset_id,
             created_by=entity.creator,
+            organization_id=entity.organization_id,
+            project_id=entity.project_id,
         )

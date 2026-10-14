@@ -13,7 +13,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any, Protocol
 from uuid import uuid4
@@ -56,6 +56,7 @@ from ai_governance.domain.replay.errors import (
     ReplayUnauthorized,
 )
 from ai_governance.domain.workflow_execution import WorkflowExecution
+from ai_governance.evaluation.evaluation_metrics import EvaluationMetricSpec
 from ai_governance.events import EventPublisher, ResourceLifecycleEvent
 from ai_governance.repositories.replay_repository import (
     ReplayListFilters,
@@ -548,6 +549,9 @@ class ReplayApplicationService:
         *,
         evaluation_provider: str | None = None,
         provider_installation_id: str | None = None,
+        metric_specs: Sequence[EvaluationMetricSpec] | None = None,
+        drift_threshold_policy: Mapping[str, float] | None = None,
+        governance_context: Mapping[str, object] | None = None,
         baseline_strategy: str = "LATEST_COMPATIBLE",
         baseline_evaluation_id: str | None = None,
     ) -> Replay:
@@ -614,7 +618,20 @@ class ReplayApplicationService:
                         else "",
                         "baseline_strategy": strategy,
                         "explicit_baseline_evaluation_id": baseline_evaluation_id,
-                        "drift_threshold_policy": self._drift_threshold_policy(context),
+                        "metric_specs": [
+                            {
+                                "name": metric.name,
+                                "description": metric.description,
+                                "threshold": metric.threshold,
+                                "weight": metric.weight,
+                                "metadata": dict(metric.metadata),
+                            }
+                            for metric in (metric_specs or ())
+                        ],
+                        "drift_threshold_policy": dict(drift_threshold_policy)
+                        if drift_threshold_policy is not None
+                        else self._drift_threshold_policy(context),
+                        "governance_context": dict(governance_context or {}),
                         "organization_id": context.organization_id,
                         "project_id": context.project_id or "",
                         "request_id": context.request_id,
