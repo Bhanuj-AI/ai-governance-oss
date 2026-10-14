@@ -612,6 +612,7 @@ tool payloads.
 | `POST` | `/api/v1/agent-executions` | Start or idempotently replay an observed execution. |
 | `POST` | `/api/v1/agent-executions/{execution_id}/events` | Append one ordered runtime event. |
 | `POST` | `/api/v1/agent-executions/{execution_id}/complete` | Set a terminal status: `SUCCEEDED`, `FAILED`, or `CANCELLED`. |
+| `POST` | `/api/v1/runtime-action-authorizations/authorize` | Persist an ALLOW or DENY for one registered external runtime operation; never execute that operation. |
 | `GET` | `/api/v1/agent-executions/agents` | List observed agents with tenant-scoped pagination and aggregated execution counts. |
 | `GET` | `/api/v1/agent-executions` | List execution summaries with optional agent, status, provider, date, cursor, and limit filters. |
 | `GET` | `/api/v1/agent-executions/{execution_id}` | Read one execution and its event timeline. |
@@ -628,6 +629,11 @@ tool payloads.
 The complete click-by-click workflow, payload examples, lifecycle guide,
 settings overview, and troubleshooting steps are in the
 [Agents Runtime Operator Guide](../tutorials/agents-runtime-operator-guide.md).
+Use [Runtime Action Authorization](../tutorials/runtime-action-authorization.md)
+for the framework-neutral protected-operation contract, policy convention,
+evidence correlation, and time-of-check/time-of-use boundary. The
+[LangGraph guide](../tutorials/langgraph-runtime-action-authorization.md)
+contains its tool-wrapper integration example.
 See [Causal Audit](../architecture/CAUSAL_AUDIT.md) for eligibility, scoring,
 methodology versioning, and limitations.
 

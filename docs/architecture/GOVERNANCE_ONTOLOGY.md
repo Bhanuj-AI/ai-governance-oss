@@ -3,7 +3,7 @@
 ## Status
 
 - Ontology name: `ai_governance.governance`
-- Ontology version: `1.0.0`
+- Ontology version: `1.2.0`
 - Stability: accepted semantic contract
 - Applies to: REST APIs, MCP tools, governance intelligence, repositories, and future graph projections
 - Storage dependency: none
@@ -311,7 +311,7 @@ Every first-class entity has these semantic attributes unless explicitly noted:
   `PROMOTE`, `ARCHIVE`, `INVESTIGATE`
 - Supported target types: `Candidate`, `Experiment`, `PromptVersion`,
   `ModelVersion`, `DatasetVersion`, `EvaluationRun`, `EvaluationResult`,
-  `Job`, and `GovernanceDecision`
+  `Job`, `AgentExecution`, and `GovernanceDecision`
 - Validation rules: decision ID and reason are required; at least one evidence
   reference is required; target IDs, policy references, evidence references,
   producer IDs, and supersession references cannot be blank; provenance
@@ -403,6 +403,22 @@ Every first-class entity has these semantic attributes unless explicitly noted:
   the same record
 - Current projection: `MCPExecutionAuditRecord`
 
+### AgentExecution
+
+- Identity: `execution_id`
+- Ownership: authenticated external runtime identity within its tenant and
+  project scope
+- Lifecycle: received, running, succeeded, failed, cancelled
+- Immutable attributes: execution identity, runtime provider, external
+  execution identity, ordered append-only runtime events, tenant scope, and
+  authorization decision evidence
+- Mutable attributes: execution status and completion timestamp
+- Versioning rules: runtime action authorization appends a distinct
+  `RUNTIME_ACTION_AUTHORIZATION` event. It does not claim a tool executed;
+  a later `TOOL_CALL` event may causally reference the decision.
+- Current projection: append-only `AgentExecutionEvent` persistence; ontology
+  projection is not required for runtime authorization enforcement
+
 ### WorkflowExecution
 
 - Identity: `execution_id`
@@ -486,7 +502,7 @@ All relationships are directed. Cardinality is stated from source to target.
 | `RANKS` | LeaderboardEntry | Candidate | many to 1 | Durable | Entry must reference exactly one Candidate. |
 | `RECOMMENDS` | Leaderboard, GovernanceInsight | Candidate | 0 or 1 to many | Derived or durable when accepted | Recommendation must carry evidence and reason. |
 | `GENERATED_FROM` | Job; Leaderboard; GovernanceInsight/Report; GovernanceDecision; Replay | Job inputs: EvaluationResult, EvaluationRun, Leaderboard, DriftAnalysis, GovernanceReport; Leaderboard: EvaluationRun; Insight/Report: EvaluationResult, EvaluationRun, Job, Candidate, Experiment, MCPAuditRecord; Decision: EvaluationResult, Metric, DriftAnalysis, Leaderboard, Job, MCPAuditRecord, Policy; Replay: EvaluationResult | many to many | Durable | Source-specific evidence contract. This prevents invalid broad pairs while retaining decision metric and policy provenance. |
-| `DECIDES_ON` | GovernanceDecision | Candidate, Experiment, PromptVersion, ModelVersion, DatasetVersion, EvaluationRun, EvaluationResult, Job, GovernanceDecision | many to 1 | Durable | Decision target must be an ontology entity. |
+| `DECIDES_ON` | GovernanceDecision | Candidate, Experiment, PromptVersion, ModelVersion, DatasetVersion, EvaluationRun, EvaluationResult, Job, AgentExecution, GovernanceDecision | many to 1 | Durable | Decision target must be an ontology entity. |
 | `APPROVED_BY` | GovernanceDecision | Actor | many to 1 | Durable | Required for approved decisions. |
 | `REJECTED_BY` | GovernanceDecision | Actor | many to 1 | Durable | Required for rejected decisions. |
 | `BLOCKED_BY` | Candidate, Experiment, Job, GovernanceDecision | Policy, GovernanceDecision, DriftAnalysis | many to many | Durable while active | Block reason must be traceable to evidence or policy. |

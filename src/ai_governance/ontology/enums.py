@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-ONTOLOGY_VERSION = "1.1.0"
+ONTOLOGY_VERSION = "1.2.0"
 
 
 class EntityType(str, Enum):
@@ -36,6 +36,7 @@ class EntityType(str, Enum):
     GOVERNANCE_DECISION = "GovernanceDecision"
     POLICY = "Policy"
     JOB = "Job"
+    AGENT_EXECUTION = "AgentExecution"
     MCP_AUDIT_RECORD = "MCPAuditRecord"
     WORKFLOW_EXECUTION = "WorkflowExecution"
     REPLAY_INVESTIGATION = "ReplayInvestigation"

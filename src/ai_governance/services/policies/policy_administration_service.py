@@ -450,11 +450,7 @@ class PolicyAdministrationService:
         definition = self._get_definition(policy_id)
         versions = self._repository.list_versions(policy_id)
         active = next(
-            (
-                version
-                for version in versions
-                if version.status == PolicyStatus.ACTIVE
-            ),
+            (version for version in versions if version.status == PolicyStatus.ACTIVE),
             None,
         )
         draft = next(
@@ -544,9 +540,7 @@ class PolicyAdministrationService:
     ) -> PolicyDefinition:
         definition = self._repository.get_definition(policy_id)
         if definition is None:
-            raise PolicyAdminNotFoundError(
-                f"Policy '{policy_id}' does not exist."
-            )
+            raise PolicyAdminNotFoundError(f"Policy '{policy_id}' does not exist.")
         return definition
 
     def _get_version(
@@ -577,9 +571,7 @@ class PolicyAdministrationService:
         self,
         definition: PolicyDefinition,
     ) -> None:
-        self._repository.save_definition(
-            replace(definition, updated_at=self._clock())
-        )
+        self._repository.save_definition(replace(definition, updated_at=self._clock()))
 
     def _list_item(
         self,
@@ -587,11 +579,7 @@ class PolicyAdministrationService:
     ) -> PolicyListItem:
         versions = self._repository.list_versions(definition.policy_id)
         active = next(
-            (
-                version
-                for version in versions
-                if version.status == PolicyStatus.ACTIVE
-            ),
+            (version for version in versions if version.status == PolicyStatus.ACTIVE),
             None,
         )
         draft = next(
@@ -607,7 +595,9 @@ class PolicyAdministrationService:
         target_types = visible.target_types if visible is not None else ()
         highest_priority = min((rule.priority for rule in rules), default=None)
         primary_effect = rules[0].effect.value if rules else None
-        status = visible.status.value if visible is not None else PolicyStatus.DRAFT.value
+        status = (
+            visible.status.value if visible is not None else PolicyStatus.DRAFT.value
+        )
 
         return PolicyListItem(
             policy_id=definition.policy_id,
@@ -659,8 +649,7 @@ class PolicyAdministrationService:
                 schema_field = field_map.get(condition.field_path)
                 if (
                     schema_field is not None
-                    and condition.operator.value
-                    not in schema_field.supported_operators
+                    and condition.operator.value not in schema_field.supported_operators
                 ):
                     raise PolicyValidationFailedError(
                         "Operator is not supported for policy field "
@@ -722,6 +711,40 @@ def _policy_schema() -> PolicySchema:
     )
     return PolicySchema(
         target_types=(
+            PolicySchemaTargetType(
+                value=DecisionTargetType.AGENT_EXECUTION.value,
+                label="Agent execution",
+                description=(
+                    "Bounded runtime action, resource, actor, and contextual "
+                    "facts used before a protected tool operation."
+                ),
+                fields=(
+                    PolicySchemaField(
+                        field_path="action.id",
+                        label="Registered action",
+                        value_type="string",
+                        supported_operators=string_ops,
+                    ),
+                    PolicySchemaField(
+                        field_path="resource.type",
+                        label="Resource type",
+                        value_type="string",
+                        supported_operators=string_ops,
+                    ),
+                    PolicySchemaField(
+                        field_path="resource.reference",
+                        label="Resource reference",
+                        value_type="string",
+                        supported_operators=string_ops,
+                    ),
+                    PolicySchemaField(
+                        field_path="actor.id",
+                        label="Authenticated actor",
+                        value_type="string",
+                        supported_operators=string_ops,
+                    ),
+                ),
+            ),
             PolicySchemaTargetType(
                 value=DecisionTargetType.CANDIDATE.value,
                 label="Candidate",

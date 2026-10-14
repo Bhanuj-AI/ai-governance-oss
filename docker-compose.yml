@@ -44,7 +44,7 @@ services:
 
       # Local Keycloak identity and demo tenant
       AI_GOVERNANCE_TENANCY_ENABLED: "true"
-      AI_GOVERNANCE_AUTH_MODE: keycloak
+      AI_GOVERNANCE_AUTH_MODE: keycloak # development OR keycloak
       AI_GOVERNANCE_OIDC_ISSUER: "http://keycloak.localhost:18080/realms/ai-governance"
       AI_GOVERNANCE_DEVELOPMENT_ACTOR_ID: local-admin
       AI_GOVERNANCE_DEVELOPMENT_ACTOR_NAME: Local Administrator

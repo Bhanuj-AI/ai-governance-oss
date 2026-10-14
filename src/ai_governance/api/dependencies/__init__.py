@@ -102,6 +102,7 @@ __all__ = [
     "get_replay_result_repository",
     "get_replay_source_resolver",
     "get_runtime_finding_repository",
+    "get_runtime_action_authorization_service",
 ]
 
 # -- Providers ---------------------------------------------------------------
@@ -201,6 +202,9 @@ from ai_governance.api.dependencies.repositories import (
     get_prompt_repository,
     get_replay_repository,
     get_replay_result_repository,
+)
+from ai_governance.api.dependencies.runtime_action_authorization import (
+    get_runtime_action_authorization_service,
 )
 from ai_governance.api.dependencies.runtime_finding_repo import (
     get_runtime_finding_repository,

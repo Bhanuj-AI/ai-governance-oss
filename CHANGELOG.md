@@ -7,7 +7,17 @@ This project follows Semantic Versioning.
 
 ---
 
-## Unreleased
+### Unreleased
+
+### [1.2.0] - 2026-10-14
+
+- Added versioned, deterministic runtime-action authorization for external
+  agents. The tenant-bound REST contract persists one ALLOW or DENY decision
+  per registered operation through append-only execution evidence; it reuses
+  active policy versions, applies deny-overrides, and never executes a tool.
+- Added a fail-closed AIGP HTTP client and LangGraph-oriented tool wrapper,
+  including decision-to-tool evidence correlation and a SQLite mutation
+  reference test.
 
 ### [1.1.7] - 2026-09-23
 

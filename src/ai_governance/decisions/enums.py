@@ -43,6 +43,7 @@ class DecisionTargetType(str, Enum):
     EVALUATION_RUN = "EvaluationRun"
     EVALUATION_RESULT = "EvaluationResult"
     JOB = "Job"
+    AGENT_EXECUTION = "AgentExecution"
     GOVERNANCE_DECISION = "GovernanceDecision"
 
 
