@@ -9,6 +9,8 @@ This project follows Semantic Versioning.
 
 ### Unreleased
 
+### [1.2.1] - 2026-10-14
+
 - Added idempotent canonical governed-demo assets, seeded through the normal
   model, prompt, dataset, and policy services with deterministic identities
   and content lineage.
