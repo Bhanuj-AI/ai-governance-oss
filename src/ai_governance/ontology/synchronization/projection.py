@@ -95,7 +95,7 @@ class RecordingOntologyService:
     ) -> None:
         self._repository = InMemoryOntologyGraphRepository()
         self._validator = RelationshipValidator()
-        self._written_entity_keys: set[tuple[str, str]] = set()
+        self._written_entity_keys: set[tuple[str, str, str, str]] = set()
         self._written_relationship_ids: set[str] = set()
         for entity in seed_entities:
             self._repository.save_entity(entity)
@@ -113,7 +113,12 @@ class RecordingOntologyService:
                 (
                     entity
                     for key, entity in self._repository._entities.items()
-                    if (entity.entity_type, entity.entity_id)
+                    if (
+                        entity.organization_id,
+                        entity.project_id,
+                        entity.entity_type,
+                        entity.entity_id,
+                    )
                     in self._written_entity_keys
                 ),
                 key=lambda item: (item.entity_type, item.entity_id),
@@ -149,6 +154,8 @@ class RecordingOntologyService:
         immutable_attributes: Mapping[str, Any] | None = None,
         mutable_attributes: Mapping[str, Any] | None = None,
         metadata: Mapping[str, Any] | None = None,
+        organization_id: str = "org_default",
+        project_id: str = "project_default",
     ) -> OntologyEntity:
         """
         Record an entity write using the same shape as `OntologyService`.
@@ -164,9 +171,18 @@ class RecordingOntologyService:
             immutable_attributes=immutable_attributes or {},
             mutable_attributes=mutable_attributes or {},
             metadata=metadata or {},
+            organization_id=organization_id,
+            project_id=project_id,
         )
         self._repository.save_entity(entity)
-        self._written_entity_keys.add((entity.entity_type, entity.entity_id))
+        self._written_entity_keys.add(
+            (
+                entity.organization_id,
+                entity.project_id,
+                entity.entity_type,
+                entity.entity_id,
+            )
+        )
         return entity
 
     def save_entity(self, entity: OntologyEntity) -> OntologyEntity:
@@ -175,15 +191,29 @@ class RecordingOntologyService:
         """
 
         saved = self._repository.save_entity(entity)
-        self._written_entity_keys.add((entity.entity_type, entity.entity_id))
+        self._written_entity_keys.add(
+            (
+                entity.organization_id,
+                entity.project_id,
+                entity.entity_type,
+                entity.entity_id,
+            )
+        )
         return saved
 
     def get_entity(
         self,
         entity_type: str,
         entity_id: str,
+        organization_id: str = "org_default",
+        project_id: str = "project_default",
     ) -> OntologyEntity | None:
-        return self._repository.get_entity(entity_type, entity_id)
+        return self._repository.get_entity(
+            entity_type,
+            entity_id,
+            organization_id,
+            project_id,
+        )
 
     def create_relationship(
         self,
@@ -198,6 +228,8 @@ class RecordingOntologyService:
         created_at: datetime | None = None,
         ontology_version: str = ONTOLOGY_VERSION,
         metadata: Mapping[str, Any] | None = None,
+        organization_id: str = "org_default",
+        project_id: str = "project_default",
     ) -> OntologyRelationship:
         """
         Record a relationship write after validating ontology direction.
@@ -214,6 +246,8 @@ class RecordingOntologyService:
             created_at=created_at or _now(),
             ontology_version=ontology_version,
             metadata=metadata or {},
+            organization_id=organization_id,
+            project_id=project_id,
         )
         self._validator.validate(relationship)
         self._repository.save_relationship(relationship)
@@ -226,12 +260,16 @@ class RecordingOntologyService:
         entity_id: str,
         direction: str | None = None,
         relationship_type: str | None = None,
+        organization_id: str = "org_default",
+        project_id: str = "project_default",
     ) -> list[OntologyRelationship]:
         return self._repository.find_relationships(
             entity_type,
             entity_id,
             direction=direction,
             relationship_type=relationship_type,
+            organization_id=organization_id,
+            project_id=project_id,
         )
 
     def record_existing_relationship(
@@ -364,6 +402,8 @@ def _semantic_entity_payload(entity: OntologyEntity) -> dict[str, Any]:
         "owner": entity.owner,
         "lifecycle": entity.lifecycle,
         "ontology_version": entity.ontology_version,
+        "organization_id": entity.organization_id,
+        "project_id": entity.project_id,
         "immutable_attributes": _canonical(entity.immutable_attributes),
         "mutable_attributes": _canonical(entity.mutable_attributes),
         "metadata": _semantic_metadata(entity.metadata),
@@ -379,6 +419,8 @@ def _semantic_relationship_payload(
         "source_entity_type": relationship.source_entity_type,
         "target_entity_id": relationship.target_entity_id,
         "target_entity_type": relationship.target_entity_type,
+        "organization_id": relationship.organization_id,
+        "project_id": relationship.project_id,
         "created_by": relationship.created_by,
         "ontology_version": relationship.ontology_version,
         "metadata": _semantic_metadata(relationship.metadata),

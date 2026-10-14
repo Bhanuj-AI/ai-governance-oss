@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
+from typing import Annotated
 
 from fastapi import Depends, Request
 
@@ -39,8 +40,10 @@ def get_settings_repository():
 
 
 def get_configuration_service(
-    request: Request = None,
-    event_publisher: EventPublisher = Depends(get_event_publisher),
+    request: Request = None,  # type: ignore[assignment]
+    event_publisher: Annotated[
+        EventPublisher | None, Depends(get_event_publisher)
+    ] = None,
 ) -> ConfigurationService:
     """Build configuration updates with the application-scoped event publisher."""
     return ConfigurationService(

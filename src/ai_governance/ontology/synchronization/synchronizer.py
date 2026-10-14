@@ -404,6 +404,8 @@ def sync_actor(
     actor: str,
     *,
     actor_type: str = "user",
+    organization_id: str = "org_default",
+    project_id: str = "project_default",
 ) -> str:
     """
     Ensure an Actor ontology entity exists and return its entity ID.
@@ -420,6 +422,8 @@ def sync_actor(
             "actor_type": actor_type,
         },
         metadata={"synchronized_from": "ontology_sync"},
+        organization_id=organization_id,
+        project_id=project_id,
     )
     return entity_id
 
@@ -434,6 +438,8 @@ def sync_relationship(
     target_id: str,
     created_by: str,
     metadata: dict[str, Any] | None = None,
+    organization_id: str = "org_default",
+    project_id: str = "project_default",
 ) -> str:
     """
     Create a relationship with a deterministic ID and return that ID.
@@ -450,6 +456,8 @@ def sync_relationship(
         source_id,
         direction="outgoing",
         relationship_type=relationship_type_value,
+        organization_id=organization_id,
+        project_id=project_id,
     ):
         if (
             existing.target_entity_type == target_type_value
@@ -480,6 +488,8 @@ def sync_relationship(
         target_id=target_id,
         created_by=created_by,
         metadata=metadata or {"synchronized_from": "ontology_sync"},
+        organization_id=organization_id,
+        project_id=project_id,
     )
     return relationship_id
 

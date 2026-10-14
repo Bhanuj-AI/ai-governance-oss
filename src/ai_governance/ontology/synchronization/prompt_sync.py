@@ -38,7 +38,12 @@ class PromptOntologySynchronizer(BaseOntologySynchronizer[Prompt]):
 
     def _synchronize(self, entity: Prompt) -> SynchronizationResult:
         logical_id = logical_prompt_id(entity.name)
-        actor_id = sync_actor(self._ontology_service, entity.created_by)
+        actor_id = sync_actor(
+            self._ontology_service,
+            entity.created_by,
+            organization_id=entity.organization_id,
+            project_id=entity.project_id,
+        )
 
         self._ontology_service.create_entity(
             entity_id=logical_id,
@@ -54,6 +59,8 @@ class PromptOntologySynchronizer(BaseOntologySynchronizer[Prompt]):
                 "source_system": entity.source_system,
                 "source_reference": entity.source_reference,
             },
+            organization_id=entity.organization_id,
+            project_id=entity.project_id,
         )
         self._ontology_service.create_entity(
             entity_id=entity.prompt_id,
@@ -78,6 +85,8 @@ class PromptOntologySynchronizer(BaseOntologySynchronizer[Prompt]):
                 "source_system": entity.source_system,
                 "source_reference": entity.source_reference,
             },
+            organization_id=entity.organization_id,
+            project_id=entity.project_id,
         )
 
         relationship_ids = [
@@ -89,6 +98,8 @@ class PromptOntologySynchronizer(BaseOntologySynchronizer[Prompt]):
                 target_type=EntityType.PROMPT_VERSION,
                 target_id=entity.prompt_id,
                 created_by=entity.created_by,
+                organization_id=entity.organization_id,
+                project_id=entity.project_id,
             ),
             sync_relationship(
                 self._ontology_service,
@@ -98,6 +109,8 @@ class PromptOntologySynchronizer(BaseOntologySynchronizer[Prompt]):
                 target_type=EntityType.PROMPT,
                 target_id=logical_id,
                 created_by=entity.created_by,
+                organization_id=entity.organization_id,
+                project_id=entity.project_id,
             ),
             sync_relationship(
                 self._ontology_service,
@@ -107,6 +120,8 @@ class PromptOntologySynchronizer(BaseOntologySynchronizer[Prompt]):
                 target_type=EntityType.ACTOR,
                 target_id=actor_id,
                 created_by=entity.created_by,
+                organization_id=entity.organization_id,
+                project_id=entity.project_id,
             ),
             sync_relationship(
                 self._ontology_service,
@@ -116,6 +131,8 @@ class PromptOntologySynchronizer(BaseOntologySynchronizer[Prompt]):
                 target_type=EntityType.ACTOR,
                 target_id=actor_id,
                 created_by=entity.created_by,
+                organization_id=entity.organization_id,
+                project_id=entity.project_id,
             ),
         ]
         supersedes_id = self._sync_supersedes(entity)
@@ -156,4 +173,6 @@ class PromptOntologySynchronizer(BaseOntologySynchronizer[Prompt]):
             target_type=EntityType.PROMPT_VERSION,
             target_id=previous.prompt_id,
             created_by=entity.created_by,
+            organization_id=entity.organization_id,
+            project_id=entity.project_id,
         )

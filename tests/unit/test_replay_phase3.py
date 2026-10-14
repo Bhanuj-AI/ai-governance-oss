@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from ai_governance.domain.jobs import Job, JobStatus
 from ai_governance.domain.replay import ReplayStatus
 from ai_governance.domain.workflow_execution import WorkflowExecution
+from ai_governance.evaluation.evaluation_metrics import EvaluationMetricSpec
 from ai_governance.repositories.in_memory_replay_repository import (
     InMemoryReplayRepository,
 )
@@ -23,7 +24,11 @@ class _Source:
 
 
 class _Jobs:
+    def __init__(self) -> None:
+        self.submission = None
+
     def submit(self, _submission):
+        self.submission = _submission
         return type("Submitted", (), {"job_id": "evaluation-job-1"})()
 
 
@@ -32,7 +37,7 @@ class _Evaluations:
         self.baseline = baseline
         self.replay = None
 
-    def submit_evaluation(self, execution, _provider, context=None):
+    def submit_evaluation(self, execution, _provider, context=None, metric_specs=None):
         from ai_governance.domain.evaluation_result import (
             EvaluationMetric,
             EvaluationResult,
@@ -43,6 +48,7 @@ class _Evaluations:
             [EvaluationMetric("quality", 0.9)], organization_id=context.organization_id,
             project_id=context.project_id or "",
         )
+        self.metric_specs = metric_specs
         return self.replay
 
     def get_evaluation(self, evaluation_id, _context):
@@ -63,10 +69,11 @@ def test_replay_evaluation_job_completes_and_persists_immutable_result() -> None
     source = _execution("source-1")
     replay_execution = _execution("replay-execution-1")
     replays = InMemoryReplayRepository()
+    jobs = _Jobs()
     app = ReplayApplicationService(
         replays,
         _Source(source),
-        job_service=_Jobs(),
+        job_service=jobs,
         clock=lambda: now,
         id_generator=lambda: "replay-1",
     )
@@ -75,24 +82,44 @@ def test_replay_evaluation_job_completes_and_persists_immutable_result() -> None
     replay = replays.update(replay.mark_running(1, now), replay.version)
     replay = replays.update(replay.reserve_replay_execution_id("replay-execution-1", now), replay.version)
     replay = replays.update(replay.mark_execution_completed(now), replay.version)
-    evaluating = app.evaluate(replay.replay_id, context, evaluation_provider="provider")
+    evaluating = app.evaluate(
+        replay.replay_id,
+        context,
+        evaluation_provider="provider",
+        metric_specs=[EvaluationMetricSpec("quality", threshold=0.8)],
+        drift_threshold_policy={"quality": 0.05},
+        governance_context={"contract_fingerprint": "sha256:contract"},
+    )
     baseline = EvaluationResult("baseline-1", "source-1", "provider", "1", [EvaluationMetric("quality", 0.8)], organization_id="organization-1", project_id="project-1")
     results = InMemoryReplayResultRepository()
-    handler = ReplayEvaluationJobHandler(replay_repository=replays, result_repository=results, source_resolver=_Source(source, replay_execution), evaluation_api_service=_Evaluations(baseline), clock=lambda: now, id_generator=lambda: "result-1")
+    evaluations = _Evaluations(baseline)
+    handler = ReplayEvaluationJobHandler(
+        replay_repository=replays,
+        result_repository=results,
+        source_resolver=_Source(source, replay_execution),
+        evaluation_api_service=evaluations,
+        clock=lambda: now,
+        id_generator=lambda: "result-1",
+    )
 
-    outcome = handler.handle(_job(now))
+    outcome = handler.handle(_job(now, jobs.submission.input_refs))
 
     assert outcome.status is JobStatus.SUCCEEDED
     completed = replays.get(evaluating.replay_id, "organization-1", "project-1")
     assert completed.status is ReplayStatus.COMPLETED
     assert results.get_by_replay(completed.replay_id, "organization-1", "project-1").result_id == "result-1"
+    assert evaluations.metric_specs == [EvaluationMetricSpec("quality", threshold=0.8)]
+    assert jobs.submission.input_refs["drift_threshold_policy"] == {"quality": 0.05}
+    assert jobs.submission.input_refs["governance_context"] == {
+        "contract_fingerprint": "sha256:contract"
+    }
 
 
 def _execution(execution_id: str) -> WorkflowExecution:
     return WorkflowExecution("workflow-1", execution_id, "workflow", "1", "COMPLETED", {"x": 1}, {}, [], "organization-1", "project-1")
 
 
-def _job(now: datetime) -> Job:
+def _job(now: datetime, input_refs: dict[str, object] | None = None) -> Job:
     from ai_governance.domain.jobs import JobExecutionContext, JobType
 
-    return Job("evaluation-job-1", JobType.REPLAY_EVALUATION, JobStatus.RUNNING, {"replay_id": "replay-1", "evaluation_provider": "provider", "baseline_strategy": "LATEST_COMPATIBLE"}, "hash", "key", "actor-1", 1, 3, None, None, None, None, None, now, now, now, None, JobExecutionContext("organization-1", "project-1", "actor-1", "request-1"))
+    return Job("evaluation-job-1", JobType.REPLAY_EVALUATION, JobStatus.RUNNING, input_refs or {"replay_id": "replay-1", "evaluation_provider": "provider", "baseline_strategy": "LATEST_COMPATIBLE"}, "hash", "key", "actor-1", 1, 3, None, None, None, None, None, now, now, now, None, JobExecutionContext("organization-1", "project-1", "actor-1", "request-1"))

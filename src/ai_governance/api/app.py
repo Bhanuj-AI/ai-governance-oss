@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from collections.abc import AsyncIterator, Iterable
@@ -108,7 +109,12 @@ def _configure_application_logging(log_level: str, log_format: str = "json") -> 
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_api_settings()
     if settings.auto_seed_demo_data:
-        seed_demo_data_for_app(app)
+        # Registry services are synchronous application services and preserve
+        # lifecycle-event delivery with ``asyncio.run`` when invoked outside
+        # an event loop.  Lifespan is async, so execute this local-only seed
+        # in its own worker thread rather than bypassing service events or
+        # attempting to nest an event loop.
+        await asyncio.to_thread(seed_demo_data_for_app, app)
     extension_registry: PluginRegistry = app.state.extension_registry
     extension_registry.start()
     replay_worker = None

@@ -76,7 +76,12 @@ def test_policy_synchronizer_projects_active_policy_identity_and_lifecycle() -> 
         repository.get_definition("claims-release-gate")
     )
 
-    policy = ontology.get_entity(EntityType.POLICY.value, "claims-release-gate")
+    policy = ontology.get_entity(
+        EntityType.POLICY.value,
+        "claims-release-gate",
+        "org-1",
+        "project-1",
+    )
     assert result.succeeded is True
     assert policy is not None
     assert policy.lifecycle == "ACTIVE"
@@ -99,8 +104,8 @@ def test_policy_projection_removes_policy_missing_evidence_from_decision_graph()
     policy_service.create_policy(
         name="Claims release gate",
         description="Approve claims candidates with sufficient relevance.",
-        organization_id="org-1",
-        project_id="project-1",
+        organization_id="org_default",
+        project_id="project_default",
         category="PROMPT_SAFETY",
         owner="claims-ai-release-engineering",
         created_by="governance-admin",

@@ -6,11 +6,13 @@ import os
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
-from fastapi import FastAPI  # type: ignore
+from fastapi import FastAPI, Request  # type: ignore
 
+from ai_governance.api.demo_canonical_assets import seed_canonical_impact_demo_assets
 from ai_governance.api.dependencies import (
+    get_dataset_registry_service,
     get_dataset_repository,
     get_evaluation_repository,
     get_evaluation_run_repository,
@@ -20,11 +22,13 @@ from ai_governance.api.dependencies import (
     get_job_repository,
     get_leaderboard_repository,
     get_mcp_audit_log,
+    get_model_registry_service,
     get_model_repository,
     get_ontology_graph_query_repository,
     get_ontology_graph_query_service,
     get_ontology_graph_repository,
     get_policy_administration_repository,
+    get_prompt_registry_service,
     get_prompt_repository,
     get_provider_registry,
     get_replay_execution_catalog,
@@ -32,6 +36,10 @@ from ai_governance.api.dependencies import (
     get_replay_result_repository,
     get_replay_source_resolver,
 )
+from ai_governance.api.dependencies.events import get_event_publisher
+from ai_governance.api.dependencies.ontology import get_ontology_sync_event_publisher
+from ai_governance.api.dependencies.policies import get_policy_administration_service
+from ai_governance.api.dependencies.settings_control import get_configuration_service
 from ai_governance.datasets import (
     dataset_object_store_from_environment,
     dataset_object_uri,
@@ -121,10 +129,21 @@ def seed_demo_data_for_app(app: FastAPI) -> tuple[str, ...]:
     job_repository = _resolve_dependency(app, get_job_repository)
     audit_log = _resolve_dependency(app, get_mcp_audit_log)
     graph_query_service = _resolve_graph_query_service(app)
+    model_registry = _resolve_model_registry_service(app, model_repository)
+    prompt_registry = _resolve_prompt_registry_service(app, prompt_repository)
+    dataset_registry = _resolve_dataset_registry_service(app, dataset_repository)
+    policy_service = _resolve_policy_administration_service(app, policy_repository)
 
     seed_demo_ontology_graph(graph_repository)
     organization_id = os.getenv("AI_GOVERNANCE_BOOTSTRAP_ORGANIZATION_ID", "org_default")
     project_id = os.getenv("AI_GOVERNANCE_BOOTSTRAP_PROJECT_ID", "project_default")
+    seed_canonical_impact_demo_assets(
+        models=model_registry,
+        prompts=prompt_registry,
+        datasets=dataset_registry,
+        policies=policy_service,
+        context=TenantContext(organization_id, project_id, "demo-seed", "demo-seed"),
+    )
     policy_id = seed_demo_policy_administration(
         policy_repository,
         organization_id=organization_id,
@@ -352,7 +371,8 @@ def _seed_demo_source_evaluation(
                 "synthetic_fixture": True,
                 "purpose": "replay_source_baseline",
             },
-            created_at=execution.created_at + timedelta(minutes=1),
+            created_at=(execution.created_at or datetime.now(UTC))
+            + timedelta(minutes=1),
             organization_id=organization_id,
             project_id=project_id,
         )
@@ -1194,6 +1214,72 @@ def _resolve_graph_query_service(app: FastAPI) -> OntologyGraphQueryService:
         get_ontology_graph_query_repository,
     )
     return get_ontology_graph_query_service(query_repository)
+
+
+def _resolve_policy_administration_service(app: FastAPI, policy_repository: Any) -> Any:
+    """Build the existing policy service outside FastAPI request injection."""
+    override = app.dependency_overrides.get(get_policy_administration_service)
+    if override is not None:
+        return override()
+    return get_policy_administration_service(
+        policy_repository,
+        _resolve_dependency(app, get_ontology_sync_event_publisher),
+    )
+
+
+def _resolve_event_publisher(app: FastAPI) -> Any:
+    """Resolve the app-scoped event publisher without a request dependency."""
+    override = app.dependency_overrides.get(get_event_publisher)
+    if override is not None:
+        return override()
+    return app.state.extension_registry.events
+
+
+def _resolve_configuration_service(app: FastAPI) -> Any:
+    """Build the normal configuration service for lifespan-owned seeding."""
+    override = app.dependency_overrides.get(get_configuration_service)
+    if override is not None:
+        return override()
+    return get_configuration_service(
+        cast(Request, None),
+        _resolve_event_publisher(app),
+    )
+
+
+def _resolve_model_registry_service(app: FastAPI, model_repository: Any) -> Any:
+    """Build the ordinary model registry without invoking ``Depends`` directly."""
+    override = app.dependency_overrides.get(get_model_registry_service)
+    if override is not None:
+        return override()
+    return get_model_registry_service(
+        model_repository,
+        _resolve_dependency(app, get_ontology_sync_event_publisher),
+        _resolve_event_publisher(app),
+        _resolve_configuration_service(app),
+    )
+
+
+def _resolve_prompt_registry_service(app: FastAPI, prompt_repository: Any) -> Any:
+    """Build the ordinary prompt registry without invoking ``Depends`` directly."""
+    override = app.dependency_overrides.get(get_prompt_registry_service)
+    if override is not None:
+        return override()
+    return get_prompt_registry_service(
+        prompt_repository,
+        _resolve_dependency(app, get_ontology_sync_event_publisher),
+        _resolve_event_publisher(app),
+    )
+
+
+def _resolve_dataset_registry_service(app: FastAPI, dataset_repository: Any) -> Any:
+    """Build the ordinary dataset registry without invoking ``Depends`` directly."""
+    override = app.dependency_overrides.get(get_dataset_registry_service)
+    if override is not None:
+        return override()
+    return get_dataset_registry_service(
+        dataset_repository,
+        _resolve_dependency(app, get_ontology_sync_event_publisher),
+    )
 
 
 def _resolve_dependency(

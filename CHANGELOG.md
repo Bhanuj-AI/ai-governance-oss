@@ -9,6 +9,16 @@ This project follows Semantic Versioning.
 
 ### Unreleased
 
+### [1.2.1] - 2026-10-14
+
+- Added idempotent canonical governed-demo assets, seeded through the normal
+  model, prompt, dataset, and policy services with deterministic identities
+  and content lineage.
+- Extended replay job persistence to retain metric specifications, drift
+  thresholds, and bounded governance context across asynchronous execution.
+- Scoped ontology projection and reconciliation to the originating
+  organization and project, including those scopes in semantic fingerprints.
+
 ### [1.2.0] - 2026-10-14
 
 - Added versioned, deterministic runtime-action authorization for external

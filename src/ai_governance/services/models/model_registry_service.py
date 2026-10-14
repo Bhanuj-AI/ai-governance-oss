@@ -90,12 +90,23 @@ class ModelRegistryService:
         provider_model_id: str | None = None,
         cost: dict[str, float] | None = None,
         latency: float | None = None,
+        model_id: str | None = None,
     ) -> Model:
         """
         Register a new model version in DRAFT status.
         """
 
         self._ensure_managed_provider_allowed(provider, context)
+        if (
+            model_id is not None
+            and self._model_repository.find_by_id(
+                model_id,
+                context.organization_id,
+                self._project_id(context),
+            )
+            is not None
+        ):
+            raise ModelVersionConflictError(f"Model ID '{model_id}' already exists.")
         self._ensure_version_available(
             provider=provider,
             model_name=model_name,
@@ -108,7 +119,7 @@ class ModelRegistryService:
         self._validate_runtime_defaults(parameters, runtime_capabilities)
 
         model = Model(
-            model_id=self._id_generator(),
+            model_id=model_id or self._id_generator(),
             provider=provider,
             model_name=model_name,
             version=version,

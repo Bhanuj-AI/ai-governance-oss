@@ -78,19 +78,37 @@ class OntologyService:
         self,
         entity_type: str,
         entity_id: str,
+        organization_id: str = "org_default",
+        project_id: str = "project_default",
     ) -> OntologyEntity | None:
         """
         Return one ontology entity by type and ID.
         """
 
-        return self._repository.get_entity(entity_type, entity_id)
+        return self._repository.get_entity(
+            entity_type,
+            entity_id,
+            organization_id,
+            project_id,
+        )
 
-    def delete_entity(self, entity_type: str, entity_id: str) -> None:
+    def delete_entity(
+        self,
+        entity_type: str,
+        entity_id: str,
+        organization_id: str = "org_default",
+        project_id: str = "project_default",
+    ) -> None:
         """
         Delete one ontology entity through the repository abstraction.
         """
 
-        self._repository.delete_entity(entity_type, entity_id)
+        self._repository.delete_entity(
+            entity_type,
+            entity_id,
+            organization_id,
+            project_id,
+        )
 
     def save_relationship(
         self,
@@ -159,55 +177,94 @@ class OntologyService:
     def get_relationship(
         self,
         relationship_id: str,
+        organization_id: str = "org_default",
+        project_id: str = "project_default",
     ) -> OntologyRelationship | None:
         """
         Return one ontology relationship by ID.
         """
 
-        return self._repository.get_relationship(relationship_id)
+        return self._repository.get_relationship(
+            relationship_id,
+            organization_id,
+            project_id,
+        )
 
-    def delete_relationship(self, relationship_id: str) -> None:
+    def delete_relationship(
+        self,
+        relationship_id: str,
+        organization_id: str = "org_default",
+        project_id: str = "project_default",
+    ) -> None:
         """
         Delete one ontology relationship by ID.
         """
 
-        self._repository.delete_relationship(relationship_id)
+        self._repository.delete_relationship(
+            relationship_id,
+            organization_id,
+            project_id,
+        )
 
     def find_upstream(
         self,
         entity_type: str,
         entity_id: str,
         depth: int = 1,
+        organization_id: str = "org_default",
+        project_id: str = "project_default",
     ) -> list[OntologyEntity]:
         """
         Resolve upstream lineage for an entity.
         """
 
-        return self._repository.find_upstream(entity_type, entity_id, depth)
+        return self._repository.find_upstream(
+            entity_type,
+            entity_id,
+            depth,
+            organization_id,
+            project_id,
+        )
 
     def find_downstream(
         self,
         entity_type: str,
         entity_id: str,
         depth: int = 1,
+        organization_id: str = "org_default",
+        project_id: str = "project_default",
     ) -> list[OntologyEntity]:
         """
         Resolve downstream impact for an entity.
         """
 
-        return self._repository.find_downstream(entity_type, entity_id, depth)
+        return self._repository.find_downstream(
+            entity_type,
+            entity_id,
+            depth,
+            organization_id,
+            project_id,
+        )
 
     def find_neighbors(
         self,
         entity_type: str,
         entity_id: str,
         depth: int = 1,
+        organization_id: str = "org_default",
+        project_id: str = "project_default",
     ) -> list[OntologyEntity]:
         """
         Resolve neighborhood traversal for an entity.
         """
 
-        return self._repository.find_neighbors(entity_type, entity_id, depth)
+        return self._repository.find_neighbors(
+            entity_type,
+            entity_id,
+            depth,
+            organization_id,
+            project_id,
+        )
 
     def find_relationships(
         self,
@@ -215,6 +272,8 @@ class OntologyService:
         entity_id: str,
         direction: str | None = None,
         relationship_type: str | None = None,
+        organization_id: str = "org_default",
+        project_id: str = "project_default",
     ) -> list[OntologyRelationship]:
         """
         Return relationships connected to an entity with optional filters.
@@ -225,6 +284,8 @@ class OntologyService:
             entity_id,
             direction=direction,
             relationship_type=relationship_type,
+            organization_id=organization_id,
+            project_id=project_id,
         )
 
     def _require_entity(

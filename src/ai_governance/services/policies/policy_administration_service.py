@@ -205,6 +205,7 @@ class PolicyAdministrationService:
     def create_policy(
         self,
         *,
+        policy_id: str | None = None,
         name: str,
         description: str | None,
         organization_id: str,
@@ -217,7 +218,13 @@ class PolicyAdministrationService:
         metadata: Mapping[str, Any],
     ) -> PolicyDetail:
         now = self._clock()
-        policy_id = self._id_generator()
+        policy_id = policy_id or self._id_generator()
+        try:
+            self._get_definition(policy_id)
+        except PolicyAdminNotFoundError:
+            pass
+        else:
+            raise PolicyConflictError(f"Policy ID '{policy_id}' already exists.")
         definition = PolicyDefinition(
             policy_id=policy_id,
             organization_id=organization_id,
@@ -485,6 +492,11 @@ class PolicyAdministrationService:
     ) -> PolicyVersion:
         self._get_definition(policy_id)
         return self._get_version(policy_id, version)
+
+    def get_policy_definition(self, policy_id: str) -> PolicyDefinition:
+        """Return the canonical policy identity for read-only projections."""
+
+        return self._get_definition(policy_id)
 
     def simulate_version(
         self,

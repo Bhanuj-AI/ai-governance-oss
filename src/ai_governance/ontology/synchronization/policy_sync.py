@@ -48,7 +48,12 @@ class PolicyOntologySynchronizer(BaseOntologySynchronizer[PolicyDefinition]):
             if latest_version is not None
             else "DRAFT"
         )
-        actor_id = sync_actor(self._ontology_service, entity.created_by)
+        actor_id = sync_actor(
+            self._ontology_service,
+            entity.created_by,
+            organization_id=entity.organization_id,
+            project_id=entity.project_id,
+        )
 
         self._ontology_service.create_entity(
             entity_id=entity.policy_id,
@@ -81,6 +86,8 @@ class PolicyOntologySynchronizer(BaseOntologySynchronizer[PolicyDefinition]):
                 else 0,
             },
             metadata={"synchronized_from": "policy_administration"},
+            organization_id=entity.organization_id,
+            project_id=entity.project_id,
         )
 
         relationship_ids = (
@@ -92,6 +99,8 @@ class PolicyOntologySynchronizer(BaseOntologySynchronizer[PolicyDefinition]):
                 target_type=EntityType.ACTOR,
                 target_id=actor_id,
                 created_by=entity.created_by,
+                organization_id=entity.organization_id,
+                project_id=entity.project_id,
             ),
             sync_relationship(
                 self._ontology_service,
@@ -101,6 +110,8 @@ class PolicyOntologySynchronizer(BaseOntologySynchronizer[PolicyDefinition]):
                 target_type=EntityType.ACTOR,
                 target_id=actor_id,
                 created_by=entity.created_by,
+                organization_id=entity.organization_id,
+                project_id=entity.project_id,
             ),
         )
         return SynchronizationResult(
