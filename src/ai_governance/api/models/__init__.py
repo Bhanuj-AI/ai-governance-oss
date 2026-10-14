@@ -194,6 +194,12 @@ from ai_governance.api.models.replay import (
     ReplayResultResponse,
     ReplaySubmitResponse,
 )
+from ai_governance.api.models.runtime_action_authorization import (
+    RuntimeActionAuthorizationRequestBody,
+    RuntimeActionAuthorizationResponse,
+    RuntimeActionResourceRequest,
+    RuntimeActionResourceResponse,
+)
 from ai_governance.api.models.runtime_connection import (
     DiscoveredRuntimeModelResponse,
     RuntimeConnectionCreateRequest,
@@ -358,6 +364,10 @@ __all__ = [
     "ReplayResponse",
     "ReplayResultResponse",
     "ReplaySubmitResponse",
+    "RuntimeActionAuthorizationRequestBody",
+    "RuntimeActionAuthorizationResponse",
+    "RuntimeActionResourceRequest",
+    "RuntimeActionResourceResponse",
     "RuntimeConnectionCreateRequest",
     "RuntimeConnectionProviderResponse",
     "RuntimeConnectionResponse",

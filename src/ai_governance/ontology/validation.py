@@ -169,6 +169,7 @@ DECISION_TARGET_TYPES = (
     EntityType.EVALUATION_RUN,
     EntityType.EVALUATION_RESULT,
     EntityType.JOB,
+    EntityType.AGENT_EXECUTION,
     EntityType.GOVERNANCE_DECISION,
 )
 

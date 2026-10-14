@@ -531,6 +531,8 @@ graph explorer, or governance decision index.
 - [AI Governance Control Platform Studio](docs/ontology/governance-graph-console.md)
 - [End-to-End Local Tutorial](docs/tutorials/end-to-end-local.md)
 - [Agents Runtime Operator Guide](docs/tutorials/agents-runtime-operator-guide.md)
+- [Runtime Action Authorization](docs/tutorials/runtime-action-authorization.md)
+- [LangGraph Runtime Action Authorization](docs/tutorials/langgraph-runtime-action-authorization.md)
 - [Causal Audit Architecture](docs/architecture/CAUSAL_AUDIT.md)
 - [Agent Evidence Interoperability and Causal Replay](docs/architecture/AGENT_EVIDENCE_INTEROPERABILITY.md)
 - [Producer Integration Guide](docs/tutorials/producer-integration.md)

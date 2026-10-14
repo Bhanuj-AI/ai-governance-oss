@@ -21,6 +21,7 @@ class EventType(str, Enum):
     EXECUTION_STARTED = "EXECUTION_STARTED"
     MODEL_CALL = "MODEL_CALL"
     TOOL_CALL = "TOOL_CALL"
+    RUNTIME_ACTION_AUTHORIZATION = "RUNTIME_ACTION_AUTHORIZATION"
     WORKFLOW_STEP = "WORKFLOW_STEP"
     GOVERNANCE_DECISION = "GOVERNANCE_DECISION"
     EVALUATION = "EVALUATION"
@@ -47,9 +48,7 @@ class WorkflowStepLifecycle(str, Enum):
     FAILED = "FAILED"
 
 
-_SOURCE_KIND_PATTERN = re.compile(
-    r"^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$"
-)
+_SOURCE_KIND_PATTERN = re.compile(r"^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$")
 _WORKFLOW_STEP_FIELD_MAX_LENGTH = 256
 _TOOL_CALL_CONTEXT_FIELD_MAX_LENGTH = 256
 _TOOL_CALL_CONTEXT_MAX_DEPENDENCIES = 64
@@ -81,7 +80,10 @@ class WorkflowStep:
                     f"{name} must not exceed {_WORKFLOW_STEP_FIELD_MAX_LENGTH} characters."
                 )
         if self.parent_step_id is not None:
-            if not isinstance(self.parent_step_id, str) or not self.parent_step_id.strip():
+            if (
+                not isinstance(self.parent_step_id, str)
+                or not self.parent_step_id.strip()
+            ):
                 raise ValueError("parent_step_id must not be blank.")
             if len(self.parent_step_id) > _WORKFLOW_STEP_FIELD_MAX_LENGTH:
                 raise ValueError(
@@ -192,6 +194,7 @@ _PROHIBITED_KEYS = frozenset(
 # Schema versions supported .
 _SUPPORTED_SCHEMA_VERSIONS = frozenset({"1"})
 
+
 def _find_prohibited_key_in_value(value: Any, path: str = "") -> str | None:
     """Recursively search for prohibited keys nested inside dicts/lists.
 
@@ -212,8 +215,6 @@ def _find_prohibited_key_in_value(value: Any, path: str = "") -> str | None:
             if result is not None:
                 return result
     return None
-
-
 
 
 @dataclass(frozen=True)

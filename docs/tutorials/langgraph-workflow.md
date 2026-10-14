@@ -56,3 +56,8 @@ EXECUTION_COMPLETED
 It contains zero `TOOL_CALL` events because this example performs no external
 tool invocation. Its business result remains `Decision: APPROVED`; unavailable
 AI Governance Control Plane instrumentation must not change that result.
+
+For a consequential tool operation, use the fail-closed authorization wrapper
+described in [LangGraph Runtime Action Authorization](langgraph-runtime-action-authorization.md).
+The authorization decision is distinct from the later `TOOL_CALL` evidence and
+does not itself claim that the tool executed.

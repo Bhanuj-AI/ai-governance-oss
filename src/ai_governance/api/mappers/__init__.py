@@ -7,6 +7,9 @@ from ai_governance.api.mappers.governance_mapper import GovernanceApiMapper
 from ai_governance.api.mappers.insight_mapper import GovernanceInsightApiMapper
 from ai_governance.api.mappers.job_mapper import JobApiMapper
 from ai_governance.api.mappers.mcp_audit_mapper import MCPAuditApiMapper
+from ai_governance.api.mappers.runtime_action_authorization_mapper import (
+    RuntimeActionAuthorizationApiMapper,
+)
 
 __all__ = [
     "AuditApiMapper",
@@ -18,4 +21,5 @@ __all__ = [
     "GovernanceInsightApiMapper",
     "JobApiMapper",
     "MCPAuditApiMapper",
+    "RuntimeActionAuthorizationApiMapper",
 ]

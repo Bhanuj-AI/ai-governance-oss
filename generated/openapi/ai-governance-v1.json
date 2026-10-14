@@ -2927,6 +2927,7 @@
           "EvaluationRun",
           "EvaluationResult",
           "Job",
+          "AgentExecution",
           "GovernanceDecision"
         ],
         "title": "DecisionTargetType",
@@ -10831,6 +10832,254 @@
           "permission_model_version"
         ],
         "title": "RoleDefinitionResponse",
+        "type": "object"
+      },
+      "RuntimeActionAuthorizationRequestBody": {
+        "additionalProperties": false,
+        "description": "Versioned request for one external runtime operation.",
+        "properties": {
+          "action_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Action Id",
+            "type": "string"
+          },
+          "context": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            },
+            "title": "Context",
+            "type": "object"
+          },
+          "correlation_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correlation Id"
+          },
+          "execution_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Execution Id",
+            "type": "string"
+          },
+          "expected_policy_version": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Policy Version"
+          },
+          "idempotency_key": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "policy_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policy Id"
+          },
+          "resource": {
+            "$ref": "#/components/schemas/RuntimeActionResourceRequest"
+          },
+          "schema_version": {
+            "const": "runtime-action-authorization/v1",
+            "default": "runtime-action-authorization/v1",
+            "title": "Schema Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "execution_id",
+          "action_id",
+          "resource",
+          "idempotency_key"
+        ],
+        "title": "RuntimeActionAuthorizationRequestBody",
+        "type": "object"
+      },
+      "RuntimeActionAuthorizationResponse": {
+        "properties": {
+          "action_id": {
+            "title": "Action Id",
+            "type": "string"
+          },
+          "actor_id": {
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "correlation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correlation Id"
+          },
+          "decision_at": {
+            "format": "date-time",
+            "title": "Decision At",
+            "type": "string"
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": "string"
+          },
+          "execution_id": {
+            "title": "Execution Id",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "ALLOW",
+              "DENY"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "policy_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policy Id"
+          },
+          "policy_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policy Version"
+          },
+          "reason_code": {
+            "title": "Reason Code",
+            "type": "string"
+          },
+          "request_fingerprint": {
+            "title": "Request Fingerprint",
+            "type": "string"
+          },
+          "resource": {
+            "$ref": "#/components/schemas/RuntimeActionResourceResponse"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "decision_id",
+          "outcome",
+          "reason_code",
+          "decision_at",
+          "expires_at",
+          "execution_id",
+          "action_id",
+          "resource",
+          "actor_id",
+          "idempotency_key",
+          "request_fingerprint"
+        ],
+        "title": "RuntimeActionAuthorizationResponse",
+        "type": "object"
+      },
+      "RuntimeActionResourceRequest": {
+        "additionalProperties": false,
+        "description": "Opaque resource reference; never include a tool payload or output.",
+        "properties": {
+          "resource_reference": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Resource Reference",
+            "type": "string"
+          },
+          "resource_type": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Resource Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_type",
+          "resource_reference"
+        ],
+        "title": "RuntimeActionResourceRequest",
+        "type": "object"
+      },
+      "RuntimeActionResourceResponse": {
+        "properties": {
+          "resource_reference": {
+            "title": "Resource Reference",
+            "type": "string"
+          },
+          "resource_type": {
+            "title": "Resource Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_type",
+          "resource_reference"
+        ],
+        "title": "RuntimeActionResourceResponse",
         "type": "object"
       },
       "RuntimeConnectionCreateRequest": {
@@ -38002,6 +38251,166 @@
         "x-ai-governance-visibility": "operator"
       }
     },
+    "/api/v1/runtime-action-authorizations/authorize": {
+      "post": {
+        "description": "Evaluate and persist an authoritative ALLOW or DENY for exactly one registered operation. This endpoint never executes the operation; external runtimes must fail closed unless the returned ALLOW is still valid for the same execution, actor, action, and resource.",
+        "operationId": "authorize_runtime_action_api_v1_runtime_action_authorizations_authorize_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-AI-Governance-Organization-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Ai-Governance-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AI-Governance-Project-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Ai-Governance-Project-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Request-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Request-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Correlation-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuntimeActionAuthorizationRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeActionAuthorizationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Authorize one external runtime action",
+        "tags": [
+          "Runtime action authorization"
+        ],
+        "x-ai-governance-visibility": "operator"
+      }
+    },
     "/api/v1/runtime-connections": {
       "get": {
         "operationId": "list_runtime_connections_api_v1_runtime_connections_get",
@@ -40619,6 +41028,10 @@
     },
     {
       "description": "Authenticated operator endpoints.",
+      "name": "Runtime action authorization"
+    },
+    {
+      "description": "Authenticated operator endpoints.",
       "name": "Runtime findings"
     },
     {
@@ -40663,6 +41076,7 @@
         "Replays",
         "Reports",
         "Runtime Connections",
+        "Runtime action authorization",
         "Runtime findings",
         "Settings"
       ]
