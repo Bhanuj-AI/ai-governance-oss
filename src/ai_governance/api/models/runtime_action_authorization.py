@@ -1,4 +1,4 @@
-"""REST transport models for runtime action authorization v1."""
+"""REST transport models for runtime action authorization v2."""
 
 from __future__ import annotations
 
@@ -59,13 +59,19 @@ class RuntimeActionAuthorizationRequestBody(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["runtime-action-authorization/v1"] = (
+    schema_version: Literal["runtime-action-authorization/v2"] = (
         RUNTIME_ACTION_AUTHORIZATION_SCHEMA_VERSION
     )
     execution_id: str = Field(min_length=1, max_length=128)
     correlation_id: str | None = Field(default=None, min_length=1, max_length=128)
     action_id: str = Field(min_length=1, max_length=128)
     resource: RuntimeActionResourceRequest
+    delegation_id: str | None = Field(default=None, min_length=1, max_length=128)
+    delegation_version: str | None = Field(default=None, min_length=1, max_length=128)
+    delegation_digest: str | None = Field(
+        default=None, pattern=r"^sha256:[0-9a-f]{64}$"
+    )
+    tool_arguments_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
     context: dict[str, str | int | float | bool] = Field(default_factory=dict)
     idempotency_key: str = Field(min_length=1, max_length=128)
     policy_id: str | None = Field(default=None, min_length=1, max_length=128)
@@ -78,6 +84,8 @@ class RuntimeActionAuthorizationRequestBody(BaseModel):
         "correlation_id",
         "action_id",
         "idempotency_key",
+        "delegation_id",
+        "delegation_version",
         "policy_id",
         "expected_policy_version",
     )
@@ -112,6 +120,17 @@ class RuntimeActionAuthorizationRequestBody(BaseModel):
     def expected_version_requires_policy(self) -> RuntimeActionAuthorizationRequestBody:
         if self.expected_policy_version is not None and self.policy_id is None:
             raise ValueError("expected_policy_version requires policy_id.")
+        delegation = (
+            self.delegation_id,
+            self.delegation_version,
+            self.delegation_digest,
+        )
+        if any(value is not None for value in delegation) and any(
+            value is None for value in delegation
+        ):
+            raise ValueError(
+                "delegation_id, delegation_version, and delegation_digest are required together."
+            )
         return self
 
     def to_domain(self) -> RuntimeActionAuthorizationRequest:
@@ -121,6 +140,10 @@ class RuntimeActionAuthorizationRequestBody(BaseModel):
             correlation_id=self.correlation_id,
             action_id=self.action_id,
             resource=self.resource.to_domain(),
+            delegation_id=self.delegation_id,
+            delegation_version=self.delegation_version,
+            delegation_digest=self.delegation_digest,
+            tool_arguments_digest=self.tool_arguments_digest,
             context=self.context,
             idempotency_key=self.idempotency_key,
             policy_id=self.policy_id,
@@ -149,3 +172,8 @@ class RuntimeActionAuthorizationResponse(BaseModel):
     actor_id: str
     idempotency_key: str
     request_fingerprint: str
+    delegation_id: str | None = None
+    delegation_version: str | None = None
+    delegation_digest: str | None = None
+    tool_arguments_digest: str | None = None
+    evaluated_policies: list[dict[str, str]] = Field(default_factory=list)

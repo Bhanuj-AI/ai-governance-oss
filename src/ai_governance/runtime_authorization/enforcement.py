@@ -51,6 +51,8 @@ class LangGraphOperationAuthorizer:
     def require_allow(
         self,
         request: RuntimeActionAuthorizationRequest,
+        *,
+        actual_tool_arguments_digest: str,
     ) -> RuntimeActionAuthorizationDecision:
         """Return only a still-valid, operation-bound ALLOW or raise.
 
@@ -74,4 +76,9 @@ class LangGraphOperationAuthorizer:
                 if decision.outcome.value == "DENY"
                 else "INVALID_AUTHORIZATION_DECISION"
             )
+        if (
+            request.tool_arguments_digest != actual_tool_arguments_digest
+            or decision.tool_arguments_digest != actual_tool_arguments_digest
+        ):
+            raise ProtectedOperationBlocked("TOOL_ARGUMENTS_MISMATCH")
         return decision

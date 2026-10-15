@@ -61,6 +61,7 @@ from ai_governance.api.routers import (
     replays_router,
     reports_router,
     runtime_action_authorization_router,
+    runtime_action_delegation_router,
     runtime_connections_router,
     runtime_findings_router,
     settings_router,
@@ -204,6 +205,7 @@ def create_app(*, plugins: Iterable[AIGovernancePlugin] = ()) -> FastAPI:
         provider_installations_router,
         runtime_connections_router,
         runtime_action_authorization_router,
+        runtime_action_delegation_router,
         prompts_router,
         models_router,
         ontology_graph_router,
@@ -273,6 +275,12 @@ def create_app(*, plugins: Iterable[AIGovernancePlugin] = ()) -> FastAPI:
     app.include_router(
         runtime_action_authorization_router,
         dependencies=[Depends(enforce_permission(Permission.AGENT_EXECUTION_INGEST))],
+    )
+    app.include_router(
+        runtime_action_delegation_router,
+        dependencies=[
+            Depends(enforce_permission(Permission.RUNTIME_ACTION_DELEGATION_ISSUE))
+        ],
     )
     app.include_router(
         prompts_router,

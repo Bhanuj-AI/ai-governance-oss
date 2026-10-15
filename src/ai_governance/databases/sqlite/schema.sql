@@ -820,6 +820,32 @@ WHERE idempotency_key IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_agent_execution_event_actor
 ON agent_execution_event(organization_id, project_id, execution_id, actor_id);
 
+-- Immutable runtime grants, issued separately from runtime credentials.
+CREATE TABLE IF NOT EXISTS runtime_action_delegation (
+    delegation_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
+    project_id TEXT NOT NULL DEFAULT '',
+    version TEXT NOT NULL,
+    execution_id TEXT NOT NULL,
+    issuer_id TEXT NOT NULL,
+    runtime_actor_id TEXT NOT NULL,
+    permissions_json TEXT NOT NULL,
+    issued_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    contract_digest TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL,
+    status TEXT NOT NULL,
+    revoked_at TEXT,
+    revoked_by TEXT,
+    revocation_reference TEXT,
+    schema_version TEXT NOT NULL,
+    PRIMARY KEY (organization_id, project_id, delegation_id),
+    UNIQUE (organization_id, project_id, idempotency_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_runtime_action_delegation_execution
+ON runtime_action_delegation(organization_id, project_id, execution_id);
+
 -- Runtime ontology projection state — durable outside Neo4j.
 CREATE TABLE IF NOT EXISTS runtime_ontology_projection (
     execution_id TEXT NOT NULL,

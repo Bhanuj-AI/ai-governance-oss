@@ -40,6 +40,9 @@ from ai_governance.api.routers.reports import router as reports_router
 from ai_governance.api.routers.runtime_action_authorization import (
     router as runtime_action_authorization_router,
 )
+from ai_governance.api.routers.runtime_action_delegation import (
+    router as runtime_action_delegation_router,
+)
 from ai_governance.api.routers.runtime_connections import (
     router as runtime_connections_router,
 )
@@ -79,6 +82,7 @@ __all__ = [
     "replays_router",
     "reports_router",
     "runtime_action_authorization_router",
+    "runtime_action_delegation_router",
     "runtime_connections_router",
     "runtime_findings_router",
     "settings_router",

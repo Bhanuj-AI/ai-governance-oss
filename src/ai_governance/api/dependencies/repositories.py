@@ -249,6 +249,18 @@ def get_agent_execution_repository() -> Any:
 
 
 @lru_cache(maxsize=1)
+def get_runtime_action_delegation_repository() -> Any:
+    """Create immutable delegation storage through its configured factory."""
+
+    from ai_governance.repositories.factories import (
+        RuntimeActionDelegationRepositoryFactory,
+    )
+    from ai_governance.settings import load_settings
+
+    return RuntimeActionDelegationRepositoryFactory(load_settings()).create()
+
+
+@lru_cache(maxsize=1)
 def get_causal_audit_repository() -> Any:
     """Create the tenant-scoped causal-audit repository."""
     from ai_governance.repositories.factories import CausalAuditRepositoryFactory

@@ -55,6 +55,7 @@ class Permission(str, Enum):
     REPLAY_RESULT_READ = "replay.result.read"
     AGENT_EXECUTION_INGEST = "agent_execution.ingest"
     AGENT_EXECUTION_READ = "agent_execution.read"
+    RUNTIME_ACTION_DELEGATION_ISSUE = "runtime_action_delegation.issue"
     RUNTIME_FINDING_READ = "runtime_finding.read"
     RUNTIME_FINDING_DETECT = "runtime_finding.detect"
     RUNTIME_FINDING_RECONCILE = "runtime_finding.reconcile"
@@ -138,6 +139,7 @@ _governance_admin = frozenset(
         Permission.SETTINGS_MANAGE,
         Permission.AGENT_EXECUTION_INGEST,
         Permission.AGENT_EXECUTION_READ,
+        Permission.RUNTIME_ACTION_DELEGATION_ISSUE,
         Permission.RUNTIME_FINDING_READ,
         Permission.RUNTIME_FINDING_DETECT,
         Permission.RUNTIME_FINDING_RECONCILE,

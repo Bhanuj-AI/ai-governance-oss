@@ -9,6 +9,34 @@ This project follows Semantic Versioning.
 
 ### Unreleased
 
+
+### [1.2.2] - 2026-10-14
+
+### Added
+
+- Added execution-scoped, immutable runtime-action delegations with separately
+  authorized issuance and one-way revocation. Delegations persist through the
+  configured in-memory, SQLite, or PostgreSQL backend and bind issuer,
+  runtime identity, execution, action/resource scope, expiry, version, and
+  digest.
+- Added the versioned `runtime-action-authorization/v2` contract and public
+  delegation REST endpoints. Protected authorization requests now carry the
+  delegation binding and a canonical digest of the exact tool arguments.
+- Added bounded Studio display of the authorization decision outcome, reason
+  code, action, and selected policy when present, without exposing event
+  payloads.
+
+### Changed
+
+- Runtime authorization now independently resolves the stored delegation and
+  all active applicable policies in tenant scope. Caller-selected policies,
+  missing or mismatched delegations, out-of-scope actions/resources, expiry,
+  revocation, and policy-store failures deny the protected operation.
+- Runtime-supplied context can only narrow access through `REJECT` or `BLOCK`;
+  `APPROVE` rules that depend on agent-controlled context are rejected at
+  activation and denied again at evaluation. LangGraph enforcement verifies
+  the actual tool-argument digest immediately before execution.
+
 ### [1.2.1] - 2026-10-14
 
 - Added idempotent canonical governed-demo assets, seeded through the normal

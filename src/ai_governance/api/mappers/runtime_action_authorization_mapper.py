@@ -33,4 +33,12 @@ class RuntimeActionAuthorizationApiMapper:
             actor_id=decision.actor_id,
             idempotency_key=decision.idempotency_key,
             request_fingerprint=decision.request_fingerprint,
+            delegation_id=decision.delegation_id,
+            delegation_version=decision.delegation_version,
+            delegation_digest=decision.delegation_digest,
+            tool_arguments_digest=decision.tool_arguments_digest,
+            evaluated_policies=[
+                {"policy_id": policy_id, "version": policy_version}
+                for policy_id, policy_version in decision.evaluated_policies
+            ],
         )

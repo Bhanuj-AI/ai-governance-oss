@@ -613,6 +613,8 @@ tool payloads.
 | `POST` | `/api/v1/agent-executions/{execution_id}/events` | Append one ordered runtime event. |
 | `POST` | `/api/v1/agent-executions/{execution_id}/complete` | Set a terminal status: `SUCCEEDED`, `FAILED`, or `CANCELLED`. |
 | `POST` | `/api/v1/runtime-action-authorizations/authorize` | Persist an ALLOW or DENY for one registered external runtime operation; never execute that operation. |
+| `POST` | `/api/v1/runtime-action-delegations` | Issue an immutable, policy-authorized runtime delegation for one canonical execution. |
+| `POST` | `/api/v1/runtime-action-delegations/{delegation_id}/revoke` | Record one-way revocation for an immutable runtime delegation. |
 | `GET` | `/api/v1/agent-executions/agents` | List observed agents with tenant-scoped pagination and aggregated execution counts. |
 | `GET` | `/api/v1/agent-executions` | List execution summaries with optional agent, status, provider, date, cursor, and limit filters. |
 | `GET` | `/api/v1/agent-executions/{execution_id}` | Read one execution and its event timeline. |
@@ -694,8 +696,11 @@ def get_evaluation_repository() -> Any:
     return EvaluationRepositoryFactory(load_settings()).create()
 ```
 
-Factories support ``inmemory`` (default), ``sqlite``, and ``postgres`` backends
-where implemented. Unsupported backends fail fast with a clear ``ValueError``.
+Factories support ``inmemory``, ``sqlite``, and ``postgres`` backends where
+implemented. Most repositories default to ``inmemory``; the agent-execution
+backend, which stores runtime action delegations, defaults to ``sqlite`` and
+requires ``AI_GOVERNANCE_AGENT_EXECUTION_SQLITE_PATH``. Unsupported or
+incompletely configured backends fail fast with a clear ``ValueError``.
 See [Configuration](./CONFIGURATION.md#repository-backends) for the full backend
 matrix.
 

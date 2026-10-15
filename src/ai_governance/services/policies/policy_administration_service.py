@@ -337,6 +337,9 @@ class PolicyAdministrationService:
                 "Only draft policy versions can be activated."
             )
 
+        definition = self._get_definition(policy_id)
+        _validate_runtime_authorization_activation(definition, selected)
+
         now = self._clock()
         active = self._repository.get_active_version(policy_id)
         if active is not None:
@@ -359,7 +362,6 @@ class PolicyAdministrationService:
                 },
             )
         )
-        definition = self._get_definition(policy_id)
         self._touch_definition(definition)
         detail = self.get_policy_detail(policy_id)
         self._publish_policy_event("PolicyVersionActivated", definition)
@@ -755,6 +757,18 @@ def _policy_schema() -> PolicySchema:
                         value_type="string",
                         supported_operators=string_ops,
                     ),
+                    PolicySchemaField(
+                        field_path="delegation.id",
+                        label="Trusted delegation ID",
+                        value_type="string",
+                        supported_operators=string_ops,
+                    ),
+                    PolicySchemaField(
+                        field_path="delegation.issuer_id",
+                        label="Trusted delegation issuer",
+                        value_type="string",
+                        supported_operators=string_ops,
+                    ),
                 ),
             ),
             PolicySchemaTargetType(
@@ -834,3 +848,30 @@ def _policy_schema() -> PolicySchema:
         categories=tuple(category.value for category in PolicyCategory),
         severities=tuple(severity.value for severity in PolicySeverity),
     )
+
+
+def _validate_runtime_authorization_activation(
+    definition: PolicyDefinition,
+    version: PolicyVersion,
+) -> None:
+    """Prevent policy activation from making agent claims grant authority.
+
+    Runtime action authorization policies may use server-resolved action,
+    resource, actor, and delegation facts to approve. Runtime-supplied context
+    is intentionally reserved for deny/block rules that only narrow access.
+    The PDP repeats this check for older persisted policy versions.
+    """
+
+    registration = definition.metadata.get("runtime_action_authorization")
+    if not isinstance(registration, Mapping) or registration.get("purpose") != "runtime_action_authorization":
+        return
+    for rule in version.rules:
+        if rule.effect is not PolicyEffect.APPROVE:
+            continue
+        if any(
+            condition.field_path.startswith(("context.", "agent_context."))
+            for condition in rule.conditions
+        ):
+            raise PolicyActivationFailedError(
+                "Runtime authorization ALLOW rules cannot depend on agent-controlled context."
+            )
