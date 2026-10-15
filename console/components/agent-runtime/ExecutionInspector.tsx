@@ -95,6 +95,15 @@ function ExecutionComparison({ details }: { details: AgentExecutionDetailDto[] }
 function EventTimelineItem({ event }: { event: AgentExecutionEventDto }) {
   const operationalFacts = safeOperationalFacts(event.attributes);
   const isWorkflowStep = event.event_type === "WORKFLOW_STEP";
+  const authorizationFacts = event.event_type === "RUNTIME_ACTION_AUTHORIZATION"
+    ? [
+        ["Decision", safeStringAttribute(event.attributes, "authorization_outcome")],
+        ["Reason code", safeStringAttribute(event.attributes, "reason_code")],
+        ["Action", safeStringAttribute(event.attributes, "action_id")],
+        ["Policy ID", safeStringAttribute(event.attributes, "policy_id")],
+      ] satisfies Array<[string, string | null]>
+    : [];
+  const authorizationOutcome = authorizationFacts[0]?.[1] ?? null;
   const eventLabel = isWorkflowStep
     ? `${event.step_name ?? "Workflow Step"} · Step ${humanize(event.lifecycle ?? "")}`
     : humanize(event.event_type);
@@ -127,12 +136,14 @@ function EventTimelineItem({ event }: { event: AgentExecutionEventDto }) {
             <span className="font-medium">{eventLabel}</span>
             <span className="ml-2 text-xs text-muted-foreground">{formatDateTime(event.occurred_at)}</span>
           </div>
+          {authorizationOutcome ? <AuthorizationOutcomeBadge outcome={authorizationOutcome} /> : null}
           {event.late_for_runtime_findings ? <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200"><FileWarning className="mr-1 h-3 w-3" />Late for findings</Badge> : null}
         </div>
       </summary>
       <div className="ml-9 mt-3 grid gap-3 border-l pl-4 text-sm sm:grid-cols-2">
         {workflowFacts.length ? <FactList title="Workflow step" entries={workflowFacts} /> : null}
         {toolCallFacts.length ? <FactList title="Tool-call context" entries={toolCallFacts} /> : null}
+        {authorizationFacts.length ? <FactList title="Authorization decision" entries={authorizationFacts} /> : null}
         {operationalFacts.length ? <FactList title="Operational facts" entries={operationalFacts} /> : null}
         {event.actor_id || event.correlation_id || event.causation_id ? <FactList title="Trace links" entries={[["Actor", event.actor_id ? `${event.actor_type ?? "Actor"}: ${event.actor_id}` : null], ["Correlation", event.correlation_id], ["Caused by", event.causation_id]]} /> : null}
         {event.resource_references.length ? <ReferenceList title="Resources" references={event.resource_references} /> : null}
@@ -141,6 +152,17 @@ function EventTimelineItem({ event }: { event: AgentExecutionEventDto }) {
       </div>
     </details>
   );
+}
+
+function AuthorizationOutcomeBadge({ outcome }: { outcome: string }) {
+  const isAllowed = outcome === "ALLOW";
+  const isDenied = outcome === "DENY";
+  const color = isAllowed
+    ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"
+    : isDenied
+      ? "border-destructive/30 bg-destructive/10 text-destructive"
+      : "border-border bg-muted text-muted-foreground";
+  return <Badge variant="outline" className={`shrink-0 font-semibold ${color}`}>{outcome}</Badge>;
 }
 
 function FactList({ title, entries }: { title: string; entries: Array<[string, string | null]> }) {
@@ -166,9 +188,14 @@ const SAFE_ATTRIBUTE_KEYS = new Set([
 
 function safeOperationalFacts(attributes: Record<string, unknown>): Array<[string, string | null]> {
   return Object.entries(attributes).flatMap(([key, value]) => {
-    if (!SAFE_ATTRIBUTE_KEYS.has(key) || !isSafeOperationalValue(value)) return [];
+    if (value === null || !SAFE_ATTRIBUTE_KEYS.has(key) || !isSafeOperationalValue(value)) return [];
     return [[humanize(key), stringifyOperationalValue(value)]];
   });
+}
+
+function safeStringAttribute(attributes: Record<string, unknown>, key: string): string | null {
+  const value = attributes[key];
+  return typeof value === "string" && value.trim() ? value : null;
 }
 
 function isSafeOperationalValue(value: unknown): value is string | number | boolean | null | Array<string | number | boolean | null> {

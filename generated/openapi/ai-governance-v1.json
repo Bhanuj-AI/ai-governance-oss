@@ -10877,6 +10877,44 @@
             ],
             "title": "Correlation Id"
           },
+          "delegation_digest": {
+            "anyOf": [
+              {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delegation Digest"
+          },
+          "delegation_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delegation Id"
+          },
+          "delegation_version": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delegation Version"
+          },
           "execution_id": {
             "maxLength": 128,
             "minLength": 1,
@@ -10919,9 +10957,14 @@
             "$ref": "#/components/schemas/RuntimeActionResourceRequest"
           },
           "schema_version": {
-            "const": "runtime-action-authorization/v1",
-            "default": "runtime-action-authorization/v1",
+            "const": "runtime-action-authorization/v2",
+            "default": "runtime-action-authorization/v2",
             "title": "Schema Version",
+            "type": "string"
+          },
+          "tool_arguments_digest": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Tool Arguments Digest",
             "type": "string"
           }
         },
@@ -10929,6 +10972,7 @@
           "execution_id",
           "action_id",
           "resource",
+          "tool_arguments_digest",
           "idempotency_key"
         ],
         "title": "RuntimeActionAuthorizationRequestBody",
@@ -10963,6 +11007,49 @@
           "decision_id": {
             "title": "Decision Id",
             "type": "string"
+          },
+          "delegation_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delegation Digest"
+          },
+          "delegation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delegation Id"
+          },
+          "delegation_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delegation Version"
+          },
+          "evaluated_policies": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Evaluated Policies",
+            "type": "array"
           },
           "execution_id": {
             "title": "Execution Id",
@@ -11021,6 +11108,17 @@
           "schema_version": {
             "title": "Schema Version",
             "type": "string"
+          },
+          "tool_arguments_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Arguments Digest"
           }
         },
         "required": [
@@ -11038,6 +11136,237 @@
           "request_fingerprint"
         ],
         "title": "RuntimeActionAuthorizationResponse",
+        "type": "object"
+      },
+      "RuntimeActionDelegationPermissionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "action_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Action Id",
+            "type": "string"
+          },
+          "resource_references": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "minItems": 1,
+            "title": "Resource References",
+            "type": "array"
+          },
+          "resource_type": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Resource Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_id",
+          "resource_type",
+          "resource_references"
+        ],
+        "title": "RuntimeActionDelegationPermissionRequest",
+        "type": "object"
+      },
+      "RuntimeActionDelegationPermissionResponse": {
+        "properties": {
+          "action_id": {
+            "title": "Action Id",
+            "type": "string"
+          },
+          "resource_references": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Resource References",
+            "type": "array"
+          },
+          "resource_type": {
+            "title": "Resource Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_id",
+          "resource_type",
+          "resource_references"
+        ],
+        "title": "RuntimeActionDelegationPermissionResponse",
+        "type": "object"
+      },
+      "RuntimeActionDelegationRegistrationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "execution_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Execution Id",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "$ref": "#/components/schemas/RuntimeActionDelegationPermissionRequest"
+            },
+            "minItems": 1,
+            "title": "Permissions",
+            "type": "array"
+          },
+          "runtime_actor_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Runtime Actor Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "default": "runtime-action-delegation/v1",
+            "title": "Schema Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "execution_id",
+          "runtime_actor_id",
+          "permissions",
+          "expires_at",
+          "idempotency_key"
+        ],
+        "title": "RuntimeActionDelegationRegistrationRequest",
+        "type": "object"
+      },
+      "RuntimeActionDelegationResponse": {
+        "properties": {
+          "contract_digest": {
+            "title": "Contract Digest",
+            "type": "string"
+          },
+          "delegation_id": {
+            "title": "Delegation Id",
+            "type": "string"
+          },
+          "execution_id": {
+            "title": "Execution Id",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "issued_at": {
+            "format": "date-time",
+            "title": "Issued At",
+            "type": "string"
+          },
+          "issuer_id": {
+            "title": "Issuer Id",
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "$ref": "#/components/schemas/RuntimeActionDelegationPermissionResponse"
+            },
+            "title": "Permissions",
+            "type": "array"
+          },
+          "revocation_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revocation Reference"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "revoked_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked By"
+          },
+          "runtime_actor_id": {
+            "title": "Runtime Actor Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "delegation_id",
+          "version",
+          "execution_id",
+          "issuer_id",
+          "runtime_actor_id",
+          "permissions",
+          "issued_at",
+          "expires_at",
+          "contract_digest",
+          "status"
+        ],
+        "title": "RuntimeActionDelegationResponse",
+        "type": "object"
+      },
+      "RuntimeActionDelegationRevokeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "revocation_reference": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revocation Reference"
+          }
+        },
+        "title": "RuntimeActionDelegationRevokeRequest",
         "type": "object"
       },
       "RuntimeActionResourceRequest": {
@@ -38411,6 +38740,313 @@
         "x-ai-governance-visibility": "operator"
       }
     },
+    "/api/v1/runtime-action-delegations": {
+      "post": {
+        "operationId": "register_runtime_action_delegation_api_v1_runtime_action_delegations_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-AI-Governance-Organization-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Ai-Governance-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AI-Governance-Project-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Ai-Governance-Project-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Request-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Request-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Correlation-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuntimeActionDelegationRegistrationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeActionDelegationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Register Runtime Action Delegation",
+        "tags": [
+          "Runtime action delegations"
+        ],
+        "x-ai-governance-visibility": "operator"
+      }
+    },
+    "/api/v1/runtime-action-delegations/{delegation_id}/revoke": {
+      "post": {
+        "operationId": "revoke_runtime_action_delegation_api_v1_runtime_action_delegations__delegation_id__revoke_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "delegation_id",
+            "required": true,
+            "schema": {
+              "title": "Delegation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AI-Governance-Organization-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Ai-Governance-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AI-Governance-Project-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Ai-Governance-Project-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Request-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Request-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Correlation-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuntimeActionDelegationRevokeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeActionDelegationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Revoke Runtime Action Delegation",
+        "tags": [
+          "Runtime action delegations"
+        ],
+        "x-ai-governance-visibility": "operator"
+      }
+    },
     "/api/v1/runtime-connections": {
       "get": {
         "operationId": "list_runtime_connections_api_v1_runtime_connections_get",
@@ -41032,6 +41668,10 @@
     },
     {
       "description": "Authenticated operator endpoints.",
+      "name": "Runtime action delegations"
+    },
+    {
+      "description": "Authenticated operator endpoints.",
       "name": "Runtime findings"
     },
     {
@@ -41077,6 +41717,7 @@
         "Reports",
         "Runtime Connections",
         "Runtime action authorization",
+        "Runtime action delegations",
         "Runtime findings",
         "Settings"
       ]

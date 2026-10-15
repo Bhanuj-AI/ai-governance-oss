@@ -37,6 +37,8 @@ def _minimal_settings(
     ontology_sync_event_sqlite_path: str | None = None,
     ontology_repository: str = "inmemory",
     ontology_sqlite_path: str | None = None,
+    agent_execution_repository: str = "inmemory",
+    agent_execution_sqlite_path: str | None = None,
     postgres_dsn: str | None = None,
 ) -> Settings:
     """Build a Settings instance with defaults for all fields."""
@@ -108,8 +110,8 @@ def _minimal_settings(
         ontology_postgres_dsn=postgres_dsn,
 
         # Agent Execution Trace
-        agent_execution_repository="inmemory",
-        agent_execution_sqlite_path=None,
+        agent_execution_repository=agent_execution_repository,
+        agent_execution_sqlite_path=agent_execution_sqlite_path,
         agent_execution_postgres_dsn=postgres_dsn,
 
         # Replay Management
@@ -558,14 +560,36 @@ class TestEvaluationRunRepositoryFactory:
 class TestConfigDrivenBehavior:
     """Tests that verify config-driven behavior at the dependency level."""
 
-    def test_default_backend_is_inmemory(self):
-        """All repositories default to in-memory when no env vars are set."""
+    def test_general_repository_defaults_are_inmemory(self):
+        """General repositories default to in-memory when no env vars are set."""
         from ai_governance.settings import load_settings
 
         settings = load_settings()
         assert settings.evaluation_repository == "inmemory"
         assert settings.experiment_repository == "inmemory"
         assert settings.job_repository == "inmemory"
+
+    def test_agent_execution_default_is_sqlite(self, monkeypatch):
+        """Runtime authorization state uses the control-plane SQLite backend by default."""
+        from ai_governance.settings import load_settings
+
+        monkeypatch.delenv("AI_GOVERNANCE_AGENT_EXECUTION_REPOSITORY", raising=False)
+        settings = load_settings()
+
+        assert settings.agent_execution_repository == "sqlite"
+
+    def test_agent_execution_sqlite_requires_path(self):
+        """The durable default must not silently use a transient store."""
+        from ai_governance.repositories.factories import (
+            RuntimeActionDelegationRepositoryFactory,
+        )
+
+        settings = _minimal_settings(agent_execution_repository="sqlite")
+
+        with pytest.raises(
+            ValueError, match="AI_GOVERNANCE_AGENT_EXECUTION_SQLITE_PATH"
+        ):
+            RuntimeActionDelegationRepositoryFactory(settings).create()
 
     def test_sqlite_backend_requires_path(self):
         """SQLite backends fail fast when path is not configured."""

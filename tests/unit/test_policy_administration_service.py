@@ -227,8 +227,7 @@ def test_list_policies_filters_and_paginates_latest_created() -> None:
         InMemoryPolicyAdministrationRepository(),
         id_generator=(f"policy-{index}" for index in range(12)).__next__,
         clock=iter(
-            datetime(2026, 7, 4, 12, index, tzinfo=UTC)
-            for index in range(12)
+            datetime(2026, 7, 4, 12, index, tzinfo=UTC) for index in range(12)
         ).__next__,
     )
     for index in range(12):
@@ -288,7 +287,49 @@ def test_simulate_policy_version_uses_evaluator_trace() -> None:
 
     assert result.matched
     assert result.effect == PolicyEffect.APPROVE.value
-    assert result.matched_conditions[0].field_path == (
-        "metrics.groundedness.score"
-    )
+    assert result.matched_conditions[0].field_path == ("metrics.groundedness.score")
     assert result.evaluation_trace[0].actual_value == 0.91
+
+
+def test_runtime_authorization_policy_cannot_activate_agent_context_allow() -> None:
+    service = _service()
+    service.create_policy(
+        name="Unsafe runtime authorization",
+        description=None,
+        organization_id="org-1",
+        project_id="project-1",
+        category="SECURITY",
+        owner="security",
+        created_by="admin",
+        target_types=(DecisionTargetType.AGENT_EXECUTION.value,),
+        rules=(
+            build_policy_rule(
+                rule_id="unsafe-context-allow",
+                name="Unsafe allow",
+                conditions=(
+                    {
+                        "field_path": "agent_context.claimed_authority",
+                        "operator": PolicyConditionOperator.EQUALS.value,
+                        "expected_value": "maintenance",
+                    },
+                ),
+                effect=PolicyEffect.APPROVE.value,
+                reason_template="Unsafe.",
+                priority=10,
+                severity="LOW",
+                metadata={},
+            ),
+        ),
+        metadata={
+            "runtime_action_authorization": {
+                "purpose": "runtime_action_authorization",
+                "registered_actions": ["claims.update"],
+                "registered_resource_types": ["sqlite.row"],
+            }
+        },
+    )
+
+    with pytest.raises(PolicyActivationFailedError, match="agent-controlled"):
+        service.activate_version(
+            policy_id="policy-1", version="1", activated_by="admin"
+        )

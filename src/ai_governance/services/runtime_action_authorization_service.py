@@ -33,12 +33,16 @@ from ai_governance.repositories.agent_execution_repository import (
 from ai_governance.repositories.policy_administration_repository import (
     PolicyAdministrationRepository,
 )
+from ai_governance.repositories.runtime_action_delegation_repository import (
+    RuntimeActionDelegationRepository,
+)
 from ai_governance.runtime_authorization import (
     RuntimeActionAuthorizationDecision,
     RuntimeActionAuthorizationOutcome,
     RuntimeActionAuthorizationRequest,
     RuntimeActionResource,
 )
+from ai_governance.runtime_authorization.delegation import RuntimeActionDelegation
 from ai_governance.tenancy.domain import TenantContext
 
 RUNTIME_ACTION_AUTHORIZATION_METADATA_KEY = "runtime_action_authorization"
@@ -87,6 +91,7 @@ class RuntimeActionAuthorizationService:
         policy_repository: PolicyAdministrationRepository,
         execution_repository: AgentExecutionRepository,
         event_repository: AgentExecutionEventRepository,
+        delegation_repository: RuntimeActionDelegationRepository | None = None,
         decision_ttl: timedelta = timedelta(minutes=5),
         clock: Callable[[], datetime] | None = None,
         id_generator: Callable[[], str] | None = None,
@@ -96,6 +101,7 @@ class RuntimeActionAuthorizationService:
         self._policy_repository = policy_repository
         self._execution_repository = execution_repository
         self._event_repository = event_repository
+        self._delegation_repository = delegation_repository
         self._decision_ttl = decision_ttl
         self._clock = clock or (lambda: datetime.now(UTC))
         self._id_generator = id_generator or (lambda: str(uuid4()))
@@ -181,7 +187,42 @@ class RuntimeActionAuthorizationService:
         now: datetime,
         request_fingerprint: str,
     ) -> RuntimeActionAuthorizationDecision:
-        selected, selection_error = self._select_policies(request, context)
+        if request.policy_id is not None or request.expected_policy_version is not None:
+            return self._decision(
+                request=request,
+                context=context,
+                correlation_id=correlation_id,
+                now=now,
+                request_fingerprint=request_fingerprint,
+                outcome=RuntimeActionAuthorizationOutcome.DENY,
+                reason_code="POLICY_SELECTION_NOT_ALLOWED",
+            )
+
+        delegation, delegation_error = self._resolve_delegation(request, context, now)
+        if delegation_error is not None:
+            return self._decision(
+                request=request,
+                context=context,
+                correlation_id=correlation_id,
+                now=now,
+                request_fingerprint=request_fingerprint,
+                outcome=RuntimeActionAuthorizationOutcome.DENY,
+                reason_code=delegation_error,
+            )
+
+        try:
+            selected, selection_error = self._select_policies(request, context)
+        except Exception:  # noqa: BLE001 - policy-store faults must deny.
+            return self._decision(
+                request=request,
+                context=context,
+                correlation_id=correlation_id,
+                now=now,
+                request_fingerprint=request_fingerprint,
+                outcome=RuntimeActionAuthorizationOutcome.DENY,
+                reason_code="POLICY_EVALUATION_FAILED",
+                delegation=delegation,
+            )
         if selection_error is not None:
             return self._decision(
                 request=request,
@@ -191,8 +232,7 @@ class RuntimeActionAuthorizationService:
                 request_fingerprint=request_fingerprint,
                 outcome=RuntimeActionAuthorizationOutcome.DENY,
                 reason_code=selection_error,
-                policy_id=request.policy_id,
-                policy_version=request.expected_policy_version,
+                delegation=delegation,
             )
 
         matched: list[
@@ -206,17 +246,43 @@ class RuntimeActionAuthorizationService:
                 "reference": request.resource.resource_reference,
             },
             "actor": {"id": context.actor_id},
-            "context": dict(request.context),
+            "delegation": {
+                "id": delegation.delegation_id,
+                "version": delegation.version,
+                "digest": delegation.contract_digest,
+                "issuer_id": delegation.issuer_id,
+                "runtime_actor_id": delegation.runtime_actor_id,
+            },
+            # Agent-provided facts are deliberately not exposed under policy
+            # paths that can grant authority. They may only be used by a
+            # rejecting/blocking rule as a further restriction.
+            "agent_context": dict(request.context),
         }
+        evaluated = tuple(
+            (definition.policy_id, version.version) for definition, version in selected
+        )
         for definition, version in selected:
-            trace = self._policy_evaluator.evaluate_with_trace(
-                version.to_governance_policy(definition),
-                PolicyEvaluationContext(
-                    target_type=DecisionTargetType.AGENT_EXECUTION,
-                    target_id=request.execution_id,
-                    evidence=evidence,
-                ),
-            )
+            try:
+                trace = self._policy_evaluator.evaluate_with_trace(
+                    version.to_governance_policy(definition),
+                    PolicyEvaluationContext(
+                        target_type=DecisionTargetType.AGENT_EXECUTION,
+                        target_id=request.execution_id,
+                        evidence=evidence,
+                    ),
+                )
+            except Exception:  # noqa: BLE001 - policy faults must deny.
+                return self._decision(
+                    request=request,
+                    context=context,
+                    correlation_id=correlation_id,
+                    now=now,
+                    request_fingerprint=request_fingerprint,
+                    outcome=RuntimeActionAuthorizationOutcome.DENY,
+                    reason_code="POLICY_EVALUATION_FAILED",
+                    delegation=delegation,
+                    evaluated_policies=evaluated,
+                )
             outcome = trace.outcome
             if not outcome.matched:
                 continue
@@ -225,6 +291,12 @@ class RuntimeActionAuthorizationService:
                 PolicyEffect.REJECT,
                 PolicyEffect.BLOCK,
             }:
+                unsupported = (definition, version)
+                continue
+            if (
+                outcome.effect is PolicyEffect.APPROVE
+                and _uses_agent_controlled_context(version)
+            ):
                 unsupported = (definition, version)
                 continue
             matched.append(
@@ -249,6 +321,8 @@ class RuntimeActionAuthorizationService:
                 reason_code="UNSUPPORTED_AUTHORIZATION_POLICY_EFFECT",
                 policy_id=definition.policy_id,
                 policy_version=version.version,
+                delegation=delegation,
+                evaluated_policies=evaluated,
             )
         if not matched:
             return self._decision(
@@ -259,6 +333,8 @@ class RuntimeActionAuthorizationService:
                 request_fingerprint=request_fingerprint,
                 outcome=RuntimeActionAuthorizationOutcome.DENY,
                 reason_code="NO_APPLICABLE_POLICY",
+                delegation=delegation,
+                evaluated_policies=evaluated,
             )
 
         matched.sort(key=lambda item: (item[0], item[1]))
@@ -289,6 +365,8 @@ class RuntimeActionAuthorizationService:
             ),
             policy_id=definition.policy_id,
             policy_version=version.version,
+            delegation=delegation,
+            evaluated_policies=evaluated,
         )
 
     def _select_policies(
@@ -296,32 +374,15 @@ class RuntimeActionAuthorizationService:
         request: RuntimeActionAuthorizationRequest,
         context: TenantContext,
     ) -> tuple[list[tuple[PolicyDefinition, PolicyVersion]], str | None]:
-        if request.policy_id is not None:
-            definition = self._policy_repository.get_definition(request.policy_id)
-            if definition is None or not self._in_scope(definition, context):
-                return [], "POLICY_NOT_FOUND"
-            version = (
-                self._policy_repository.get_version(
-                    request.policy_id, request.expected_policy_version
-                )
-                if request.expected_policy_version is not None
-                else self._policy_repository.get_active_version(request.policy_id)
-            )
-            if version is None or version.status is not PolicyStatus.ACTIVE:
-                return [], "POLICY_VERSION_MISMATCH"
-            candidate_definitions = [(definition, version)]
-        else:
-            candidate_definitions = []
-            for definition in self._policy_repository.list_definitions(
-                organization_id=context.organization_id,
-                project_id=context.project_id,
-                status=PolicyStatus.ACTIVE,
-            ):
-                version = self._policy_repository.get_active_version(
-                    definition.policy_id
-                )
-                if version is not None:
-                    candidate_definitions.append((definition, version))
+        candidate_definitions = []
+        for definition in self._policy_repository.list_definitions(
+            organization_id=context.organization_id,
+            project_id=context.project_id,
+            status=PolicyStatus.ACTIVE,
+        ):
+            version = self._policy_repository.get_active_version(definition.policy_id)
+            if version is not None:
+                candidate_definitions.append((definition, version))
 
         selected: list[tuple[PolicyDefinition, PolicyVersion]] = []
         action_registered = False
@@ -380,6 +441,8 @@ class RuntimeActionAuthorizationService:
         reason_code: str,
         policy_id: str | None = None,
         policy_version: str | None = None,
+        delegation: RuntimeActionDelegation | None = None,
+        evaluated_policies: tuple[tuple[str, str], ...] = (),
     ) -> RuntimeActionAuthorizationDecision:
         return RuntimeActionAuthorizationDecision(
             decision_id=self._id_generator(),
@@ -396,6 +459,11 @@ class RuntimeActionAuthorizationService:
             expires_at=now + self._decision_ttl,
             policy_id=policy_id,
             policy_version=policy_version,
+            delegation_id=delegation.delegation_id if delegation else None,
+            delegation_version=delegation.version if delegation else None,
+            delegation_digest=delegation.contract_digest if delegation else None,
+            tool_arguments_digest=request.tool_arguments_digest,
+            evaluated_policies=evaluated_policies,
         )
 
     def _decision_event(
@@ -438,6 +506,14 @@ class RuntimeActionAuthorizationService:
                 "actor_id": decision.actor_id,
                 "policy_id": decision.policy_id,
                 "policy_version": decision.policy_version,
+                "evaluated_policies": [
+                    {"policy_id": policy_id, "version": policy_version}
+                    for policy_id, policy_version in decision.evaluated_policies
+                ],
+                "delegation_id": decision.delegation_id,
+                "delegation_version": decision.delegation_version,
+                "delegation_digest": decision.delegation_digest,
+                "tool_arguments_digest": decision.tool_arguments_digest,
                 "expires_at": decision.expires_at.isoformat(),
                 "idempotency_key": decision.idempotency_key,
                 "request_fingerprint": fingerprint,
@@ -479,6 +555,17 @@ class RuntimeActionAuthorizationService:
                 expires_at=datetime.fromisoformat(str(attributes["expires_at"])),
                 policy_id=_optional_string(attributes.get("policy_id")),
                 policy_version=_optional_string(attributes.get("policy_version")),
+                delegation_id=_optional_string(attributes.get("delegation_id")),
+                delegation_version=_optional_string(
+                    attributes.get("delegation_version")
+                ),
+                delegation_digest=_optional_string(attributes.get("delegation_digest")),
+                tool_arguments_digest=_optional_string(
+                    attributes.get("tool_arguments_digest")
+                ),
+                evaluated_policies=_evaluated_policies(
+                    attributes.get("evaluated_policies")
+                ),
                 schema_version=str(attributes["authorization_schema_version"]),
             )
         except (KeyError, TypeError, ValueError) as exc:
@@ -508,6 +595,46 @@ class RuntimeActionAuthorizationService:
             )
         return authoritative or request.correlation_id
 
+    def _resolve_delegation(
+        self,
+        request: RuntimeActionAuthorizationRequest,
+        context: TenantContext,
+        now: datetime,
+    ) -> tuple[RuntimeActionDelegation | None, str | None]:
+        if self._delegation_repository is None:
+            return None, "DELEGATION_RESOLUTION_UNAVAILABLE"
+        if request.delegation_id is None:
+            return None, "MISSING_DELEGATION"
+        try:
+            delegation = self._delegation_repository.get(
+                request.delegation_id,
+                context.organization_id,
+                context.project_id,
+            )
+        except Exception:  # noqa: BLE001 - trusted state must be resolvable.
+            return None, "DELEGATION_RESOLUTION_UNAVAILABLE"
+        if delegation is None:
+            return None, "DELEGATION_NOT_FOUND"
+        if (
+            delegation.version != request.delegation_version
+            or delegation.contract_digest != request.delegation_digest
+        ):
+            return None, "DELEGATION_BINDING_MISMATCH"
+        if delegation.status.value == "REVOKED":
+            return None, "DELEGATION_REVOKED"
+        if delegation.expires_at <= now:
+            return None, "DELEGATION_EXPIRED"
+        if not delegation.permits(
+            actor_id=context.actor_id,
+            execution_id=request.execution_id,
+            action_id=request.action_id,
+            resource_type=request.resource.resource_type,
+            resource_reference=request.resource.resource_reference,
+            now=now,
+        ):
+            return None, "DELEGATION_SCOPE_DENIED"
+        return delegation, None
+
     @staticmethod
     def _event_idempotency_key(idempotency_key: str) -> str:
         return f"{_EVENT_IDEMPOTENCY_PREFIX}{idempotency_key}"
@@ -529,3 +656,31 @@ def _string_tuple(value: object) -> tuple[str, ...]:
 
 def _optional_string(value: object) -> str | None:
     return value if isinstance(value, str) and value else None
+
+
+def _evaluated_policies(value: object) -> tuple[tuple[str, str], ...]:
+    if not isinstance(value, list):
+        return ()
+    bindings: list[tuple[str, str]] = []
+    for item in value:
+        if not isinstance(item, Mapping):
+            raise TypeError("evaluated_policies must contain policy bindings.")
+        policy_id = _optional_string(item.get("policy_id"))
+        version = _optional_string(item.get("version"))
+        if policy_id is None or version is None:
+            raise ValueError("evaluated policy binding is malformed.")
+        bindings.append((policy_id, version))
+    return tuple(bindings)
+
+
+def _uses_agent_controlled_context(version: PolicyVersion) -> bool:
+    """ALLOW rules may not derive authority from runtime supplied facts."""
+
+    return any(
+        rule.effect is PolicyEffect.APPROVE
+        and any(
+            condition.field_path.startswith(("context.", "agent_context."))
+            for condition in rule.conditions
+        )
+        for rule in version.rules
+    )

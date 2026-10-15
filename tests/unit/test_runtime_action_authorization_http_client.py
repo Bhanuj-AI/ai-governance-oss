@@ -13,6 +13,7 @@ from ai_governance.runtime_authorization import (
     AIGPRuntimeActionAuthorizationClient,
     RuntimeActionAuthorizationRequest,
     RuntimeActionResource,
+    canonical_tool_arguments_digest,
 )
 
 
@@ -33,6 +34,12 @@ def _request() -> RuntimeActionAuthorizationRequest:
         context={"intent": "WRITE"},
         idempotency_key="authorization-1",
         correlation_id="run-1",
+        delegation_id="delegation-1",
+        delegation_version="1",
+        delegation_digest="sha256:" + "a" * 64,
+        tool_arguments_digest=canonical_tool_arguments_digest(
+            {"record_id": "OPS-001", "status": "MAINTENANCE"}
+        ),
     )
 
 
@@ -47,7 +54,7 @@ def test_client_sends_only_allowlisted_scope_headers(
         captured["timeout"] = timeout
         return _response(
             {
-                "schema_version": "runtime-action-authorization/v1",
+                "schema_version": "runtime-action-authorization/v2",
                 "decision_id": "decision-1",
                 "outcome": "ALLOW",
                 "reason_code": "ALLOW_POLICY_MATCHED",
@@ -63,6 +70,13 @@ def test_client_sends_only_allowlisted_scope_headers(
                 "actor_id": "runtime-service",
                 "idempotency_key": "authorization-1",
                 "request_fingerprint": _request().fingerprint(),
+                "delegation_id": "delegation-1",
+                "delegation_version": "1",
+                "delegation_digest": "sha256:" + "a" * 64,
+                "tool_arguments_digest": _request().tool_arguments_digest,
+                "evaluated_policies": [
+                    {"policy_id": "operation-policy", "version": "1"}
+                ],
             }
         )
 
@@ -84,6 +98,8 @@ def test_client_sends_only_allowlisted_scope_headers(
 
     assert decision.decision_id == "decision-1"
     assert captured["timeout"] == 5.0
+    assert decision.delegation_id == "delegation-1"
+    assert decision.tool_arguments_digest == _request().tool_arguments_digest
     assert captured["headers"] == {
         "X-ai-governance-organization-id": "org-a",
         "X-ai-governance-project-id": "project-a",

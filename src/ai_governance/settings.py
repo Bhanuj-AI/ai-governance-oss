@@ -89,7 +89,7 @@ class Settings:
         AI_GOVERNANCE_ONTOLOGY_POSTGRES_DSN      - PostgreSQL connection string
 
     Agent Execution Trace
-        AI_GOVERNANCE_AGENT_EXECUTION_REPOSITORY - inmemory | sqlite | postgres
+        AI_GOVERNANCE_AGENT_EXECUTION_REPOSITORY - sqlite (default) | inmemory | postgres
         AI_GOVERNANCE_AGENT_EXECUTION_SQLITE_PATH
         AI_GOVERNANCE_AGENT_EXECUTION_POSTGRES_DSN
     """
@@ -275,7 +275,7 @@ def load_settings() -> Settings:
         ontology_postgres_dsn=_load_path("AI_GOVERNANCE_ONTOLOGY_POSTGRES_DSN"),
         # Agent Execution Trace
         agent_execution_repository=_load_str(
-            "AI_GOVERNANCE_AGENT_EXECUTION_REPOSITORY", "inmemory"
+            "AI_GOVERNANCE_AGENT_EXECUTION_REPOSITORY", "sqlite"
         ),
         agent_execution_sqlite_path=_load_path(
             "AI_GOVERNANCE_AGENT_EXECUTION_SQLITE_PATH"

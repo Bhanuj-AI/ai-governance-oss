@@ -100,8 +100,9 @@ services:
       AI_GOVERNANCE_GOVERNANCE_DECISION_SQLITE_PATH: /var/lib/ai-governance/governance.db
       AI_GOVERNANCE_ONTOLOGY_SYNC_EVENT_REPOSITORY: sqlite
       AI_GOVERNANCE_ONTOLOGY_SYNC_EVENT_SQLITE_PATH: /var/lib/ai-governance/governance.db
-      # Agents Runtime executions, intervention policies, and causal audits
+      # Agents Runtime executions, runtime action delegations, intervention policies, and causal audits
       # share the durable store used by the replay worker.
+      # Runtime action delegations share the same durable SQLite store.
       AI_GOVERNANCE_AGENT_EXECUTION_REPOSITORY: sqlite
       AI_GOVERNANCE_AGENT_EXECUTION_SQLITE_PATH: /var/lib/ai-governance/governance.db
       AI_GOVERNANCE_ONTOLOGY_REPOSITORY: neo4j

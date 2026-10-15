@@ -19,6 +19,7 @@ from ai_governance.runtime_authorization import (
     LangGraphOperationAuthorizer,
     RuntimeActionAuthorizationRequest,
     RuntimeActionResource,
+    canonical_tool_arguments_digest,
 )
 
 client = AIGPRuntimeActionAuthorizationClient(
@@ -38,15 +39,23 @@ authorizer = LangGraphOperationAuthorizer(
     actor_id="claims-runtime-service",
 )
 
-def update_claim_tool(execution_id: str, claim_id: str) -> None:
+def update_claim_tool(execution_id: str, claim_id: str, delegation) -> None:
+    tool_arguments = {"claim_id": claim_id, "status": "APPROVED"}
     request = RuntimeActionAuthorizationRequest(
         execution_id=execution_id,
         action_id="claims.update",
         resource=RuntimeActionResource("sqlite.row", f"claims:{claim_id}"),
-        context={"risk": "low"},
+        delegation_id=delegation.delegation_id,
+        delegation_version=delegation.version,
+        delegation_digest=delegation.contract_digest,
+        tool_arguments_digest=canonical_tool_arguments_digest(tool_arguments),
+        context={},
         idempotency_key=f"{execution_id}:claims.update:{claim_id}",
     )
-    decision = authorizer.require_allow(request)
+    decision = authorizer.require_allow(
+        request,
+        actual_tool_arguments_digest=canonical_tool_arguments_digest(tool_arguments),
+    )
     # Only a valid, unexpired ALLOW reaches this point.
     update_claim_in_sqlite(claim_id)
     emit_tool_call_evidence(
@@ -57,8 +66,9 @@ def update_claim_tool(execution_id: str, claim_id: str) -> None:
 ```
 
 `require_allow()` fails closed for a timeout, unavailable service, malformed
-response, denial, mismatch, or expiry. It validates the returned execution,
-actor, action, resource, full request fingerprint (including the bounded
-context), and idempotency key before the tool runs. The separate `TOOL_CALL`
+response, denial, mismatch, expiry, or tool-argument mutation. It validates
+the returned execution, actor, action, resource, delegation, full request
+fingerprint, idempotency key, and exact tool-argument digest before the tool
+runs. The separate `TOOL_CALL`
 event records whether the runtime says the tool actually executed; the
 preceding `RUNTIME_ACTION_AUTHORIZATION` event is decision evidence only.

@@ -67,6 +67,9 @@ from ai_governance.repositories.factories.replay_repository_factory import (
 from ai_governance.repositories.factories.replay_result_repository_factory import (
     ReplayResultRepositoryFactory,
 )
+from ai_governance.repositories.factories.runtime_action_delegation_repository_factory import (
+    RuntimeActionDelegationRepositoryFactory,
+)
 from ai_governance.repositories.factories.runtime_finding_repository_factory import (
     RuntimeFindingRepositoryFactory,
 )
@@ -95,6 +98,7 @@ __all__ = [
     "ReplayExecutionStoreFactory",
     "ReplayRepositoryFactory",
     "ReplayResultRepositoryFactory",
+    "RuntimeActionDelegationRepositoryFactory",
     "RuntimeFindingRepositoryFactory",
     "RuntimeProjectionRepositoryFactory",
 ]

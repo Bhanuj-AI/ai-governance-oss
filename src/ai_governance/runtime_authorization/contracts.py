@@ -12,7 +12,7 @@ from enum import Enum
 from types import MappingProxyType
 from typing import Any
 
-RUNTIME_ACTION_AUTHORIZATION_SCHEMA_VERSION = "runtime-action-authorization/v1"
+RUNTIME_ACTION_AUTHORIZATION_SCHEMA_VERSION = "runtime-action-authorization/v2"
 
 _IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _CONTEXT_KEY = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,63}$")
@@ -72,6 +72,10 @@ class RuntimeActionAuthorizationRequest:
     action_id: str
     resource: RuntimeActionResource
     idempotency_key: str
+    delegation_id: str | None = None
+    delegation_version: str | None = None
+    delegation_digest: str | None = None
+    tool_arguments_digest: str | None = None
     context: Mapping[str, str | int | float | bool] = field(default_factory=dict)
     correlation_id: str | None = None
     policy_id: str | None = None
@@ -88,6 +92,30 @@ class RuntimeActionAuthorizationRequest:
             raise TypeError("resource must be a RuntimeActionResource.")
         if self.correlation_id is not None:
             _require_identifier("correlation_id", self.correlation_id)
+        for name, value in (
+            ("delegation_id", self.delegation_id),
+            ("delegation_version", self.delegation_version),
+        ):
+            if value is not None:
+                _require_identifier(name, value)
+        delegation_fields = (
+            self.delegation_id,
+            self.delegation_version,
+            self.delegation_digest,
+        )
+        if any(value is not None for value in delegation_fields) and any(
+            value is None for value in delegation_fields
+        ):
+            raise ValueError(
+                "delegation_id, delegation_version, and delegation_digest are required together."
+            )
+        if self.delegation_digest is not None:
+            _require_digest("delegation_digest", self.delegation_digest)
+        if self.tool_arguments_digest is None:
+            raise ValueError(
+                "tool_arguments_digest is required for protected operations."
+            )
+        _require_digest("tool_arguments_digest", self.tool_arguments_digest)
         if self.policy_id is not None:
             _require_identifier("policy_id", self.policy_id)
         if self.expected_policy_version is not None:
@@ -105,6 +133,11 @@ class RuntimeActionAuthorizationRequest:
             "action_id": self.action_id,
             "resource_type": self.resource.resource_type,
             "resource_reference": self.resource.resource_reference,
+            "idempotency_key": self.idempotency_key,
+            "delegation_id": self.delegation_id,
+            "delegation_version": self.delegation_version,
+            "delegation_digest": self.delegation_digest,
+            "tool_arguments_digest": self.tool_arguments_digest,
             "context": dict(self.context),
             "correlation_id": self.correlation_id,
             "policy_id": self.policy_id,
@@ -132,6 +165,11 @@ class RuntimeActionAuthorizationDecision:
     request_fingerprint: str
     decided_at: datetime
     expires_at: datetime
+    delegation_id: str | None = None
+    delegation_version: str | None = None
+    delegation_digest: str | None = None
+    tool_arguments_digest: str | None = None
+    evaluated_policies: tuple[tuple[str, str], ...] = ()
     policy_id: str | None = None
     policy_version: str | None = None
     schema_version: str = RUNTIME_ACTION_AUTHORIZATION_SCHEMA_VERSION
@@ -155,6 +193,28 @@ class RuntimeActionAuthorizationDecision:
             _require_identifier("policy_id", self.policy_id)
         if self.policy_version is not None:
             _require_identifier("policy_version", self.policy_version)
+        for name, value in (
+            ("delegation_id", self.delegation_id),
+            ("delegation_version", self.delegation_version),
+        ):
+            if value is not None:
+                _require_identifier(name, value)
+        delegation_fields = (
+            self.delegation_id,
+            self.delegation_version,
+            self.delegation_digest,
+        )
+        if any(value is not None for value in delegation_fields) and any(
+            value is None for value in delegation_fields
+        ):
+            raise ValueError("Decision delegation bindings are incomplete.")
+        if self.delegation_digest is not None:
+            _require_digest("delegation_digest", self.delegation_digest)
+        if self.tool_arguments_digest is not None:
+            _require_digest("tool_arguments_digest", self.tool_arguments_digest)
+        for policy_id, policy_version in self.evaluated_policies:
+            _require_identifier("evaluated policy_id", policy_id)
+            _require_identifier("evaluated policy_version", policy_version)
         if not isinstance(self.resource, RuntimeActionResource):
             raise TypeError("resource must be a RuntimeActionResource.")
         if self.decided_at.tzinfo is None or self.expires_at.tzinfo is None:
@@ -254,6 +314,28 @@ def _require_non_blank(name: str, value: str) -> None:
         raise ValueError(f"{name} must not be blank.")
 
 
+def _require_digest(name: str, value: str) -> None:
+    if not isinstance(value, str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", value):
+        raise ValueError(f"{name} must be a sha256 digest.")
+
+
 def _stable_digest(value: Mapping[str, Any]) -> str:
     encoded = json.dumps(value, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def canonical_tool_arguments_digest(arguments: Mapping[str, Any]) -> str:
+    """Return the digest a PEP binds to exact canonical tool arguments."""
+
+    if not isinstance(arguments, Mapping):
+        raise TypeError("tool arguments must be a mapping.")
+    try:
+        encoded = json.dumps(
+            arguments,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+    except (TypeError, ValueError) as exc:
+        raise ValueError("tool arguments must be JSON-canonicalizable.") from exc
+    return f"sha256:{hashlib.sha256(encoded.encode('utf-8')).hexdigest()}"

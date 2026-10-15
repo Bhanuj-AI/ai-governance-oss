@@ -93,6 +93,10 @@ def _request_payload(request: RuntimeActionAuthorizationRequest) -> dict[str, An
             "resource_type": request.resource.resource_type,
             "resource_reference": request.resource.resource_reference,
         },
+        "delegation_id": request.delegation_id,
+        "delegation_version": request.delegation_version,
+        "delegation_digest": request.delegation_digest,
+        "tool_arguments_digest": request.tool_arguments_digest,
         "context": dict(request.context),
         "idempotency_key": request.idempotency_key,
         "policy_id": request.policy_id,
@@ -128,6 +132,11 @@ def _decision_from_payload(value: object) -> RuntimeActionAuthorizationDecision:
             actor_id=str(value["actor_id"]),
             idempotency_key=str(value["idempotency_key"]),
             request_fingerprint=str(value["request_fingerprint"]),
+            delegation_id=_optional_string(value.get("delegation_id")),
+            delegation_version=_optional_string(value.get("delegation_version")),
+            delegation_digest=_optional_string(value.get("delegation_digest")),
+            tool_arguments_digest=_optional_string(value.get("tool_arguments_digest")),
+            evaluated_policies=_evaluated_policies(value.get("evaluated_policies")),
         )
     except (KeyError, TypeError, ValueError) as exc:
         raise RuntimeActionAuthorizationTransportError(
@@ -137,6 +146,21 @@ def _decision_from_payload(value: object) -> RuntimeActionAuthorizationDecision:
 
 def _optional_string(value: object) -> str | None:
     return value if isinstance(value, str) and value else None
+
+
+def _evaluated_policies(value: object) -> tuple[tuple[str, str], ...]:
+    if not isinstance(value, list):
+        return ()
+    result: list[tuple[str, str]] = []
+    for item in value:
+        if not isinstance(item, Mapping):
+            raise TypeError("evaluated_policies must be a list of policy bindings")
+        policy_id = _optional_string(item.get("policy_id"))
+        version = _optional_string(item.get("version"))
+        if policy_id is None or version is None:
+            raise ValueError("evaluated policy binding is malformed")
+        result.append((policy_id, version))
+    return tuple(result)
 
 
 def _validated_scope_headers(

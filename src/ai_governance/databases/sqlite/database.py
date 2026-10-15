@@ -51,6 +51,7 @@ class SQLiteDatabase:
             self._ensure_evaluation_run_columns(connection)
             self._ensure_replay_columns(connection)
             self._ensure_agent_execution_tables(connection)
+            self._ensure_runtime_action_delegation_table(connection)
             self._ensure_evidence_fidelity_table(connection)
             self._ensure_tenancy_columns(connection)
             self._ensure_asset_provenance_columns(connection)
@@ -222,6 +223,39 @@ class SQLiteDatabase:
         connection.execute(
             "CREATE INDEX IF NOT EXISTS idx_evidence_fidelity_execution "
             "ON evidence_fidelity_comparison(organization_id, project_id, source_execution_id, created_at DESC)"
+        )
+
+    @staticmethod
+    def _ensure_runtime_action_delegation_table(connection: sqlite3.Connection) -> None:
+        """Add immutable runtime delegation storage to existing local stores."""
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS runtime_action_delegation (
+                delegation_id TEXT NOT NULL,
+                organization_id TEXT NOT NULL,
+                project_id TEXT NOT NULL DEFAULT '',
+                version TEXT NOT NULL,
+                execution_id TEXT NOT NULL,
+                issuer_id TEXT NOT NULL,
+                runtime_actor_id TEXT NOT NULL,
+                permissions_json TEXT NOT NULL,
+                issued_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                contract_digest TEXT NOT NULL,
+                idempotency_key TEXT NOT NULL,
+                status TEXT NOT NULL,
+                revoked_at TEXT,
+                revoked_by TEXT,
+                revocation_reference TEXT,
+                schema_version TEXT NOT NULL,
+                PRIMARY KEY (organization_id, project_id, delegation_id),
+                UNIQUE (organization_id, project_id, idempotency_key)
+            )
+            """
+        )
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_runtime_action_delegation_execution "
+            "ON runtime_action_delegation(organization_id, project_id, execution_id)"
         )
 
     @staticmethod
