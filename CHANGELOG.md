@@ -9,6 +9,14 @@ This project follows Semantic Versioning.
 
 ### Unreleased
 
+### [1.2.3] - 2026-10-23
+
+### Security
+
+- Updated vulnerable Python and Studio dependencies, including PyJWT, the
+  TruLens and Streamlit dependency chain, Pillow, and Next.js. Refreshed the
+  lockfiles and Studio dependency overrides to pick up security fixes.
+
 
 ### [1.2.2] - 2026-10-14
 
