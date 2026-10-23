@@ -1,6 +1,6 @@
 [project]
 name = "ai-governance"
-version = "1.2.2"
+version = "1.2.3"
 description = "AI Governance Control Plane for execution audit, workflow replay, evaluation, decision-drift analysis, and governance controls for AI systems."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -19,12 +19,12 @@ dependencies = [
     "PyYAML>=6.0",
     "rich>=13.9.4",
     "snowflake-connector-python>=4.7.2",
-    "trulens>=2.10.0",
-    "trulens-connectors-snowflake>=2.10.0",
-    "trulens-core>=2.10.0",
-    "trulens-providers-openai>=2.10.0",
+    "trulens>=2.16.0",
+    "trulens-connectors-snowflake>=2.16.0",
+    "trulens-core>=2.16.0",
+    "trulens-providers-openai>=2.16.0",
     "uvicorn>=0.52.1",
-    "PyJWT>=2.10.0",
+    "PyJWT>=2.15.1",
     "mcp>=2,<3",
     "neo4j>=6.2.0,<7",
 ]

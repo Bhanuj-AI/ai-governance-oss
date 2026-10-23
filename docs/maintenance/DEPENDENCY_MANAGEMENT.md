@@ -33,6 +33,8 @@ trains unless their vendor documents a coupled requirement.
 | Component | Source of truth | Decision |
 | --- | --- | --- |
 | Neo4j Python driver | `pyproject.toml` and `uv.lock` | The application uses Neo4j Python driver 6.2.x. It can be upgraded independently after focused tests and compatibility review. |
+| TruLens and Pillow | `pyproject.toml` and `uv.lock` | TruLens 2.16 and Streamlit 1.66 permit Pillow 13, addressing Pillow 12 advisories. Resolve and validate the TruLens packages together; see [provider installation configuration](../tutorials/configure-evaluation-provider-installations.md). |
+| Studio dependency overrides | `console/pnpm-workspace.yaml` and `console/pnpm-lock.yaml` | Review security overrides with their parent packages; stale pins can retain vulnerable transitive versions. |
 | Local Neo4j server | `docker-compose.yml` | Local development pins Neo4j Community Edition `5.26.27`. The image is changed only through a dedicated server-migration change. |
 | Neo4j driver/server relationship | This document and the [Neo4j Operations Guide](../ontology/neo4j-operations-guide.md) | Driver 6.2 supports the Bolt protocol used by Neo4j 5.x. The driver upgrade does not require a matching server-image version; review the vendor compatibility matrix before either side changes. |
 
