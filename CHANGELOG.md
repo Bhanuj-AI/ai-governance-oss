@@ -9,6 +9,29 @@ This project follows Semantic Versioning.
 
 ### Unreleased
 
+### [1.2.5] - 2026-10-26
+
+### Added
+
+- Added the provider-neutral `RuntimeReplaySource/v1` Plugin API envelope.
+  New governed runtime replays fail closed without this reference-only source;
+  historical generic and Synthetic replay artifacts retain their compatible
+  replay path.
+- Added the optional `replay_manifest_hash` to the existing Causal Audit
+  eligibility response so an external runtime can bind a private snapshot to
+  final governed evidence without uploading that snapshot to OSS.
+
+### Changed
+
+- New Synthetic Runtime replays use worker-owned endpoint configuration and a
+  runtime-source attestation; legacy persisted sources retain frozen endpoint
+  validation for backwards compatibility.
+- Expanded the Plugin API documentation and examples for registration,
+  governed runtime replay, intervention envelopes, validation, isolation, and
+  release verification. The Plugin API package source version is now `1.1.1`
+  for this documentation patch release.
+
+
 ### [1.2.4] - 2026-10-25
 
 ### Added

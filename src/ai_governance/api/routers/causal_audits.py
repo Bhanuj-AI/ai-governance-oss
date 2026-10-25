@@ -171,6 +171,7 @@ def causal_audit_eligibility(
         code=result.code.value,
         reason=result.reason,
         auditable_tool_call_count=result.auditable_tool_call_count,
+        replay_manifest_hash=service.replay_manifest_hash(execution_id, context),
     )
 
 

@@ -23,6 +23,10 @@ from ai_governance.domain.replay import (
 )
 from ai_governance.domain.workflow_execution import WorkflowExecution
 from ai_governance.services.replay_execution import ReplayExecutionContext
+from ai_governance.spi.replay import (
+    RUNTIME_REPLAY_SOURCE_SCHEMA_VERSION,
+    RuntimeReplaySource,
+)
 from ai_governance.tenancy.domain import TenantContext
 
 
@@ -49,6 +53,7 @@ class PreparedAgentRuntimeReplay:
     capability: AgentRuntimeReplayCapability
     auditable_tool_call_ids: tuple[str, ...]
     replay_manifest: ReplayManifest | None = None
+    runtime_replay_source: RuntimeReplaySource | None = None
 
 
 class AgentRuntimeReplaySourceBridge:
@@ -72,6 +77,16 @@ class AgentRuntimeReplaySourceBridge:
         if not replay_manifest.is_eligible:
             raise AgentRuntimeReplayNotAvailable(replay_manifest.reasons[0].message)
         capability, tool_calls = self.validate(execution, events, context)
+        runtime_replay_source = RuntimeReplaySource(
+            source_agent_execution_id=execution.execution_id,
+            external_execution_id=execution.external_execution_id,
+            runtime_type=capability.runtime_type,
+            adapter_id=capability.adapter_id,
+            adapter_version=capability.adapter_version,
+            replay_reference=capability.replay_reference,
+            isolation_guarantee=capability.isolation_guarantee or "",
+            manifest_hash=replay_manifest.manifest_hash,
+        )
         source = WorkflowExecution(
             workflow_id=f"agent-runtime:{execution.agent_id}",
             execution_id=f"agent-runtime-source:{execution.execution_id}",
@@ -97,18 +112,16 @@ class AgentRuntimeReplaySourceBridge:
                         strategy.value
                         for strategy in capability.supported_interventions
                     ],
-                    # Adapter-specific capability metadata is deliberately not
-                    # copied wholesale.  The synthetic adapter needs only its
-                    # declared endpoint, which is frozen with the replay
-                    # configuration and matched against worker configuration
-                    # before any outbound request is made.
-                    "endpoint": _capability_endpoint(capability),
-                }
+                },
+                "runtime_replay_source": runtime_replay_source.to_payload(),
             },
             metadata={
                 "source_agent_execution_id": execution.execution_id,
                 "external_execution_id": execution.external_execution_id,
                 "replay_manifest": replay_manifest.to_dict(),
+                "runtime_replay_source_schema_version": (
+                    RUNTIME_REPLAY_SOURCE_SCHEMA_VERSION
+                ),
             },
             created_at=datetime.now(UTC),
         )
@@ -118,6 +131,7 @@ class AgentRuntimeReplaySourceBridge:
             capability,
             tuple(event.event_id for event in tool_calls),
             replay_manifest,
+            runtime_replay_source,
         )
 
     def manifest(
@@ -328,6 +342,7 @@ class DeterministicAgentRuntimeReplayAdapter:
     def replay(
         self, source_execution, configuration, context: ReplayExecutionContext
     ) -> WorkflowExecution:
+        _validate_runtime_replay_source(context, self.name)
         intervention = context.controlled_evidence_intervention
         if intervention is None or intervention.target_event_id is None:
             raise AgentRuntimeReplayNotAvailable(
@@ -512,17 +527,29 @@ def _validate_tool_call_graph(tool_calls: list[AgentExecutionEvent]) -> None:
         visit(runtime_tool_call_id)
 
 
-def _capability_endpoint(capability: AgentRuntimeReplayCapability) -> str | None:
-    """Return the one safe, adapter-relevant endpoint metadata field.
-
-    Runtime capability metadata is otherwise opaque and may not be used as an
-    executable configuration channel.  Concrete adapters still validate this
-    persisted value against their administrator-approved endpoint.
-    """
-
-    endpoint = capability.metadata.get("endpoint")
-    return endpoint.strip() if isinstance(endpoint, str) and endpoint.strip() else None
-
-
 def _optional_string(value: object) -> str | None:
     return value if isinstance(value, str) else None
+
+
+def _validate_runtime_replay_source(
+    context: ReplayExecutionContext, adapter_name: str
+) -> RuntimeReplaySource | None:
+    """Validate a typed source when the host is executing a v1 runtime replay.
+
+    Older generic and Agent Runtime sources do not carry this additive context
+    and remain compatible. The replay handler rejects a missing envelope for
+    new bridge-produced sources before reaching an adapter.
+    """
+
+    source = context.runtime_replay_source
+    if source is None:
+        return None
+    if source.adapter_id != adapter_name:
+        raise AgentRuntimeReplayNotAvailable(
+            "Runtime replay source adapter identity does not match this adapter."
+        )
+    if not source.manifest_hash:
+        raise AgentRuntimeReplayNotAvailable(
+            "Runtime replay source is missing its manifest binding."
+        )
+    return source

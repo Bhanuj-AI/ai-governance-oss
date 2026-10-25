@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime
 
 import pytest
@@ -23,6 +24,7 @@ from ai_governance.services.synthetic_agent_runtime_replay import (
     SyntheticReplayHttpResponse,
     _synthetic_runtime_token_from_environment,
 )
+from ai_governance.spi.replay import RuntimeReplaySource
 
 NOW = datetime(2026, 8, 26, tzinfo=UTC)
 ENDPOINT = "https://synthetic-runtime.example.test/replay"
@@ -115,6 +117,36 @@ def test_adapter_requires_capability_endpoint_to_match_approved_worker_endpoint(
         adapter.validate_configuration(
             _source(endpoint="https://unapproved.example.test/replay"), _configuration()
         )
+
+
+def test_adapter_accepts_v1_source_without_a_runtime_supplied_endpoint():
+    runtime_source = RuntimeReplaySource(
+        source_agent_execution_id="execution-1",
+        external_execution_id="run-123",
+        runtime_type="synthetic-agent-runtime",
+        adapter_id="synthetic-agent-runtime/v1",
+        adapter_version="1",
+        replay_reference="synthetic://replays/run-123",
+        isolation_guarantee="runtime-isolated/v1",
+        manifest_hash="f" * 64,
+    )
+    source = _source()
+    source.runtime_parameters["agent_runtime_replay"].pop("endpoint")
+    source.runtime_parameters["runtime_replay_source"] = runtime_source.to_payload()
+    source.metadata["source_agent_execution_id"] = "execution-1"
+    context = replace(
+        _context(ControlledEvidenceStrategy.REPLACE),
+        runtime_replay_source=runtime_source,
+    )
+    transport = _Transport([_v1_response(ControlledEvidenceStrategy.REPLACE)])
+
+    replay = _adapter(transport).replay(source, _configuration(), context)
+
+    assert replay.final_state["causal_audit_outcome_score"] == 0.35
+    request = transport.requests[0][1]
+    assert request["organization_id"] == "org-a"
+    assert request["replay_manifest_hash"] == "f" * 64
+    assert "endpoint" not in request
 
 
 def test_adapter_retries_transient_server_failure_with_stable_idempotency_key():
@@ -341,3 +373,19 @@ def _response(strategy: ControlledEvidenceStrategy) -> SyntheticReplayHttpRespon
             "outcome_score": 0.35,
         },
     )
+
+
+def _v1_response(strategy: ControlledEvidenceStrategy) -> SyntheticReplayHttpResponse:
+    response = dict(_response(strategy).payload)
+    response.update(
+        {
+            "organization_id": "org-a",
+            "project_id": "project-a",
+            "adapter_id": "synthetic-agent-runtime/v1",
+            "adapter_version": "1",
+            "replay_manifest_hash": "f" * 64,
+            "isolation_guarantee": "runtime-isolated/v1",
+            "private_snapshot_integrity_verified": True,
+        }
+    )
+    return SyntheticReplayHttpResponse(200, response)

@@ -27,6 +27,7 @@ class CausalAuditEligibilityResponse(BaseModel):
     code: str
     reason: str
     auditable_tool_call_count: int
+    replay_manifest_hash: str | None = Field(None, min_length=64, max_length=64)
 
 
 class OutcomeScoreResponse(BaseModel):

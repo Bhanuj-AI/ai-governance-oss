@@ -15,7 +15,7 @@ resolution-markers = [
 
 [[package]]
 name = "ai-governance"
-version = "1.2.4"
+version = "1.2.5"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
@@ -496,7 +496,7 @@ wheels = [
 
 [[package]]
 name = "bhanuj-governance-plugin-api"
-version = "1.0.0"
+version = "1.1.1"
 source = { editable = "packages/bhanuj-governance-plugin-api" }
 
 [[package]]

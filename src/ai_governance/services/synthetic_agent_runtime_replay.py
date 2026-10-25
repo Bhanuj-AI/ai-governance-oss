@@ -1,9 +1,8 @@
 """External, isolated Replay adapter for the Synthetic Agent Runtime.
 
-The adapter consumes only a frozen replay capability and controlled evidence
-intervention.  The capability endpoint must exactly match worker configuration
-before Core makes an outbound call, so an observed execution can never direct
-the worker to an arbitrary host.
+New governed sources use the typed, reference-only runtime replay contract.
+Historical persisted sources retain their endpoint binding for compatibility.
+Neither path transfers private snapshot contents into Core.
 """
 
 from __future__ import annotations
@@ -27,6 +26,7 @@ from ai_governance.services.agent_runtime_controlled_replay import (
     AgentRuntimeReplayNotAvailable,
 )
 from ai_governance.services.replay_execution import ReplayExecutionContext
+from ai_governance.spi.replay import RuntimeReplaySource
 
 
 class SyntheticAgentRuntimeReplayError(RuntimeError):
@@ -94,8 +94,9 @@ class UrlLibSyntheticReplayTransport:
 class SyntheticAgentRuntimeReplayAdapter:
     """Call the simulator's bounded ``/replay`` API for controlled Replay.
 
-    ``approved_endpoint`` is a worker-owned configuration value.  It must
-    exactly match the endpoint frozen from the observed runtime capability.
+    ``approved_endpoint`` is a worker-owned configuration value. Historical
+    sources must match their frozen endpoint to it. New `RuntimeReplaySource`
+    sources intentionally carry no endpoint and use this approved value.
     Credentials are obtained only from the existing short-lived OAuth client
     credentials provider when it has been configured; no bearer token is
     persisted in a replay or capability.
@@ -151,12 +152,17 @@ class SyntheticAgentRuntimeReplayAdapter:
             raise AgentRuntimeReplayNotAvailable(
                 "Replay source has an invalid synthetic replay reference."
             )
-        endpoint = _normalise_endpoint(capability.get("endpoint"))
         if self._approved_endpoint is None:
             raise AgentRuntimeReplayNotAvailable(
                 "Synthetic runtime endpoint is not configured for this worker."
             )
-        if endpoint is None or endpoint != self._approved_endpoint:
+        endpoint = _normalise_endpoint(capability.get("endpoint"))
+        has_v1_source = _has_runtime_replay_source(source_execution)
+        if endpoint is None and not has_v1_source:
+            raise AgentRuntimeReplayNotAvailable(
+                "Legacy synthetic replay source has no approved endpoint binding."
+            )
+        if endpoint is not None and endpoint != self._approved_endpoint:
             raise AgentRuntimeReplayNotAvailable(
                 "Replay capability endpoint is not approved for this worker."
             )
@@ -175,6 +181,9 @@ class SyntheticAgentRuntimeReplayAdapter:
         self.validate_configuration(source_execution, configuration)
         if context.cancellation_token.is_cancelled:
             raise SyntheticAgentRuntimeReplayError("Replay cancellation requested.")
+        runtime_source = _validate_runtime_replay_source(
+            source_execution, context, self.name
+        )
         intervention = context.controlled_evidence_intervention
         if intervention is None or not intervention.target_event_id:
             raise AgentRuntimeReplayNotAvailable(
@@ -234,17 +243,26 @@ class SyntheticAgentRuntimeReplayAdapter:
                 "Synthetic controlled Replay source lacks a safe external execution ID."
             )
 
-        response = self._call_runtime(
-            {
-                "replay_reference": capability["replay_reference"],
-                "intervention": intervention.strategy.value,
-                "external_execution_id": external_execution_id,
-                "runtime_tool_call_id": runtime_tool_call_id,
-                "source_evidence_digest": intervention.original_evidence_digest,
-                "intervention_provenance_digest": intervention.counterfactual_evidence_digest,
-            },
-            context.replay_id,
-        )
+        payload: dict[str, object] = {
+            "replay_reference": capability["replay_reference"],
+            "intervention": intervention.strategy.value,
+            "external_execution_id": external_execution_id,
+            "runtime_tool_call_id": runtime_tool_call_id,
+            "source_evidence_digest": intervention.original_evidence_digest,
+            "intervention_provenance_digest": intervention.counterfactual_evidence_digest,
+        }
+        if runtime_source is not None:
+            payload.update(
+                {
+                    "organization_id": context.organization_id,
+                    "project_id": context.project_id,
+                    "adapter_id": runtime_source.adapter_id,
+                    "adapter_version": runtime_source.adapter_version,
+                    "replay_manifest_hash": runtime_source.manifest_hash,
+                    "isolation_guarantee": runtime_source.isolation_guarantee,
+                }
+            )
+        response = self._call_runtime(payload, context.replay_id)
         return _workflow_execution(
             source_execution,
             context,
@@ -253,6 +271,7 @@ class SyntheticAgentRuntimeReplayAdapter:
             response,
             external_execution_id,
             runtime_tool_call_id,
+            runtime_source,
         )
 
     def _call_runtime(
@@ -295,6 +314,48 @@ def _capability(source_execution: WorkflowExecution) -> Mapping[str, Any]:
             "Replay source has no persisted Agent Runtime replay capability."
         )
     return value
+
+
+def _has_runtime_replay_source(source_execution: WorkflowExecution) -> bool:
+    source = (source_execution.runtime_parameters or {}).get(
+        "runtime_replay_source"
+    )
+    return isinstance(source, Mapping) and source.get("schema_version") == (
+        "runtime-replay-source/v1"
+    )
+
+
+def _validate_runtime_replay_source(
+    source_execution: WorkflowExecution,
+    context: ReplayExecutionContext,
+    adapter_name: str,
+) -> RuntimeReplaySource | None:
+    """Validate the host-provided v1 source before using its opaque reference."""
+
+    runtime_source = context.runtime_replay_source
+    is_v1_source = _has_runtime_replay_source(source_execution)
+    if runtime_source is None:
+        if is_v1_source:
+            raise AgentRuntimeReplayNotAvailable(
+                "Governed synthetic replay requires RuntimeReplaySource/v1."
+            )
+        return None
+    capability = _capability(source_execution)
+    expected_external_execution_id = source_execution.metadata.get(
+        "external_execution_id"
+    )
+    if (
+        runtime_source.adapter_id != adapter_name
+        or runtime_source.runtime_type != "synthetic-agent-runtime"
+        or runtime_source.replay_reference != capability.get("replay_reference")
+        or runtime_source.external_execution_id != expected_external_execution_id
+        or runtime_source.source_agent_execution_id
+        != source_execution.metadata.get("source_agent_execution_id")
+    ):
+        raise AgentRuntimeReplayNotAvailable(
+            "Runtime replay source does not match the synthetic replay evidence."
+        )
+    return runtime_source
 
 
 def _normalise_endpoint(value: object) -> str | None:
@@ -364,11 +425,12 @@ def _workflow_execution(
     response: SyntheticReplayHttpResponse,
     external_execution_id: str,
     runtime_tool_call_id: str,
+    runtime_source: RuntimeReplaySource | None,
 ) -> WorkflowExecution:
     payload = response.payload
     score = payload.get("outcome_score")
     counterfactual_evidence_digest = payload.get("counterfactual_evidence_digest")
-    if (
+    response_is_invalid = (
         payload.get("execution_status") != "COMPLETED"
         or payload.get("isolated") is not True
         or payload.get("replay_reference") != capability["replay_reference"]
@@ -384,7 +446,21 @@ def _workflow_execution(
         or not SyntheticAgentRuntimeReplayAdapter._SHA256_DIGEST.fullmatch(
             counterfactual_evidence_digest
         )
-    ):
+    )
+    if runtime_source is not None:
+        response_is_invalid = response_is_invalid or any(
+            (
+                payload.get("organization_id") != context.organization_id,
+                payload.get("project_id") != context.project_id,
+                payload.get("adapter_id") != runtime_source.adapter_id,
+                payload.get("adapter_version") != runtime_source.adapter_version,
+                payload.get("replay_manifest_hash") != runtime_source.manifest_hash,
+                payload.get("isolation_guarantee")
+                != runtime_source.isolation_guarantee,
+                payload.get("private_snapshot_integrity_verified") is not True,
+            )
+        )
+    if response_is_invalid:
         raise SyntheticAgentRuntimeReplayError(
             "Synthetic runtime returned an unsafe or malformed replay response."
         )

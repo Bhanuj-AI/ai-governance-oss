@@ -6,6 +6,8 @@ from ai_governance.domain.jobs import Job, JobExecutionContext, JobStatus, JobTy
 from ai_governance.domain.replay import (
     ControlledEvidenceIntervention,
     ControlledEvidenceStrategy,
+    ReplayManifest,
+    ReplayManifestEligibility,
     ReplayMode,
     ReplayStatus,
 )
@@ -21,8 +23,10 @@ from ai_governance.services.replay_execution import (
 )
 from ai_governance.spi.replay import (
     REPLAY_INTERVENTION_ENVELOPE_SCHEMA_VERSION,
+    RUNTIME_REPLAY_SOURCE_SCHEMA_VERSION,
     ReplayExecutionResult,
     ReplayInterventionEnvelope,
+    RuntimeReplaySource,
 )
 from ai_governance.tenancy.domain import TenantContext
 
@@ -66,6 +70,29 @@ class _Store:
 
     def save(self, execution: WorkflowExecution) -> None:
         self.executions.append(execution)
+
+
+class _RuntimeSourceAdapter:
+    name = "test-runtime/v1"
+
+    def __init__(self) -> None:
+        self.runtime_replay_source = None
+
+    def validate_configuration(self, source_execution, configuration) -> None:
+        return None
+
+    def replay(self, source_execution, configuration, context):
+        self.runtime_replay_source = context.runtime_replay_source
+        return WorkflowExecution(
+            workflow_id=source_execution.workflow_id,
+            execution_id=context.new_execution_id,
+            workflow_name=source_execution.workflow_name,
+            workflow_version=source_execution.workflow_version,
+            execution_status="COMPLETED",
+            input={},
+            final_state={"causal_audit_outcome_score": 0.5},
+            events=[],
+        )
 
 
 def test_replay_job_handler_persists_new_execution_and_lineage() -> None:
@@ -334,6 +361,75 @@ def test_replay_passes_only_governed_intervention_metadata_to_an_external_adapte
     }
 
 
+def test_runtime_replay_source_is_injected_for_a_v1_governed_source() -> None:
+    source = _governed_runtime_source()
+    repository = InMemoryReplayRepository()
+    context = TenantContext("organization-1", "project-1", "actor-1", "request-1")
+    replay = ReplayApplicationService(
+        repository,
+        _SourceResolver(source),
+        id_generator=lambda: "replay-1",
+        clock=lambda: datetime(2026, 1, 1, tzinfo=UTC),
+    ).create(
+        source_execution_id=source.execution_id,
+        context=context,
+        idempotency_key="key-1",
+    )
+    repository.update(
+        replay.mark_queued("job-1", datetime(2026, 1, 1, tzinfo=UTC)), replay.version
+    )
+    adapter = _RuntimeSourceAdapter()
+    registry = ReplayExecutionAdapterRegistry()
+    registry.register(adapter)
+
+    result = ReplayJobHandler(
+        repository,
+        _SourceResolver(source),
+        _Store(),
+        registry,
+        execution_id_generator=lambda: "replay-execution-1",
+        clock=lambda: datetime(2026, 1, 1, tzinfo=UTC),
+    ).handle(_job())
+
+    assert result.status is JobStatus.SUCCEEDED
+    assert adapter.runtime_replay_source is not None
+    assert adapter.runtime_replay_source.replay_reference == "runtime://replays/run-1"
+
+
+def test_v1_governed_runtime_source_fails_closed_when_envelope_is_missing() -> None:
+    source = _governed_runtime_source(include_runtime_replay_source=False)
+    repository = InMemoryReplayRepository()
+    context = TenantContext("organization-1", "project-1", "actor-1", "request-1")
+    replay = ReplayApplicationService(
+        repository,
+        _SourceResolver(source),
+        id_generator=lambda: "replay-1",
+        clock=lambda: datetime(2026, 1, 1, tzinfo=UTC),
+    ).create(
+        source_execution_id=source.execution_id,
+        context=context,
+        idempotency_key="key-1",
+    )
+    repository.update(
+        replay.mark_queued("job-1", datetime(2026, 1, 1, tzinfo=UTC)), replay.version
+    )
+    adapter = _RuntimeSourceAdapter()
+    registry = ReplayExecutionAdapterRegistry()
+    registry.register(adapter)
+
+    result = ReplayJobHandler(
+        repository,
+        _SourceResolver(source),
+        _Store(),
+        registry,
+        execution_id_generator=lambda: "replay-execution-1",
+        clock=lambda: datetime(2026, 1, 1, tzinfo=UTC),
+    ).handle(_job())
+
+    assert result.status is JobStatus.FAILED
+    assert adapter.runtime_replay_source is None
+
+
 def test_replay_intervention_envelope_v1_payload_round_trips_and_rejects_other_versions() -> (
     None
 ):
@@ -396,4 +492,67 @@ def _job() -> Job:
         execution_context=JobExecutionContext(
             "organization-1", "project-1", "actor-1", "request-1"
         ),
+    )
+
+
+def _governed_runtime_source(
+    *, include_runtime_replay_source: bool = True
+) -> WorkflowExecution:
+    manifest = ReplayManifest(
+        source_execution_id="agent-execution-1",
+        source_execution_status="SUCCEEDED",
+        eligibility=ReplayManifestEligibility.ELIGIBLE,
+        tool_call_count=1,
+        evidence_reference_count=1,
+        runtime_type="test-runtime",
+        adapter_id="test-runtime/v1",
+        adapter_version="1",
+        replay_reference="runtime://replays/run-1",
+        isolation_guarantee="private-snapshot/v1",
+    )
+    runtime_source = RuntimeReplaySource(
+        source_agent_execution_id="agent-execution-1",
+        external_execution_id="runtime-run-1",
+        runtime_type="test-runtime",
+        adapter_id="test-runtime/v1",
+        adapter_version="1",
+        replay_reference="runtime://replays/run-1",
+        isolation_guarantee="private-snapshot/v1",
+        manifest_hash=manifest.manifest_hash,
+    )
+    runtime_parameters = {
+        "agent_runtime_replay": {
+            "runtime_type": "test-runtime",
+            "adapter_id": "test-runtime/v1",
+            "adapter_version": "1",
+            "replay_reference": "runtime://replays/run-1",
+            "supported_interventions": ["REPLACE"],
+        }
+    }
+    if include_runtime_replay_source:
+        runtime_parameters["runtime_replay_source"] = runtime_source.to_payload()
+    return WorkflowExecution(
+        workflow_id="agent-runtime:agent-1",
+        execution_id="agent-runtime-source:agent-execution-1",
+        workflow_name="Agent",
+        workflow_version="1",
+        execution_status="COMPLETED",
+        input={},
+        final_state={},
+        events=[],
+        organization_id="organization-1",
+        project_id="project-1",
+        execution_adapter="test-runtime/v1",
+        input_snapshot_ref="runtime://replays/run-1",
+        state_snapshot_ref="runtime://replays/run-1",
+        artifact_refs=["runtime://replays/run-1"],
+        runtime_parameters=runtime_parameters,
+        metadata={
+            "source_agent_execution_id": "agent-execution-1",
+            "external_execution_id": "runtime-run-1",
+            "runtime_replay_source_schema_version": (
+                RUNTIME_REPLAY_SOURCE_SCHEMA_VERSION
+            ),
+            "replay_manifest": manifest.to_dict(),
+        },
     )

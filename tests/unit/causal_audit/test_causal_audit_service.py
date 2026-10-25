@@ -431,6 +431,7 @@ def test_causal_audit_consumes_successful_synthetic_runtime_replay():
                     "source_evidence_digest": payload["source_evidence_digest"],
                     "counterfactual_evidence_digest": RUNTIME_COUNTERFACTUAL_EVIDENCE_DIGEST,
                     "outcome_score": 0.1,
+                    **_runtime_replay_attestation(payload),
                 },
             )
 
@@ -591,3 +592,18 @@ def test_failed_execution_with_manifest_evidence_is_causal_audit_eligible():
     )
 
     assert result.code.value == "ELIGIBLE"
+
+
+def _runtime_replay_attestation(payload: dict[str, object]) -> dict[str, object]:
+    """Echo required v1 runtime-source bindings for the simulated runtime."""
+    if "replay_manifest_hash" not in payload:
+        return {}
+    return {
+        "organization_id": payload["organization_id"],
+        "project_id": payload["project_id"],
+        "adapter_id": payload["adapter_id"],
+        "adapter_version": payload["adapter_version"],
+        "replay_manifest_hash": payload["replay_manifest_hash"],
+        "isolation_guarantee": payload["isolation_guarantee"],
+        "private_snapshot_integrity_verified": True,
+    }
