@@ -786,6 +786,7 @@ _EXECUTION_SCENARIOS: list[dict[str, Any]] = [
                 "adapter_id": "deterministic-agent-runtime/v1",
                 "adapter_version": "1",
                 "replay_reference": "artifact://demo/replays/fraud-source-001",
+                "isolation_guarantee": "runtime-isolated/v1",
                 "supported_interventions": ["PERTURB"],
             }
         },

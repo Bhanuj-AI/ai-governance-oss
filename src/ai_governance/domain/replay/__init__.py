@@ -1,3 +1,10 @@
+from ai_governance.domain.replay.manifest import (
+    REPLAY_MANIFEST_SCHEMA_VERSION,
+    ReplayManifest,
+    ReplayManifestEligibility,
+    ReplayManifestReason,
+    ReplayManifestReasonCode,
+)
 from ai_governance.domain.replay.replay import (
     ControlledEvidenceIntervention,
     ControlledEvidenceStrategy,
@@ -20,6 +27,7 @@ from ai_governance.domain.replay.replay_result import (
 )
 
 __all__ = [
+    "REPLAY_MANIFEST_SCHEMA_VERSION",
     "ControlledEvidenceIntervention",
     "ControlledEvidenceStrategy",
     "Replay",
@@ -30,6 +38,10 @@ __all__ = [
     "ReplayEvaluationHistory",
     "ReplayFailure",
     "ReplayFailureStage",
+    "ReplayManifest",
+    "ReplayManifestEligibility",
+    "ReplayManifestReason",
+    "ReplayManifestReasonCode",
     "ReplayMode",
     "ReplayRequest",
     "ReplayResult",

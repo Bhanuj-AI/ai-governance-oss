@@ -1,10 +1,19 @@
+import json
 from datetime import UTC, datetime
 
 import pytest
 
+from ai_governance.api.mappers.replay_mapper import ReplayApiMapper
 from ai_governance.authorization.contracts import AuthorizationEnforcementDecision
 from ai_governance.domain.jobs import Job, JobStatus, JobType
-from ai_governance.domain.replay import ReplayMode, ReplayStatus
+from ai_governance.domain.replay import (
+    ReplayManifest,
+    ReplayManifestEligibility,
+    ReplayManifestReason,
+    ReplayManifestReasonCode,
+    ReplayMode,
+    ReplayStatus,
+)
 from ai_governance.domain.replay.errors import (
     ReplayIdempotencyConflict,
     ReplayUnauthorized,
@@ -12,6 +21,9 @@ from ai_governance.domain.replay.errors import (
 from ai_governance.domain.workflow_execution import WorkflowExecution
 from ai_governance.repositories.in_memory_replay_repository import (
     InMemoryReplayRepository,
+)
+from ai_governance.repositories.mappers.replay_persistence_mapper import (
+    ReplayPersistenceMapper,
 )
 from ai_governance.services.replay_application_service import ReplayApplicationService
 from ai_governance.tenancy.domain import TenantContext
@@ -47,6 +59,138 @@ def test_replay_creation_freezes_configuration_and_becomes_ready() -> None:
     assert replay.configuration.input_snapshot_ref.startswith("inline:input:")
     with pytest.raises(TypeError):
         replay.configuration.runtime_parameters["temperature"] = 0.9  # type: ignore[index]
+
+
+def test_replay_configuration_round_trips_optional_manifest_and_legacy_records():
+    source = _execution()
+    manifest = ReplayManifest(
+        source_execution_id="execution-1",
+        source_execution_status="FAILED",
+        eligibility=ReplayManifestEligibility.ELIGIBLE,
+        tool_call_count=1,
+        evidence_reference_count=1,
+        runtime_type="external-runtime",
+        adapter_id="external-runtime/v1",
+        adapter_version="1",
+        replay_reference="runtime://replays/execution-1",
+        isolation_guarantee="isolated-runtime/v1",
+    )
+    source.metadata["replay_manifest"] = manifest.to_dict()
+    source.execution_adapter = "external-runtime/v1"
+    source.artifact_refs = ["runtime://replays/execution-1"]
+
+    replay = _service(source).create(
+        source_execution_id="execution-1",
+        context=_context(),
+        idempotency_key="replay-1",
+    )
+    assert replay.configuration is not None
+    assert replay.configuration.replay_manifest == manifest
+
+    response = ReplayApiMapper.to_response(replay)
+    assert response.configuration is not None
+    assert response.configuration.replay_manifest is not None
+    assert response.configuration.replay_manifest.manifest_hash == manifest.manifest_hash
+
+    record = ReplayPersistenceMapper.to_persistence_record(replay)
+    restored = ReplayPersistenceMapper.from_persistence_record(record)
+    assert restored.configuration is not None
+    assert restored.configuration.replay_manifest == manifest
+
+    # Existing persisted configurations had no manifest field. They remain
+    # readable and do not acquire a retroactive eligibility classification.
+    legacy_configuration = json.loads(record["configuration_json"])
+    legacy_configuration.pop("replay_manifest")
+    record["configuration_json"] = json.dumps(legacy_configuration)
+    legacy = ReplayPersistenceMapper.from_persistence_record(record)
+    assert legacy.configuration is not None
+    assert legacy.configuration.replay_manifest is None
+
+
+def test_ineligible_source_manifest_fails_closed_without_changing_legacy_sources():
+    source = _execution()
+    source.metadata["replay_manifest"] = ReplayManifest(
+        source_execution_id="execution-1",
+        source_execution_status="FAILED",
+        eligibility=ReplayManifestEligibility.INELIGIBLE,
+        tool_call_count=0,
+        evidence_reference_count=0,
+        reasons=(
+            ReplayManifestReason(
+                ReplayManifestReasonCode.MISSING_REPLAY_CAPABILITY,
+                "Observed execution has no explicit replay capability.",
+            ),
+        ),
+    ).to_dict()
+
+    replay = _service(source).create(
+        source_execution_id="execution-1",
+        context=_context(),
+        idempotency_key="replay-1",
+    )
+
+    assert replay.status is ReplayStatus.FAILED
+    assert replay.failure is not None
+    assert replay.failure.code == "ReplayNotReplayable"
+    assert "MISSING_REPLAY_CAPABILITY" in replay.failure.message
+
+
+def test_manifest_cannot_be_attached_to_a_different_source_execution():
+    source = _execution()
+    source.execution_adapter = "external-runtime/v1"
+    source.artifact_refs = ["runtime://replays/execution-1"]
+    source.metadata["replay_manifest"] = ReplayManifest(
+        source_execution_id="another-execution",
+        source_execution_status="FAILED",
+        eligibility=ReplayManifestEligibility.ELIGIBLE,
+        tool_call_count=1,
+        evidence_reference_count=1,
+        runtime_type="external-runtime",
+        adapter_id="external-runtime/v1",
+        adapter_version="1",
+        replay_reference="runtime://replays/execution-1",
+        isolation_guarantee="isolated-runtime/v1",
+    ).to_dict()
+
+    replay = _service(source).create(
+        source_execution_id="execution-1",
+        context=_context(),
+        idempotency_key="replay-1",
+    )
+
+    assert replay.status is ReplayStatus.FAILED
+    assert replay.failure is not None
+    assert "belongs to another execution" in replay.failure.message
+
+
+def test_tampered_manifest_version_fails_closed_before_replay_creation():
+    source = _execution()
+    source.execution_adapter = "external-runtime/v1"
+    source.artifact_refs = ["runtime://replays/execution-1"]
+    manifest = ReplayManifest(
+        source_execution_id="execution-1",
+        source_execution_status="FAILED",
+        eligibility=ReplayManifestEligibility.ELIGIBLE,
+        tool_call_count=1,
+        evidence_reference_count=1,
+        runtime_type="external-runtime",
+        adapter_id="external-runtime/v1",
+        adapter_version="1",
+        replay_reference="runtime://replays/execution-1",
+        isolation_guarantee="isolated-runtime/v1",
+    ).to_dict()
+    manifest["adapter_version"] = "2"
+    source.metadata["replay_manifest"] = manifest
+
+    replay = _service(source).create(
+        source_execution_id="execution-1",
+        context=_context(),
+        idempotency_key="replay-1",
+    )
+
+    assert replay.status is ReplayStatus.FAILED
+    assert replay.failure is not None
+    assert replay.failure.message == "Source replay manifest is malformed."
 
 
 def test_missing_source_creates_a_queryable_failed_replay() -> None:

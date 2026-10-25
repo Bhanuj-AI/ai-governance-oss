@@ -219,11 +219,6 @@ class CausalAuditService:
                 CausalAuditEligibilityCode.NOT_REPLAYABLE,
                 "Execution was not found in the current tenant scope.",
             )
-        if execution.status is not AgentExecutionStatus.SUCCEEDED:
-            return CausalAuditEligibility(
-                CausalAuditEligibilityCode.INCOMPLETE_EXECUTION,
-                "Only successfully completed executions can be causally audited.",
-            )
         if evaluator_ref not in self._scorers:
             return CausalAuditEligibility(
                 CausalAuditEligibilityCode.MISSING_SCORER,
@@ -232,6 +227,23 @@ class CausalAuditService:
         events = self._events.list_by_execution(
             execution_id, context.organization_id, context.project_id
         )
+        if self._replay_source_bridge is not None:
+            replay_manifest = self._replay_source_bridge.manifest(
+                execution, events, context
+            )
+            if not replay_manifest.is_eligible:
+                return CausalAuditEligibility(
+                    CausalAuditEligibilityCode.NOT_REPLAYABLE,
+                    replay_manifest.reasons[0].message,
+                )
+        elif execution.status is not AgentExecutionStatus.SUCCEEDED:
+            # Older callers without the runtime bridge retain their exact
+            # historical eligibility rule. A manifest-capable bridge owns the
+            # stronger evidence and isolation assessment above.
+            return CausalAuditEligibility(
+                CausalAuditEligibilityCode.INCOMPLETE_EXECUTION,
+                "Only successfully completed executions can be causally audited.",
+            )
         if not any(
             event.event_type is EventType.EVALUATION
             and isinstance(event.attributes.get("score"), (int, float))

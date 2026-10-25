@@ -28,6 +28,43 @@ Replay Management depends on source-execution evidence through an application
 boundary. It does not depend on Evaluation History, Experiment Management, job
 execution, or ontology synchronization.
 
+## Replay eligibility manifest
+
+`replay-manifest/v1` is an optional, immutable assessment carried by
+`ReplayConfiguration`. It answers one narrow question: whether the captured,
+versioned execution evidence is sufficient for a safe replay attempt. It does
+not run a replay, retry the source operation, or prove that an external side
+effect occurred.
+
+For an Agent Runtime source, the controlled-replay bridge creates the manifest
+from the tenant-bound execution record, its durable tool-call identities and
+evidence references, and the runtime-declared replay capability. The capability
+contains an opaque replay reference, runtime and adapter versions, and a
+versioned isolation guarantee. Those fields are a runtime attestation that is
+validated before the adapter is used; they are not an independent proof of an
+external mutation or of the runtime's transactional correctness.
+
+A manifest is either `ELIGIBLE` or `INELIGIBLE`. An ineligible manifest has one
+or more stable, privacy-bounded reasons, such as a missing capability,
+isolation guarantee, durable evidence reference, tool-call identity, or valid
+dependency graph. An eligible manifest requires all capability and isolation
+fields as well as the evidence checks. The manifest hash covers this complete
+assessment. Before use, OSS binds the manifest to the selected source execution,
+its adapter, and its frozen opaque replay reference; the containing replay
+configuration hash then includes the manifest.
+
+The source outcome is deliberately not the deciding signal. A terminal
+`FAILED` execution can be replay-eligible when its frozen evidence and
+isolation guarantees are complete. Conversely, an execution receipt reported as
+`SUCCEEDED` cannot establish replay eligibility by itself: receipts attest to a
+runtime-reported action outcome, while a manifest requires replay-specific
+capability and evidence bindings.
+
+The field is additive. Existing `ReplayConfiguration` records without a
+manifest remain readable and retain their historical replay behavior; they are
+not retroactively classified. A malformed persisted manifest fails closed when
+it is read.
+
 ## Execution
 
 Submitting a READY replay creates one `REPLAY_EXECUTION` Job. Job retries keep

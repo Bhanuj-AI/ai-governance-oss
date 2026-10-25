@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from ai_governance.runtime_authorization import (
+    RUNTIME_ACTION_EXECUTION_RECEIPT_SCHEMA_VERSION,
+    RuntimeActionExecutionReceiptStatus,
+)
 
 # -- Request models -----------------------------------------------------------
 
@@ -146,6 +151,47 @@ class AgentExecutionEventRequest(BaseModel):
         return self
 
 
+class RuntimeActionExecutionReceiptRequest(BaseModel):
+    """Authenticated runtime attestation for a previously authorized action."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: Literal["runtime-action-execution-receipt/v1"] = (
+        RUNTIME_ACTION_EXECUTION_RECEIPT_SCHEMA_VERSION
+    )
+    decision_id: str = Field(min_length=1, max_length=256)
+    request_fingerprint: str = Field(pattern=r"^[0-9a-f]{64}$")
+    action_id: str = Field(min_length=1, max_length=256)
+    runtime_tool_call_id: str = Field(min_length=1, max_length=256)
+    tool_arguments_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
+    status: RuntimeActionExecutionReceiptStatus
+    reason_code: str = Field(min_length=1, max_length=256)
+    idempotency_key: str = Field(min_length=1, max_length=256)
+    result_reference: str | None = Field(None, min_length=1, max_length=512)
+    result_digest: str | None = Field(None, pattern=r"^sha256:[0-9a-f]{64}$")
+    supersedes_receipt_id: str | None = Field(None, min_length=1, max_length=256)
+
+    @model_validator(mode="after")
+    def validate_result_binding(self) -> RuntimeActionExecutionReceiptRequest:
+        if (self.result_reference is None) != (self.result_digest is None):
+            raise ValueError("result_reference and result_digest are required together.")
+        if self.status is RuntimeActionExecutionReceiptStatus.SUCCEEDED and (
+            self.result_reference is None or self.result_digest is None
+        ):
+            raise ValueError("SUCCEEDED receipts require a result reference and digest.")
+        if self.status in {
+            RuntimeActionExecutionReceiptStatus.NOT_EXECUTED,
+            RuntimeActionExecutionReceiptStatus.UNKNOWN,
+        } and self.result_reference is not None:
+            raise ValueError(f"{self.status.value} receipts must not contain a result.")
+        if (
+            self.status is RuntimeActionExecutionReceiptStatus.UNKNOWN
+            and self.supersedes_receipt_id is not None
+        ):
+            raise ValueError("UNKNOWN receipts cannot supersede a prior receipt.")
+        return self
+
+
 class AgentExecutionCompleteRequest(BaseModel):
     """Mark an execution as terminal."""
 
@@ -231,6 +277,23 @@ class ToolCallContextResponse(BaseModel):
     depends_on_tool_call_ids: list[str] = Field(default_factory=list)
 
 
+class RuntimeActionExecutionReceiptResponse(BaseModel):
+    schema_version: str
+    receipt_id: str
+    decision_id: str
+    request_fingerprint: str
+    action_id: str
+    runtime_tool_call_id: str
+    tool_arguments_digest: str
+    status: str
+    reason_code: str
+    attested_by: str
+    attested_at: datetime
+    result_reference: str | None = None
+    result_digest: str | None = None
+    supersedes_receipt_id: str | None = None
+
+
 class AgentExecutionEventResponse(BaseModel):
     """One event in the execution timeline."""
 
@@ -253,6 +316,7 @@ class AgentExecutionEventResponse(BaseModel):
     parent_step_id: str | None = None
     source_kind: str | None = None
     tool_call_context: ToolCallContextResponse | None = None
+    runtime_action_execution_receipt: RuntimeActionExecutionReceiptResponse | None = None
     resource_references: list[str] = Field(default_factory=list)
     evidence_references: list[str] = Field(default_factory=list)
     attributes: dict[str, Any] = Field(default_factory=dict)

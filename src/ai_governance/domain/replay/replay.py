@@ -9,6 +9,8 @@ from hashlib import sha256
 from types import MappingProxyType
 from typing import Any
 
+from ai_governance.domain.replay.manifest import ReplayManifest
+
 
 class ReplayStatus(str, Enum):
     DRAFT = "DRAFT"
@@ -167,6 +169,7 @@ class ReplayConfiguration:
     configuration_source: ReplayConfigurationSource = ReplayConfigurationSource.ORIGINAL
     resolved_at: datetime | None = None
     configuration_hash: str = ""
+    replay_manifest: ReplayManifest | None = None
 
     def __post_init__(self) -> None:
         for name, value in (
@@ -181,6 +184,10 @@ class ReplayConfiguration:
                 raise ValueError(f"Replay configuration {name} is required.")
         if self.configuration_source is not ReplayConfigurationSource.ORIGINAL:
             raise ValueError("Only ORIGINAL replay configuration is supported.")
+        if self.replay_manifest is not None and not isinstance(
+            self.replay_manifest, ReplayManifest
+        ):
+            raise TypeError("Replay configuration manifest must be a ReplayManifest.")
         object.__setattr__(
             self,
             "runtime_parameters",

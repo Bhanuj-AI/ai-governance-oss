@@ -83,6 +83,7 @@ def _service(
     tool_names: tuple[str, ...] | None = None,
     baseline_score: float = 0.9,
     replay_capable: bool = True,
+    execution_status: AgentExecutionStatus = AgentExecutionStatus.SUCCEEDED,
     settings: CausalAuditSettings | None = None,
     replacement_count: int = 1,
     replay_adapter=None,
@@ -109,7 +110,7 @@ def _service(
             "v1",
             "external-a",
             runtime_type,
-            AgentExecutionStatus.SUCCEEDED,
+            execution_status,
             NOW,
             NOW,
             None,
@@ -127,6 +128,7 @@ def _service(
                             if replay_adapter is not None
                             else "artifact://execution-a"
                         ),
+                        "isolation_guarantee": "runtime-isolated/v1",
                         "supported_interventions": ["REPLACE"],
                         **(
                             {
@@ -575,4 +577,17 @@ def test_missing_explicit_replay_capability_fails_closed():
         intervention_policy_id="policy-a",
         intervention_policy_version=1,
     )
-    assert result.code.value == "UNSUPPORTED_TOOL"
+    assert result.code.value == "NOT_REPLAYABLE"
+
+
+def test_failed_execution_with_manifest_evidence_is_causal_audit_eligible():
+    result = _service(
+        [0.1, 0.2, 0.3], execution_status=AgentExecutionStatus.FAILED
+    ).service.eligibility(
+        "execution-a",
+        CONTEXT,
+        intervention_policy_id="policy-a",
+        intervention_policy_version=1,
+    )
+
+    assert result.code.value == "ELIGIBLE"

@@ -19,10 +19,16 @@ from .http_client import (
     AIGPRuntimeActionAuthorizationClient,
     RuntimeActionAuthorizationTransportError,
 )
+from .receipts import (
+    RUNTIME_ACTION_EXECUTION_RECEIPT_SCHEMA_VERSION,
+    RuntimeActionExecutionReceipt,
+    RuntimeActionExecutionReceiptStatus,
+)
 
 __all__ = [
     "RUNTIME_ACTION_AUTHORIZATION_SCHEMA_VERSION",
     "RUNTIME_ACTION_DELEGATION_SCHEMA_VERSION",
+    "RUNTIME_ACTION_EXECUTION_RECEIPT_SCHEMA_VERSION",
     "AIGPRuntimeActionAuthorizationClient",
     "LangGraphOperationAuthorizer",
     "ProtectedOperationBlocked",
@@ -33,6 +39,8 @@ __all__ = [
     "RuntimeActionDelegation",
     "RuntimeActionDelegationPermission",
     "RuntimeActionDelegationStatus",
+    "RuntimeActionExecutionReceipt",
+    "RuntimeActionExecutionReceiptStatus",
     "RuntimeActionResource",
     "canonical_tool_arguments_digest",
 ]

@@ -14,6 +14,8 @@ from ai_governance.domain.agent_execution import (
 from ai_governance.domain.replay import (
     ControlledEvidenceIntervention,
     ControlledEvidenceStrategy,
+    ReplayManifestEligibility,
+    ReplayManifestReasonCode,
 )
 from ai_governance.services.agent_runtime_controlled_replay import (
     AgentRuntimeReplayNotAvailable,
@@ -90,6 +92,7 @@ def test_bridge_freezes_only_the_runtime_endpoint_from_capability_metadata():
                 "adapter_id": "synthetic-agent-runtime/v1",
                 "adapter_version": "1",
                 "replay_reference": "synthetic://replays/run-123",
+                "isolation_guarantee": "runtime-isolated/v1",
                 "supported_interventions": ["REPLACE"],
                 "metadata": {
                     "endpoint": "https://synthetic.example.test/replay",
@@ -145,6 +148,45 @@ def test_bridge_fails_closed_for_missing_or_cyclic_tool_dependencies():
         bridge.prepare(_execution(), [first, second], CONTEXT)
 
 
+def test_failed_execution_with_complete_evidence_is_replay_manifest_eligible():
+    execution = replace(_execution(), status=AgentExecutionStatus.FAILED)
+    bridge = AgentRuntimeReplaySourceBridge(InMemoryReplaySourceResolver())
+
+    manifest = bridge.manifest(execution, [_tool_event()], CONTEXT)
+    prepared = bridge.prepare(execution, [_tool_event()], CONTEXT)
+
+    assert manifest.eligibility is ReplayManifestEligibility.ELIGIBLE
+    assert manifest.source_execution_status == AgentExecutionStatus.FAILED.value
+    assert manifest.reasons == ()
+    assert prepared.replay_manifest == manifest
+    assert prepared.source_execution.metadata["replay_manifest"] == manifest.to_dict()
+
+
+def test_succeeded_receipt_does_not_make_missing_replay_evidence_eligible():
+    receipt = AgentExecutionEvent(
+        event_id="receipt-1",
+        execution_id="agent-execution-1",
+        organization_id="org-a",
+        project_id="project-a",
+        event_type=EventType.RUNTIME_ACTION_EXECUTION_RECEIPT,
+        sequence_number=2,
+        occurred_at=NOW,
+        received_at=NOW,
+        correlation_id=None,
+        causation_id="decision-1",
+        actor_id="runtime-a",
+        actor_type=ActorType.SYSTEM,
+        attributes={"runtime_action_execution_receipt": {"status": "SUCCEEDED"}},
+    )
+
+    manifest = AgentRuntimeReplaySourceBridge(
+        InMemoryReplaySourceResolver()
+    ).manifest(_execution(metadata={}), [receipt], CONTEXT)
+
+    assert manifest.eligibility is ReplayManifestEligibility.INELIGIBLE
+    assert manifest.reasons[0].code is ReplayManifestReasonCode.MISSING_REPLAY_CAPABILITY
+
+
 class _NotCancelled:
     is_cancelled = False
 
@@ -173,6 +215,7 @@ def _execution(metadata=None):
                     "adapter_id": "deterministic-agent-runtime/v1",
                     "adapter_version": "1",
                     "replay_reference": "artifact://claims/claim-001",
+                    "isolation_guarantee": "runtime-isolated/v1",
                     "supported_interventions": ["NULLIFY", "REPLACE", "PERTURB"],
                 }
             }

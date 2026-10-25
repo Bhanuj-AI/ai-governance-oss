@@ -287,6 +287,7 @@ def _record_execution(
                     "adapter_version": "1",
                     "replay_reference": replay_reference
                     or f"artifact://causal-e2e/{suffix}",
+                    "isolation_guarantee": "runtime-isolated/v1",
                     "supported_interventions": ["REPLACE"],
                     **(
                         {"metadata": capability_metadata} if capability_metadata else {}

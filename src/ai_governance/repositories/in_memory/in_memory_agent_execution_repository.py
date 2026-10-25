@@ -197,6 +197,13 @@ class InMemoryAgentExecutionEventRepository(AgentExecutionEventRepository):
         idempotency_key: str | None = None,
     ) -> AgentExecutionEvent:
         with self._lock:
+            existing_by_id = self._events_by_id.get(event.event_id)
+            if existing_by_id is not None:
+                if existing_by_id != event:
+                    raise AgentExecutionIdempotencyConflict(
+                        f"Event ID conflict for execution '{event.execution_id}'."
+                    )
+                return existing_by_id
             if idempotency_key is not None:
                 existing = self._events_by_idempotency.get(
                     (idempotency_key, event.execution_id)

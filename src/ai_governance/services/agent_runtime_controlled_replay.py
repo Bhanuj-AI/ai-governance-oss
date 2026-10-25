@@ -10,10 +10,17 @@ from typing import Any, Protocol
 from ai_governance.domain.agent_execution import (
     AgentExecution,
     AgentExecutionEvent,
+    AgentExecutionStatus,
     AgentRuntimeReplayCapability,
     EventType,
 )
-from ai_governance.domain.replay import ControlledEvidenceStrategy
+from ai_governance.domain.replay import (
+    ControlledEvidenceStrategy,
+    ReplayManifest,
+    ReplayManifestEligibility,
+    ReplayManifestReason,
+    ReplayManifestReasonCode,
+)
 from ai_governance.domain.workflow_execution import WorkflowExecution
 from ai_governance.services.replay_execution import ReplayExecutionContext
 from ai_governance.tenancy.domain import TenantContext
@@ -41,6 +48,7 @@ class PreparedAgentRuntimeReplay:
     source_execution: WorkflowExecution
     capability: AgentRuntimeReplayCapability
     auditable_tool_call_ids: tuple[str, ...]
+    replay_manifest: ReplayManifest | None = None
 
 
 class AgentRuntimeReplaySourceBridge:
@@ -60,6 +68,9 @@ class AgentRuntimeReplaySourceBridge:
         events: list[AgentExecutionEvent],
         context: TenantContext,
     ) -> PreparedAgentRuntimeReplay:
+        replay_manifest = self.manifest(execution, events, context)
+        if not replay_manifest.is_eligible:
+            raise AgentRuntimeReplayNotAvailable(replay_manifest.reasons[0].message)
         capability, tool_calls = self.validate(execution, events, context)
         source = WorkflowExecution(
             workflow_id=f"agent-runtime:{execution.agent_id}",
@@ -97,12 +108,145 @@ class AgentRuntimeReplaySourceBridge:
             metadata={
                 "source_agent_execution_id": execution.execution_id,
                 "external_execution_id": execution.external_execution_id,
+                "replay_manifest": replay_manifest.to_dict(),
             },
             created_at=datetime.now(UTC),
         )
         self._source_store.save(source)
         return PreparedAgentRuntimeReplay(
-            source, capability, tuple(event.event_id for event in tool_calls)
+            source,
+            capability,
+            tuple(event.event_id for event in tool_calls),
+            replay_manifest,
+        )
+
+    def manifest(
+        self,
+        execution: AgentExecution,
+        events: list[AgentExecutionEvent],
+        context: TenantContext,
+    ) -> ReplayManifest:
+        """Classify immutable runtime evidence without creating a replay.
+
+        A terminal FAILED execution is intentionally assessed like a succeeded
+        one. The decision is based on frozen capability, isolation, and
+        evidence bindings, never on a receipt claiming success.
+        """
+
+        reasons: list[ReplayManifestReason] = []
+        if (
+            execution.organization_id != context.organization_id
+            or execution.project_id != context.project_id
+        ):
+            reasons.append(
+                ReplayManifestReason(
+                    ReplayManifestReasonCode.TENANT_SCOPE_MISMATCH,
+                    "Observed execution is outside the current tenant scope.",
+                )
+            )
+        if execution.status not in {
+            AgentExecutionStatus.SUCCEEDED,
+            AgentExecutionStatus.FAILED,
+        }:
+            reasons.append(
+                ReplayManifestReason(
+                    ReplayManifestReasonCode.EXECUTION_NOT_TERMINAL,
+                    "Only succeeded or failed executions can provide a stable replay manifest.",
+                )
+            )
+
+        raw_capability = execution.metadata.get("replay_capability")
+        capability: AgentRuntimeReplayCapability | None = None
+        if raw_capability is None:
+            reasons.append(
+                ReplayManifestReason(
+                    ReplayManifestReasonCode.MISSING_REPLAY_CAPABILITY,
+                    "Observed execution has no explicit replay capability.",
+                )
+            )
+        elif not isinstance(raw_capability, Mapping):
+            reasons.append(
+                ReplayManifestReason(
+                    ReplayManifestReasonCode.INVALID_REPLAY_CAPABILITY,
+                    "Observed execution replay capability is invalid.",
+                )
+            )
+        else:
+            try:
+                capability = _capability_from_metadata(execution.metadata)
+            except (TypeError, ValueError):
+                reasons.append(
+                    ReplayManifestReason(
+                        ReplayManifestReasonCode.INVALID_REPLAY_CAPABILITY,
+                        "Observed execution replay capability is invalid.",
+                    )
+                )
+
+        if capability is not None and capability.isolation_guarantee is None:
+            reasons.append(
+                ReplayManifestReason(
+                    ReplayManifestReasonCode.MISSING_ISOLATION_GUARANTEE,
+                    "Replay capability does not declare a versioned isolation guarantee.",
+                )
+            )
+
+        tool_calls = [event for event in events if event.event_type is EventType.TOOL_CALL]
+        evidence_reference_count = sum(
+            len(event.evidence_references) for event in tool_calls
+        )
+        if any(event.execution_id != execution.execution_id for event in events):
+            reasons.append(
+                ReplayManifestReason(
+                    ReplayManifestReasonCode.TOOL_CALL_GRAPH_INVALID,
+                    "Replay evidence contains an event outside the observed execution.",
+                )
+            )
+        if any(event.tool_call_context is None for event in tool_calls):
+            reasons.append(
+                ReplayManifestReason(
+                    ReplayManifestReasonCode.TOOL_CALL_IDENTITY_MISSING,
+                    "A replay-relevant tool call lacks a runtime_tool_call_id.",
+                )
+            )
+        if any(not event.evidence_references for event in tool_calls):
+            reasons.append(
+                ReplayManifestReason(
+                    ReplayManifestReasonCode.EVIDENCE_REFERENCE_MISSING,
+                    "A tool call is missing a durable evidence reference.",
+                )
+            )
+        identified_calls = [
+            event for event in tool_calls if event.tool_call_context is not None
+        ]
+        if identified_calls:
+            try:
+                _validate_tool_call_graph(identified_calls)
+            except AgentRuntimeReplayNotAvailable as error:
+                reasons.append(
+                    ReplayManifestReason(
+                        ReplayManifestReasonCode.TOOL_CALL_GRAPH_INVALID,
+                        str(error),
+                    )
+                )
+
+        return ReplayManifest(
+            source_execution_id=execution.execution_id,
+            source_execution_status=execution.status.value,
+            eligibility=(
+                ReplayManifestEligibility.ELIGIBLE
+                if not reasons
+                else ReplayManifestEligibility.INELIGIBLE
+            ),
+            tool_call_count=len(tool_calls),
+            evidence_reference_count=evidence_reference_count,
+            reasons=tuple(reasons),
+            runtime_type=capability.runtime_type if capability else None,
+            adapter_id=capability.adapter_id if capability else None,
+            adapter_version=capability.adapter_version if capability else None,
+            replay_reference=capability.replay_reference if capability else None,
+            isolation_guarantee=(
+                capability.isolation_guarantee if capability else None
+            ),
         )
 
     def validate(
@@ -112,6 +256,9 @@ class AgentRuntimeReplaySourceBridge:
         context: TenantContext,
     ) -> tuple[AgentRuntimeReplayCapability, list[AgentExecutionEvent]]:
         """Verify capability and evidence without persisting a Replay source."""
+        replay_manifest = self.manifest(execution, events, context)
+        if not replay_manifest.is_eligible:
+            raise AgentRuntimeReplayNotAvailable(replay_manifest.reasons[0].message)
         if (
             execution.organization_id != context.organization_id
             or execution.project_id != context.project_id
@@ -283,6 +430,7 @@ def _capability_from_metadata(
             adapter_version=str(raw["adapter_version"]),
             replay_reference=str(raw["replay_reference"]),
             supported_interventions=supported,
+            isolation_guarantee=_optional_string(raw.get("isolation_guarantee")),
             metadata=raw.get("metadata", {}),
         )
     except (KeyError, TypeError, ValueError) as error:
@@ -374,3 +522,7 @@ def _capability_endpoint(capability: AgentRuntimeReplayCapability) -> str | None
 
     endpoint = capability.metadata.get("endpoint")
     return endpoint.strip() if isinstance(endpoint, str) and endpoint.strip() else None
+
+
+def _optional_string(value: object) -> str | None:
+    return value if isinstance(value, str) else None
