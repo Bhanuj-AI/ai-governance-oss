@@ -1499,6 +1499,19 @@
           "reason": {
             "title": "Reason",
             "type": "string"
+          },
+          "replay_manifest_hash": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replay Manifest Hash"
           }
         },
         "required": [

@@ -16,11 +16,13 @@ from bhanuj_governance_plugin_api.plugin import (
 )
 from bhanuj_governance_plugin_api.replay import (
     REPLAY_INTERVENTION_ENVELOPE_SCHEMA_VERSION,
+    RUNTIME_REPLAY_SOURCE_SCHEMA_VERSION,
     ReplayCancellationToken,
     ReplayExecutionAdapter,
     ReplayExecutionContext,
     ReplayExecutionResult,
     ReplayInterventionEnvelope,
+    RuntimeReplaySource,
 )
 
 __all__ = [
@@ -28,6 +30,7 @@ __all__ = [
     "LEGACY_CONTRACT_VERSION",
     "LEGACY_PLUGIN_ENTRY_POINT_GROUP",
     "REPLAY_INTERVENTION_ENVELOPE_SCHEMA_VERSION",
+    "RUNTIME_REPLAY_SOURCE_SCHEMA_VERSION",
     "SPI_VERSION",
     "AIGovernancePlugin",
     "PluginContext",
@@ -40,4 +43,5 @@ __all__ = [
     "ReplayExecutionContext",
     "ReplayExecutionResult",
     "ReplayInterventionEnvelope",
+    "RuntimeReplaySource",
 ]

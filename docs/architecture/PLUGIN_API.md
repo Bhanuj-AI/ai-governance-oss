@@ -23,6 +23,8 @@ Plugin API v1 extracts the existing runtime-plugin contracts:
 - `PluginMetadata`, lifecycle typing, and `SPI_VERSION`;
 - `ReplayExecutionAdapterContribution` with its versioned adapter identity;
 - `ReplayExecutionContext` and cooperative cancellation;
+- `RuntimeReplaySource/v1`, the optional reference-only source binding for a
+  governed external-runtime replay;
 - `ReplayInterventionEnvelope`, the fixed reference-only controlled-replay
   wire contract; and
 - `ReplayExecutionResult`, which Core materialises as its own canonical
@@ -95,6 +97,12 @@ class MyRuntimePlugin:
 
 `MyAdapter` returns `ReplayExecutionResult`; Core owns the canonical workflow
 record, its identity, tenant scope, snapshots, persistence, and lineage.
+
+For a governed external-runtime source, `ReplayExecutionContext` also carries
+`runtime_replay_source`. The runtime adapter must validate its tenant binding,
+registered adapter identity, opaque reference, private snapshot integrity, and
+isolation before replaying. The source contains references and a manifest hash,
+not private snapshot contents. See [Runtime Replay Adapter Contract](RUNTIME_REPLAY_ADAPTER.md).
 
 ## Local development
 

@@ -84,7 +84,7 @@ def test_bridge_prepares_reference_only_source_and_adapter_replays_intervention(
     assert replay.runtime_parameters == {"isolated": True}
 
 
-def test_bridge_freezes_only_the_runtime_endpoint_from_capability_metadata():
+def test_bridge_freezes_only_reference_only_runtime_replay_source():
     execution = _execution(
         metadata={
             "replay_capability": {
@@ -107,8 +107,14 @@ def test_bridge_freezes_only_the_runtime_endpoint_from_capability_metadata():
     )
 
     capability = prepared.source_execution.runtime_parameters["agent_runtime_replay"]
-    assert capability["endpoint"] == "https://synthetic.example.test/replay"
+    runtime_source = prepared.source_execution.runtime_parameters[
+        "runtime_replay_source"
+    ]
+    assert "endpoint" not in capability
     assert "unsafe_unrelated_value" not in capability
+    assert runtime_source == prepared.runtime_replay_source.to_payload()
+    assert runtime_source["replay_reference"] == "synthetic://replays/run-123"
+    assert "unsafe_unrelated_value" not in runtime_source
 
 
 def test_bridge_fails_closed_without_explicit_capability():

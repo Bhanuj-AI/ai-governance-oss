@@ -1,6 +1,6 @@
 [project]
 name = "bhanuj-governance-plugin-api"
-version = "1.0.0"
+version = "1.1.1"
 description = "Public, provider-neutral plugin contracts for BHANUJ AI Governance."
 readme = "README.md"
 requires-python = ">=3.12"

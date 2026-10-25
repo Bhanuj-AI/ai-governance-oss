@@ -70,6 +70,7 @@ def test_causal_audit_demos_complete_through_rest_and_worker() -> None:
                     "source_evidence_digest": payload["source_evidence_digest"],
                     "counterfactual_evidence_digest": RUNTIME_COUNTERFACTUAL_EVIDENCE_DIGEST,
                     "outcome_score": self.scores[payload["replay_reference"]],
+                    **_runtime_replay_attestation(payload),
                 },
             )
 
@@ -208,6 +209,7 @@ def test_synthetic_runtime_adapter_completes_the_causal_audit_path() -> None:
                     "source_evidence_digest": payload["source_evidence_digest"],
                     "counterfactual_evidence_digest": RUNTIME_COUNTERFACTUAL_EVIDENCE_DIGEST,
                     "outcome_score": 0.2,
+                    **_runtime_replay_attestation(payload),
                 },
             )
 
@@ -233,6 +235,11 @@ def test_synthetic_runtime_adapter_completes_the_causal_audit_path() -> None:
             schema_id="synthetic-result",
             provider_id="opaque-reference",
         )
+        eligibility = client.get(
+            f"/api/v1/agents-runtime/executions/{execution_id}/causal-audit-eligibility"
+        )
+        assert eligibility.status_code == 200
+        assert len(eligibility.json()["replay_manifest_hash"]) == 64
         audit_id = _submit_audit(client, execution_id, policy)
 
         _run_causal_audit_worker(
@@ -499,3 +506,18 @@ def _clear_dependencies() -> None:
     get_runtime_finding_repository.cache_clear()
     get_evidence_intervention_policy_service.cache_clear()
     get_evidence_intervention_runtime.cache_clear()
+
+
+def _runtime_replay_attestation(payload: dict[str, object]) -> dict[str, object]:
+    """Echo required v1 runtime-source bindings for the simulated runtime."""
+    if "replay_manifest_hash" not in payload:
+        return {}
+    return {
+        "organization_id": payload["organization_id"],
+        "project_id": payload["project_id"],
+        "adapter_id": payload["adapter_id"],
+        "adapter_version": payload["adapter_version"],
+        "replay_manifest_hash": payload["replay_manifest_hash"],
+        "isolation_guarantee": payload["isolation_guarantee"],
+        "private_snapshot_integrity_verified": True,
+    }

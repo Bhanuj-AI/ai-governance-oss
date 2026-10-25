@@ -35,10 +35,12 @@ from ai_governance.events import EventPublisher, ResourceLifecycleEvent
 from ai_governance.repositories.replay_repository import ReplayRepository
 from ai_governance.services.replay_application_service import ReplaySourceResolver
 from ai_governance.spi.replay import (
+    RUNTIME_REPLAY_SOURCE_SCHEMA_VERSION,
     ReplayExecutionAdapter,
     ReplayExecutionContext,
     ReplayExecutionResult,
     ReplayInterventionEnvelope,
+    RuntimeReplaySource,
 )
 from ai_governance.tenancy.domain import TenantContext
 
@@ -261,6 +263,9 @@ class ReplayJobHandler:
                 raise ReplayReconstructionFailed("Replay configuration is not frozen.")
             adapter = self._adapter_registry.resolve(configuration.execution_adapter)
             try:
+                runtime_replay_source = _runtime_replay_source(
+                    source, configuration
+                )
                 adapter.validate_configuration(source, configuration)
             except Exception as error:
                 raise ReplayAdapterConfigurationInvalid(str(error)) from error
@@ -289,6 +294,7 @@ class ReplayJobHandler:
                         intervention_envelope=_intervention_envelope(
                             source, replay.controlled_evidence_intervention
                         ),
+                        runtime_replay_source=runtime_replay_source,
                     ),
                 )
             except Exception:
@@ -483,6 +489,64 @@ def _intervention_envelope(
         counterfactual_digest=intervention.counterfactual_evidence_digest,
         intervention_digest=intervention.intervention_digest,
     )
+
+
+def _runtime_replay_source(
+    source: WorkflowExecution,
+    configuration: ReplayConfiguration,
+) -> RuntimeReplaySource | None:
+    """Return a validated runtime source only for the additive v1 contract.
+
+    The explicit marker differentiates a newly bridge-produced governed
+    runtime source from historical Replay records. This retains compatibility
+    for old persisted configurations while failing closed when a v1 source is
+    incomplete or has been tampered with.
+    """
+
+    marker = source.metadata.get("runtime_replay_source_schema_version")
+    raw_source = (configuration.runtime_parameters or {}).get(
+        "runtime_replay_source"
+    )
+    if marker != RUNTIME_REPLAY_SOURCE_SCHEMA_VERSION:
+        return None
+    if not isinstance(raw_source, Mapping):
+        raise ReplayAdapterConfigurationInvalid(
+            "Governed runtime replay source is missing RuntimeReplaySource/v1."
+        )
+    try:
+        runtime_source = RuntimeReplaySource.from_payload(raw_source)
+    except (TypeError, ValueError) as error:
+        raise ReplayAdapterConfigurationInvalid(
+            "Governed runtime replay source is malformed."
+        ) from error
+    manifest = configuration.replay_manifest
+    if manifest is None or not manifest.is_eligible:
+        raise ReplayAdapterConfigurationInvalid(
+            "Governed runtime replay source lacks an eligible frozen manifest."
+        )
+    capability = (configuration.runtime_parameters or {}).get("agent_runtime_replay")
+    bindings = (
+        runtime_source.source_agent_execution_id
+        == source.metadata.get("source_agent_execution_id"),
+        runtime_source.external_execution_id
+        == source.metadata.get("external_execution_id"),
+        runtime_source.adapter_id == configuration.execution_adapter,
+        runtime_source.adapter_id == manifest.adapter_id,
+        runtime_source.adapter_version == manifest.adapter_version,
+        runtime_source.runtime_type == manifest.runtime_type,
+        runtime_source.replay_reference == manifest.replay_reference,
+        runtime_source.isolation_guarantee == manifest.isolation_guarantee,
+        runtime_source.manifest_hash == manifest.manifest_hash,
+        isinstance(capability, Mapping)
+        and runtime_source.adapter_id == capability.get("adapter_id")
+        and runtime_source.adapter_version == capability.get("adapter_version")
+        and runtime_source.replay_reference == capability.get("replay_reference"),
+    )
+    if not all(bindings):
+        raise ReplayAdapterConfigurationInvalid(
+            "Governed runtime replay source does not match frozen replay evidence."
+        )
+    return runtime_source
 
 
 def _materialise_plugin_execution(

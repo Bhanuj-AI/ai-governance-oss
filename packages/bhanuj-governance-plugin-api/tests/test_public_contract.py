@@ -8,6 +8,7 @@ from bhanuj_governance_plugin_api import (
     PluginMetadata,
     ReplayExecutionResult,
     ReplayInterventionEnvelope,
+    RuntimeReplaySource,
 )
 
 
@@ -78,3 +79,26 @@ def test_external_result_is_immutable_and_has_no_core_execution_type() -> None:
 
     assert result.final_state["outcome"] == 0.0
     assert result.events[0]["type"] == "EXTERNAL_RUNTIME_REPLAY_COMPLETED"
+
+
+def test_runtime_replay_source_is_reference_only_and_rejects_payload_growth() -> None:
+    source = RuntimeReplaySource(
+        source_agent_execution_id="execution-1",
+        external_execution_id="runtime-run-1",
+        runtime_type="langgraph",
+        adapter_id="langgraph/v1",
+        adapter_version="1",
+        replay_reference="langgraph://replays/runtime-run-1",
+        isolation_guarantee="sqlite-copy/v1",
+        manifest_hash="a" * 64,
+    )
+
+    payload = source.to_payload()
+
+    assert RuntimeReplaySource.from_payload(payload) == source
+    try:
+        RuntimeReplaySource.from_payload({**payload, "private_snapshot": {}})
+    except ValueError as error:
+        assert "unsupported shape" in str(error)
+    else:  # pragma: no cover - explicit contract guard
+        raise AssertionError("Runtime replay source must reject private payload growth.")

@@ -302,6 +302,31 @@ class CausalAuditService:
             len(calls),
         )
 
+    def replay_manifest_hash(
+        self, execution_id: str, context: TenantContext
+    ) -> str | None:
+        """Return the current bridge manifest hash without creating a replay.
+
+        External runtimes use this bounded consistency token to bind an
+        already-captured private snapshot before requesting a causal audit.
+        The hash is not a claim that the private snapshot or external effect is
+        truthful; the runtime remains responsible for those checks.
+        """
+
+        if self._replay_source_bridge is None:
+            return None
+        execution = self._executions.get(
+            execution_id, context.organization_id, context.project_id
+        )
+        if execution is None:
+            return None
+        events = self._events.list_by_execution(
+            execution_id, context.organization_id, context.project_id
+        )
+        return self._replay_source_bridge.manifest(
+            execution, events, context
+        ).manifest_hash
+
     def start(
         self,
         execution_id: str,
