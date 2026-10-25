@@ -28,6 +28,27 @@ class ReplayFailureResponse(BaseModel):
     occurred_at: datetime
 
 
+class ReplayManifestReasonResponse(BaseModel):
+    code: str
+    message: str
+
+
+class ReplayManifestResponse(BaseModel):
+    schema_version: str
+    source_execution_id: str
+    source_execution_status: str
+    eligibility: str
+    tool_call_count: int
+    evidence_reference_count: int
+    reasons: list[ReplayManifestReasonResponse]
+    runtime_type: str | None
+    adapter_id: str | None
+    adapter_version: str | None
+    replay_reference: str | None
+    isolation_guarantee: str | None
+    manifest_hash: str
+
+
 class ReplayConfigurationResponse(BaseModel):
     workflow_id: str
     workflow_version: str
@@ -43,6 +64,7 @@ class ReplayConfigurationResponse(BaseModel):
     configuration_source: str
     resolved_at: datetime | None
     configuration_hash: str
+    replay_manifest: ReplayManifestResponse | None = None
 
 
 class ReplayExecutionSearchItemResponse(BaseModel):

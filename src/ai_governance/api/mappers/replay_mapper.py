@@ -4,6 +4,8 @@ from ai_governance.api.models.replay import (
     ReplayAuditRecordResponse,
     ReplayConfigurationResponse,
     ReplayFailureResponse,
+    ReplayManifestReasonResponse,
+    ReplayManifestResponse,
     ReplayResponse,
     ReplayResultResponse,
 )
@@ -47,6 +49,39 @@ class ReplayApiMapper:
             configuration_source=configuration.configuration_source.value,
             resolved_at=configuration.resolved_at,
             configuration_hash=configuration.configuration_hash,
+            replay_manifest=(
+                ReplayManifestResponse(
+                    schema_version=configuration.replay_manifest.schema_version,
+                    source_execution_id=(
+                        configuration.replay_manifest.source_execution_id
+                    ),
+                    source_execution_status=(
+                        configuration.replay_manifest.source_execution_status
+                    ),
+                    eligibility=configuration.replay_manifest.eligibility.value,
+                    tool_call_count=configuration.replay_manifest.tool_call_count,
+                    evidence_reference_count=(
+                        configuration.replay_manifest.evidence_reference_count
+                    ),
+                    reasons=[
+                        ReplayManifestReasonResponse(
+                            code=reason.code.value,
+                            message=reason.message,
+                        )
+                        for reason in configuration.replay_manifest.reasons
+                    ],
+                    runtime_type=configuration.replay_manifest.runtime_type,
+                    adapter_id=configuration.replay_manifest.adapter_id,
+                    adapter_version=configuration.replay_manifest.adapter_version,
+                    replay_reference=configuration.replay_manifest.replay_reference,
+                    isolation_guarantee=(
+                        configuration.replay_manifest.isolation_guarantee
+                    ),
+                    manifest_hash=configuration.replay_manifest.manifest_hash,
+                )
+                if configuration.replay_manifest is not None
+                else None
+            ),
         )
 
     @staticmethod

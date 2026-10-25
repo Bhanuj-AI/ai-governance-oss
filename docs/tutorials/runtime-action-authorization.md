@@ -147,8 +147,16 @@ Each decision is appended as `RUNTIME_ACTION_AUTHORIZATION` evidence on the
 existing agent execution. The evidence records the decision, actor, action,
 resource, policy, reason code, correlation, idempotency identity, and digests
 of request/context facts rather than raw context values. A later `TOOL_CALL`
-event may cite the decision ID as its causation ID, but it alone records that
-the runtime reports a tool invocation actually occurred.
+event may cite the decision ID as its causation ID and records a reported
+invocation; a receipt records the runtime's bound terminal-outcome attestation.
+
+After attempting the operation, the authenticated runtime may append a
+`runtime-action-execution-receipt/v1` attestation to the same execution. A
+receipt is not independent proof of an external mutation and never authorizes
+or retries one. In particular, the absence of a receipt is `UNREPORTED`, while
+`UNKNOWN` is the runtime's explicit report that the outcome cannot yet be
+determined. See [Runtime Action Execution Receipts](../architecture/RUNTIME_ACTION_EXECUTION_RECEIPTS.md)
+for binding, deduplication, supersession, and recovery rules.
 
 This is necessarily a time-of-check/time-of-use boundary: revocation affects
 new authorization decisions immediately, while an already-issued short-lived

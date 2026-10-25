@@ -25,6 +25,8 @@ from ai_governance.api.models.agent_execution import (
     AgentExecutionStartedResponse,
     AgentExecutionStartRequest,
     AgentExecutionSummaryResponse,
+    RuntimeActionExecutionReceiptRequest,
+    RuntimeActionExecutionReceiptResponse,
     ToolCallContextResponse,
 )
 from ai_governance.domain.agent_execution import (
@@ -41,6 +43,16 @@ from ai_governance.services.agent_execution_service import AgentExecutionService
 from ai_governance.tenancy.domain import TenantContext
 
 router = APIRouter(prefix="/api/v1/agent-executions", tags=["Agent executions"])
+
+# -- Dependency injection ------------------------------------------------------
+
+
+def get_agent_execution_service() -> AgentExecutionService:
+    """Return the cached agent execution service."""
+    from ai_governance.api.dependencies.agent_execution import (
+        get_agent_execution_service as _get_service,
+    )
+    return _get_service()
 
 
 # -- Execution start ------------------------------------------------------------
@@ -171,6 +183,49 @@ def ingest_event(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
+        ) from exc
+
+    return AgentExecutionEventIngestedResponse(event=_event_to_response(event))
+
+
+@router.post(
+    "/{execution_id}/runtime-action-receipts",
+    response_model=AgentExecutionEventIngestedResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def ingest_runtime_action_execution_receipt(
+    execution_id: str,
+    body: Annotated[RuntimeActionExecutionReceiptRequest, ...],
+    service: Annotated[AgentExecutionService, Depends(get_agent_execution_service)],
+    context: TenantContext = Depends(get_compatible_tenant_context),
+) -> AgentExecutionEventIngestedResponse:
+    """Record a bounded runtime attestation; this endpoint never executes work."""
+
+    try:
+        event = service.ingest_runtime_action_execution_receipt(
+            execution_id=execution_id,
+            decision_id=body.decision_id,
+            request_fingerprint=body.request_fingerprint,
+            action_id=body.action_id,
+            runtime_tool_call_id=body.runtime_tool_call_id,
+            tool_arguments_digest=body.tool_arguments_digest,
+            receipt_status=body.status,
+            reason_code=body.reason_code,
+            idempotency_key=body.idempotency_key,
+            result_reference=body.result_reference,
+            result_digest=body.result_digest,
+            supersedes_receipt_id=body.supersedes_receipt_id,
+            context=context,
+        )
+    except Exception as exc:
+        detail = str(exc)
+        if "not found" in detail.lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=detail) from exc
+        if "conflict" in detail.lower() or "only once" in detail.lower():
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=detail,
         ) from exc
 
     return AgentExecutionEventIngestedResponse(event=_event_to_response(event))
@@ -386,6 +441,10 @@ def _agent_summary_to_response(item: Any) -> Any:
 
 
 def _event_to_response(event: Any) -> Any:
+    receipt = None
+    raw_receipt = event.attributes.get("runtime_action_execution_receipt")
+    if isinstance(raw_receipt, dict):
+        receipt = RuntimeActionExecutionReceiptResponse(**raw_receipt)
     return AgentExecutionEventResponse(
         event_id=event.event_id,
         execution_id=event.execution_id,
@@ -421,19 +480,9 @@ def _event_to_response(event: Any) -> Any:
             if event.tool_call_context is not None
             else None
         ),
+        runtime_action_execution_receipt=receipt,
         resource_references=list(event.resource_references) if hasattr(event.resource_references, "__iter__") else [],
         evidence_references=list(event.evidence_references) if hasattr(event.evidence_references, "__iter__") else [],
         attributes=dict(event.attributes) if hasattr(event.attributes, "items") else event.attributes,
         event_schema_version=event.event_schema_version,
     )
-
-
-# -- Dependency injection ------------------------------------------------------
-
-
-def get_agent_execution_service() -> AgentExecutionService:
-    """Return the cached agent execution service."""
-    from ai_governance.api.dependencies.agent_execution import (
-        get_agent_execution_service as _get_service,
-    )
-    return _get_service()

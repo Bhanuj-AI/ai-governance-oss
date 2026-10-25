@@ -9,6 +9,27 @@ This project follows Semantic Versioning.
 
 ### Unreleased
 
+### [1.2.4] - 2026-10-25
+
+### Added
+
+- Added the additive `runtime-action-execution-receipt/v1` contract and
+  tenant-scoped API for authenticated runtime attestations. Receipts bind the
+  existing ALLOW decision, action, tool-call identity, and argument digest;
+  they are append-only, idempotent, and support one explicit reconciliation of
+  a reported `UNKNOWN` outcome without coordinating an external transaction.
+- Added `replay-manifest/v1` to classify whether a runtime execution has the
+  versioned capability, isolation, identity, and evidence bindings required
+  for a safe replay attempt. The manifest is persisted with the existing replay
+  configuration and exposed through the existing Replay API.
+
+### Changed
+
+- Causal Audit now consumes an eligible runtime replay manifest. A failed
+  source execution can be eligible when its frozen evidence is sufficient;
+  a runtime-reported `SUCCEEDED` receipt alone is not eligibility evidence.
+
+
 ### [1.2.3] - 2026-10-23
 
 ### Security

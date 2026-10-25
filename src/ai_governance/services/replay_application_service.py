@@ -36,6 +36,7 @@ from ai_governance.domain.replay import (
     ReplayConfigurationSource,
     ReplayFailure,
     ReplayFailureStage,
+    ReplayManifest,
     ReplayMode,
     ReplayStatus,
 )
@@ -125,6 +126,14 @@ class HistoricalReplayabilityValidator:
             raise ReplayNotReplayable(
                 "Source execution is missing its execution adapter."
             )
+        replay_manifest = _manifest_from_source_metadata(source_execution)
+        if replay_manifest is not None and not replay_manifest.is_eligible:
+            reason = replay_manifest.reasons[0]
+            raise ReplayNotReplayable(
+                f"Source replay manifest is ineligible: {reason.code.value}: {reason.message}"
+            )
+        if replay_manifest is not None:
+            _validate_manifest_binding(source_execution, replay_manifest)
 
         input_ref = source_execution.input_snapshot_ref or _inline_reference(
             "input", source_execution.input
@@ -158,6 +167,9 @@ class HistoricalReplayabilityValidator:
             "policy_refs": source_execution.policy_refs or [],
             "runtime_parameters": source_execution.runtime_parameters or {},
             "configuration_source": ReplayConfigurationSource.ORIGINAL.value,
+            "replay_manifest": (
+                replay_manifest.to_dict() if replay_manifest is not None else None
+            ),
         }
         return ReplayConfiguration(
             workflow_id=source_execution.workflow_id,
@@ -173,6 +185,7 @@ class HistoricalReplayabilityValidator:
             runtime_parameters=source_execution.runtime_parameters or {},
             resolved_at=self._clock(),
             configuration_hash=_hash(payload),
+            replay_manifest=replay_manifest,
         )
 
 
@@ -846,6 +859,40 @@ class ReplayApplicationService:
 
 def _inline_reference(kind: str, value: object) -> str:
     return f"inline:{kind}:{_hash(value)}"
+
+
+def _manifest_from_source_metadata(
+    source_execution: WorkflowExecution,
+) -> ReplayManifest | None:
+    raw = source_execution.metadata.get("replay_manifest")
+    if raw is None:
+        return None
+    if not isinstance(raw, Mapping):
+        raise ReplayNotReplayable("Source replay manifest is malformed.")
+    try:
+        return ReplayManifest.from_dict(raw)
+    except (TypeError, ValueError) as error:
+        raise ReplayNotReplayable("Source replay manifest is malformed.") from error
+
+
+def _validate_manifest_binding(
+    source_execution: WorkflowExecution,
+    replay_manifest: ReplayManifest,
+) -> None:
+    """Bind an eligible manifest to the frozen source, not a similar record."""
+    source_identity = source_execution.metadata.get(
+        "source_agent_execution_id", source_execution.execution_id
+    )
+    if not isinstance(source_identity, str) or not source_identity.strip():
+        raise ReplayNotReplayable("Source replay manifest has an invalid source binding.")
+    if replay_manifest.source_execution_id != source_identity:
+        raise ReplayNotReplayable("Source replay manifest belongs to another execution.")
+    if replay_manifest.adapter_id != source_execution.execution_adapter:
+        raise ReplayNotReplayable("Source replay manifest adapter does not match source evidence.")
+    if replay_manifest.replay_reference not in (source_execution.artifact_refs or ()):
+        raise ReplayNotReplayable(
+            "Source replay manifest reference is absent from frozen source evidence."
+        )
 
 
 def _intervention_payload(

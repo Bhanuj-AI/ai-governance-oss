@@ -5,7 +5,7 @@ the evidence returned by a tool materially affected the evaluated outcome; it
 does not treat a tool call itself as proof that the agent used its evidence.
 
 ```text
-Execution evidence → Causal Audit → immutable CausalAuditResult → optional Finding
+Execution evidence → replay eligibility manifest → Causal Audit → immutable CausalAuditResult → optional Finding
 ```
 
 The source execution remains owned by Agents Runtime. Causal Audit never edits
@@ -56,16 +56,18 @@ from leaving an audit indefinitely `RUNNING`.
 
 ## Safety and Eligibility
 
-An audit is eligible only for a succeeded execution with a durable outcome
-score, bounded tool calls, durable evidence references, and an explicit
-runtime replay capability. That capability names an adapter and version,
-provides an opaque frozen replay reference, and declares the supported
-interventions. Missing evidence, a missing capability, an unsupported
-intervention, or an unavailable adapter fails closed. Counterfactual runs must
-not perform production side effects.
+An audit is eligible only for a terminal `SUCCEEDED` or `FAILED` execution with
+an eligible replay manifest, a durable outcome score, bounded tool calls,
+durable evidence references, and an explicit runtime replay capability. That
+capability names an adapter and version, provides an opaque frozen replay
+reference, and declares the supported interventions and a versioned isolation
+guarantee. Missing evidence, a missing capability, an unsupported intervention,
+or an unavailable adapter fails closed. A `SUCCEEDED` execution receipt alone
+does not establish manifest eligibility. Counterfactual runs must not perform
+production side effects.
 
 ```text
-Observed execution → explicit replay capability → Causal Audit
+Observed execution → replay manifest eligibility → explicit replay capability → Causal Audit
     → durable controlled Replay → Replay worker + adapter
     → counterfactual execution → outcome comparison → classification
 ```

@@ -611,6 +611,7 @@ tool payloads.
 | --- | --- | --- |
 | `POST` | `/api/v1/agent-executions` | Start or idempotently replay an observed execution. |
 | `POST` | `/api/v1/agent-executions/{execution_id}/events` | Append one ordered runtime event. |
+| `POST` | `/api/v1/agent-executions/{execution_id}/runtime-action-receipts` | Append an authenticated runtime attestation for an already-authorized operation; never execute or retry it. |
 | `POST` | `/api/v1/agent-executions/{execution_id}/complete` | Set a terminal status: `SUCCEEDED`, `FAILED`, or `CANCELLED`. |
 | `POST` | `/api/v1/runtime-action-authorizations/authorize` | Persist an ALLOW or DENY for one registered external runtime operation; never execute that operation. |
 | `POST` | `/api/v1/runtime-action-delegations` | Issue an immutable, policy-authorized runtime delegation for one canonical execution. |
@@ -636,6 +637,8 @@ for the framework-neutral protected-operation contract, policy convention,
 evidence correlation, and time-of-check/time-of-use boundary. The
 [LangGraph guide](../tutorials/langgraph-runtime-action-authorization.md)
 contains its tool-wrapper integration example.
+See [Runtime Action Execution Receipts](../architecture/RUNTIME_ACTION_EXECUTION_RECEIPTS.md)
+for receipt statuses, historical-ingestion rules, and runtime-owned recovery.
 See [Causal Audit](../architecture/CAUSAL_AUDIT.md) for eligibility, scoring,
 methodology versioning, and limitations.
 

@@ -13,6 +13,7 @@ from ai_governance.domain.replay import (
     ReplayConfigurationSource,
     ReplayFailure,
     ReplayFailureStage,
+    ReplayManifest,
     ReplayMode,
     ReplayStatus,
 )
@@ -156,6 +157,11 @@ def _configuration(configuration: ReplayConfiguration | None) -> dict[str, Any] 
         if configuration.resolved_at
         else None,
         "configuration_hash": configuration.configuration_hash,
+        "replay_manifest": (
+            configuration.replay_manifest.to_dict()
+            if configuration.replay_manifest is not None
+            else None
+        ),
     }
 
 
@@ -181,6 +187,9 @@ def _configuration_from_data(
         return None
     if "workflow_id" not in data:
         return None
+    manifest_data = data.get("replay_manifest")
+    if manifest_data is not None and not isinstance(manifest_data, Mapping):
+        raise ValueError("Replay configuration manifest is malformed.")
     return ReplayConfiguration(
         workflow_id=data["workflow_id"],
         workflow_version=data["workflow_version"],
@@ -196,6 +205,11 @@ def _configuration_from_data(
         configuration_source=ReplayConfigurationSource(data["configuration_source"]),
         resolved_at=_datetime_or_none(data.get("resolved_at")),
         configuration_hash=data["configuration_hash"],
+        replay_manifest=(
+            ReplayManifest.from_dict(manifest_data)
+            if manifest_data is not None
+            else None
+        ),
     )
 
 

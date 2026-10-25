@@ -25,6 +25,7 @@ class AgentRuntimeReplayCapability:
     replay_reference: str
     supported_interventions: tuple[ControlledEvidenceStrategy, ...]
     metadata: Mapping[str, Any] = field(default_factory=dict)
+    isolation_guarantee: str | None = None
 
     def __post_init__(self) -> None:
         for name, value in (
@@ -39,4 +40,8 @@ class AgentRuntimeReplayCapability:
             raise ValueError("Replay capability must support an intervention.")
         if len(set(self.supported_interventions)) != len(self.supported_interventions):
             raise ValueError("Replay capability interventions must be unique.")
+        if self.isolation_guarantee is not None and (
+            not self.isolation_guarantee.strip() or len(self.isolation_guarantee) > 128
+        ):
+            raise ValueError("Replay capability isolation guarantee must be bounded.")
         object.__setattr__(self, "metadata", MappingProxyType(dict(self.metadata)))
