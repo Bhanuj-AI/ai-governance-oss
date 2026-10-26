@@ -78,6 +78,57 @@ def test_policy_schema_api_returns_authoring_metadata() -> None:
     assert "HIGH" in payload["severities"]
 
 
+def test_policy_schema_api_exposes_runtime_delegation_issuance_facts() -> None:
+    client, _store = _client()
+
+    response = client.get("/api/v1/policy-schema")
+
+    assert response.status_code == 200
+    agent_execution = next(
+        target_type
+        for target_type in response.json()["target_types"]
+        if target_type["value"] == "AgentExecution"
+    )
+    fields = {field["field_path"]: field for field in agent_execution["fields"]}
+
+    assert fields["issuer.id"] == {
+        "field_path": "issuer.id",
+        "label": "Delegation issuer (issuance)",
+        "value_type": "string",
+        "supported_operators": [
+            "EQUALS",
+            "NOT_EQUALS",
+            "IN",
+            "NOT_IN",
+            "EXISTS",
+            "MISSING",
+        ],
+        "allowed_values": None,
+        "description": (
+            "Authenticated identity creating a runtime-action delegation. "
+            "Available only to runtime_action_delegation_issuance policies."
+        ),
+    }
+    assert fields["runtime_actor.id"] == {
+        "field_path": "runtime_actor.id",
+        "label": "Delegated runtime actor (issuance)",
+        "value_type": "string",
+        "supported_operators": [
+            "EQUALS",
+            "NOT_EQUALS",
+            "IN",
+            "NOT_IN",
+            "EXISTS",
+            "MISSING",
+        ],
+        "allowed_values": None,
+        "description": (
+            "Runtime identity that will receive a runtime-action delegation. "
+            "Available only to runtime_action_delegation_issuance policies."
+        ),
+    }
+
+
 def test_create_list_get_activate_archive_and_simulate_policy() -> None:
     client, _store = _client()
     created = _create_policy(client)
