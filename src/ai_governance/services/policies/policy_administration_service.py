@@ -758,6 +758,28 @@ def _policy_schema() -> PolicySchema:
                         supported_operators=string_ops,
                     ),
                     PolicySchemaField(
+                        field_path="issuer.id",
+                        label="Delegation issuer (issuance)",
+                        value_type="string",
+                        supported_operators=string_ops,
+                        description=(
+                            "Authenticated identity creating a runtime-action "
+                            "delegation. Available only to "
+                            "runtime_action_delegation_issuance policies."
+                        ),
+                    ),
+                    PolicySchemaField(
+                        field_path="runtime_actor.id",
+                        label="Delegated runtime actor (issuance)",
+                        value_type="string",
+                        supported_operators=string_ops,
+                        description=(
+                            "Runtime identity that will receive a "
+                            "runtime-action delegation. Available only to "
+                            "runtime_action_delegation_issuance policies."
+                        ),
+                    ),
+                    PolicySchemaField(
                         field_path="delegation.id",
                         label="Trusted delegation ID",
                         value_type="string",
