@@ -1,576 +1,350 @@
-# BHANUJ - AI Governance Platform
+# AIGP - AI Governance Control Platform
 
-## AI Governance Platform (AIGP)
+## Govern AI Actions. Preserve Execution Evidence. Investigate Outcomes.
 
-> **Govern AI actions, test whether evidence actually influenced them, and preserve the proof.**
+AIGP OSS is an open-source governance control platform for AI systems and agents.
+It establishes authority for consequential actions, records bounded execution
+evidence, evaluates behaviour, and preserves the lineage needed to investigate
+an outcome later.
 
-It is an open-source control plane around AI systems. It records versioned
-assets and runtime evidence, evaluates behaviour, applies deterministic policy,
-and preserves the decision and its lineage—without owning your AI runtime,
-application, or deployment system.
+It sits beside—not in place of—your agent framework, application, model
+provider, workflow engine, or deployment platform. AIGP does not host models,
+execute application business operations, own external runtime state, or
+coordinate external transactions.
 
-```text
-AI runtime → observe → evaluate → govern → intervene → replay → decision + causal evidence
-```
+![AIGP OSS](assets/Hero.png)
 
-### Understand BHANUJ AIGP in 20 seconds
+[Website](https://governance.bhanuj.ai) ·
+[Documentation](https://governance.bhanuj.ai/docs) ·
+[API reference](https://governance.bhanuj.ai/reference/api) ·
+[Tutorials](https://governance.bhanuj.ai/tutorials) ·
+[Run locally](#quickstart-local)
 
-Use when your team needs reliable answers to questions such as:
+> **Scope notice:** this repository contains the OSS control plane. Enterprise
+> capabilities remain under active development and are not represented here as
+> OSS functionality.
 
-- **Did the evidence actually influence the AI outcome?** Use Causal Audit to
-  apply a governed evidence intervention, run a Controlled Replay in the
-  original runtime, and measure whether the outcome changes—without mutating
-  the original execution.
-- **Why was this AI action approved, rejected, or blocked?** Inspect the
-  policy, evidence, deterministic decision path, and durable lineage.
-- **Which prompt, model, or configuration behaves better?** Run an experiment
-  and retain item-level evaluation evidence.
-- **What changed and what does it affect?** Follow lineage across assets,
-  evaluations, policies, executions, and decisions.
-- **Can we govern AI without replacing our stack?** Keep applications,
-  frameworks, model providers, and deployments under your ownership.
+## Why a governance control platform?
 
-It is **not** model serving, an agent framework, a workflow orchestrator,
-or a generic GRC system. It is the governance layer that makes AI activity
-reviewable, explainable, and auditable.
+An agent log can show that a tool was called, an access-control check can say a
+caller was allowed, and an evaluation can score an outcome. On their own, those
+records do not answer the governance questions around a consequential action:
 
-**Modern AI frameworks help build agents. BHANUJ AIGP governs the evidence and decisions around them.**
+- Who gave this runtime limited authority for this exact operation?
+- Was the proposed action authorized immediately before it was attempted?
+- What outcome did the authenticated runtime report, including uncertainty?
+- Which versioned assets, policies, evaluations, and decisions influenced the
+  result?
+- Is there sufficient isolated, versioned evidence to attempt a controlled
+  replay—and did a specific evidence intervention change the outcome?
 
-> **Enterprise capabilities are under active development. Commercial offerings
-> will be announced as they mature.**
+AIGP connects those concerns through tenant-scoped, versioned contracts and
+durable lineage. It does not infer that an authorization caused an execution,
+or that a runtime report independently proves an external effect.
 
-![BHANUJ AI Governance Platform](assets/Hero.png)
+## Governance Lifecycle
 
-- [Website](https://governance.bhanuj.ai)
-- [Documentation](https://governance.bhanuj.ai/docs)
-- [Tutorials](https://governance.bhanuj.ai/tutorials)
-- [Start with the governed replay walkthrough](docs/tutorials/governed-replay-walkthrough.md)
-- [Understand the platform boundary](docs/architecture/ARCHITECTURE.md)
-- [Roadmap](docs/roadmap/ROADMAP.md)
+![Governance Lifecycle](assets/Governance%20Lifecycle.png)
 
----
+1. **Identity and Trusted Delegation.** An authorized issuer creates a limited,
+   immutable delegation for a canonical execution, runtime actor, action,
+   resource, and expiry.
+2. **Authorization.** Immediately before a protected operation, the runtime
+   asks AIGP for an `ALLOW` or `DENY` bound to the exact action, resource,
+   delegation, and tool-argument digest.
+3. **External Enforcement.** The runtime is the policy-enforcement point. It
+   executes only a valid, unexpired `ALLOW`; AIGP never invokes the business
+   operation.
+4. **Execution Attestation.** The authenticated runtime appends bounded receipt
+   evidence about the attempted outcome. It retains responsibility for its own
+   idempotency, transactions, result retention, and recovery.
+5. **Replay Eligibility.** A versioned manifest assesses whether frozen
+   execution evidence, capability, and isolation declarations are sufficient
+   for a safe replay attempt.
+6. **Controlled Replay and Causal Audit.** A runtime-owned adapter resolves its
+   private snapshot and runs an isolated counterfactual. AIGP records the
+   resulting bounded evidence and lineage for causal investigation.
 
-## Causal Audit — Did the evidence actually matter?
+### Important Distinctions
 
-An agent calling a tool does not prove that the returned evidence influenced
-its decision. AIGP Causal Audit tests that relationship directly.
+| AIGP records or decides | AIGP does not claim or do |
+| --- | --- |
+| An authorization decision for one exact proposed action | Execute, retry, roll back, or transactionally coordinate the external operation |
+| An authenticated runtime's bounded receipt attestation | Independently prove that an external mutation occurred |
+| `UNREPORTED` when an `ALLOW` has no ingested receipt | Treat an absent receipt as proof that nothing happened |
+| `UNKNOWN` when the runtime explicitly cannot determine the outcome | Automatically retry an operation with uncertain side effects |
+| Replay eligibility from frozen evidence and isolation bindings | Guarantee that a currently deployed worker has the required adapter |
+| An isolated controlled replay outcome | Reconstruct an arbitrary workflow, checkpoint, prompt, or private reasoning trace |
+| Evidence sensitivity under a governed intervention | Access chain-of-thought or prove universal causation |
 
-![AIGP Studio Causal Audit overview](assets/Causal%20Audits.png)
+Read the contract details for [Runtime Action Authorization](docs/tutorials/runtime-action-authorization.md),
+[execution receipts and recovery](docs/architecture/RUNTIME_ACTION_EXECUTION_RECEIPTS.md),
+[replay manifests](docs/architecture/REPLAY_MANAGEMENT.md#replay-eligibility-manifest),
+the [runtime replay adapter boundary](docs/architecture/RUNTIME_REPLAY_ADAPTER.md),
+and [Causal Audit](docs/architecture/CAUSAL_AUDIT.md).
 
-```text
-Observed Execution
-       │
-       │ governed evidence
-       ▼
-Original Outcome
-       │
-       │ Evidence Intervention Policy
-       ▼
-Controlled Replay
-       │
-       ▼
-Replay Outcome
-       │
-       ▼
-Measure Influence
-```
+## OSS Capabilities
 
-Causal Audit:
+### Identity, Delegation, and Runtime Authorization
 
-- preserves the original execution as immutable evidence
-- applies explicit, versioned Evidence Intervention Policies
-- resolves authorized evidence through the runtime boundary
-- performs Controlled Replay in the runtime that owns execution
-- compares original and replay outcomes
-- produces deterministic classifications such as `EVIDENCE_ALIGNED` or `EVIDENCE_IGNORED`
-- persists policy → intervention → replay → score → audit lineage
+- Tenant-scoped authentication, RBAC, and server-derived tenant context.
+- Immutable, policy-authorized delegation with bounded action/resource scope,
+  expiry, and one-way revocation.
+- `runtime-action-authorization/v2` decisions bound to an execution, actor,
+  action, resource, delegation, argument digest, idempotency key, and bounded
+  context.
+- A fail-closed runtime pattern: service failures, expired decisions, binding
+  mismatches, and denials block the protected operation.
 
-It does **not** inspect or claim access to private chain-of-thought.
+The control plane is a decision service; it never accepts a caller's claimed
+authority as a substitute for server-resolved delegation and policy. See
+[Trusted Delegation](docs/tutorials/runtime-action-authorization.md#trusted-delegation)
+and the [LangGraph authorization example](docs/tutorials/langgraph-runtime-action-authorization.md).
+
+### Agent Execution Evidence & Recovery
+
+- Append-only runtime authorization, tool-call, and execution-receipt evidence
+  on the existing agent-execution lifecycle.
+- Bounded receipt contracts containing identities, references, reason codes,
+  and digests—not raw arguments, results, prompts, credentials, or error
+  payloads.
+- Idempotent duplicate delivery, conflict detection, immutable supersession of
+  one `UNKNOWN` receipt, and historical receipt ingestion after an earlier
+  authorization expires or delegation is revoked.
+- Recovery semantics that require the runtime to reconcile against its own
+  durable transaction or idempotency evidence without repeating uncertain work.
+
+See [Runtime Action Execution Receipts](docs/architecture/RUNTIME_ACTION_EXECUTION_RECEIPTS.md).
+
+### Evaluation, Experimentation, and Asset Governance
+
+- Versioned prompt, model, dataset, and evaluation-provider registries.
+- Experiment candidates, evaluation runs, rankings, leaderboards, comparisons,
+  and drift analysis as governed evidence.
+- Native OpenAI and Anthropic runtime connections plus OpenAI-compatible custom
+  endpoints; provider configuration and secret references remain separate from
+  immutable asset versions.
+- Recommendations and governance decisions that remain distinct from model
+  deployment.
+
+See [Experiment Management](docs/architecture/EXPERIMENT_MANAGEMENT.md),
+[producer integration](docs/tutorials/producer-integration.md), and the
+[architecture decisions](docs/architecture/DECISIONS.md).
+
+### Controlled Replay & Causal Audit
+
+- Immutable replay requests and frozen replay configurations, with idempotent
+  creation and explicit job lifecycle.
+- Additive `replay-manifest/v1` eligibility assessments. A failed execution can
+  be eligible when its evidence and isolation declarations are sufficient;
+  a `SUCCEEDED` receipt alone is not enough.
+- Versioned Evidence Intervention Policies and isolated counterfactual replay.
+- Bounded outcome scoring, deterministic audit classification, and durable
+  policy → intervention → replay → score → audit lineage.
+
+Controlled replay is not an external-operation retry and must not perform
+production side effects. See [Replay Management](docs/architecture/REPLAY_MANAGEMENT.md)
+and [Causal Audit](docs/architecture/CAUSAL_AUDIT.md).
 
 <table>
   <tr>
-    <td width="50%"><img src="assets/Controlled%20Replay.png" alt="Controlled Replay compares an observed outcome with a counterfactual outcome" /><br /><strong>Controlled Replay</strong> — apply one approved intervention and measure whether the outcome changes.</td>
-    <td width="50%"><img src="assets/Causal%20Finding%20-%20Evidence%20Aligned.png" alt="Causal Audit finding showing evidence aligned" /><br /><strong>Evidence-Aligned Finding</strong> — preserve a reviewable conclusion with the measured influence.</td>
+    <td width="50%"><img src="assets/Controlled%20Replay.png" alt="AIGP Studio Controlled Replay compares an observed outcome with an isolated counterfactual outcome" /><br /><strong>Controlled Replay</strong> — apply one approved evidence intervention in runtime isolation and retain a bounded outcome.</td>
+    <td width="50%"><img src="assets/Causal%20Finding%20-%20Evidence%20Aligned.png" alt="AIGP Studio Causal Audit finding classified as evidence aligned" /><br /><strong>Evidence-Aligned Finding</strong> — retain a reviewable conclusion with the intervention, replay, score, and audit lineage.</td>
   </tr>
 </table>
 
-[Read the Causal Audit documentation](https://governance.bhanuj.ai/docs/causal-audit) ·
-[Run the OpenAI Runtime walkthrough](https://governance.bhanuj.ai/guides/openai-runtime-causal-audit)
+### Knowledge Graph, Ontology, and Decision Lineage
 
----
+- A governed ontology for assets, evidence, policies, executions, decisions,
+  and their typed relationships.
+- Decision evidence building, deterministic policy evaluation, auditable
+  governance decisions, and ontology projection.
+- Tenant-scoped graph queries and lineage views backed by the configured
+  control-plane persistence.
 
-## AIGP Studio
+See the [Governance Ontology](docs/architecture/GOVERNANCE_ONTOLOGY.md) and
+[Decision architecture](docs/architecture/DECISIONS.md).
 
-<table>
-  <tr>
-    <td width="50%"><img src="assets/Governance%20Decisions.png" alt="AI Governance Control Plane Studio governance decisions" /><br /><strong>Governance Decisions</strong> — inspect deterministic outcomes and their supporting evidence.</td>
-    <td width="50%"><img src="assets/Governance%20Decisions%20-%20BLOCKED%20-%20Decision%20Lineage.png" alt="AI Governance Control Plane Studio decision lineage" /><br /><strong>Decision Lineage</strong> — trace the assets, policies, and executions behind an outcome.</td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="assets/Governance%20Decisions%20-%20BLOCKED%20-%20Evidence%20Graph.png" alt="AI Governance Control Plane Studio evidence graph" /><br /><strong>Evidence Graph</strong> — make the basis of a decision visible and auditable.</td>
-    <td width="50%"><img src="assets/AI Governance Control Plane Ontology Graph.png" alt="AI Governance Control Plane Studio knowledge graph" /><br /><strong>Knowledge Graph</strong> — explore governed AI assets and their relationships.</td>
-  </tr>
-</table>
+### Operations, Events, Observability, and Extensibility
 
-## Why BHANUJ?
+- Durable asynchronous jobs for replay, evaluation, experiment, and related
+  governance work, including leases, idempotent submission, retries, and
+  cancellation boundaries.
+- REST APIs, MCP interfaces, Studio, audit records, events, configuration, and
+  SQLite/PostgreSQL reference persistence with optional Snowflake analytics
+  persistence.
+- A provider-neutral plugin registry that discovers public entry points rather
+  than importing an Enterprise distribution.
 
-AI systems are no longer just about selecting the best model. Teams need to
-answer governance questions such as:
+See [Platform Architecture](docs/architecture/ARCHITECTURE.md),
+[Extensibility](docs/architecture/EXTENSIBILITY.md), and the
+[Plugin API](docs/architecture/PLUGIN_API.md).
 
-- Why was this decision made?
-- Which prompt, model, dataset, and policies produced this outcome?
-- Can this decision be explained and replayed?
-- What changed between two deployments?
-- Can quality regressions automatically block promotion?
-- Can governance remain independent of orchestration frameworks and model vendors?
+## Architecture and Ownership
 
-BHANUJ provides the governance control plane that answers these questions.
+![Runtime Architecture](assets/AIGP%20Governance%20and%20Runtime%20Architecture.png)
 
----
+The control plane owns governance state and evidence contracts. The runtime
+owns execution correctness and private replay material. The external
+application owns its business data and transactional semantics. This division
+keeps a receipt useful without misrepresenting it as independent proof, and
+keeps controlled replay from becoming an application transaction coordinator.
 
-## Core Concepts
+For the complete plane-by-plane architecture, dependency direction, persistence
+selection, and non-goals, see [Architecture](docs/architecture/ARCHITECTURE.md).
 
-BHANUJ revolves around five fundamental concepts.
+## Quickstart: Local
 
-### Governance Asset
+The Docker development stack starts Studio, the REST API, Keycloak, Neo4j,
+SeaweedFS, MCP services, and the replay and ontology-sync workers. It uses
+development-only identities and seeded demonstration data; do not reuse those
+values in shared or production environments.
 
-A versioned, immutable resource such as a prompt, model, dataset, experiment, evaluation, workflow, or governance decision.
+**Prerequisites:** Docker Desktop with Docker Compose v2. Install
+[uv](https://docs.astral.sh/uv/) and Python 3.12+ as well if you plan to run
+host tests or local Python processes.
 
-### Governance Ontology
-
-A semantic graph describing relationships between governed assets.
-
-### Evidence
-
-Structured evidence collected from governed resources that supports a governance decision.
-
-### Policy Engine
-
-Deterministic governance rules evaluated against evidence.
-
-### Governance Decision
-
-An explainable, auditable outcome generated from evidence and policy.
-
----
-
-## Platform Architecture
-
-![AI Governance Control Platform Architecture](assets/Enterprise%20Architecture%20-%20Marketing.png)
-
-At the product level, BHANUJ is grouped into five OSS capability domains:
-
-- **Access** — authentication, authorization, multi-tenancy, service identity, and tenant context propagation
-- **Governance** — policies, deterministic decisions, compliance, audit, and governance enforcement
-- **Knowledge & Evidence** — ontology, lineage, provenance, knowledge graph, governed assets, and evidence APIs
-- **Runtime & Evaluation** — Agents Runtime, evaluations and scoring, causal audit, replay, interventions, execution traces, and deterministic runtime findings
-- **Operations & Control** — jobs, scheduling, settings, events and integrations, telemetry, observability, and operational audit
-
-These product domains are implemented as independent architectural planes:
-
-- Authentication Plane
-- Governance Ontology Plane
-- Governance Decision Plane
-- Registry Plane
-- Experiment Plane
-- Evaluation Plane
-- Agents Runtime Plane
-- Causal Audit Plane
-- Job Execution Control Plane
-- Replay Plane
-- Audit Plane
-- Events & Integration Plane
-- Settings Control Plane
-- Persistence Plane
-- REST Control Plane
-- MCP Server
-- AI Governance Control Platform Studio
-
-Each plane owns a single responsibility and communicates only through explicit contracts. Runtime integrations remain outside BHANUJ ownership; the control plane governs their evidence and decisions rather than replacing the AI runtime, orchestration framework, or deployment system.
-
----
-
-## Core Capabilities
-
-### Semantic Governance
-
-- Governance Ontology
-- Governance Decision Engine
-- Decision Graph
-- Explainability
-- Lineage
-- Evidence Graphs
-
-### AI Asset Governance
-
-- Prompt Registry
-- Model Registry
-- Dataset Registry
-- Immutable Versioning
-- Lifecycle Management
-
-### Runtime & Evaluation Governance
-
-- Agents Runtime
-- Evaluation Framework
-- Experiment Management
-- Candidate Comparison
-- Drift Analysis
-- Causal Audit
-- Evidence Intervention Policies
-- Replay-aware Governance
-- Execution Traces and Deterministic Findings
-- Leaderboards
-
-### Operations & Execution Governance
-
-- Execution Audit
-- Workflow Replay
-- Job Execution Control Plane
-- Async Governance Jobs
-- Settings Control Plane
-- Events & Integrations
-- Telemetry & Observability
-
-### Platform Interfaces
-
-- Versioned REST APIs
-- MCP Server
-- Next.js AI Governance Control Plane Studio
-
----
-
-## Current Implementation
-
-AI Governance Control Plane currently includes:
-
-- Registry-centric Assets workspace for versioned prompts, models, datasets,
-  and evaluation providers, with common overview, version, reference, lineage,
-  and audit-history views
-- Versioned prompt, model, and dataset registries; local dataset content stored
-  through SeaweedFS's S3-compatible API and production-ready standard S3 support
-- Vendor-neutral observed prompt/model evidence ingestion with persisted source
-  provenance and optional protected prompt content hashes
-- A guided `ai-governance walkthrough governed-replay` command that demonstrates the
-  asset, evaluation, governance, replay, lineage, and audit lifecycle through
-  the same public REST APIs used by Studio and external producers
-- Generic in-memory OAuth client-credentials support for local workloads and
-  CI, with no token persistence
-- Experiment lifecycle management, candidates, evaluation runs, rankings, and leaderboards
-- Tenant-owned Runtime Connections with native OpenAI and Anthropic execution,
-  plus OpenAI-compatible custom endpoints
-- Pluggable evaluation provider contracts with TruLens support
-- Execution audit, workflow replay, evaluation history, comparison, and drift analysis
-- Tenant-scoped Agents Runtime for observed-agent discovery, execution traces, runtime findings, and deterministic detect/reconcile workflows
-- Causal Audit with governed evidence interventions, replay-backed counterfactual analysis, outcome scoring, deterministic tool-use classification, and durable audit results
-- Async governance job submission, status lookup, cancellation, retry, leases, and worker execution
-- Governance ontology contracts, graph query APIs, ontology synchronization, and Neo4j-backed graph exploration
-- Governance decision models, policy evaluation, evidence building, reasoning, persistence, audit records, and ontology projection
-- Decision REST APIs and MCP tools for evaluation, retrieval, listing, evidence, explanation, and lineage
-- AI Governance Control Platform Studio home dashboard, policy engine authoring, ontology graph exploration, decision index browsing, decision lookup, and visual decision detail inspection
-- SQLite and PostgreSQL reference persistence, with optional Snowflake analytics persistence
-
----
-
-# Run Locally
-
-Start the local Studio, API, ontology, worker and storage topology:
-
-```bash
-# Clone Repository
-## GITHUB:
-git clone https://github.com/Bhanuj-AI/ai-governance-oss
-
-## OR
-
-## GITLAB:
-git clone https://gitlab.com/bhanuj-ai/ai-governance-oss.git
+```sh
+git clone https://github.com/Bhanuj-AI/ai-governance-oss.git
 cd ai-governance-oss
 
-# Optional: installs host-development and test dependencies
-uv sync
-
-# Create the required development-only configuration files (do not commit them)
+# Required local-development configuration; do not commit the generated files.
 cp .env.platform.example .env.platform
 cp keycloak-postgres/.env.keycloak.example keycloak-postgres/.env.keycloak
 cp console/.env.local.example console/.env.studio
 
-# Starts local Keycloak, builds the platform, and starts the Compose stack
-./servers.sh
-
+# Starts Keycloak, builds the platform where needed, and starts the OSS stack.
+./servers.sh up
 ```
 
-`./servers.sh` starts local Keycloak automatically, then starts the containerized
-local stack. You do not need to run the Keycloak launcher separately. The three
-files above configure the platform, Keycloak and Studio respectively. Their
-example values are development-only; change them on shared machines and never
-use them in production. The launcher generates `.env.build` and the local
-service-account files itself.
+Open:
 
-### Local Runtime Process
+| Service | Address |
+| --- | --- |
+| Studio | http://localhost:3000 |
+| REST API / OpenAPI | http://localhost:8000/docs |
+| MCP OpenAPI | http://localhost:8001/docs |
+| Neo4j Browser | http://localhost:7474 |
+| SeaweedFS Filer | http://localhost:8888 |
 
-```mermaid
-flowchart TD
-    start[Repository checkout and local configuration]
+Sign in to Studio as `studio` using the `AI_GOVERNANCE_STUDIO_PASSWORD` value
+in `keycloak-postgres/.env.keycloak`. The first Docker build can take a few
+minutes. Manage the stack with `./servers.sh ps`, `./servers.sh logs`, and
+`./servers.sh down`; run `./servers.sh config` to render and validate its
+Compose configuration before startup.
 
-    start --> docker[Docker Compose flow: ./servers.sh]
-    docker --> docker_services[Keycloak, API, Studio, MCP, Neo4j, and SeaweedFS]
-    docker --> docker_workers[Replay worker and ontology-sync worker: started automatically]
+For a fuller local tour, including demo data, Studio, assets, evaluations, and
+ontology lineage, follow the [End-to-End Local Tutorial](docs/tutorials/end-to-end-local.md).
+For settings, authentication modes, persistence backends, and deployment
+configuration, see [Configuration](docs/reference/CONFIGURATION.md).
 
-    start --> host[Host-local flow: ./servers-local.sh]
-    host --> host_services[Keycloak, Neo4j, API, and MCPO]
-    host --> studio[Separate terminal: cd console and pnpm dev]
-    host --> replay[Separate terminal: replay_worker_runtime]
-    host --> ontology[Separate terminal: ontology_sync_worker_runtime]
+## Framework integrations and Plugin API
+
+AIGP OSS is framework-neutral. Integrations use the public plugin contracts and
+the existing provider-neutral extension registry; the control plane does not
+import framework-specific runtime implementations.
+
+### LangGraph Reference Replay Adapter
+
+The independently released [AIGP LangGraph Replay Adapter](https://github.com/Bhanuj-AI/aigp-langgraph-replay-adapter)
+implements `langgraph/v1` using
+[`bhanuj-governance-plugin-api==1.1.1`](packages/bhanuj-governance-plugin-api/README.md).
+Install the tagged GitHub release—not a PyPI package—into the environment that
+runs the replay worker:
+
+```sh
+python -m pip install \
+  "aigp-langgraph-replay-adapter @ git+https://github.com/Bhanuj-AI/aigp-langgraph-replay-adapter.git@v0.1.0"
+export AIGP_LANGGRAPH_REPLAY_SNAPSHOT_DB=/secure/runtime/langgraph-snapshots.db
 ```
 
-Choose one runtime flow. `./servers.sh` runs the complete containerized
-topology, including both workers. `./servers-local.sh` is for host API/MCP
-development and deliberately leaves Studio and both workers as separate host
-processes.
+The [`v0.1.0` release](https://github.com/Bhanuj-AI/aigp-langgraph-replay-adapter/releases/tag/v0.1.0)
+is a **reference counterfactual executor**. It resolves a runtime-private
+snapshot containing precomputed scores and runs an isolated graph to return a
+bounded counterfactual outcome. It is not a generic LangGraph checkpoint or
+workflow replay engine, does not invoke tools, and never opens or mutates the
+original business database.
 
-Use the same wrapper to inspect or manage the stack:
+Adapter discovery is separate from evidence eligibility: an execution can have
+an eligible replay manifest even if the current worker lacks the adapter. In
+that case the replay fails explicitly as unavailable rather than silently
+falling back. Read the [Runtime Replay Adapter Contract](docs/architecture/RUNTIME_REPLAY_ADAPTER.md)
+and [Plugin Extension Guide](docs/architecture/PLUGIN_EXTENSION_GUIDE.md).
 
-```bash
-./servers.sh logs                    # Follow all application and infrastructure logs
-./servers.sh logs ai-governance-platform    # Follow only API logs
-./servers.sh ps                      # Show service status
-./servers.sh down                    # Stop services and preserve local data
+For a runnable banking scenario spanning authorization, receipts, recovery,
+manifest eligibility, isolated replay, and causal lineage, use the advanced
+[Execution Assurance Lab](https://github.com/Bhanuj-AI/labs/tree/main/agent-frameworks/langgraph/langgraph-execution-assurance-lab) in the separately maintained `Bhanuj-AI/labs`
+repository. It is intentionally independent of the foundational LangGraph
+runtime-authorization lab.
+
+## Studio: Inspect Decisions and Lineage
+
+Studio is an operator interface over the same tenant-scoped REST APIs used by
+integrations. It renders persisted evidence and lineage; it does not make
+governance decisions in the browser.
+
+<table>
+  <tr>
+    <td width="50%"><img src="assets/Causal%20Audits.png" alt="AIGP Studio Causal Audit overview" /><br /><strong>Causal Audit</strong> — inspect governed interventions, controlled replays, outcomes, and classification.</td>
+    <td width="50%"><img src="assets/Governance%20Decisions.png" alt="AIGP Studio Governance Decisions" /><br /><strong>Governance Decisions</strong> — inspect deterministic outcomes and their supporting evidence.</td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/Governance%20Decisions%20-%20BLOCKED%20-%20Decision%20Lineage.png" alt="AIGP Studio Decision Lineage" /><br /><strong>Decision Lineage</strong> — trace policies, evidence, and governed records behind an outcome.</td>
+    <td width="50%"><img src="assets/AI%20Governance%20Control%20Plane%20Ontology%20Graph.png" alt="AIGP Studio Ontology Graph" /><br /><strong>Ontology Graph</strong> — explore governed entities and typed relationships.</td>
+  </tr>
+</table>
+
+## Paths
+
+| If you want to… | Start here |
+| --- | --- |
+| Run the OSS stack and explore Studio | [Quickstart](#quickstart-local) and the [End-to-End Local Tutorial](docs/tutorials/end-to-end-local.md) |
+| Integrate a producer that reports governed assets or observations | [Producer Integration Guide](docs/tutorials/producer-integration.md) |
+| Protect a consequential agent operation | [Runtime Action Authorization](docs/tutorials/runtime-action-authorization.md) |
+| See a LangGraph protected-tool pattern | [LangGraph Runtime Action Authorization](docs/tutorials/langgraph-runtime-action-authorization.md) |
+| Understand evidence, manifests, controlled replay, and causal investigation | [Governed Replay Walkthrough](docs/tutorials/governed-replay-walkthrough.md), [Replay Management](docs/architecture/REPLAY_MANAGEMENT.md), and [Causal Audit](docs/architecture/CAUSAL_AUDIT.md) |
+| Build a plugin or provider extension | [Plugin API](docs/architecture/PLUGIN_API.md), [Plugin Extensions](docs/architecture/EXTENSIBILITY.md), and the [Plugin Extension Guide](docs/architecture/PLUGIN_EXTENSION_GUIDE.md) |
+| Explore REST or MCP contracts | [REST API reference](docs/reference/REST_API.md), [MCP usage](docs/reference/MCP_USAGE.md), and local OpenAPI at http://localhost:8000/docs |
+| Contribute to OSS | [CONTRIBUTING.md](CONTRIBUTING.md) and `./scripts/dev/preflight.sh` |
+
+## Development and Contribution
+
+For host development, install the locked Python environment and run focused
+checks with the project tooling:
+
+```sh
+uv sync
+uv run ruff check .
+uv run pytest
 ```
 
-Keycloak runs in its own Compose project, so follow its logs separately when
-investigating sign-in or service-account startup:
+Before opening a pull request, run the repository preflight. It checks the
+working-tree patch, lint, relevant tests, and Studio type checks when needed;
+it does not commit, push, or start Docker services.
 
-```bash
-(cd keycloak-postgres && docker compose --env-file .env.keycloak logs --follow keycloak)
-```
-
-For host-local API or MCP development rather than Docker Compose, also create
-`.env.local` from its template. Uvicorn does not automatically load either
-environment file:
-
-```bash
-cp .env.local.example .env.local
-```
-
-## Local preflight before committing
-
-Run the local quality gate before creating a commit. It prompts for a
-[Conventional Commit](https://www.conventionalcommits.org/en/v1.0.0/) message
-and release-note bullets, checks the patch, runs Python lint and unit tests,
-and type-checks Studio when `console/` changed. It does not commit, push, or
-start Docker services.
-
-```bash
+```sh
 ./scripts/dev/preflight.sh
 ```
 
-It is also scriptable for CI-like local use:
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for contribution scope, compatibility,
+testing, documentation, and security expectations. Review
+[Design Principles](docs/architecture/DESIGN_PRINCIPLES.md) before proposing a
+cross-plane or extension-contract change.
 
-```bash
-./scripts/dev/preflight.sh \
-  --message "fix(jobs): retain local demo records" \
-  --summary "Keep local demo jobs visible within the retention window"
-```
-
-### GitLab commit signing
-
-This repository's GitLab push rule requires signed commits. Configure Git once
-to sign commits automatically with the SSH key you already use for GitLab:
-
-```bash
-git config --global gpg.format ssh
-git config --global user.signingkey ~/.ssh/id_ed25519.pub
-git config --global commit.gpgsign true
-```
-
-Replace `~/.ssh/id_ed25519.pub` if your public key has a different name. In
-GitLab, ensure the same key is listed under **Edit profile → Access → SSH keys**
-with usage **Authentication & Signing** (or **Signing**) so GitLab can mark
-commits as verified. The local preflight script validates the change but does
-not create or sign a commit. After committing, verify the latest signature:
-
-```bash
-git log --show-signature -1
-```
-
-See GitLab's [SSH commit-signing documentation](https://docs.gitlab.com/user/project/repository/signed_commits/ssh/)
-for key-management details.
-
-## Your first two minutes in Studio
-
-Open [AI Governance Control Platform Studio](http://localhost:3000) after `./servers.sh` completes. It
-will redirect you to the local Keycloak sign-in page. Sign in as `studio` with
-the `AI_GOVERNANCE_STUDIO_PASSWORD` value from `keycloak-postgres/.env.keycloak`.
-The local stack starts with representative demo data, so you can follow the
-full governance flow immediately:
-
-1. Open **Assets** to explore versioned prompts, models, datasets, and their history.
-2. Open **Experiments**, choose a seeded draft experiment, inspect the displayed run plan, and select **Start Experiment** to run a governed evaluation. The confirmation shows the candidate × dataset-item model invocation count; use **Cancel Experiment** to stop further calls while retaining captured evidence.
-3. Inspect the resulting **Governance Decision** and its policy outcome, explanation, and evidence.
-4. Open **Ontology** to view the lineage and knowledge graph behind the decision.
-5. Open **Replay** to inspect a seeded replay or create and submit a replay from an execution.
-
-- Keycloak IDP on http://localhost:18080 (OSS local stack)
-- REST API on http://localhost:8000
-- AI Governance Control Platform Studio on http://localhost:3000
-- Neo4j on bolt://localhost:7687
-- AI Governance Control Platform MCP Stdio (MCPO) on http://localhost:8001/docs
-- AI Governance Control Platform MCP Streamable HTTP Server on http://localhost:8002/
-- SeaweedFS S3 API on http://localhost:8333 (local dataset content)
-- SeaweedFS Filer UI on http://localhost:8888 (browse local dataset objects)
-- SeaweedFS Master UI on http://localhost:9333 (storage topology)
-
-See [Configuration](docs/reference/CONFIGURATION.md) for environment variables
-used by the API, Studio, graph adapters, demo seeding, and MCP integrations.
-
-Interactive API docs are available at:
-
-```text
-https://governance.bhanuj.ai/reference/api  # static Scalar API Reference
-http://localhost:8000/docs
-http://localhost:8000/redoc
-http://localhost:8000/openapi.json
-```
-
-The Scalar reference is generated from the canonical FastAPI OpenAPI contract
-and excludes internal routes. See [API reference maintenance](docs/maintenance/API_REFERENCE.md)
-for the visibility model and regeneration workflow.
-
-Local development starts with demo ontology data, a release-gate policy,
-governance decisions, varied governance jobs, and representative MCP audit
-records. SQLite-capable repositories share a database stored in the named
-`ai-governance_sqlite_data` Docker volume, so seeded and locally created records
-survive container recreation and normal `docker compose down` operations.
-
-To stop the stack without deleting local data:
-
-```bash
-./servers.sh down
-```
-
-To delete the local SQLite, Neo4j, and SeaweedFS data and start with a clean
-seed:
-
-```bash
-docker compose down -v
-./servers.sh
-```
-
-To reseed the local demo data manually without deleting local state, use the
-same short-lived Keycloak client-credentials flow as the local walkthrough and
-MCP tools. `./servers.sh` generates `.env.oauth.generated` for the provisioned
-local walkthrough service account; the token stays in the shell only and is not
-printed or written to a file:
-
-```bash
-set -a
-. ./.env.oauth.generated
-set +a
-
-AI_GOVERNANCE_DEMO_TOKEN="$(uv run python -c '
-from ai_governance.oauth import access_token_from_environment
-token = access_token_from_environment()
-assert token, "AI_GOVERNANCE_OAUTH_* credentials are required"
-print(token)
-')"
-
-curl --fail-with-body -X POST http://localhost:8000/api/v1/ontology/demo/seed \
-  -H "Authorization: Bearer ${AI_GOVERNANCE_DEMO_TOKEN}"
-unset AI_GOVERNANCE_DEMO_TOKEN
-```
-
-Set `AI_GOVERNANCE_AUTO_SEED_DEMO_DATA=false` to disable startup demo seeding.
-The demo seed uses stable identifiers, so normal restarts refresh the demo
-records rather than accumulating duplicates.
-
-The Docker stack stores the seeded evaluation dataset in SeaweedFS through the
-standard S3 API; its registry record points to an `s3://` URI. The non-Docker
-local workflow uses the checked-in filesystem configuration and records a
-root-confined `file://` URI under `.ai-governance/datasets`. Production uses
-AWS S3: set `AI_GOVERNANCE_DATASET_OBJECT_STORE_BACKEND=s3`,
-`AI_GOVERNANCE_DATASET_S3_BUCKET`, and AWS credentials/region. Leave
-`AI_GOVERNANCE_DATASET_S3_ENDPOINT_URL` unset for AWS S3; set it only for an
-S3-compatible endpoint such as SeaweedFS.
-
-The Dataset Registry also supports direct CSV and JSONL upload from Studio.
-AI Governance Control Platform validates and writes immutable dataset bytes to the configured object
-store, then registers a DRAFT version with its immutable URI and SHA-256 checksum.
-
-For a guided first run through Assets, SeaweedFS dataset storage, ontology
-lineage, experiments, and governance decisions, see the
-[end-to-end local tutorial](docs/tutorials/end-to-end-local.md).
-For integrating a runtime or evaluator with the observed prompt/model catalog,
-see the [producer integration guide](docs/tutorials/producer-integration.md).
-For a reproducible terminal walkthrough of the full governed replay lifecycle,
-see the [governed replay walkthrough](docs/tutorials/governed-replay-walkthrough.md).
-The walkthrough includes a public-API-only release smoke script, restart
-checkpoints, and safe local manifest cleanup.
-
-Then open Studio and inspect the home dashboard, policy engine, jobs page,
-graph explorer, or governance decision index.
-
----
-
-# Reference Docs
+## Reference Documentation
 
 - [Architecture](docs/architecture/ARCHITECTURE.md)
-- [Plugin Extensions in Plain English](docs/architecture/PLUGIN_EXTENSION_GUIDE.md)
-- [Plugin Runtime Processes](docs/architecture/PLUGIN_RUNTIME_PROCESSES.md)
-- [Plugin Extension Contracts](docs/plugin-extension-contracts.md)
-- [Configuration](docs/reference/CONFIGURATION.md)
-- [Local Keycloak Authentication Setup](keycloak-postgres/Keycloak%20Authentication%20Setup.md)
-- [Public API](docs/reference/PUBLIC_API.md)
-- [REST API](docs/reference/REST_API.md)
-- [MCP Server](docs/reference/MCP_SERVER.md)
-- [MCP Usage and MCPO](docs/reference/MCP_USAGE.md)
-- [Ontology Foundation](docs/ontology/ontology-foundation.md)
-- [Neo4j Operations Guide](docs/ontology/neo4j-operations-guide.md)
-- [Dependency Management](docs/maintenance/DEPENDENCY_MANAGEMENT.md)
-- [Graph Query APIs](docs/ontology/graph-query-apis.md)
-- [AI Governance Control Platform Studio](docs/ontology/governance-graph-console.md)
-- [End-to-End Local Tutorial](docs/tutorials/end-to-end-local.md)
-- [Agents Runtime Operator Guide](docs/tutorials/agents-runtime-operator-guide.md)
 - [Runtime Action Authorization](docs/tutorials/runtime-action-authorization.md)
-- [LangGraph Runtime Action Authorization](docs/tutorials/langgraph-runtime-action-authorization.md)
-- [Causal Audit Architecture](docs/architecture/CAUSAL_AUDIT.md)
-- [Agent Evidence Interoperability and Causal Replay](docs/architecture/AGENT_EVIDENCE_INTEROPERABILITY.md)
-- [Producer Integration Guide](docs/tutorials/producer-integration.md)
-- [Governed Replay Walkthrough](docs/tutorials/governed-replay-walkthrough.md)
-- [Inspect AI Batch Experiment](docs/tutorials/inspect-ai-batch-experiment.md)
+- [Runtime Action Execution Receipts](docs/architecture/RUNTIME_ACTION_EXECUTION_RECEIPTS.md)
+- [Replay Management](docs/architecture/REPLAY_MANAGEMENT.md)
+- [Runtime Replay Adapter Contract](docs/architecture/RUNTIME_REPLAY_ADAPTER.md)
+- [Causal Audit](docs/architecture/CAUSAL_AUDIT.md)
+- [Governance Ontology](docs/architecture/GOVERNANCE_ONTOLOGY.md)
+- [Experiment Management](docs/architecture/EXPERIMENT_MANAGEMENT.md)
+- [Configuration](docs/reference/CONFIGURATION.md)
+- [Public API reference maintenance](docs/maintenance/API_REFERENCE.md)
 - [Roadmap](docs/roadmap/ROADMAP.md)
-- [Ontology Synchronization](docs/ontology/ontology-synchronization.md)
 
-Brand assets and favicon sources live in [`assets/`](assets/).
+## License
 
----
-
-# Design Principles
-
-- Governance First
-- Semantic by Default
-- Explicit Data Contracts
-- Version Everything
-- Replayability
-- Storage Independence
-- Provider Independence
-- Failure Isolation
-- Observability by Default
-- Control Plane Ownership
-
----
-
-# Vision
-
-AI Governance Control Platform provides the semantic governance layer for AI systems.
-
-By combining ontology, governance decisions, evaluation, experimentation, replay, audit, and operational APIs into a unified governance platform, AI Governance Control Platform enables organizations to build trustworthy, explainable, and continuously improving AI systems independent of models, orchestration frameworks, or infrastructure providers.
-
-> **Enterprise capabilities are under active development. Commercial offerings
-> will be announced as they mature.**
-
----
-
-# License
-
-Apache License 2.0
+Apache License 2.0. See [LICENSE](LICENSE).
