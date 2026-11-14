@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
@@ -19,10 +18,15 @@ _DURATION_FACTORS = {
 
 
 def duration_seconds(value: str) -> float:
-    match = re.fullmatch(r"([1-9][0-9]*)(ms|s|m|h|d|w)", value.strip().lower())
-    if not match:
-        raise ValueError(f"Invalid duration: {value}")
-    return int(match.group(1)) * _DURATION_FACTORS[match.group(2)]
+    normalized = value.strip().lower()
+    for unit, factor in _DURATION_FACTORS.items():
+        if not normalized.endswith(unit):
+            continue
+        amount = normalized[: -len(unit)]
+        if amount and amount[0] != "0" and amount.isascii() and amount.isdecimal():
+            return int(amount) * factor
+        break
+    raise ValueError(f"Invalid duration: {value}")
 
 
 def setting_context(context: TenantContext | None) -> SettingContext:

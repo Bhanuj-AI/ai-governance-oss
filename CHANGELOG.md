@@ -9,6 +9,13 @@ This project follows Semantic Versioning.
 
 ### Unreleased
 
+### Fixed
+
+- Pinned FastAPI in the isolated MCPO launcher environment so the legacy
+  OpenAPI proxy continues to start on port 8001 instead of crash-looping when
+  dependency resolution selects a FastAPI release that rejects MCPO's TLS
+  constructor arguments.
+
 ### [1.2.5] - 2026-10-26
 
 ### Added
@@ -29,8 +36,7 @@ This project follows Semantic Versioning.
 - Expanded the Plugin API documentation and examples for registration,
   governed runtime replay, intervention envelopes, validation, isolation, and
   release verification. The Plugin API package source version is now `1.1.1`
-  for this documentation patch release.
-
+  for this documentation patch release.2
 
 ### [1.2.4] - 2026-10-25
 
