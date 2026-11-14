@@ -385,7 +385,9 @@ MCPO listens on:
 http://127.0.0.1:8001
 ```
 
-The launcher uses `uvx` to obtain MCPO and runs:
+The launcher uses an isolated `uvx` environment to obtain MCPO. It pins MCPO,
+MCP, and FastAPI together; this does not constrain the control plane's FastAPI
+dependency. It then runs:
 
 ```text
 uv run python -c \

@@ -25,9 +25,11 @@ if [ -z "${AI_GOVERNANCE_API_TOKEN:-}" ] && [ -n "${AI_GOVERNANCE_MCP_CLIENT_SEC
   export AI_GOVERNANCE_API_TOKEN="$token"
 fi
 
-# mcpo 0.0.20 imports streamablehttp_client, which MCP 2.0 removed. Pin the
-# compatible pair so the legacy MCP-to-OpenAPI proxy is reproducible.
-exec uvx --from "mcpo==0.0.20" --with "mcp==1.29.0" mcpo \
+# mcpo 0.0.20 imports streamablehttp_client, which MCP 2.0 removed. It also
+# passes TLS options to FastAPI, which FastAPI 0.141 no longer accepts. Pin
+# this isolated tool environment so the legacy MCP-to-OpenAPI proxy remains
+# reproducible without constraining the control plane's FastAPI dependency.
+exec uvx --from "mcpo==0.0.20" --with "mcp==1.29.0" --with "fastapi==0.116.1" mcpo \
   --host "${AI_GOVERNANCE_MCP_HOST:-127.0.0.1}" \
   --port "${AI_GOVERNANCE_MCP_PORT:-8001}" \
   -- \

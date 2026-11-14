@@ -37,6 +37,7 @@ trains unless their vendor documents a coupled requirement.
 | Studio dependency overrides | `console/pnpm-workspace.yaml` and `console/pnpm-lock.yaml` | Review security overrides with their parent packages; stale pins can retain vulnerable transitive versions. |
 | Local Neo4j server | `docker-compose.yml` | Local development pins Neo4j Community Edition `5.26.27`. The image is changed only through a dedicated server-migration change. |
 | Neo4j driver/server relationship | This document and the [Neo4j Operations Guide](../ontology/neo4j-operations-guide.md) | Driver 6.2 supports the Bolt protocol used by Neo4j 5.x. The driver upgrade does not require a matching server-image version; review the vendor compatibility matrix before either side changes. |
+| MCPO compatibility proxy | `scripts/mcp/start-mcp.sh` | The isolated `uvx` tool environment pins MCPO 0.0.20, MCP 1.29.0, and FastAPI 0.116.1. MCPO 0.0.20 passes TLS arguments to `FastAPI`; newer FastAPI releases reject them. Keep this pin independent of the control plane's FastAPI dependency and validate `GET /openapi.json` after any MCPO, MCP, or FastAPI change. See [MCP Usage](../reference/MCP_USAGE.md). |
 
 ## Infrastructure and Database Migrations
 
