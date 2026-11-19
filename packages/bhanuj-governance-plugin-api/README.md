@@ -60,10 +60,29 @@ provide this source and the adapter must reject its absence or a mismatch.
 | `RuntimeReplaySource` | Carries a reference-only, manifest-bound description of a governed runtime execution. |
 | `ReplayInterventionEnvelope` | Carries fixed policy authorization and bounded counterfactual provenance. |
 | `ReplayExecutionResult` | Returns bounded execution evidence for the host to materialise as its own record. |
+| `ExecutionReplayCapability` | Declares the tool boundaries and digest contracts an adapter can observe. |
+| `EvidenceResolutionPlan` | Freezes planned tool-call evidence and dependency relationships for one replay. |
+| `ExecutionReplayResolver` | Resolves an attempted declared tool call to recorded or approved replacement evidence. |
+| `ReplayExecutionTrace` / `ReplayExecutionAttestation` | Carries bounded runtime-reported resolution and coverage evidence for later host validation. |
 
 The public SPI major is currently `"1"`. A plugin declares the major it
 implements with `PluginMetadata(spi_version="1")`; a host rejects an unsupported
 major before plugin registration.
+
+## Execution Replay Contracts
+
+`1.2.0rc1` adds optional, versioned contracts for evidence-only execution
+replay. An adapter can declare `execution-replay-capability/v1`, consume a
+frozen `evidence-resolution-plan/v1`, and use `ExecutionReplayResolver` to
+select only the evidence bound to an exact planned tool call. Existing adapters
+remain compatible because the new context and result members are optional.
+
+The resolver validates tool identity, argument-digest compatibility,
+occurrence, retry and dependency relationships, and consumes a matched planned
+call atomically within its own replay session. It neither invokes tools nor
+loads private evidence. The contracts do not claim arbitrary workflow
+interception or sandbox-level isolation; worker-side attestation enforcement is
+owned by a later host integration.
 
 ## Minimal Plugin
 

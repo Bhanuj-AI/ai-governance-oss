@@ -496,7 +496,7 @@ wheels = [
 
 [[package]]
 name = "bhanuj-governance-plugin-api"
-version = "1.2.0"
+version = "1.2.0rc1"
 source = { editable = "packages/bhanuj-governance-plugin-api" }
 
 [[package]]
