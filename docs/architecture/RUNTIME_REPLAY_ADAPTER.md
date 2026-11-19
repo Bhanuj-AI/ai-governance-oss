@@ -44,7 +44,7 @@ or malformed envelope then fails closed before the adapter is invoked.
 ## Evidence-only Causal Replay
 
 An adapter identity and an isolation-guarantee string are not sufficient for
-an execution-faithful Causal Audit.
+a verified execution-path Causal Audit.
 
 A source must additionally declare
 `evidence-only-replay-capability/v1`:
@@ -66,8 +66,14 @@ Replay and Causal Audit paths; it never produces an influence classification.
 
 This is a restricted integration contract, not a sandbox. Custom nodes that
 can perform direct I/O, and provider-hosted tools outside the adapter boundary,
-are unsupported for execution-faithful Causal Audit unless their runtime can
+are unsupported for verified execution-path Causal Audit unless their runtime can
 enforce and attest to the same evidence-only contract.
+
+The versioned Phase 2 contract foundation is documented in
+[Execution Replay Contracts](EXECUTION_REPLAY_CONTRACTS.md).
+It currently defines immutable identity, plan, trace, and attestation types
+plus the pure, in-process resolution engine. It does not add tool interception
+or worker enforcement.
 
 ## Invocation and Verification
 

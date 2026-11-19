@@ -9,7 +9,30 @@ This project follows Semantic Versioning.
 
 ### Unreleased
 
-### [1.2.6] - 2026-10-26
+### [1.2.7] - 2026-11-20
+
+### Added
+
+- Added the versioned, provider-neutral `execution-replay-capability/v1` and
+  `evidence-resolution-plan/v1` Plugin API contracts. They bind declared tool
+  boundaries, canonical tool identity, argument-digest compatibility, frozen
+  evidence references, dependencies, retries, and bounded execution reports
+  without carrying private tool arguments, responses, prompts, or credentials.
+- Added the deterministic, per-session `ExecutionReplayResolver`, including
+  `replay-intervention-binding/v1` and `replay-resolution-summary/v1`.
+  Resolution atomically validates and consumes planned calls, permits
+  dependency-independent calls in either order, and terminates on the first
+  invalid or blocking divergent call.
+
+### Changed
+
+- Execution replay now has an explicit contractual boundary: it resolves only
+  evidence for declared, observed tool calls. It does not intercept arbitrary
+  workflow activity, materialise private evidence, execute original tools, or
+  provide sandbox-level isolation. Worker-side enforcement of final replay
+  attestations remains a later integration step.
+
+### [1.2.6] - 2026-11-19
 
 ### Fixed
 

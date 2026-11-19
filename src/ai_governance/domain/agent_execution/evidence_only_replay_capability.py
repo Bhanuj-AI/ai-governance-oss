@@ -1,4 +1,4 @@
-"""Versioned declaration required for execution-faithful controlled replay."""
+"""Versioned declaration required for verified controlled replay."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ class EvidenceOnlyReplayCapability:
     This is deliberately separate from ``AgentRuntimeReplayCapability``.  The
     latter identifies a runtime adapter and opaque replay reference; this
     declaration is required before Causal Audit accepts that adapter for an
-    execution-faithful controlled replay.
+    verified controlled replay.
     """
 
     schema_version: str
