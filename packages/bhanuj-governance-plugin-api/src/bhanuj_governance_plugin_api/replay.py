@@ -8,6 +8,12 @@ from datetime import datetime
 from types import MappingProxyType
 from typing import Any, Protocol
 
+from bhanuj_governance_plugin_api.execution_replay import (
+    EvidenceResolutionPlan,
+    ReplayExecutionAttestation,
+    ReplayExecutionTrace,
+)
+
 REPLAY_INTERVENTION_ENVELOPE_SCHEMA_VERSION = "replay-intervention-envelope/v1"
 RUNTIME_REPLAY_SOURCE_SCHEMA_VERSION = "runtime-replay-source/v1"
 _STRATEGIES = frozenset({"NULLIFY", "REPLACE", "PERTURB"})
@@ -152,9 +158,13 @@ class RuntimeReplaySource:
         if (
             not isinstance(self.manifest_hash, str)
             or len(self.manifest_hash) != 64
-            or any(character not in "0123456789abcdef" for character in self.manifest_hash)
+            or any(
+                character not in "0123456789abcdef" for character in self.manifest_hash
+            )
         ):
-            raise ValueError("Runtime replay source manifest_hash must be a SHA-256 hex digest.")
+            raise ValueError(
+                "Runtime replay source manifest_hash must be a SHA-256 hex digest."
+            )
 
     def to_payload(self) -> dict[str, object]:
         """Serialise precisely the reference-only v1 source shape."""
@@ -209,6 +219,7 @@ class ReplayExecutionContext:
     controlled_evidence_intervention: object | None = None
     intervention_envelope: ReplayInterventionEnvelope | None = None
     runtime_replay_source: RuntimeReplaySource | None = None
+    execution_replay_resolution_plan: EvidenceResolutionPlan | None = None
 
     def __post_init__(self) -> None:
         if self.runtime_replay_source is not None and not isinstance(
@@ -216,6 +227,12 @@ class ReplayExecutionContext:
         ):
             raise TypeError(
                 "Replay execution context runtime_replay_source must be a RuntimeReplaySource."
+            )
+        if self.execution_replay_resolution_plan is not None and not isinstance(
+            self.execution_replay_resolution_plan, EvidenceResolutionPlan
+        ):
+            raise TypeError(
+                "Replay execution context execution_replay_resolution_plan must be an EvidenceResolutionPlan."
             )
         object.__setattr__(self, "metadata", MappingProxyType(dict(self.metadata)))
 
@@ -232,6 +249,8 @@ class ReplayExecutionResult:
     runtime_parameters: Mapping[str, Any] = field(default_factory=dict)
     metadata: Mapping[str, Any] = field(default_factory=dict)
     created_at: datetime | None = None
+    execution_replay_trace: ReplayExecutionTrace | None = None
+    execution_replay_attestation: ReplayExecutionAttestation | None = None
 
     def __post_init__(self) -> None:
         if (
@@ -239,6 +258,18 @@ class ReplayExecutionResult:
             or not self.execution_status.strip()
         ):
             raise ValueError("Replay execution result status is required.")
+        if self.execution_replay_trace is not None and not isinstance(
+            self.execution_replay_trace, ReplayExecutionTrace
+        ):
+            raise TypeError(
+                "Replay execution result execution_replay_trace must be a ReplayExecutionTrace."
+            )
+        if self.execution_replay_attestation is not None and not isinstance(
+            self.execution_replay_attestation, ReplayExecutionAttestation
+        ):
+            raise TypeError(
+                "Replay execution result execution_replay_attestation must be a ReplayExecutionAttestation."
+            )
         object.__setattr__(self, "input", MappingProxyType(dict(self.input)))
         object.__setattr__(
             self, "final_state", MappingProxyType(dict(self.final_state))
