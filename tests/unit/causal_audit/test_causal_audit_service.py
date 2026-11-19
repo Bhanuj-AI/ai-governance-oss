@@ -130,6 +130,12 @@ def _service(
                         ),
                         "isolation_guarantee": "runtime-isolated/v1",
                         "supported_interventions": ["REPLACE"],
+                        "evidence_only_replay_capability": {
+                            "schema_version": "evidence-only-replay-capability/v1",
+                            "recorded_evidence_only": True,
+                            "unobserved_tool_calls_fail": True,
+                            "external_side_effects_prohibited": True,
+                        },
                         **(
                             {
                                 "metadata": {
@@ -606,4 +612,6 @@ def _runtime_replay_attestation(payload: dict[str, object]) -> dict[str, object]
         "replay_manifest_hash": payload["replay_manifest_hash"],
         "isolation_guarantee": payload["isolation_guarantee"],
         "private_snapshot_integrity_verified": True,
+        "unobserved_tool_call_count": 0,
+        "external_side_effects_performed": False,
     }

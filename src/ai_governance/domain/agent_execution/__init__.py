@@ -20,6 +20,10 @@ from ai_governance.domain.agent_execution.agent_execution_event import (
     WorkflowStep,
     WorkflowStepLifecycle,
 )
+from ai_governance.domain.agent_execution.evidence_only_replay_capability import (
+    EVIDENCE_ONLY_REPLAY_CAPABILITY_SCHEMA_VERSION,
+    EvidenceOnlyReplayCapability,
+)
 from ai_governance.domain.agent_execution.projection import (
     ProjectionStatus,
     ProjectionVersion,
@@ -31,12 +35,14 @@ from ai_governance.domain.agent_execution.replay_capability import (
 )
 
 __all__ = [
+    "EVIDENCE_ONLY_REPLAY_CAPABILITY_SCHEMA_VERSION",
     "ActorType",
     "AgentExecution",
     "AgentExecutionEvent",
     "AgentExecutionStatus",
     "AgentRuntimeReplayCapability",
     "EventType",
+    "EvidenceOnlyReplayCapability",
     "ProjectionStatus",
     "ProjectionVersion",
     "RuntimeOntologyProjection",

@@ -17,6 +17,7 @@ from typing import Any, Protocol
 from ai_governance.domain.jobs import Job, JobResult, JobStatus
 from ai_governance.domain.replay import (
     ControlledEvidenceIntervention,
+    EvidenceOnlyReplaySafetyMetadata,
     ReplayConfiguration,
     ReplayFailure,
     ReplayFailureStage,
@@ -319,6 +320,12 @@ class ReplayJobHandler:
                 raise ReplayExecutionIdentityConflict(
                     "Replay execution ID equals source execution ID."
                 )
+            _validate_controlled_replay_safety(
+                execution,
+                source,
+                replay.controlled_evidence_intervention,
+                runtime_replay_source,
+            )
             execution.organization_id = context.organization_id
             execution.project_id = context.project_id or ""
             execution.metadata = {
@@ -582,6 +589,47 @@ def _materialise_plugin_execution(
         metadata=dict(result.metadata),
         created_at=result.created_at,
     )
+
+
+def _validate_controlled_replay_safety(
+    execution: WorkflowExecution,
+    source: WorkflowExecution,
+    intervention: ControlledEvidenceIntervention | None,
+    runtime_source: RuntimeReplaySource | None,
+) -> None:
+    """Reject a controlled result that lacks its runtime safety attestation."""
+    if intervention is None or runtime_source is None:
+        return
+    runtime_tool_call_id = next(
+        (
+            event.get("runtime_tool_call_id")
+            for event in source.events
+            if isinstance(event, Mapping)
+            and event.get("event_id") == intervention.target_event_id
+        ),
+        None,
+    )
+    if not isinstance(runtime_tool_call_id, str):
+        raise ReplayAdapterConfigurationInvalid(
+            "Controlled replay source lacks the target runtime tool-call identity."
+        )
+    try:
+        safety = EvidenceOnlyReplaySafetyMetadata.from_metadata(
+            execution.metadata.get("evidence_only_replay_safety")
+        )
+    except (TypeError, ValueError) as error:
+        raise ReplayAdapterConfigurationInvalid(
+            "Controlled replay lacks valid evidence-only safety metadata."
+        ) from error
+    if (
+        safety.replay_manifest_hash != runtime_source.manifest_hash
+        or safety.isolation_guarantee != runtime_source.isolation_guarantee
+        or safety.intervention_digest != intervention.intervention_digest
+        or safety.runtime_tool_call_id != runtime_tool_call_id
+    ):
+        raise ReplayAdapterConfigurationInvalid(
+            "Controlled replay safety metadata does not match frozen replay evidence."
+        )
 
 
 def _failure_stage(error: Exception) -> ReplayFailureStage:

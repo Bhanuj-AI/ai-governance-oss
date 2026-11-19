@@ -7,6 +7,9 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any
 
+from ai_governance.domain.agent_execution.evidence_only_replay_capability import (
+    EvidenceOnlyReplayCapability,
+)
 from ai_governance.domain.replay import ControlledEvidenceStrategy
 
 
@@ -26,6 +29,7 @@ class AgentRuntimeReplayCapability:
     supported_interventions: tuple[ControlledEvidenceStrategy, ...]
     metadata: Mapping[str, Any] = field(default_factory=dict)
     isolation_guarantee: str | None = None
+    evidence_only_replay_capability: EvidenceOnlyReplayCapability | None = None
 
     def __post_init__(self) -> None:
         for name, value in (
@@ -44,4 +48,10 @@ class AgentRuntimeReplayCapability:
             not self.isolation_guarantee.strip() or len(self.isolation_guarantee) > 128
         ):
             raise ValueError("Replay capability isolation guarantee must be bounded.")
+        if self.evidence_only_replay_capability is not None and not isinstance(
+            self.evidence_only_replay_capability, EvidenceOnlyReplayCapability
+        ):
+            raise TypeError(
+                "evidence_only_replay_capability must be an EvidenceOnlyReplayCapability."
+            )
         object.__setattr__(self, "metadata", MappingProxyType(dict(self.metadata)))

@@ -9,12 +9,24 @@ This project follows Semantic Versioning.
 
 ### Unreleased
 
+### [1.2.6] - 2026-10-26
+
 ### Fixed
 
 - Pinned FastAPI in the isolated MCPO launcher environment so the legacy
   OpenAPI proxy continues to start on port 8001 instead of crash-looping when
   dependency resolution selects a FastAPI release that rejects MCPO's TLS
   constructor arguments.
+
+### Changed
+
+- Controlled Causal Replay now requires the versioned
+  `evidence-only-replay-capability/v1` declaration and matching bounded
+  `evidence-only-replay-safety/v1` result metadata. Missing or inconsistent
+  metadata fails the existing Replay and Causal Audit paths before an influence
+  classification is accepted. This is contractual validation for cooperative
+  runtime adapters; it does not intercept arbitrary workflow code or provide
+  sandbox-level isolation.
 
 ### [1.2.5] - 2026-10-26
 

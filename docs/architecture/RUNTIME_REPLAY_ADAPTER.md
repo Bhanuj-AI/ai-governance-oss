@@ -41,6 +41,34 @@ generic Replay adapters continue to work. It is mandatory when the bridge
 marks a source as a `RuntimeReplaySource/v1` governed-runtime replay. A missing
 or malformed envelope then fails closed before the adapter is invoked.
 
+## Evidence-only Causal Replay
+
+An adapter identity and an isolation-guarantee string are not sufficient for
+an execution-faithful Causal Audit.
+
+A source must additionally declare
+`evidence-only-replay-capability/v1`:
+
+- it uses recorded evidence only,
+- fails an unobserved tool call, and
+- prohibits external side effects.
+
+This is distinct from a reference replay capability, which may safely calculate
+a bounded fixture outcome without replaying an agent workflow.
+
+For a controlled Replay, the adapter must return bounded
+`evidence-only-replay-safety/v1` metadata containing the manifest hash,
+isolation guarantee, intervention digest, target runtime tool-call ID, private
+snapshot-integrity result, an unobserved-call count of zero, and an assertion
+that no external side effect occurred. OSS validates those bindings before
+persisting the execution. Missing or inconsistent metadata fails the existing
+Replay and Causal Audit paths; it never produces an influence classification.
+
+This is a restricted integration contract, not a sandbox. Custom nodes that
+can perform direct I/O, and provider-hosted tools outside the adapter boundary,
+are unsupported for execution-faithful Causal Audit unless their runtime can
+enforce and attest to the same evidence-only contract.
+
 ## Invocation and Verification
 
 ```mermaid
@@ -55,8 +83,8 @@ sequenceDiagram
     P->>P: Verify adapter identity and manifest consistency
     P->>R: Resolve opaque reference under tenant scope
     R-->>P: Private snapshot only after integrity and isolation checks
-    P->>P: Execute isolated LangGraph replay, idempotent by replay ID
-    P-->>A: Bounded status, score, references, and runtime attestation
+    P->>P: Execute evidence-only replay, idempotent by replay ID
+    P-->>A: Bounded status, score, references, and safety attestation
     Note right of B: Never contacted by a controlled replay
 ```
 

@@ -386,6 +386,8 @@ def _v1_response(strategy: ControlledEvidenceStrategy) -> SyntheticReplayHttpRes
             "replay_manifest_hash": "f" * 64,
             "isolation_guarantee": "runtime-isolated/v1",
             "private_snapshot_integrity_verified": True,
+            "unobserved_tool_call_count": 0,
+            "external_side_effects_performed": False,
         }
     )
     return SyntheticReplayHttpResponse(200, response)

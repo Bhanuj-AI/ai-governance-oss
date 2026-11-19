@@ -263,7 +263,10 @@ is a **reference counterfactual executor**. It resolves a runtime-private
 snapshot containing precomputed scores and runs an isolated graph to return a
 bounded counterfactual outcome. It is not a generic LangGraph checkpoint or
 workflow replay engine, does not invoke tools, and never opens or mutates the
-original business database.
+original business database. It therefore must not be presented as a full agent
+workflow replay. Execution-faithful Causal Audit requires an adapter release
+that declares `evidence-only-replay-capability/v1` and returns matching bounded
+replay-safety metadata; otherwise OSS fails the controlled Replay.
 
 Adapter discovery is separate from evidence eligibility: an execution can have
 an eligible replay manifest even if the current worker lacks the adapter. In

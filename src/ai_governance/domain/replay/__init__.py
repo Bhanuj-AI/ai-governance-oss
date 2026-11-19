@@ -1,3 +1,7 @@
+from ai_governance.domain.replay.evidence_only import (
+    EVIDENCE_ONLY_REPLAY_SAFETY_SCHEMA_VERSION,
+    EvidenceOnlyReplaySafetyMetadata,
+)
 from ai_governance.domain.replay.manifest import (
     REPLAY_MANIFEST_SCHEMA_VERSION,
     ReplayManifest,
@@ -27,9 +31,11 @@ from ai_governance.domain.replay.replay_result import (
 )
 
 __all__ = [
+    "EVIDENCE_ONLY_REPLAY_SAFETY_SCHEMA_VERSION",
     "REPLAY_MANIFEST_SCHEMA_VERSION",
     "ControlledEvidenceIntervention",
     "ControlledEvidenceStrategy",
+    "EvidenceOnlyReplaySafetyMetadata",
     "Replay",
     "ReplayComparisonSummary",
     "ReplayConfiguration",

@@ -13,6 +13,7 @@ from ai_governance.domain.agent_execution import (
     AgentExecutionStatus,
     AgentRuntimeReplayCapability,
     EventType,
+    EvidenceOnlyReplayCapability,
 )
 from ai_governance.domain.replay import (
     ControlledEvidenceStrategy,
@@ -32,6 +33,10 @@ from ai_governance.tenancy.domain import TenantContext
 
 class AgentRuntimeReplayNotAvailable(ValueError):
     """The observed execution lacks an explicit, safe replay capability."""
+
+
+class InvalidEvidenceOnlyReplayCapability(AgentRuntimeReplayNotAvailable):
+    """The runtime supplied an unsupported evidence-only capability."""
 
 
 class AgentRuntimeReplayAdapter(Protocol):
@@ -112,6 +117,11 @@ class AgentRuntimeReplaySourceBridge:
                         strategy.value
                         for strategy in capability.supported_interventions
                     ],
+                "evidence_only_replay_capability": (
+                    capability.evidence_only_replay_capability.to_metadata()
+                    if capability.evidence_only_replay_capability is not None
+                    else None
+                ),
                 },
                 "runtime_replay_source": runtime_replay_source.to_payload(),
             },
@@ -188,6 +198,13 @@ class AgentRuntimeReplaySourceBridge:
         else:
             try:
                 capability = _capability_from_metadata(execution.metadata)
+            except InvalidEvidenceOnlyReplayCapability:
+                reasons.append(
+                    ReplayManifestReason(
+                        ReplayManifestReasonCode.INVALID_EVIDENCE_ONLY_REPLAY_CAPABILITY,
+                        "Observed execution evidence-only replay capability is invalid.",
+                    )
+                )
             except (TypeError, ValueError):
                 reasons.append(
                     ReplayManifestReason(
@@ -201,6 +218,13 @@ class AgentRuntimeReplaySourceBridge:
                 ReplayManifestReason(
                     ReplayManifestReasonCode.MISSING_ISOLATION_GUARANTEE,
                     "Replay capability does not declare a versioned isolation guarantee.",
+                )
+            )
+        if capability is not None and capability.evidence_only_replay_capability is None:
+            reasons.append(
+                ReplayManifestReason(
+                    ReplayManifestReasonCode.MISSING_EVIDENCE_ONLY_REPLAY_CAPABILITY,
+                    "Replay capability does not declare evidence-only replay safety.",
                 )
             )
 
@@ -392,6 +416,21 @@ class DeterministicAgentRuntimeReplayAdapter:
                 "Controlled replay outcome score is invalid."
             )
         sample_index = int(intervention.configuration.get("sample_index", 0))
+        safety_metadata = {}
+        if context.runtime_replay_source is not None:
+            safety_metadata = {
+                "evidence_only_replay_safety": {
+                    "schema_version": "evidence-only-replay-safety/v1",
+                    "capability_schema_version": "evidence-only-replay-capability/v1",
+                    "replay_manifest_hash": context.runtime_replay_source.manifest_hash,
+                    "isolation_guarantee": context.runtime_replay_source.isolation_guarantee,
+                    "intervention_digest": intervention.intervention_digest,
+                    "runtime_tool_call_id": runtime_tool_call_id,
+                    "private_snapshot_integrity_verified": True,
+                    "unobserved_tool_call_count": 0,
+                    "external_side_effects_performed": False,
+                }
+            }
         return WorkflowExecution(
             workflow_id=source_execution.workflow_id,
             execution_id=context.new_execution_id,
@@ -421,6 +460,7 @@ class DeterministicAgentRuntimeReplayAdapter:
                     "counterfactual_evidence_reference": intervention.counterfactual_evidence_reference,
                     "counterfactual_evidence_digest": intervention.counterfactual_evidence_digest,
                 },
+                **safety_metadata,
             },
             created_at=datetime.now(UTC),
         )
@@ -446,11 +486,29 @@ def _capability_from_metadata(
             replay_reference=str(raw["replay_reference"]),
             supported_interventions=supported,
             isolation_guarantee=_optional_string(raw.get("isolation_guarantee")),
+            evidence_only_replay_capability=(
+                _evidence_only_replay_capability(
+                    raw.get("evidence_only_replay_capability")
+                )
+                if raw.get("evidence_only_replay_capability") is not None
+                else None
+            ),
             metadata=raw.get("metadata", {}),
         )
+    except InvalidEvidenceOnlyReplayCapability:
+        raise
     except (KeyError, TypeError, ValueError) as error:
         raise AgentRuntimeReplayNotAvailable(
             "Observed execution replay capability is invalid."
+        ) from error
+
+
+def _evidence_only_replay_capability(value: object) -> EvidenceOnlyReplayCapability:
+    try:
+        return EvidenceOnlyReplayCapability.from_metadata(value)
+    except (TypeError, ValueError) as error:
+        raise InvalidEvidenceOnlyReplayCapability(
+            "Observed execution lacks a valid evidence-only replay capability."
         ) from error
 
 

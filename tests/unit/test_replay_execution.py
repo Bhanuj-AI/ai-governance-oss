@@ -95,6 +95,104 @@ class _RuntimeSourceAdapter:
         )
 
 
+def test_governed_controlled_replay_fails_without_safety_metadata() -> None:
+    source = _governed_runtime_source()
+    repository = InMemoryReplayRepository()
+    context = TenantContext("organization-1", "project-1", "actor-1", "request-1")
+    replay = ReplayApplicationService(
+        repository,
+        _SourceResolver(source),
+        id_generator=lambda: "replay-1",
+        clock=lambda: datetime(2026, 1, 1, tzinfo=UTC),
+    ).create(
+        source_execution_id=source.execution_id,
+        context=context,
+        idempotency_key="key-1",
+        controlled_evidence_intervention=ControlledEvidenceIntervention(
+            ControlledEvidenceStrategy.REPLACE,
+            "v1",
+            "runtime://protected-evidence",
+            counterfactual_evidence_reference="runtime://counterfactual",
+            target_event_id="tool-event-1",
+        ),
+    )
+    repository.update(
+        replay.mark_queued("job-1", datetime(2026, 1, 1, tzinfo=UTC)), replay.version
+    )
+    registry = ReplayExecutionAdapterRegistry()
+    registry.register(_RuntimeSourceAdapter())
+
+    result = ReplayJobHandler(
+        repository,
+        _SourceResolver(source),
+        _Store(),
+        registry,
+        execution_id_generator=lambda: "replay-execution-1",
+        clock=lambda: datetime(2026, 1, 1, tzinfo=UTC),
+    ).handle(_job())
+
+    assert result.status is JobStatus.FAILED
+    assert "evidence-only safety metadata" in (result.failure_reason or "")
+
+
+def test_governed_controlled_replay_fails_for_inconsistent_safety_metadata() -> None:
+    class _MismatchedSafetyAdapter(_RuntimeSourceAdapter):
+        def replay(self, source_execution, configuration, context):
+            execution = super().replay(source_execution, configuration, context)
+            execution.metadata = {
+                "evidence_only_replay_safety": {
+                    "schema_version": "evidence-only-replay-safety/v1",
+                    "capability_schema_version": "evidence-only-replay-capability/v1",
+                    "replay_manifest_hash": "0" * 64,
+                    "isolation_guarantee": "private-snapshot/v1",
+                    "intervention_digest": context.controlled_evidence_intervention.intervention_digest,
+                    "runtime_tool_call_id": "runtime-tool-1",
+                    "private_snapshot_integrity_verified": True,
+                    "unobserved_tool_call_count": 0,
+                    "external_side_effects_performed": False,
+                }
+            }
+            return execution
+
+    source = _governed_runtime_source()
+    repository = InMemoryReplayRepository()
+    context = TenantContext("organization-1", "project-1", "actor-1", "request-1")
+    replay = ReplayApplicationService(
+        repository,
+        _SourceResolver(source),
+        id_generator=lambda: "replay-1",
+        clock=lambda: datetime(2026, 1, 1, tzinfo=UTC),
+    ).create(
+        source_execution_id=source.execution_id,
+        context=context,
+        idempotency_key="key-1",
+        controlled_evidence_intervention=ControlledEvidenceIntervention(
+            ControlledEvidenceStrategy.REPLACE,
+            "v1",
+            "runtime://protected-evidence",
+            counterfactual_evidence_reference="runtime://counterfactual",
+            target_event_id="tool-event-1",
+        ),
+    )
+    repository.update(
+        replay.mark_queued("job-1", datetime(2026, 1, 1, tzinfo=UTC)), replay.version
+    )
+    registry = ReplayExecutionAdapterRegistry()
+    registry.register(_MismatchedSafetyAdapter())
+
+    result = ReplayJobHandler(
+        repository,
+        _SourceResolver(source),
+        _Store(),
+        registry,
+        execution_id_generator=lambda: "replay-execution-1",
+        clock=lambda: datetime(2026, 1, 1, tzinfo=UTC),
+    ).handle(_job())
+
+    assert result.status is JobStatus.FAILED
+    assert "does not match frozen replay evidence" in (result.failure_reason or "")
+
+
 def test_replay_job_handler_persists_new_execution_and_lineage() -> None:
     source = WorkflowExecution(
         workflow_id="workflow-1",
@@ -527,6 +625,12 @@ def _governed_runtime_source(
             "adapter_version": "1",
             "replay_reference": "runtime://replays/run-1",
             "supported_interventions": ["REPLACE"],
+            "evidence_only_replay_capability": {
+                "schema_version": "evidence-only-replay-capability/v1",
+                "recorded_evidence_only": True,
+                "unobserved_tool_calls_fail": True,
+                "external_side_effects_prohibited": True,
+            },
         }
     }
     if include_runtime_replay_source:
@@ -539,7 +643,13 @@ def _governed_runtime_source(
         execution_status="COMPLETED",
         input={},
         final_state={},
-        events=[],
+        events=[
+            {
+                "event_id": "tool-event-1",
+                "runtime_tool_call_id": "runtime-tool-1",
+                "evidence_references": ["runtime://protected-evidence"],
+            }
+        ],
         organization_id="organization-1",
         project_id="project-1",
         execution_adapter="test-runtime/v1",
