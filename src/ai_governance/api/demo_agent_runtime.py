@@ -788,6 +788,12 @@ _EXECUTION_SCENARIOS: list[dict[str, Any]] = [
                 "replay_reference": "artifact://demo/replays/fraud-source-001",
                 "isolation_guarantee": "runtime-isolated/v1",
                 "supported_interventions": ["PERTURB"],
+                "evidence_only_replay_capability": {
+                    "schema_version": "evidence-only-replay-capability/v1",
+                    "recorded_evidence_only": True,
+                    "unobserved_tool_calls_fail": True,
+                    "external_side_effects_prohibited": True,
+                },
             }
         },
         "events": [

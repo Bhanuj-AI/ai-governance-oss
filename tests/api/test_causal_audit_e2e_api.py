@@ -18,6 +18,7 @@ from ai_governance.api.dependencies.replay import get_replay_source_resolver
 from ai_governance.api.dependencies.repositories import (
     get_agent_execution_repository,
     get_causal_audit_repository,
+    get_evidence_intervention_policy_repository,
     get_job_repository,
     get_replay_repository,
 )
@@ -296,6 +297,12 @@ def _record_execution(
                     or f"artifact://causal-e2e/{suffix}",
                     "isolation_guarantee": "runtime-isolated/v1",
                     "supported_interventions": ["REPLACE"],
+                    "evidence_only_replay_capability": {
+                        "schema_version": "evidence-only-replay-capability/v1",
+                        "recorded_evidence_only": True,
+                        "unobserved_tool_calls_fail": True,
+                        "external_side_effects_prohibited": True,
+                    },
                     **(
                         {"metadata": capability_metadata} if capability_metadata else {}
                     ),
@@ -467,14 +474,18 @@ class _ReplayCompletionHandler:
 
     def handle(self, job):
         outcome = self._handler.handle(job)
-        if outcome.status.value != "SUCCEEDED" or job.execution_context is None:
+        if job.execution_context is None:
             return outcome
         scope = job.execution_context
         replay = self._replays.get(
             str(job.input_refs["replay_id"]), scope.organization_id, scope.project_id
         )
+        is_terminal_controlled_replay = replay is not None and (
+            replay.controlled_evidence_intervention is not None
+            and replay.status.value in {"EXECUTION_COMPLETED", "FAILED", "CANCELLED"}
+        )
         audit_id = replay.metadata.get("causal_audit_id") if replay else None
-        if isinstance(audit_id, str):
+        if is_terminal_controlled_replay and isinstance(audit_id, str):
             from ai_governance.domain.jobs import JobExecutionContext, JobSubmission
 
             self._jobs.submit(
@@ -504,6 +515,7 @@ def _clear_dependencies() -> None:
     get_replay_repository.cache_clear()
     get_replay_source_resolver.cache_clear()
     get_runtime_finding_repository.cache_clear()
+    get_evidence_intervention_policy_repository.cache_clear()
     get_evidence_intervention_policy_service.cache_clear()
     get_evidence_intervention_runtime.cache_clear()
 
@@ -520,4 +532,6 @@ def _runtime_replay_attestation(payload: dict[str, object]) -> dict[str, object]
         "replay_manifest_hash": payload["replay_manifest_hash"],
         "isolation_guarantee": payload["isolation_guarantee"],
         "private_snapshot_integrity_verified": True,
+        "unobserved_tool_call_count": 0,
+        "external_side_effects_performed": False,
     }

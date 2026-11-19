@@ -458,6 +458,8 @@ def _workflow_execution(
                 payload.get("isolation_guarantee")
                 != runtime_source.isolation_guarantee,
                 payload.get("private_snapshot_integrity_verified") is not True,
+                payload.get("unobserved_tool_call_count") != 0,
+                payload.get("external_side_effects_performed") is not False,
             )
         )
     if response_is_invalid:
@@ -495,6 +497,27 @@ def _workflow_execution(
         artifact_refs=[intervention.source_evidence_reference],
         runtime_parameters={"isolated": True},
         metadata={
+            "evidence_only_replay_safety": {
+                "schema_version": "evidence-only-replay-safety/v1",
+                "capability_schema_version": "evidence-only-replay-capability/v1",
+                "replay_manifest_hash": (
+                    runtime_source.manifest_hash if runtime_source is not None else "0" * 64
+                ),
+                "isolation_guarantee": (
+                    runtime_source.isolation_guarantee
+                    if runtime_source is not None
+                    else str(capability.get("isolation_guarantee", ""))
+                ),
+                "intervention_digest": intervention.intervention_digest,
+                "runtime_tool_call_id": runtime_tool_call_id,
+                "private_snapshot_integrity_verified": payload.get(
+                    "private_snapshot_integrity_verified"
+                ) is True,
+                "unobserved_tool_call_count": payload.get("unobserved_tool_call_count"),
+                "external_side_effects_performed": payload.get(
+                    "external_side_effects_performed"
+                ),
+            },
             "synthetic_runtime": {
                 "adapter_version": capability["adapter_version"],
                 "replay_reference": capability["replay_reference"],

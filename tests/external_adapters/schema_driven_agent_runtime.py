@@ -66,6 +66,9 @@ class SchemaDrivenAgentRuntimeAdapter:
             event.get("runtime_tool_call_id"), str
         ):
             raise TypeError("External replay target lacks a runtime tool-call ID.")
+        runtime_source = context.runtime_replay_source
+        if runtime_source is None:
+            raise ValueError("External controlled replay requires a runtime replay source.")
         score = 0.2
         return WorkflowExecution(
             workflow_id=source_execution.workflow_id,
@@ -82,6 +85,17 @@ class SchemaDrivenAgentRuntimeAdapter:
             artifact_refs=[intervention.source_evidence_reference],
             runtime_parameters={"isolated": True},
             metadata={
+                "evidence_only_replay_safety": {
+                    "schema_version": "evidence-only-replay-safety/v1",
+                    "capability_schema_version": "evidence-only-replay-capability/v1",
+                    "replay_manifest_hash": runtime_source.manifest_hash,
+                    "isolation_guarantee": runtime_source.isolation_guarantee,
+                    "intervention_digest": intervention.intervention_digest,
+                    "runtime_tool_call_id": event["runtime_tool_call_id"],
+                    "private_snapshot_integrity_verified": True,
+                    "unobserved_tool_call_count": 0,
+                    "external_side_effects_performed": False,
+                },
                 "external_runtime": "schema-driven-fixture",
                 "intervention_digest": intervention.intervention_digest,
             },

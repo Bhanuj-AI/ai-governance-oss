@@ -94,6 +94,7 @@ def test_bridge_freezes_only_reference_only_runtime_replay_source():
                 "replay_reference": "synthetic://replays/run-123",
                 "isolation_guarantee": "runtime-isolated/v1",
                 "supported_interventions": ["REPLACE"],
+                    "evidence_only_replay_capability": _evidence_only_capability(),
                 "metadata": {
                     "endpoint": "https://synthetic.example.test/replay",
                     "unsafe_unrelated_value": "must-not-cross-the-bridge",
@@ -123,6 +124,38 @@ def test_bridge_fails_closed_without_explicit_capability():
         AgentRuntimeReplaySourceBridge(InMemoryReplaySourceResolver()).prepare(
             execution, [_tool_event()], CONTEXT
         )
+
+
+def test_bridge_fails_closed_without_evidence_only_replay_capability():
+    execution = _execution()
+    execution.metadata["replay_capability"].pop("evidence_only_replay_capability")
+
+    manifest = AgentRuntimeReplaySourceBridge(
+        InMemoryReplaySourceResolver()
+    ).manifest(execution, [_tool_event()], CONTEXT)
+
+    assert manifest.eligibility is ReplayManifestEligibility.INELIGIBLE
+    assert (
+        manifest.reasons[0].code
+        is ReplayManifestReasonCode.MISSING_EVIDENCE_ONLY_REPLAY_CAPABILITY
+    )
+
+
+def test_bridge_fails_closed_for_unsupported_evidence_only_replay_capability():
+    execution = _execution()
+    execution.metadata["replay_capability"]["evidence_only_replay_capability"][
+        "unobserved_tool_calls_fail"
+    ] = False
+
+    manifest = AgentRuntimeReplaySourceBridge(
+        InMemoryReplaySourceResolver()
+    ).manifest(execution, [_tool_event()], CONTEXT)
+
+    assert manifest.eligibility is ReplayManifestEligibility.INELIGIBLE
+    assert (
+        manifest.reasons[0].code
+        is ReplayManifestReasonCode.INVALID_EVIDENCE_ONLY_REPLAY_CAPABILITY
+    )
 
 
 def test_bridge_fails_closed_for_missing_or_cyclic_tool_dependencies():
@@ -223,12 +256,22 @@ def _execution(metadata=None):
                     "replay_reference": "artifact://claims/claim-001",
                     "isolation_guarantee": "runtime-isolated/v1",
                     "supported_interventions": ["NULLIFY", "REPLACE", "PERTURB"],
+                    "evidence_only_replay_capability": _evidence_only_capability(),
                 }
             }
             if metadata is None
             else metadata
         ),
     )
+
+
+def _evidence_only_capability():
+    return {
+        "schema_version": "evidence-only-replay-capability/v1",
+        "recorded_evidence_only": True,
+        "unobserved_tool_calls_fail": True,
+        "external_side_effects_prohibited": True,
+    }
 
 
 def _tool_event():

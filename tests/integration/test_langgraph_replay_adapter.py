@@ -8,6 +8,7 @@ OSS itself never depends on, imports, or discovers a vendor runtime package.
 from __future__ import annotations
 
 import sqlite3
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -122,7 +123,7 @@ def test_langgraph_adapter_completes_a_real_oss_causal_audit_without_mutation(
             f"/api/v1/agents-runtime/causal-audits/{audit_response.json()['audit_id']}"
         )
         assert audit.status_code == 200
-        assert audit.json()["status"] == "SUCCEEDED"
+        assert audit.json()["status"] == "SUCCEEDED", audit.json()["failure_reason"]
         assert audit.json()["classification"] == "EVIDENCE_ALIGNED"
         with sqlite3.connect(banking_database) as connection:
             assert (
@@ -131,5 +132,116 @@ def test_langgraph_adapter_completes_a_real_oss_causal_audit_without_mutation(
                 ).fetchone()[0]
                 == "PENDING"
             )
+    finally:
+        _clear_dependencies()
+
+
+def test_langgraph_adapter_malformed_safety_metadata_fails_causal_audit(
+    tmp_path: Path,
+) -> None:
+    """OSS rejects an otherwise successful external LangGraph replay result."""
+
+    class _MalformedSafetyAdapter:
+        name = LangGraphReplayAdapter.name
+
+        def __init__(self, snapshots) -> None:
+            self._delegate = LangGraphReplayAdapter(snapshots)
+
+        def validate_configuration(self, source_execution, configuration) -> None:
+            self._delegate.validate_configuration(source_execution, configuration)
+
+        def replay(self, source_execution, configuration, context):
+            result = self._delegate.replay(source_execution, configuration, context)
+            safety = dict(result.metadata["evidence_only_replay_safety"])
+            safety["replay_manifest_hash"] = "0" * 64
+            return replace(
+                result,
+                metadata={
+                    **result.metadata,
+                    "evidence_only_replay_safety": safety,
+                },
+            )
+
+    counterfactual_digest = "sha256:" + ("d" * 64)
+    snapshots = SQLitePrivateSnapshotStore(tmp_path / "langgraph-private-snapshots.db")
+    _clear_dependencies()
+    try:
+        client = TestClient(create_app())
+        execution_id = _record_execution(
+            client,
+            "langgraph-malformed-safety",
+            [[0.2, 0.2, 0.2]],
+            replay_adapter_id="langgraph/v1",
+            runtime_type="langgraph",
+            replay_reference="langgraph://replays/causal-e2e-malformed-safety",
+            tool_name="banking.loan.approve",
+            schema_id="banking-loan-status",
+        )
+        eligibility = client.get(
+            f"/api/v1/agents-runtime/executions/{execution_id}/causal-audit-eligibility"
+        )
+        assert eligibility.status_code == 200
+        snapshots.capture(
+            replay_reference="langgraph://replays/causal-e2e-malformed-safety",
+            organization_id="org_default",
+            project_id="project_default",
+            external_execution_id="causal-e2e-langgraph-malformed-safety",
+            adapter_id="langgraph/v1",
+            adapter_version="1",
+            isolation_guarantee="runtime-isolated/v1",
+            manifest_hash=eligibility.json()["replay_manifest_hash"],
+            state={
+                "baseline_score": 0.9,
+                "counterfactual_scores": {counterfactual_digest: 0.2},
+            },
+        )
+        policy_response = client.post(
+            "/api/v1/agents-runtime/causal-audit/intervention-policies",
+            json={
+                "tool_name": "banking.loan.approve",
+                "schema_id": "banking-loan-status",
+                "schema_version": "1",
+                "allowed_strategies": ["REPLACE"],
+                "provider_id": "opaque-reference",
+                "provider_version": "v1",
+                "strategy_configuration": {
+                    "counterfactual_reference": "langgraph://counterfactual/loan-002",
+                    "counterfactual_digest": counterfactual_digest,
+                    "runtime_attests_validation": True,
+                },
+            },
+        )
+        assert policy_response.status_code == 201, policy_response.text
+        policy = policy_response.json()
+        assert client.post(
+            "/api/v1/agents-runtime/causal-audit/intervention-policies/"
+            f"{policy['policy_id']}/versions/{policy['version']}/activate"
+        ).status_code == 200
+        audit_response = client.post(
+            "/api/v1/agents-runtime/causal-audits",
+            json={
+                "execution_id": execution_id,
+                "evaluator_ref": "recorded-outcome/v1",
+                "intervention": {
+                    "strategy": "REPLACE",
+                    "counterfactual_samples": 1,
+                    "intervention_policy_id": policy["policy_id"],
+                    "intervention_policy_version": policy["version"],
+                },
+            },
+        )
+        assert audit_response.status_code == 202, audit_response.text
+
+        _run_causal_audit_worker(_MalformedSafetyAdapter(snapshots))
+
+        audit = client.get(
+            f"/api/v1/agents-runtime/causal-audits/{audit_response.json()['audit_id']}"
+        )
+        assert audit.status_code == 200
+        assert audit.json()["status"] == "FAILED"
+        assert audit.json()["classification"] is None
+        assert "safety metadata does not match frozen replay evidence" in audit.json()[
+            "failure_reason"
+        ]
     finally:
         _clear_dependencies()
