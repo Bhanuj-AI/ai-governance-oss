@@ -8,9 +8,11 @@ OSS owns their schemas, canonical identity rules, and deterministic resolution
 semantics. Runtime adapters own framework interception, private-evidence
 materialisation, and reports of native execution.
 
-Task 2 adds an in-process, deterministic resolver for these contracts. It does
-not intercept tools, materialise evidence, enforce replay results in a worker,
-run a framework graph, or provide a sandbox.
+The in-process, deterministic resolver does not intercept tools, materialise
+evidence, run a framework graph, or provide a sandbox. The Replay worker now
+validates its bounded result only for an explicitly opted-in execution-replay
+configuration; it does not turn a cooperative adapter report into proof of
+arbitrary workflow interception or sandbox isolation.
 
 The existing `RuntimeReplaySource/v1`, `ReplayInterventionEnvelope`,
 `evidence-only-replay-capability/v1`, and
@@ -92,6 +94,42 @@ different from execution-path coverage, which says whether the adapter
 observed all of its declared boundaries and whether unsupported surfaces were
 encountered.
 
+## Worker Acceptance
+
+Execution-replay validation is opt-in. The frozen `ReplayConfiguration`
+contains this exact `runtime_parameters.execution_replay` mapping when an
+adapter supports this boundary:
+
+```json
+{
+  "resolution_plan": { "...": "EvidenceResolutionPlan/v1 payload" },
+  "intervention_binding": { "...": "ReplayInterventionBinding/v1 payload" }
+}
+```
+
+Both nested payloads retain their own strict schema versions. The frozen
+configuration digest covers this mapping, so a worker reconstructs the same
+plan rather than accepting one supplied at replay time. The binding must match
+the frozen manifest and plan, tenant/project and source execution, and the
+approved controlled intervention. Phase 2 uses the `sha256:<hex>` digest form;
+the worker translates the established Phase 1 intervention digest only for
+that comparison and does not change the Phase 1 wire contract.
+
+Before persistence, the worker requires a typed `ReplayExecutionResult` with
+a complete trace and attestation. It checks the Phase 1 safety metadata and
+its canonical digest, manifest/plan/trace/intervention bindings, declared tool
+coverage, every attempted-call identity, every selected evidence reference and
+digest, attestation counts, and the absence of blocking divergence. It derives
+a `ReplayResolutionSummary` from the returned trace and accepts only a
+`COMPLETE` summary in which every planned call was consumed and the authorised
+intervention target was resolved exactly once. `complete=True` by itself is
+never sufficient.
+
+Missing, malformed, incomplete, or inconsistent evidence follows the existing
+Replay failure path before a produced execution is persisted. Replays without
+the opt-in mapping retain their existing compatibility path, including legacy
+and generic adapters.
+
 ## Resolution Engine
 
 `ExecutionReplayResolver` consumes one immutable plan in one lock-protected
@@ -123,9 +161,11 @@ reported governed tool calls. An empty plan completes successfully when no
 intervention is required; this is a tool-free-plan policy, not an assertion
 that the runtime performed no other activity.
 
-## Deferred Enforcement
+## Remaining Boundaries
 
-Framework interception, LangGraph integration, worker-side attestation
-enforcement, Causal Audit changes, sandboxing, and recovery of external effects
-remain deferred. Those steps must use these contracts and the resolver without
-changing their historical meaning or weakening legacy Replay compatibility.
+Framework interception remains adapter-owned. The LangGraph `ToolNode` v2
+boundary is opt-in; custom nodes, direct SDK/HTTP/database calls, and
+provider-hosted tools are not covered unless an adapter explicitly captures
+them as declared boundaries. Causal Audit classifications, sandboxing, and
+recovery of external effects remain separate concerns. Worker validation of a
+cooperative trace does not independently prove the absence of those effects.

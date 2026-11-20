@@ -10,7 +10,10 @@ belong to the subsequent replay-evaluation job.
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
@@ -37,10 +40,15 @@ from ai_governance.repositories.replay_repository import ReplayRepository
 from ai_governance.services.replay_application_service import ReplaySourceResolver
 from ai_governance.spi.replay import (
     RUNTIME_REPLAY_SOURCE_SCHEMA_VERSION,
+    EvidenceResolutionPlan,
     ReplayExecutionAdapter,
     ReplayExecutionContext,
     ReplayExecutionResult,
+    ReplayInterventionBinding,
     ReplayInterventionEnvelope,
+    ReplayResolutionCompletion,
+    ReplayResolutionOutcome,
+    ReplayResolutionSummary,
     RuntimeReplaySource,
 )
 from ai_governance.tenancy.domain import TenantContext
@@ -140,6 +148,14 @@ class ReplayExecutionStore(Protocol):
     def get_execution(
         self, execution_id: str, context: TenantContext
     ) -> WorkflowExecution | None: ...
+
+
+@dataclass(frozen=True)
+class _ExecutionReplayBindings:
+    """Typed Phase 2 evidence frozen in an otherwise generic replay config."""
+
+    plan: EvidenceResolutionPlan
+    intervention: ReplayInterventionBinding
 
 
 class _RepositoryCancellationToken:
@@ -267,6 +283,13 @@ class ReplayJobHandler:
                 runtime_replay_source = _runtime_replay_source(
                     source, configuration
                 )
+                execution_replay_bindings = _execution_replay_bindings(
+                    source,
+                    configuration,
+                    context,
+                    runtime_replay_source,
+                    replay.controlled_evidence_intervention,
+                )
                 adapter.validate_configuration(source, configuration)
             except Exception as error:
                 raise ReplayAdapterConfigurationInvalid(str(error)) from error
@@ -296,6 +319,11 @@ class ReplayJobHandler:
                             source, replay.controlled_evidence_intervention
                         ),
                         runtime_replay_source=runtime_replay_source,
+                        execution_replay_resolution_plan=(
+                            execution_replay_bindings.plan
+                            if execution_replay_bindings is not None
+                            else None
+                        ),
                     ),
                 )
             except Exception:
@@ -304,6 +332,19 @@ class ReplayJobHandler:
                 raise
             if token.is_cancelled:
                 return self._cancel(replay, job)
+            resolution_summary = None
+            if execution_replay_bindings is not None:
+                if not isinstance(execution, ReplayExecutionResult):
+                    raise ReplayAdapterConfigurationInvalid(
+                        "Execution replay requires a typed ReplayExecutionResult."
+                    )
+                resolution_summary = _validate_execution_replay_result(
+                    execution,
+                    execution_replay_bindings,
+                    runtime_replay_source,
+                    replay.controlled_evidence_intervention,
+                    source,
+                )
             if isinstance(execution, ReplayExecutionResult):
                 execution = _materialise_plugin_execution(
                     execution, source, configuration, replay.replay_execution_id
@@ -326,6 +367,11 @@ class ReplayJobHandler:
                 replay.controlled_evidence_intervention,
                 runtime_replay_source,
             )
+            if resolution_summary is not None:
+                execution.metadata = {
+                    **execution.metadata,
+                    "execution_replay_resolution_summary": resolution_summary.to_payload(),
+                }
             execution.organization_id = context.organization_id
             execution.project_id = context.project_id or ""
             execution.metadata = {
@@ -556,6 +602,245 @@ def _runtime_replay_source(
     return runtime_source
 
 
+def _execution_replay_bindings(
+    source: WorkflowExecution,
+    configuration: ReplayConfiguration,
+    context: TenantContext,
+    runtime_source: RuntimeReplaySource | None,
+    intervention: ControlledEvidenceIntervention | None,
+) -> _ExecutionReplayBindings | None:
+    """Load an explicitly opted-in Phase 2 plan from frozen configuration.
+
+    ``runtime_parameters`` is already included in the frozen configuration
+    digest and persisted by every Replay repository.  Keeping the versioned
+    Plugin API payloads there avoids a new persistence model while preserving
+    legacy Replay configurations that do not declare execution replay.
+    """
+
+    raw = (configuration.runtime_parameters or {}).get("execution_replay")
+    if raw is None:
+        return None
+    if not isinstance(raw, Mapping) or set(raw) != {
+        "resolution_plan",
+        "intervention_binding",
+    }:
+        raise ReplayAdapterConfigurationInvalid(
+            "Execution replay configuration has an unsupported shape."
+        )
+    if runtime_source is None or intervention is None:
+        raise ReplayAdapterConfigurationInvalid(
+            "Execution replay requires a governed runtime source and intervention."
+        )
+    plan_payload = raw.get("resolution_plan")
+    intervention_payload = raw.get("intervention_binding")
+    if not isinstance(plan_payload, Mapping) or not isinstance(
+        intervention_payload, Mapping
+    ):
+        raise ReplayAdapterConfigurationInvalid(
+            "Execution replay configuration lacks a plan or intervention binding."
+        )
+    try:
+        plan = EvidenceResolutionPlan.from_payload(plan_payload)
+        binding = ReplayInterventionBinding.from_payload(intervention_payload)
+    except (TypeError, ValueError) as error:
+        raise ReplayAdapterConfigurationInvalid(
+            "Execution replay configuration contains malformed frozen evidence."
+        ) from error
+
+    manifest = configuration.replay_manifest
+    expected_source_id = manifest.source_execution_id if manifest is not None else None
+    if (
+        manifest is None
+        or plan.organization_id != context.organization_id
+        or plan.project_id != (context.project_id or "")
+        or plan.source_execution_id != expected_source_id
+        or plan.source_execution_id != runtime_source.source_agent_execution_id
+        or plan.replay_manifest_hash != manifest.manifest_hash
+        or plan.replay_manifest_hash != runtime_source.manifest_hash
+    ):
+        raise ReplayAdapterConfigurationInvalid(
+            "Execution replay plan does not match frozen replay evidence."
+        )
+    if (
+        binding.replay_manifest_hash != manifest.manifest_hash
+        or binding.resolution_plan_digest != plan.plan_digest
+        or binding.target_planned_call_id
+        not in {call.call_id for call in plan.planned_calls}
+        or binding.intervention_digest != _phase2_intervention_digest(intervention)
+        or binding.replacement_evidence_reference
+        != intervention.counterfactual_evidence_reference
+        or binding.replacement_response_digest
+        != intervention.counterfactual_evidence_digest
+    ):
+        raise ReplayAdapterConfigurationInvalid(
+            "Execution replay intervention binding does not match frozen evidence."
+        )
+    return _ExecutionReplayBindings(plan, binding)
+
+
+def _validate_execution_replay_result(
+    result: ReplayExecutionResult,
+    bindings: _ExecutionReplayBindings,
+    runtime_source: RuntimeReplaySource | None,
+    intervention: ControlledEvidenceIntervention | None,
+    source: WorkflowExecution,
+) -> ReplayResolutionSummary:
+    """Reconcile adapter evidence with the frozen plan before persistence.
+
+    An adapter's ``complete`` indicator is only a claim.  Acceptance requires
+    the complete typed trace, exact evidence selections, Phase 1 safety, and
+    the independently reconstructed resolver completion summary to agree with
+    the immutable configuration.
+    """
+
+    if runtime_source is None or intervention is None:
+        raise ReplayAdapterConfigurationInvalid(
+            "Execution replay is missing governed replay safety inputs."
+        )
+    trace = result.execution_replay_trace
+    attestation = result.execution_replay_attestation
+    if trace is None or attestation is None:
+        raise ReplayAdapterConfigurationInvalid(
+            "Execution replay result lacks a trace or attestation."
+        )
+    safety = _controlled_replay_safety(
+        result.metadata, source, intervention, runtime_source
+    )
+    plan = bindings.plan
+    binding = bindings.intervention
+    if (
+        attestation.replay_manifest_hash != plan.replay_manifest_hash
+        or attestation.resolution_plan_digest != plan.plan_digest
+        or attestation.intervention_digest != binding.intervention_digest
+        or attestation.execution_trace_digest != trace.trace_digest
+        or attestation.phase1_safety_digest != _safety_digest(safety)
+        or not attestation.complete
+        or not trace.complete
+    ):
+        raise ReplayAdapterConfigurationInvalid(
+            "Execution replay attestation does not match frozen evidence."
+        )
+
+    coverage = attestation.tool_boundary_coverage
+    if (
+        tuple(coverage.declared_tool_boundaries)
+        != tuple(plan.capability.supported_tool_boundaries)
+        or not coverage.exercised_tool_boundaries
+        or not set(coverage.unsupported_execution_surfaces).issubset(
+            plan.capability.unsupported_execution_surfaces
+        )
+    ):
+        raise ReplayAdapterConfigurationInvalid(
+            "Execution replay attestation declares unsupported tool coverage."
+        )
+
+    planned_by_id = {call.call_id: call for call in plan.planned_calls}
+    binding_by_id = {item.call_id: item for item in plan.evidence_bindings}
+    attempted_by_id = {call.call_id: call for call in trace.attempted_calls}
+    consumed: set[str] = set()
+    intervention_calls: list[str] = []
+    for resolution in trace.resolutions:
+        attempted = attempted_by_id[resolution.attempted_call_id]
+        planned_call_id = resolution.planned_call_id
+        if planned_call_id is None or planned_call_id in consumed:
+            raise ReplayAdapterConfigurationInvalid(
+                "Execution replay trace has duplicate or missing planned calls."
+            )
+        planned = planned_by_id.get(planned_call_id)
+        if planned is None or not _matching_tool_identity(attempted, planned):
+            raise ReplayAdapterConfigurationInvalid(
+                "Execution replay trace does not match the frozen tool plan."
+            )
+        if resolution.outcome is ReplayResolutionOutcome.RESOLVED_INTERVENTION:
+            if (
+                planned_call_id != binding.target_planned_call_id
+                or resolution.selected_evidence_reference
+                != binding.replacement_evidence_reference
+                or resolution.selected_response_digest
+                != binding.replacement_response_digest
+            ):
+                raise ReplayAdapterConfigurationInvalid(
+                    "Execution replay intervention was not applied as authorised."
+                )
+            intervention_calls.append(planned_call_id)
+        elif resolution.outcome is ReplayResolutionOutcome.RESOLVED_RECORDED:
+            evidence = binding_by_id[planned_call_id]
+            if (
+                planned_call_id == binding.target_planned_call_id
+                or resolution.selected_evidence_reference != evidence.evidence_reference
+                or resolution.selected_response_digest != evidence.response_digest
+            ):
+                raise ReplayAdapterConfigurationInvalid(
+                    "Execution replay selected evidence outside the frozen plan."
+                )
+        else:
+            raise ReplayAdapterConfigurationInvalid(
+                "Execution replay trace contains an unresolved tool call."
+            )
+        consumed.add(planned_call_id)
+
+    if (
+        consumed != set(planned_by_id)
+        or len(intervention_calls) != 1
+        or intervention_calls[0] != binding.target_planned_call_id
+        or any(branch.blocking for branch in trace.branch_observations)
+    ):
+        raise ReplayAdapterConfigurationInvalid(
+            "Execution replay trace is incomplete or contains blocking divergence."
+        )
+    non_blocking_divergence_count = len(trace.branch_observations)
+    if (
+        attestation.resolved_call_count != len(consumed)
+        or attestation.unresolved_call_count != 0
+        or attestation.blocking_divergence_count != 0
+        or attestation.non_blocking_divergence_count
+        != non_blocking_divergence_count
+    ):
+        raise ReplayAdapterConfigurationInvalid(
+            "Execution replay attestation counts do not match its trace."
+        )
+    try:
+        return ReplayResolutionSummary(
+            completion=ReplayResolutionCompletion.COMPLETE,
+            resolution_plan_digest=plan.plan_digest,
+            consumed_planned_call_ids=tuple(sorted(consumed)),
+            remaining_planned_call_ids=(),
+            resolution_count=len(trace.resolutions),
+            intervention_required=True,
+            intervention_applied_call_id=binding.target_planned_call_id,
+            blocking_divergence_count=0,
+        )
+    except (TypeError, ValueError) as error:
+        raise ReplayAdapterConfigurationInvalid(
+            "Execution replay could not produce a complete resolution summary."
+        ) from error
+
+
+def _matching_tool_identity(attempted, planned) -> bool:
+    """Compare every resolver-controlled identity field, not call IDs or order."""
+
+    return (
+        attempted.identity_key == planned.identity_key
+        and attempted.dependency_call_ids == planned.dependency_call_ids
+        and attempted.retry_of_call_id == planned.retry_of_call_id
+    )
+
+
+def _phase2_intervention_digest(
+    intervention: ControlledEvidenceIntervention,
+) -> str:
+    """Bridge the established Phase 1 digest representation to Phase 2 SPI."""
+
+    return f"sha256:{intervention.intervention_digest}"
+
+
+def _safety_digest(safety: EvidenceOnlyReplaySafetyMetadata) -> str:
+    payload = json.dumps(
+        safety.to_metadata(), sort_keys=True, separators=(",", ":"), allow_nan=False
+    )
+    return f"sha256:{hashlib.sha256(payload.encode('utf-8')).hexdigest()}"
+
+
 def _materialise_plugin_execution(
     result: ReplayExecutionResult,
     source: WorkflowExecution,
@@ -600,6 +885,19 @@ def _validate_controlled_replay_safety(
     """Reject a controlled result that lacks its runtime safety attestation."""
     if intervention is None or runtime_source is None:
         return
+    _controlled_replay_safety(
+        execution.metadata, source, intervention, runtime_source
+    )
+
+
+def _controlled_replay_safety(
+    metadata: Mapping[str, Any],
+    source: WorkflowExecution,
+    intervention: ControlledEvidenceIntervention,
+    runtime_source: RuntimeReplaySource,
+) -> EvidenceOnlyReplaySafetyMetadata:
+    """Parse and bind Phase 1 safety evidence for a controlled replay."""
+
     runtime_tool_call_id = next(
         (
             event.get("runtime_tool_call_id")
@@ -615,7 +913,7 @@ def _validate_controlled_replay_safety(
         )
     try:
         safety = EvidenceOnlyReplaySafetyMetadata.from_metadata(
-            execution.metadata.get("evidence_only_replay_safety")
+            metadata.get("evidence_only_replay_safety")
         )
     except (TypeError, ValueError) as error:
         raise ReplayAdapterConfigurationInvalid(
@@ -630,6 +928,7 @@ def _validate_controlled_replay_safety(
         raise ReplayAdapterConfigurationInvalid(
             "Controlled replay safety metadata does not match frozen replay evidence."
         )
+    return safety
 
 
 def _failure_stage(error: Exception) -> ReplayFailureStage:

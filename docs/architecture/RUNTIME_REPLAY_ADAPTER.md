@@ -71,9 +71,11 @@ enforce and attest to the same evidence-only contract.
 
 The versioned Phase 2 contract foundation is documented in
 [Execution Replay Contracts](EXECUTION_REPLAY_CONTRACTS.md).
-It currently defines immutable identity, plan, trace, and attestation types
-plus the pure, in-process resolution engine. It does not add tool interception
-or worker enforcement.
+For an explicitly opted-in tool-interception replay, the worker injects the
+frozen plan and validates the adapter's complete trace and attestation before
+persisting an execution. It does not add tool interception itself: adapters
+remain responsible for their declared boundaries, and custom/direct execution
+surfaces remain unsupported unless explicitly captured.
 
 ## Invocation and Verification
 
