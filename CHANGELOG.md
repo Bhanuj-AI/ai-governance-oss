@@ -29,8 +29,14 @@ This project follows Semantic Versioning.
 - Execution replay now has an explicit contractual boundary: it resolves only
   evidence for declared, observed tool calls. It does not intercept arbitrary
   workflow activity, materialise private evidence, execute original tools, or
-  provide sandbox-level isolation. Worker-side enforcement of final replay
-  attestations remains a later integration step.
+  provide sandbox-level isolation.
+- Opted-in execution replay now fails through the existing Replay failure path
+  unless the worker can reconcile the frozen resolution plan and authorised
+  intervention with a complete typed trace, a valid Phase 1 safety digest, a
+  valid Phase 2 attestation, and supported tool-boundary coverage. The worker
+  derives a complete resolution summary from returned evidence; it does not
+  trust an adapter's `complete=True` flag. Legacy and generic Replay adapters
+  retain their existing compatibility path.
 
 ### [1.2.6] - 2026-11-19
 

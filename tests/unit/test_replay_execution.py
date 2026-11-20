@@ -1,3 +1,6 @@
+import hashlib
+import json
+from dataclasses import replace
 from datetime import UTC, datetime
 
 import pytest
@@ -24,9 +27,23 @@ from ai_governance.services.replay_execution import (
 from ai_governance.spi.replay import (
     REPLAY_INTERVENTION_ENVELOPE_SCHEMA_VERSION,
     RUNTIME_REPLAY_SOURCE_SCHEMA_VERSION,
+    EvidenceResolutionPlan,
+    ExecutionReplayCapability,
+    ReplayEvidenceBinding,
+    ReplayExecutionAttestation,
+    ReplayExecutionPathCoverage,
     ReplayExecutionResult,
+    ReplayExecutionTrace,
+    ReplayInterventionBinding,
     ReplayInterventionEnvelope,
+    ReplayResolutionOutcome,
+    ReplayToolBoundaryCoverage,
+    ReplayToolCall,
+    ReplayToolCallKind,
+    ReplayToolResolution,
     RuntimeReplaySource,
+    ToolArgumentDigest,
+    ToolArgumentDigestAlgorithm,
 )
 from ai_governance.tenancy.domain import TenantContext
 
@@ -93,6 +110,320 @@ class _RuntimeSourceAdapter:
             final_state={"causal_audit_outcome_score": 0.5},
             events=[],
         )
+
+
+_PHASE2_DIGEST = f"sha256:{'a' * 64}"
+_COUNTERFACTUAL_DIGEST = f"sha256:{'b' * 64}"
+
+
+def _execution_replay_plan(
+    source: WorkflowExecution,
+    *,
+    include_second_call: bool = False,
+) -> EvidenceResolutionPlan:
+    manifest = ReplayManifest.from_dict(source.metadata["replay_manifest"])
+    capability = ExecutionReplayCapability(
+        supported_tool_boundaries=("langgraph.tool-node",),
+        unsupported_execution_surfaces=("langgraph.custom-node",),
+        argument_digest_algorithms=(ToolArgumentDigestAlgorithm.SHA256_JSON_V1,),
+        max_trace_size=16,
+        supports_async_tools=True,
+        supports_subgraphs=True,
+        supports_retries=True,
+        supports_concurrent_execution=True,
+        evidence_only=True,
+        no_original_tool_fallback=True,
+    )
+    calls = [
+        ReplayToolCall(
+            call_id="planned-call-1",
+            kind=ReplayToolCallKind.PLANNED,
+            scope_id="graph.root",
+            tool_symbol="tools.lookup",
+            tool_schema_version="v1",
+            argument_digest=ToolArgumentDigest(
+                ToolArgumentDigestAlgorithm.SHA256_JSON_V1, _PHASE2_DIGEST
+            ),
+            occurrence=1,
+            evidence_reference="private://evidence/recorded",
+            response_digest=_PHASE2_DIGEST,
+        )
+    ]
+    if include_second_call:
+        calls.append(
+            ReplayToolCall(
+                call_id="planned-call-2",
+                kind=ReplayToolCallKind.PLANNED,
+                scope_id="graph.root",
+                tool_symbol="tools.enrich",
+                tool_schema_version="v1",
+                argument_digest=ToolArgumentDigest(
+                    ToolArgumentDigestAlgorithm.SHA256_JSON_V1,
+                    _COUNTERFACTUAL_DIGEST,
+                ),
+                occurrence=1,
+                evidence_reference="private://evidence/second",
+                response_digest=_COUNTERFACTUAL_DIGEST,
+            )
+        )
+    return EvidenceResolutionPlan(
+        organization_id="organization-1",
+        project_id="project-1",
+        source_execution_id=manifest.source_execution_id,
+        replay_manifest_hash=manifest.manifest_hash,
+        capability=capability,
+        planned_calls=tuple(calls),
+        evidence_bindings=tuple(
+            ReplayEvidenceBinding(
+                call.call_id,
+                call.evidence_reference or "",
+                call.response_digest or "",
+            )
+            for call in calls
+        ),
+    )
+
+
+def _execution_replay_source(
+    intervention: ControlledEvidenceIntervention,
+    *,
+    include_second_call: bool = False,
+) -> WorkflowExecution:
+    source = _governed_runtime_source()
+    plan = _execution_replay_plan(source, include_second_call=include_second_call)
+    source.runtime_parameters["execution_replay"] = {
+        "resolution_plan": plan.to_payload(),
+        "intervention_binding": ReplayInterventionBinding(
+            replay_manifest_hash=plan.replay_manifest_hash,
+            resolution_plan_digest=plan.plan_digest,
+            target_planned_call_id="planned-call-1",
+            intervention_digest=f"sha256:{intervention.intervention_digest}",
+            replacement_evidence_reference=(
+                intervention.counterfactual_evidence_reference or ""
+            ),
+            replacement_response_digest=(
+                intervention.counterfactual_evidence_digest or ""
+            ),
+        ).to_payload(),
+    }
+    return source
+
+
+class _ExecutionReplayAdapter:
+    name = "test-runtime/v1"
+
+    def __init__(self) -> None:
+        self.resolution_plan = None
+
+    def validate_configuration(self, source_execution, configuration) -> None:
+        return None
+
+    def replay(self, source_execution, configuration, context):
+        self.resolution_plan = context.execution_replay_resolution_plan
+        assert self.resolution_plan is not None
+        assert context.runtime_replay_source is not None
+        assert context.controlled_evidence_intervention is not None
+        planned = self.resolution_plan.planned_calls[0]
+        attempt = ReplayToolCall(
+            call_id="attempt-1",
+            kind=ReplayToolCallKind.ATTEMPTED,
+            scope_id=planned.scope_id,
+            tool_symbol=planned.tool_symbol,
+            tool_schema_version=planned.tool_schema_version,
+            argument_digest=planned.argument_digest,
+            occurrence=planned.occurrence,
+            dependency_call_ids=planned.dependency_call_ids,
+            retry_of_call_id=planned.retry_of_call_id,
+        )
+        intervention = context.controlled_evidence_intervention
+        resolution = ReplayToolResolution(
+            attempted_call_id=attempt.call_id,
+            outcome=ReplayResolutionOutcome.RESOLVED_INTERVENTION,
+            reason_code="INTERVENTION_APPLIED",
+            planned_call_id=planned.call_id,
+            selected_evidence_reference=intervention.counterfactual_evidence_reference,
+            selected_response_digest=intervention.counterfactual_evidence_digest,
+        )
+        trace = ReplayExecutionTrace(
+            attempted_calls=(attempt,), resolutions=(resolution,), complete=True
+        )
+        safety = {
+            "schema_version": "evidence-only-replay-safety/v1",
+            "capability_schema_version": "evidence-only-replay-capability/v1",
+            "replay_manifest_hash": context.runtime_replay_source.manifest_hash,
+            "isolation_guarantee": context.runtime_replay_source.isolation_guarantee,
+            "intervention_digest": intervention.intervention_digest,
+            "runtime_tool_call_id": "runtime-tool-1",
+            "private_snapshot_integrity_verified": True,
+            "unobserved_tool_call_count": 0,
+            "external_side_effects_performed": False,
+        }
+        safety_payload = json.dumps(
+            safety, sort_keys=True, separators=(",", ":"), allow_nan=False
+        )
+        attestation = ReplayExecutionAttestation(
+            replay_manifest_hash=self.resolution_plan.replay_manifest_hash,
+            resolution_plan_digest=self.resolution_plan.plan_digest,
+            intervention_digest=f"sha256:{intervention.intervention_digest}",
+            phase1_safety_schema_version="evidence-only-replay-safety/v1",
+            phase1_safety_digest=(
+                f"sha256:{hashlib.sha256(safety_payload.encode()).hexdigest()}"
+            ),
+            execution_trace_digest=trace.trace_digest,
+            tool_boundary_coverage=ReplayToolBoundaryCoverage(
+                declared_tool_boundaries=("langgraph.tool-node",),
+                exercised_tool_boundaries=("langgraph.tool-node",),
+                unsupported_execution_surfaces=(),
+                execution_path_coverage=(
+                    ReplayExecutionPathCoverage.COMPLETE_DECLARED_BOUNDARIES
+                ),
+            ),
+            complete=True,
+            resolved_call_count=1,
+            unresolved_call_count=0,
+            blocking_divergence_count=0,
+            non_blocking_divergence_count=0,
+        )
+        return ReplayExecutionResult(
+            execution_status="COMPLETED",
+            final_state={"causal_audit_outcome_score": 0.5},
+            metadata={"evidence_only_replay_safety": safety},
+            execution_replay_trace=trace,
+            execution_replay_attestation=attestation,
+        )
+
+
+def _phase2_intervention() -> ControlledEvidenceIntervention:
+    return ControlledEvidenceIntervention(
+        ControlledEvidenceStrategy.REPLACE,
+        "v1",
+        "private://evidence/recorded",
+        counterfactual_evidence_reference="private://evidence/replacement",
+        counterfactual_evidence_digest=_COUNTERFACTUAL_DIGEST,
+        target_event_id="tool-event-1",
+        policy_id="policy-1",
+        policy_version=1,
+        provider_id="provider-1",
+        provider_version="v1",
+        original_evidence_digest=_PHASE2_DIGEST,
+    )
+
+
+def _run_execution_replay(
+    source: WorkflowExecution, adapter: _ExecutionReplayAdapter
+):
+    repository = InMemoryReplayRepository()
+    context = TenantContext("organization-1", "project-1", "actor-1", "request-1")
+    replay = ReplayApplicationService(
+        repository,
+        _SourceResolver(source),
+        id_generator=lambda: "replay-1",
+        clock=lambda: datetime(2026, 1, 1, tzinfo=UTC),
+    ).create(
+        source_execution_id=source.execution_id,
+        context=context,
+        idempotency_key="key-1",
+        controlled_evidence_intervention=_phase2_intervention(),
+    )
+    repository.update(
+        replay.mark_queued("job-1", datetime(2026, 1, 1, tzinfo=UTC)), replay.version
+    )
+    registry = ReplayExecutionAdapterRegistry()
+    registry.register(adapter)
+    store = _Store()
+    result = ReplayJobHandler(
+        repository,
+        _SourceResolver(source),
+        store,
+        registry,
+        execution_id_generator=lambda: "replay-execution-1",
+        clock=lambda: datetime(2026, 1, 1, tzinfo=UTC),
+    ).handle(_job())
+    return result, store
+
+
+def test_execution_replay_accepts_only_reconciled_frozen_evidence() -> None:
+    intervention = _phase2_intervention()
+    source = _execution_replay_source(intervention)
+    adapter = _ExecutionReplayAdapter()
+
+    result, store = _run_execution_replay(source, adapter)
+
+    assert result.status is JobStatus.SUCCEEDED
+    assert adapter.resolution_plan is not None
+    summary = store.executions[0].metadata["execution_replay_resolution_summary"]
+    assert summary["completion"] == "COMPLETE"
+    assert summary["consumed_planned_call_ids"] == ["planned-call-1"]
+    assert summary["intervention_applied_call_id"] == "planned-call-1"
+
+
+def test_execution_replay_fails_closed_when_typed_trace_is_missing() -> None:
+    class _MissingTraceAdapter(_ExecutionReplayAdapter):
+        def replay(self, source_execution, configuration, context):
+            return replace(super().replay(source_execution, configuration, context), execution_replay_trace=None)
+
+    intervention = _phase2_intervention()
+    result, store = _run_execution_replay(
+        _execution_replay_source(intervention), _MissingTraceAdapter()
+    )
+
+    assert result.status is JobStatus.FAILED
+    assert not store.executions
+    assert "lacks a trace or attestation" in (result.failure_reason or "")
+
+
+def test_execution_replay_fails_closed_when_frozen_plan_is_missing() -> None:
+    source = _governed_runtime_source()
+    source.runtime_parameters["execution_replay"] = {}
+
+    result, store = _run_execution_replay(source, _ExecutionReplayAdapter())
+
+    assert result.status is JobStatus.FAILED
+    assert not store.executions
+    assert "configuration has an unsupported shape" in (result.failure_reason or "")
+
+
+def test_execution_replay_does_not_trust_complete_when_plan_is_unconsumed() -> None:
+    intervention = _phase2_intervention()
+    result, store = _run_execution_replay(
+        _execution_replay_source(intervention, include_second_call=True),
+        _ExecutionReplayAdapter(),
+    )
+
+    assert result.status is JobStatus.FAILED
+    assert not store.executions
+    assert "trace is incomplete" in (result.failure_reason or "")
+
+
+def test_execution_replay_rejects_unsupported_coverage_declaration() -> None:
+    class _UnsupportedCoverageAdapter(_ExecutionReplayAdapter):
+        def replay(self, source_execution, configuration, context):
+            result = super().replay(source_execution, configuration, context)
+            attestation = result.execution_replay_attestation
+            assert attestation is not None
+            return replace(
+                result,
+                execution_replay_attestation=replace(
+                    attestation,
+                    tool_boundary_coverage=ReplayToolBoundaryCoverage(
+                        declared_tool_boundaries=("custom.unintercepted-node",),
+                        exercised_tool_boundaries=("custom.unintercepted-node",),
+                        unsupported_execution_surfaces=(),
+                        execution_path_coverage=(
+                            ReplayExecutionPathCoverage.COMPLETE_DECLARED_BOUNDARIES
+                        ),
+                    ),
+                ),
+            )
+
+    intervention = _phase2_intervention()
+    result, store = _run_execution_replay(
+        _execution_replay_source(intervention), _UnsupportedCoverageAdapter()
+    )
+
+    assert result.status is JobStatus.FAILED
+    assert not store.executions
+    assert "unsupported tool coverage" in (result.failure_reason or "")
 
 
 def test_governed_controlled_replay_fails_without_safety_metadata() -> None:
