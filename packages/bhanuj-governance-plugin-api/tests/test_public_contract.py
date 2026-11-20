@@ -101,4 +101,6 @@ def test_runtime_replay_source_is_reference_only_and_rejects_payload_growth() ->
     except ValueError as error:
         assert "unsupported shape" in str(error)
     else:  # pragma: no cover - explicit contract guard
-        raise AssertionError("Runtime replay source must reject private payload growth.")
+        raise AssertionError(
+            "Runtime replay source must reject private payload growth."
+        )
