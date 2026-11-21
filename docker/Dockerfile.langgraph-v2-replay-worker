@@ -1,0 +1,8 @@
+# Development-only worker image for the opt-in LangGraph ToolNode v2 tutorial.
+# The base image is built from this OSS checkout; the adapter remains an
+# independently owned external package copied in at image-build time.
+FROM ai-governance-platform:local
+
+COPY adapters/aigp-langgraph-replay-adapter /opt/aigp-langgraph-replay-adapter
+
+RUN uv pip install --python /opt/ai-governance-venv/bin/python /opt/aigp-langgraph-replay-adapter

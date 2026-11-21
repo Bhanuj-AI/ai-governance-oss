@@ -26,7 +26,13 @@ from ai_governance.domain.workflow_execution import WorkflowExecution
 from ai_governance.services.replay_execution import ReplayExecutionContext
 from ai_governance.spi.replay import (
     RUNTIME_REPLAY_SOURCE_SCHEMA_VERSION,
+    EvidenceResolutionPlan,
+    ExecutionReplayCapability,
+    ReplayEvidenceBinding,
+    ReplayToolCall,
+    ReplayToolCallKind,
     RuntimeReplaySource,
+    ToolArgumentDigest,
 )
 from ai_governance.tenancy.domain import TenantContext
 
@@ -59,6 +65,7 @@ class PreparedAgentRuntimeReplay:
     auditable_tool_call_ids: tuple[str, ...]
     replay_manifest: ReplayManifest | None = None
     runtime_replay_source: RuntimeReplaySource | None = None
+    execution_replay_plan: EvidenceResolutionPlan | None = None
 
 
 class AgentRuntimeReplaySourceBridge:
@@ -142,6 +149,9 @@ class AgentRuntimeReplaySourceBridge:
             tuple(event.event_id for event in tool_calls),
             replay_manifest,
             runtime_replay_source,
+            _execution_replay_plan(
+                capability, tool_calls, replay_manifest, context
+            ),
         )
 
     def manifest(
@@ -535,6 +545,153 @@ def _safe_event(event: AgentExecutionEvent) -> dict[str, Any]:
             else None
         ),
     }
+
+
+def _execution_replay_plan(
+    capability: AgentRuntimeReplayCapability,
+    tool_calls: list[AgentExecutionEvent],
+    replay_manifest: ReplayManifest,
+    context: TenantContext,
+) -> EvidenceResolutionPlan | None:
+    """Build an opt-in Phase 2 plan from bounded observed tool identities.
+
+    A runtime advertises the public ``ExecutionReplayCapability`` under its
+    replay-capability metadata. Each replay-relevant tool event then supplies
+    only its canonical identity and argument *digest* in the evidence
+    descriptor metadata. Raw arguments and private evidence values never enter
+    the control plane. Runtimes that do not opt in retain the existing
+    reference-replay path unchanged.
+    """
+
+    raw_capability = capability.metadata.get("execution_replay_capability")
+    if raw_capability is None:
+        return None
+    if not isinstance(raw_capability, Mapping):
+        raise AgentRuntimeReplayNotAvailable(
+            "Execution replay capability must be a bounded object."
+        )
+    try:
+        execution_capability = ExecutionReplayCapability.from_payload(raw_capability)
+    except (TypeError, ValueError) as error:
+        raise AgentRuntimeReplayNotAvailable(
+            "Execution replay capability is invalid."
+        ) from error
+
+    event_by_runtime_id = {
+        event.tool_call_context.runtime_tool_call_id: event
+        for event in tool_calls
+        if event.tool_call_context is not None
+    }
+    planned_calls: list[ReplayToolCall] = []
+    evidence_bindings: list[ReplayEvidenceBinding] = []
+    for event in tool_calls:
+        context_data = event.tool_call_context
+        if context_data is None:
+            raise AgentRuntimeReplayNotAvailable(
+                "Execution replay tool call lacks a runtime identity."
+            )
+        descriptor = _evidence_descriptor(event)
+        metadata = descriptor.get("metadata")
+        identity = (
+            metadata.get("execution_replay_tool_identity")
+            if isinstance(metadata, Mapping)
+            else None
+        )
+        if not isinstance(identity, Mapping):
+            raise AgentRuntimeReplayNotAvailable(
+                "Execution replay tool call lacks a canonical tool identity."
+            )
+        retry_runtime_id = identity.get("retry_of_runtime_tool_call_id")
+        try:
+            argument_digest = ToolArgumentDigest.from_payload(
+                _mapping(identity, "argument_digest")
+            )
+            tool_symbol = _string(identity, "tool_symbol")
+            if tool_symbol != _string(descriptor, "tool_name"):
+                raise ValueError("Tool identity does not match evidence descriptor.")
+            dependencies = tuple(
+                event_by_runtime_id[dependency].event_id
+                for dependency in context_data.depends_on_tool_call_ids
+            )
+            retry_of_call_id = (
+                event_by_runtime_id[retry_runtime_id].event_id
+                if isinstance(retry_runtime_id, str)
+                else None
+            )
+            planned = ReplayToolCall(
+                call_id=event.event_id,
+                kind=ReplayToolCallKind.PLANNED,
+                scope_id=_string(identity, "scope_id"),
+                tool_symbol=tool_symbol,
+                tool_schema_version=_string(identity, "tool_schema_version"),
+                argument_digest=argument_digest,
+                occurrence=_integer(identity, "occurrence"),
+                dependency_call_ids=dependencies,
+                retry_of_call_id=retry_of_call_id,
+                evidence_reference=_string(descriptor, "evidence_ref"),
+                response_digest=_string(descriptor, "evidence_digest"),
+            )
+            if planned.evidence_reference not in event.evidence_references:
+                raise ValueError("Evidence descriptor is not bound to the tool event.")
+            binding = ReplayEvidenceBinding(
+                planned.call_id,
+                planned.evidence_reference,
+                planned.response_digest,
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            raise AgentRuntimeReplayNotAvailable(
+                "Execution replay tool identity is invalid."
+            ) from error
+        planned_calls.append(planned)
+        evidence_bindings.append(binding)
+
+    try:
+        return EvidenceResolutionPlan(
+            organization_id=context.organization_id,
+            project_id=context.project_id or "",
+            source_execution_id=replay_manifest.source_execution_id,
+            replay_manifest_hash=replay_manifest.manifest_hash,
+            capability=execution_capability,
+            planned_calls=tuple(planned_calls),
+            evidence_bindings=tuple(evidence_bindings),
+        )
+    except (TypeError, ValueError) as error:
+        raise AgentRuntimeReplayNotAvailable(
+            "Execution replay plan is invalid."
+        ) from error
+
+
+def _evidence_descriptor(event: AgentExecutionEvent) -> Mapping[str, object]:
+    replay = event.attributes.get("causal_replay")
+    descriptor = (
+        replay.get("evidence_descriptor") if isinstance(replay, Mapping) else None
+    )
+    if not isinstance(descriptor, Mapping):
+        raise AgentRuntimeReplayNotAvailable(
+            "Execution replay tool call lacks an evidence descriptor."
+        )
+    return descriptor
+
+
+def _mapping(value: Mapping[str, object], name: str) -> Mapping[str, object]:
+    raw = value.get(name)
+    if not isinstance(raw, Mapping):
+        raise TypeError(f"{name} must be an object.")
+    return raw
+
+
+def _string(value: Mapping[str, object], name: str) -> str:
+    raw = value.get(name)
+    if not isinstance(raw, str) or not raw.strip():
+        raise ValueError(f"{name} must be a non-blank string.")
+    return raw
+
+
+def _integer(value: Mapping[str, object], name: str) -> int:
+    raw = value.get(name)
+    if isinstance(raw, bool) or not isinstance(raw, int):
+        raise TypeError(f"{name} must be an integer.")
+    return raw
 
 
 def _validate_tool_call_graph(tool_calls: list[AgentExecutionEvent]) -> None:

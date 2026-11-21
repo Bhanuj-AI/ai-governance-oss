@@ -23,6 +23,10 @@ This project follows Semantic Versioning.
   Resolution atomically validates and consumes planned calls, permits
   dependency-independent calls in either order, and terminates on the first
   invalid or blocking divergent call.
+- Added the opt-in Agent Runtime bridge from bounded tool-call identity and
+  argument-digest evidence to a frozen execution-resolution plan. Causal Audit
+  now persists that plan with the one policy-authorized intervention binding
+  in the Replay configuration; it does not alter the observed source evidence.
 
 ### Changed
 
@@ -37,6 +41,10 @@ This project follows Semantic Versioning.
   derives a complete resolution summary from returned evidence; it does not
   trust an adapter's `complete=True` flag. Legacy and generic Replay adapters
   retain their existing compatibility path.
+- Documented a development-only Docker override for the external
+  `langgraph/v2` ToolNode adapter. It mounts the runtime-owned private snapshot
+  directory read-only into the replay worker only; the API and Studio receive
+  only opaque references and bounded attestations.
 
 ### [1.2.6] - 2026-11-19
 

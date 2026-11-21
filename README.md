@@ -244,29 +244,37 @@ AIGP OSS is framework-neutral. Integrations use the public plugin contracts and
 the existing provider-neutral extension registry; the control plane does not
 import framework-specific runtime implementations.
 
-### LangGraph Reference Replay Adapter
+### LangGraph Replay Adapter
 
 The independently released [AIGP LangGraph Replay Adapter](https://github.com/Bhanuj-AI/aigp-langgraph-replay-adapter)
-implements `langgraph/v1` using
-[`bhanuj-governance-plugin-api==1.1.1`](packages/bhanuj-governance-plugin-api/README.md).
+uses [`bhanuj-governance-plugin-api==1.2.0rc1`](packages/bhanuj-governance-plugin-api/README.md).
 Install the tagged GitHub release—not a PyPI package—into the environment that
 runs the replay worker:
 
 ```sh
 python -m pip install \
-  "aigp-langgraph-replay-adapter @ git+https://github.com/Bhanuj-AI/aigp-langgraph-replay-adapter.git@v0.1.0"
+  "aigp-langgraph-replay-adapter @ git+https://github.com/Bhanuj-AI/aigp-langgraph-replay-adapter.git@v0.3.0"
 export AIGP_LANGGRAPH_REPLAY_SNAPSHOT_DB=/secure/runtime/langgraph-snapshots.db
 ```
 
-The [`v0.1.0` release](https://github.com/Bhanuj-AI/aigp-langgraph-replay-adapter/releases/tag/v0.1.0)
-is a **reference counterfactual executor**. It resolves a runtime-private
-snapshot containing precomputed scores and runs an isolated graph to return a
-bounded counterfactual outcome. It is not a generic LangGraph checkpoint or
-workflow replay engine, does not invoke tools, and never opens or mutates the
-original business database. It therefore must not be presented as a full agent
-workflow replay. Verified execution-path Causal Audit requires an adapter release
-that declares `evidence-only-replay-capability/v1` and returns matching bounded
-replay-safety metadata; otherwise OSS fails the controlled Replay.
+The adapter provides two explicit, opt-in boundaries:
+
+- `langgraph/v1` is a **reference counterfactual executor**. It resolves a
+  runtime-private snapshot containing precomputed scores and returns a bounded
+  outcome.
+- `langgraph/v2` resolves recorded evidence only for declared calls that pass
+  through LangGraph `ToolNode`. It atomically consumes the frozen call plan,
+  returns either recorded evidence or the one approved replacement, and emits
+  the trace and attestation OSS independently validates.
+
+Neither boundary is a generic LangGraph checkpoint or whole-workflow replay
+engine. They do not intercept custom graph nodes, direct SDK calls,
+provider-hosted tools, or arbitrary application code. They do not invoke the
+original tool implementation or open and mutate its business database.
+Verified execution-path Causal Audit requires a declared
+`evidence-only-replay-capability/v1`, matching replay-safety metadata, and—at
+the v2 ToolNode boundary—a complete plan, trace, intervention binding, and
+attestation. Otherwise OSS fails the controlled Replay.
 
 Adapter discovery is separate from evidence eligibility: an execution can have
 an eligible replay manifest even if the current worker lacks the adapter. In
@@ -277,7 +285,10 @@ and [Plugin Extension Guide](docs/architecture/PLUGIN_EXTENSION_GUIDE.md).
 For a runnable banking scenario spanning authorization, receipts, recovery,
 manifest eligibility, isolated replay, and causal lineage, use the advanced
 [Execution Assurance Lab](https://github.com/Bhanuj-AI/labs/tree/main/agent-frameworks/langgraph/langgraph-execution-assurance-lab) in the separately maintained `Bhanuj-AI/labs`
-repository. It is intentionally independent of the foundational LangGraph
+repository. The separate
+[ToolNode v2 lab](https://github.com/Bhanuj-AI/labs/tree/main/agent-frameworks/langgraph/langgraph-execution-assurance-lab-v2)
+includes the Docker worker override and a capture-safe live Causal Audit
+tutorial. Both are intentionally independent of the foundational LangGraph
 runtime-authorization lab.
 
 ## Studio: Inspect Decisions and Lineage
