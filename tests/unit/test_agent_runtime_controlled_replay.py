@@ -26,6 +26,11 @@ from ai_governance.services.replay_execution import ReplayExecutionContext
 from ai_governance.services.replay_execution_discovery import (
     InMemoryReplaySourceResolver,
 )
+from ai_governance.spi.replay import (
+    ExecutionReplayCapability,
+    ToolArgumentDigestAlgorithm,
+    create_tool_argument_digest,
+)
 from ai_governance.tenancy.domain import TenantContext
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
@@ -116,6 +121,69 @@ def test_bridge_freezes_only_reference_only_runtime_replay_source():
     assert runtime_source == prepared.runtime_replay_source.to_payload()
     assert runtime_source["replay_reference"] == "synthetic://replays/run-123"
     assert "unsafe_unrelated_value" not in runtime_source
+
+
+def test_bridge_derives_a_frozen_execution_replay_plan_from_bounded_identity():
+    execution = _execution()
+    arguments = {"claim_id": "C-1"}
+    capability = ExecutionReplayCapability(
+        supported_tool_boundaries=("langgraph.tool-node",),
+        unsupported_execution_surfaces=("direct-sdk-calls",),
+        argument_digest_algorithms=(ToolArgumentDigestAlgorithm.SHA256_JSON_V1,),
+        max_trace_size=8,
+        supports_async_tools=True,
+        supports_subgraphs=False,
+        supports_retries=True,
+        supports_concurrent_execution=True,
+        evidence_only=True,
+        no_original_tool_fallback=True,
+    )
+    execution.metadata["replay_capability"]["metadata"] = {
+        "execution_replay_capability": capability.to_payload()
+    }
+    event = _tool_event()
+    event = replace(
+        event,
+        attributes={
+            "causal_replay": {
+                "evidence_descriptor": {
+                    "tool_name": "claim_history.lookup",
+                    "evidence_ref": "artifact://claims/history",
+                    "evidence_digest": "sha256:" + "a" * 64,
+                    "content_type": "application/json",
+                    "schema_id": "claim-history",
+                    "schema_version": "v1",
+                    "replay_adapter_id": "langgraph/v2",
+                    "metadata": {
+                        "execution_replay_tool_identity": {
+                            "scope_id": "graph.root",
+                            "tool_symbol": "claim_history.lookup",
+                            "tool_schema_version": "v1",
+                            "argument_digest": create_tool_argument_digest(
+                                arguments,
+                                algorithm=ToolArgumentDigestAlgorithm.SHA256_JSON_V1,
+                            ).to_payload(),
+                            "occurrence": 1,
+                        }
+                    },
+                }
+            }
+        },
+    )
+
+    prepared = AgentRuntimeReplaySourceBridge(
+        InMemoryReplaySourceResolver()
+    ).prepare(execution, [event], CONTEXT)
+
+    assert prepared.execution_replay_plan is not None
+    plan = prepared.execution_replay_plan
+    assert plan.replay_manifest_hash == prepared.replay_manifest.manifest_hash
+    assert plan.planned_calls[0].call_id == event.event_id
+    assert plan.planned_calls[0].argument_digest == create_tool_argument_digest(
+        arguments, algorithm=ToolArgumentDigestAlgorithm.SHA256_JSON_V1
+    )
+    assert plan.evidence_bindings[0].evidence_reference == "artifact://claims/history"
+    assert "execution_replay_tool_identity" not in prepared.source_execution.events[0]
 
 
 def test_bridge_fails_closed_without_explicit_capability():

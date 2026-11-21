@@ -14,6 +14,7 @@ import asyncio
 import hashlib
 import json
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Any, Protocol
 from uuid import uuid4
@@ -244,6 +245,7 @@ class ReplayApplicationService:
         | str = ReplayConfigurationSource.ORIGINAL,
         metadata: Mapping[str, Any] | None = None,
         controlled_evidence_intervention: ControlledEvidenceIntervention | None = None,
+        additional_runtime_parameters: Mapping[str, Any] | None = None,
     ) -> Replay:
         """Create and freeze a replay request without executing it.
 
@@ -258,6 +260,7 @@ class ReplayApplicationService:
         mode = self._mode(mode)
         source = self._configuration_source(configuration_source)
         metadata = metadata or {}
+        additions = _additional_runtime_parameters(additional_runtime_parameters)
         project_id = context.project_id or ""
         input_hash = _hash(
             {
@@ -267,6 +270,7 @@ class ReplayApplicationService:
                 "mode": mode.value,
                 "configuration_source": source.value,
                 "metadata": metadata,
+                "additional_runtime_parameters": additions,
                 "controlled_evidence_intervention": _intervention_payload(
                     controlled_evidence_intervention
                 ),
@@ -301,6 +305,9 @@ class ReplayApplicationService:
         self._publish_lifecycle_event(draft, "created")
         try:
             configuration = self._resolve_configuration(source_execution_id, context)
+            configuration = _with_additional_runtime_parameters(
+                configuration, additions
+            )
             ready = draft.mark_ready(configuration, self._clock())
             persisted = self._replay_repository.update(ready, draft.version)
             self._publish_lifecycle_event(persisted, "ready")
@@ -855,6 +862,54 @@ class ReplayApplicationService:
             raise ReplayNotReplayable(
                 "Only ORIGINAL replay configuration is supported."
             ) from error
+
+
+def _additional_runtime_parameters(
+    value: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Validate additive values that become part of one frozen configuration.
+
+    This is deliberately an internal service seam: callers can add new
+    versioned runtime evidence, but cannot replace any historical source
+    parameter. The resulting values participate in both idempotency and the
+    configuration hash below.
+    """
+
+    if value is None:
+        return {}
+    if not isinstance(value, Mapping):
+        raise ReplayNotReplayable("Additional runtime parameters must be an object.")
+    additions = dict(value)
+    if any(not isinstance(key, str) or not key.strip() for key in additions):
+        raise ReplayNotReplayable("Additional runtime parameter keys must be strings.")
+    return additions
+
+
+def _with_additional_runtime_parameters(
+    configuration: ReplayConfiguration,
+    additions: Mapping[str, Any],
+) -> ReplayConfiguration:
+    if not additions:
+        return configuration
+    overlap = set(configuration.runtime_parameters) & set(additions)
+    if overlap:
+        raise ReplayNotReplayable(
+            "Additional runtime parameters cannot replace frozen source evidence."
+        )
+    runtime_parameters = {
+        **dict(configuration.runtime_parameters),
+        **dict(additions),
+    }
+    return replace(
+        configuration,
+        runtime_parameters=runtime_parameters,
+        configuration_hash=_hash(
+            {
+                "base_configuration_hash": configuration.configuration_hash,
+                "runtime_parameters": runtime_parameters,
+            }
+        ),
+    )
 
 
 def _inline_reference(kind: str, value: object) -> str:

@@ -44,6 +44,7 @@ from ai_governance.domain.runtime_findings.finding import (
 )
 from ai_governance.repositories.causal_audit_repository import CausalAuditListFilters
 from ai_governance.spi.causal_audit import OutcomeScorer
+from ai_governance.spi.replay import ReplayInterventionBinding
 from ai_governance.tenancy.domain import TenantContext
 
 
@@ -703,6 +704,11 @@ class CausalAuditService:
                         else None,
                     },
                     controlled_evidence_intervention=intervention,
+                    additional_runtime_parameters=_execution_replay_parameters(
+                        prepared.execution_replay_plan,
+                        event.event_id,
+                        intervention,
+                    ),
                 )
                 queued = self._replay_application.submit(replay.replay_id, context)
                 planned.append(
@@ -1015,6 +1021,44 @@ def _planned_replays(audit: CausalAudit) -> list[dict[str, object]]:
             )
         planned.append(dict(item))
     return planned
+
+
+def _execution_replay_parameters(plan, target_event_id: str, intervention) -> dict[str, object]:
+    """Freeze the Phase 2 binding alongside one controlled Replay request.
+
+    The evidence-resolution plan is derived from the observed execution, while
+    the replacement evidence is produced only after the selected policy runs.
+    They therefore become one immutable configuration at Replay creation time;
+    neither the source execution nor its historical evidence is modified.
+    """
+
+    if plan is None:
+        return {}
+    if target_event_id not in {call.call_id for call in plan.planned_calls}:
+        raise CausalAuditNotEligible(
+            "Execution replay plan does not contain the intervention target."
+        )
+    if (
+        intervention.counterfactual_evidence_reference is None
+        or intervention.counterfactual_evidence_digest is None
+    ):
+        raise CausalAuditNotEligible(
+            "Execution replay intervention lacks replacement evidence bindings."
+        )
+    binding = ReplayInterventionBinding(
+        replay_manifest_hash=plan.replay_manifest_hash,
+        resolution_plan_digest=plan.plan_digest,
+        target_planned_call_id=target_event_id,
+        intervention_digest=f"sha256:{intervention.intervention_digest}",
+        replacement_evidence_reference=intervention.counterfactual_evidence_reference,
+        replacement_response_digest=intervention.counterfactual_evidence_digest,
+    )
+    return {
+        "execution_replay": {
+            "resolution_plan": plan.to_payload(),
+            "intervention_binding": binding.to_payload(),
+        }
+    }
 
 
 def _eligibility_code(error: Exception) -> CausalAuditEligibilityCode:

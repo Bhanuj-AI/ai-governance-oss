@@ -61,6 +61,43 @@ def test_replay_creation_freezes_configuration_and_becomes_ready() -> None:
         replay.configuration.runtime_parameters["temperature"] = 0.9  # type: ignore[index]
 
 
+def test_replay_creation_freezes_additive_runtime_parameters_per_request() -> None:
+    source = _execution()
+    service = _service(source)
+
+    replay = service.create(
+        source_execution_id="execution-1",
+        context=_context(),
+        idempotency_key="replay-with-execution-plan",
+        additional_runtime_parameters={
+            "execution_replay": {
+                "resolution_plan": {"schema_version": "evidence-resolution-plan/v1"},
+                "intervention_binding": {
+                    "schema_version": "replay-intervention-binding/v1"
+                },
+            }
+        },
+    )
+
+    assert replay.status is ReplayStatus.READY
+    assert replay.configuration is not None
+    assert "execution_replay" in replay.configuration.runtime_parameters
+    assert "execution_replay" not in (source.runtime_parameters or {})
+
+
+def test_replay_creation_rejects_additional_runtime_parameter_overwrite() -> None:
+    replay = _service(_execution()).create(
+        source_execution_id="execution-1",
+        context=_context(),
+        idempotency_key="replay-overwrite-runtime-parameter",
+        additional_runtime_parameters={"temperature": 0.9},
+    )
+
+    assert replay.status is ReplayStatus.FAILED
+    assert replay.failure is not None
+    assert "cannot replace frozen source evidence" in replay.failure.message
+
+
 def test_replay_configuration_round_trips_optional_manifest_and_legacy_records():
     source = _execution()
     manifest = ReplayManifest(

@@ -23,6 +23,10 @@ This project follows Semantic Versioning.
   Resolution atomically validates and consumes planned calls, permits
   dependency-independent calls in either order, and terminates on the first
   invalid or blocking divergent call.
+- Added the opt-in Agent Runtime bridge from bounded tool-call identity and
+  argument-digest evidence to a frozen execution-resolution plan. Causal Audit
+  now persists that plan with the one policy-authorized intervention binding
+  in the Replay configuration; it does not alter the observed source evidence.
 
 ### Changed
 
