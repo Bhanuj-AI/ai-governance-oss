@@ -41,10 +41,6 @@ This project follows Semantic Versioning.
   derives a complete resolution summary from returned evidence; it does not
   trust an adapter's `complete=True` flag. Legacy and generic Replay adapters
   retain their existing compatibility path.
-- Documented a development-only Docker override for the external
-  `langgraph/v2` ToolNode adapter. It mounts the runtime-owned private snapshot
-  directory read-only into the replay worker only; the API and Studio receive
-  only opaque references and bounded attestations.
 
 ### [1.2.6] - 2026-11-19
 

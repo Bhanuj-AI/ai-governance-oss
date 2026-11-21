@@ -253,7 +253,7 @@ runs the replay worker:
 
 ```sh
 python -m pip install \
-  "aigp-langgraph-replay-adapter @ git+https://github.com/Bhanuj-AI/aigp-langgraph-replay-adapter.git@v0.3.0"
+  "aigp-langgraph-replay-adapter @ git+https://github.com/Bhanuj-AI/aigp-langgraph-replay-adapter.git@v0.3.1"
 export AIGP_LANGGRAPH_REPLAY_SNAPSHOT_DB=/secure/runtime/langgraph-snapshots.db
 ```
 
