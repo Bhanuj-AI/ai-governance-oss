@@ -26,6 +26,18 @@ import type {
 
 const QUICK_ACTIONS = [
   {
+    label: "Causal Audit",
+    href: "/agents-runtime?view=causal-audit",
+    icon: <Activity className="h-4 w-4" />,
+    enabled: true,
+  },
+  {
+    label: "Configure Evaluation Provider",
+    href: "/assets/providers?new=1",
+    icon: <ShieldCheck className="h-4 w-4" />,
+    enabled: true,
+  },
+  {
     label: "Run Evaluation",
     href: "/experiments",
     icon: <ClipboardCheck className="h-4 w-4" />,
@@ -41,12 +53,6 @@ const QUICK_ACTIONS = [
     label: "Evaluate Decision",
     href: "/decisions",
     icon: <ClipboardCheck className="h-4 w-4" />,
-    enabled: true,
-  },
-  {
-    label: "Configure Evaluation Provider",
-    href: "/assets/providers?new=1",
-    icon: <ShieldCheck className="h-4 w-4" />,
     enabled: true,
   },
 ];
