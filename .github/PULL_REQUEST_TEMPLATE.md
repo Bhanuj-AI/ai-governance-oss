@@ -7,6 +7,7 @@ Describe what this pull request changes and why.
 - [ ] Bug fix
 - [ ] Feature
 - [ ] API change
+- [ ] SPI or plugin contract change
 - [ ] Documentation
 - [ ] Refactor
 - [ ] Test coverage
@@ -15,10 +16,16 @@ Describe what this pull request changes and why.
 ## Areas Affected
 
 - [ ] Execution audit
+- [ ] Agent Runtime
 - [ ] Workflow replay
+- [ ] Causal Audit or intervention policies
+- [ ] Authorization or tenant isolation
 - [ ] Evaluation framework
 - [ ] Persistence or repositories
 - [ ] Governance APIs
+- [ ] MCP or CLI
+- [ ] Plugins or SPI
+- [ ] Studio
 - [ ] Leaderboard APIs
 - [ ] Prompt registry
 - [ ] Model registry
@@ -34,17 +41,22 @@ Describe what this pull request changes and why.
 - [ ] Added or updated tests, if behavior changed
 - [ ] Updated docs, if public behavior changed
 
+List commands run and their results, including focused or integration tests.
+Explain any relevant checks not run and why.
+
 ## Compatibility Notes
 
-Call out any API, schema, configuration, or persistence compatibility concerns.
+Describe affected REST, MCP, CLI, SPI, event, configuration, and persisted
+artifact contracts, including migrations or rollout requirements where relevant.
+State whether existing consumers and historical records remain compatible.
 
 ## Governance Notes
 
-Describe any impact on evaluation evidence, replay semantics, ranking, promotion recommendations, or governed asset lifecycle rules.
+Describe relevant effects on tenant isolation, authorization, evidence privacy
+and history, replay semantics and failure behavior, evaluation, ranking,
+promotion recommendations, or governed asset lifecycle rules.
 
 ## Checklist
 
-- [ ] The change is focused and reviewable.
 - [ ] Public APIs and docs use consistent terminology.
-- [ ] New behavior has meaningful tests or a clear reason tests are not needed.
 - [ ] Security-sensitive details are not included in logs, fixtures, or examples.
